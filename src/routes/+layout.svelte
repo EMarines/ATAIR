@@ -7,6 +7,7 @@
   import type { QuerySnapshot, DocumentData } from 'firebase/firestore';
   import { contactsStore, binnaclesStore, propertiesStore } from '$lib/stores/dataStore';
   import { Navbar, Footer } from '$components';
+  import type { Contact, Binnacle, Property } from '$lib/types';
 
   if (browser) {
       const unsubscribes: (() => void)[] = [];
@@ -18,8 +19,11 @@
               (snapshot: QuerySnapshot<DocumentData>) => {
                   const datos = snapshot.docs.map(doc => ({
                       id: doc.id,
+                      createdAt: doc.data().createdAt || Date.now(),
+                      name: doc.data().name || '',
+                      typeContact: doc.data().typeContact || '',
                       ...doc.data()
-                  }));
+                  })) as Contact[];
                   contactsStore.set(datos);
               }
           )
@@ -32,7 +36,7 @@
                   const binnacles = snapshot.docs.map(doc => ({
                       id: doc.id,
                       ...doc.data()
-                  }));
+                  })) as Binnacle[];
                   binnaclesStore.set(binnacles);
               }
           )
@@ -42,11 +46,11 @@
           onSnapshot(
               collection(db, 'properties'),
               (snapshot: QuerySnapshot<DocumentData>) => {
-                  const properties = snapshot.docs.map(doc => ({
-                      id: doc.id,
+                  const datos = snapshot.docs.map(doc => ({
+                      public_id: doc.id,
                       ...doc.data()
-                  }));
-                  propertiesStore.set(properties);
+                  })) as Property[];
+                  propertiesStore.set(datos);
               }
           )
       );
