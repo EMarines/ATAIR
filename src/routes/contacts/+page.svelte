@@ -1,22 +1,29 @@
 <script lang="ts">
-  import { contactsStore, propertiesStore, systStatus } from '$lib/stores/dataStore';
-  import { Search, CardContact } from '$components';
+  import { contactsStore, propertiesStore, systStatus, contact } from '$lib/stores/dataStore';
+  import { Search, CardContact, AddContact } from '$components';
   import type { Contact } from '$lib/types';
   import { goto } from '$app/navigation';
 
   let searchTerm = "";
+  $systStatus = "";
 
   $: contacts = $contactsStore
 
     //  Le da el valor de prop a $property y Redirige a propSelect
     function seleContact(cont: Contact) {
-      goto("/contact/" + cont.id)
+      const contactWithId = {
+        ...cont,
+        id: cont.id
+      };
+      goto("/contact/" + contactWithId.id);
     }
 
      // Añadir propiedad
      function addContact() {
-        $systStatus = "addContact"
-        goto("/contactos/altaContacto")
+       contact.reset();
+       console.log("estas en el contacts", $contact);
+        // $systStatus = "addContact"
+        goto("/contacts/new")
       }
 
     // Search property by title, id y description
@@ -34,6 +41,7 @@
 <div class="container">
 
   <div class="mainContainer">
+    <!-- {#if $systStatus === ""} -->
     <div class="title__container">
       <h1 class="title">Contactos</h1>
     </div>
@@ -55,8 +63,10 @@
           <CardContact {cont}/>         
         </div>
       {/each}        
-    </div>  
-
+    </div> 
+    <!-- {:else if $systStatus === "addContact"}
+      <AddContact />
+    {/if} -->
   </div>
 
 </div> 

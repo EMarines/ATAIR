@@ -7,12 +7,22 @@ export { default as Contact } from './Contact.svelte';
 export { default as Button } from './Button.svelte';
 export { default as CardProperty } from './CardProperty.svelte';
 export { default as CardContact } from './CardContact.svelte';
+export { default as CardBinnacle } from './CardBinnacle.svelte';
+export { default as AddToShedule } from './AddToSchedule.svelte';
+export { default as Tags } from './Tags.svelte';
+export { default as Ubication } from './Ubication.svelte';
+export { default as InputOptions } from './InputOptions.svelte';
+export { default as InputEmail } from './InputEmail.svelte';
+export { default as InputDate } from './InputDate.svelte';
+export { default as Search } from './Search.svelte';
+export { default as InputText } from './InputText.svelte';
+export { default as AddContact } from './AddContact.svelte';
+
+
 // export { default as BtnFind } from './BtnFind.svelte';
 // export { default as BtnWA } from './BtnWA.svelte';
 // export { default as BtnCancel } from './BtnCancel.svelte';
 // export { default as BtnFollLink } from './BtnFollLink.svelte';
-export { default as Search } from './Search.svelte';
-
 // export { default as IconButton } from './IconButton.svelte';
 // export { default as CardProperty } from './CardProperty.svelte';
 // export { default as CardContact } from './CardContact.svelte';
@@ -20,10 +30,6 @@ export { default as Search } from './Search.svelte';
 // export { default as ContactPage } from './ContactPage.svelte';
 // export { default as Pagination } from './Pagination.svelte';
 // export { default as TextArea } from './TextArea.svelte';
-// export { default as Input } from './Input.svelte';
-// export { default as InputOptions } from './InputOptions.svelte';
-// export { default as Tags } from './Tags.svelte';
-// export { default as Ubication } from './Ubication.svelte';
 // export { default as Binnacle } from './Binnacle.svelte';
 // export { default as Search } from './Search.svelte';
 

@@ -75,6 +75,7 @@
               <li><a href="/agenda" class="nav__link">Agenda</a></li>
               <!-- <li><a href="/(app)/profile">Profile</a></li> -->
               <li><a href="/tramites">Trámites</a></li>
+              <li><a href="/actions">Acciones</a></li>
               <li>
                 <a 
                     href="/" 

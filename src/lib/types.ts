@@ -1,32 +1,32 @@
 export interface Contact {
-  budget?: number;
-  color?: string;
-  comContact?: string;
-  contactType?: string;
-  contactStage?: string;
-  contMode?: string;
   createdAt: number;
-  email?: string;
-  halfBathroom?: string;
+  name: string;
+  typeContact: string;
+  telephon: string;
+  lastname: string;
+  email: string;
+  budget: number;
+  selecTP: string;
+  contactStage: string;
+  comContact: string;
+  tagsProperty: string[];
+  locaProperty: string[];
+  selecMC: string;
+  numBeds: string;
+  numBaths: string;
+  numParks: string;
+  halfBathroom: string;
+  modePay: string;
+  rangeProp: string;
+  color?: string;
+  contactType?: string;
+  contMode?: string;
   id?: string;
   lastContact?: number;
-  lastname?: string;
-  locaProperty?: string[];
-  modePay?: string;
-  name: string;
-  numBaths?: string;
-  numBeds?: string;
-  numParks?: string;
   propCont?: string;
-  rangeProp?: string;
   selecTO?: string;
-  selecTP?: string;
-  selecMC?: string;
   sendedProperties?: string[];
-  tagsProperty?: string[];
-  telephon?: string;
   title?: string;
-  typeContact: string;
   typeProperty?: string;
   typeOperation?: string;
 }
@@ -156,6 +156,41 @@ export interface Binnacle {
   to?: string;
 }
 
+export interface Todo {
+  id?: string;
+  stage: string;
+  endTask: number;
+  createdAt: number;
+  notes: string;
+  isCompleted: boolean;
+  task: string;
+  timeTask: string;
+  type?: string;
+  user?: string;
+}
+
 export type ContactOption = "Posobles_Interesados" | "Por_Enviar" | "Ya_Se_Envió";
 
 export type SystStatus = "" | "updateContact" | "sendProps" | "sendProp" | "sendComm" | "addContact" | "msgGratitude" | "addSchedule"; 
+
+export interface SearchEvent {
+  target: {
+      value: string;
+  }
+}
+
+export interface ContactPageState {
+  searchTerm: string;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+export interface AddContactEvents {
+  success: {
+      contact: Contact;
+  };
+  error: {
+      error: Error;
+  };
+  cancel: void;
+} 
