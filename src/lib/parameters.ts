@@ -1,4 +1,3 @@
-
 export const operTypes = [
     "Venta",
     "Renta",
@@ -43,12 +42,7 @@ export const operTypes = [
     ""
   ]
 
-  export const oneToThree = [
-    1,
-    2,
-    3,
-    ""
-  ]
+  export const oneToThree: string[] = ['1', '2', '3'];
 
   export const oneToFour = [
     1,
@@ -58,14 +52,7 @@ export const operTypes = [
     ""
   ]
   
-  export const oneToFive = [
-    1,
-    2,
-    3,
-    4,
-    5,
-    ""
-  ]
+  export const oneToFive: string[] = ['1', '2', '3', '4', '5'];
   
   export const modeContact = [ 
     "Lona en Propiedad",

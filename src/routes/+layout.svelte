@@ -17,13 +17,25 @@
           onSnapshot(
               collection(db, 'contacts'),
               (snapshot: QuerySnapshot<DocumentData>) => {
-                  const datos = snapshot.docs.map(doc => ({
-                      id: doc.id,
-                      createdAt: doc.data().createdAt || Date.now(),
-                      name: doc.data().name || '',
-                      typeContact: doc.data().typeContact || '',
-                      ...doc.data()
-                  })) as Contact[];
+                  const datos = snapshot.docs.map(doc => {
+                      const data = doc.data();
+                      // Asegurarnos de que el ID del documento siempre esté presente
+                      return {
+                          id: doc.id,
+                          createdAt: data.createdAt || Date.now(),
+                          name: data.name || '',
+                          lastname: data.lastname || '',
+                          email: data.email || '',
+                          telephon: data.telephon || '',
+                          typeContact: data.typeContact || '',
+                          selecMC: data.selecMC || '',
+                          comContact: data.comContact || '',
+                          contactStage: data.contactStage || 0,
+                          isActive: data.isActive !== undefined ? data.isActive : true,
+                          properties: Array.isArray(data.properties) ? data.properties : [],
+                          ...data
+                      };
+                  }) as Contact[];
                   contactsStore.set(datos);
               }
           )

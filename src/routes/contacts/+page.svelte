@@ -1,39 +1,88 @@
 <script lang="ts">
   import { contactsStore, propertiesStore, systStatus, contact } from '$lib/stores/dataStore';
-  import { Search, CardContact, AddContact } from '$components';
+  import { Search, CardContact, Button } from '$components';
+  import AddContact from '$lib/components/AddContact.svelte';
   import type { Contact } from '$lib/types';
   import { goto } from '$app/navigation';
 
   let searchTerm = "";
   $systStatus = "";
+  let selectedContact: Contact | null = null;
 
-  $: contacts = $contactsStore
-
-    //  Le da el valor de prop a $property y Redirige a propSelect
-    function seleContact(cont: Contact) {
-      const contactWithId = {
-        ...cont,
-        id: cont.id
-      };
-      goto("/contact/" + contactWithId.id);
+  // Ordenar contactos por fecha y alfabéticamente
+  $: sortedContacts = $contactsStore ? [...$contactsStore].sort((a, b) => {
+    // Primero intentamos ordenar por fecha
+    const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+    const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+    
+    // Si las fechas son diferentes, ordenar por fecha (más reciente primero)
+    if (dateA.getTime() !== dateB.getTime()) {
+      return dateB.getTime() - dateA.getTime();
     }
+    
+    // Si las fechas son iguales, ordenar alfabéticamente
+    const nameA = `${a.name || ''} ${a.lastname || ''}`.toLowerCase();
+    const nameB = `${b.name || ''} ${b.lastname || ''}`.toLowerCase();
+    return nameA.localeCompare(nameB);
+  }) : [];
 
-     // Añadir propiedad
-     function addContact() {
-       contact.reset();
-       console.log("estas en el contacts", $contact);
-        // $systStatus = "addContact"
-        goto("/contacts/new")
+  // Reactive statement para filtrar los contactos ordenados
+  $: contacts = searchTerm ? sortedContacts.filter((contact: Contact) => {
+    if (!contact) return false;
+    
+    const searchableText = [
+      contact.name || '',
+      contact.lastname || ''
+    ].join(' ')
+     .normalize("NFD")
+     .replace(/[\u0300-\u036f]/g, "")
+     .toLowerCase();
+    
+    return searchableText.includes(searchTerm.toLowerCase());
+  }) : sortedContacts;
+
+    //  Seleccionar y navegar al contacto
+    function seleContact(cont: Contact) {
+      if (!cont) {
+        console.error('Error: Contacto inválido');
+        return;
       }
 
-    // Search property by title, id y description
-    function searCont() {
-      return contacts = $contactsStore.filter((contact: Contact) => {
-        let contInfo = (contact.name + " " + contact.lastname ).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        return contInfo.includes(searchTerm.toLowerCase());
-      });  
-    };
+      // Verificar que el contacto tenga un ID válido
+      const contactId = cont.id?.trim();
+      if (!contactId) {
+        console.error('Error: ID de contacto faltante o inválido', cont);
+        return;
+      }
 
+      goto(`/contact/${contactId}`);
+    }
+
+    // Búsqueda de contactos
+    function searCont() {
+      if (!$contactsStore) return [];
+      
+      return contacts = sortedContacts.filter((contact: Contact) => {
+        if (!contact) return false;
+        
+        const searchableText = [
+          contact.name || '',
+          contact.lastname || ''
+        ].join(' ')
+         .normalize("NFD")
+         .replace(/[\u0300-\u036f]/g, "")
+         .toLowerCase();
+        
+        return searchableText.includes(searchTerm.toLowerCase());
+      });  
+    }
+
+    // Añadir contacto - maneja el estado del formulario
+    function addContact() {
+      selectedContact = null;
+      contact.reset();
+      $systStatus = "addContact";
+    }
 
 </script>
 
@@ -41,32 +90,45 @@
 <div class="container">
 
   <div class="mainContainer">
-    <!-- {#if $systStatus === ""} -->
-    <div class="title__container">
-      <h1 class="title">Contactos</h1>
-    </div>
-    
-    <div class="headContainer">
-      <button class="btn__submit" on:click={addContact}>Alta de Contacto</button>
-      <Search bind:searchTerm on:input={searCont} on:keydown={()=>{}}/>
-    </div>
-  
-    <div class="cards__container">
-      {#each contacts as cont}
-        <div 
-          class="card__container" 
-          on:click={() => seleContact(cont)} 
-          on:keydown={() => seleContact(cont)}
-          role="button"
-          tabindex="0"
+    {#if $systStatus === ""}
+      <div class="title__container">
+        <h1 class="title">Contactos</h1>
+      </div>
+      
+      <div class="headContainer">
+        <Button 
+          element="button"
+          variant="solid"
+          on:click={addContact}
         >
-          <CardContact {cont}/>         
-        </div>
-      {/each}        
-    </div> 
-    <!-- {:else if $systStatus === "addContact"}
-      <AddContact />
-    {/if} -->
+          Alta de Contacto
+        </Button>
+        <Search bind:searchTerm on:input={searCont} on:keydown={()=>{}}/>
+      </div>
+    
+      <div class="cards__container">
+        {#each contacts as cont}
+          <div 
+            class="card__container" 
+            on:click={() => seleContact(cont)}
+          >
+            <CardContact {cont} />
+          </div>
+        {/each}
+      </div>
+    {:else if $systStatus === "addContact" || $systStatus === "editContact"}
+      <AddContact 
+        existingContact={selectedContact}
+        on:cancel={() => {
+          $systStatus = "";
+          selectedContact = null;
+        }} 
+        on:success={() => {
+          $systStatus = "";
+          selectedContact = null;
+        }}
+      />
+    {/if}
   </div>
 
 </div> 

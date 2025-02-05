@@ -3,7 +3,7 @@
   // import { deleteDoc, doc } from 'firebase/firestore';
   import { goto } from '$app/navigation';
   import type { Contact, Binnacle, Property } from '$lib/types';
-  import { CardContact, CardBinnacle, AddToShedule, CardProperty, Search } from '$components';
+  import { CardContact, CardBinnacle, AddToShedule, CardProperty, Search, AddContact } from '$components';
   import { formatDate, toComaSep, toTele, infoToBinnacle, filtContPropInte, sendWhatsApp, sortBinnacle } from '$lib/functions';
   import { systStatus, propertiesStore, binnaclesStore } from '$lib/stores/dataStore';
 
@@ -58,9 +58,7 @@
   // CRUD edit and delete
   // Edit contact
   function editContact(){
-    console.log("editContact", contact.id);
-    $systStatus = "editing"
-    goto("/contacts")
+    $systStatus = "editContact";
   }
 
    // Delete contact
@@ -185,8 +183,7 @@
       
      // Busca la bitácora del contacto
      function contBinn() {
-        if (!$binnaclesStore) return [];
-        
+        if (!$binnaclesStore) return [];        
         let bitacora = $binnaclesStore.filter(item => item.to === contact.id);
         return sortedBinn = sortBinnacle(bitacora);
     }
@@ -212,7 +209,7 @@
         let binnacle: Binnacle = {
             date: Date.now(),
             comment: commInpuyBinnacle,
-            to: contact.telephon,
+            to: contact.id,
             action: "Nota agregada: "
         };
         infoToBinnacle(binnacle);
@@ -223,150 +220,162 @@
 
   <!-- Contact Data -->
     <div class="container">
+      {#if $systStatus === "editContact"}
+        <AddContact 
+          existingContact={contact}
+          on:cancel={() => $systStatus = ""} 
+          on:success={() => {
+            $systStatus = "";
+            // Recargar la página para ver los cambios
+            window.location.reload();
+          }}
+        />
+      {:else}
+        <div class="mainContainer">
 
-      <div class="mainContainer">
+          <div class="leftContainer">
 
-        <div class="leftContainer">
-
-          <!-- Heaer -->
-          <div class="data__container">            
-              <div class="left__title">
-                <h1 class="name">{contact.name} {contact.lastname}</h1>
-              </div>
-              <div class="rigth__title">
-                <div class="icon__title">
-                  <i on:click={()=>{editContact()}} 
-                     on:keydown={()=>{}} 
-                     class="fa-regular fa-pen-to-square"
-                     role="button"
-                     tabindex="0"></i>
-                  <i on:click={() => deleContact} 
-                     on:keydown={()=>{}} 
-                     class="fa-regular fa-trash-can"
-                     role="button"
-                     tabindex="0"></i>
+            <!-- Heaer -->
+            <div class="data__container">            
+                <div class="left__title">
+                  <h1 class="name">{contact.name} {contact.lastname}</h1>
                 </div>
-                  <span>Alta el: {formatDate(contact.createdAt)}</span>  
-              </div>
-          </div>
+                <div class="rigth__title">
+                  <div class="icon__title">
+                    <i on:click={()=>{editContact()}} 
+                       on:keydown={()=>{}} 
+                       class="fa-regular fa-pen-to-square"
+                       role="button"
+                       tabindex="0"></i>
+                    <i on:click={() => deleContact} 
+                       on:keydown={()=>{}} 
+                       class="fa-regular fa-trash-can"
+                       role="button"
+                       tabindex="0"></i>
+                  </div>
+                    <span>Alta el: {formatDate(contact.createdAt)}</span>  
+                </div>
+            </div>
 
-        <!-- Contact, notes and features-->
-        <div>
+          <!-- Contact, notes and features-->
+          <div>
 
-          <div class="sub__title">
-            {#if contact.budget}
-                <span>Presupuesto $ {toComaSep(Number(contact.budget))}.</span>
-              {:else}
-                <span>Rango: {contact.rangeProp}</span>
-            {/if}
-            <span>{contact.contactStage}</span>
-          </div>
+            <div class="sub__title">
+              {#if contact.budget}
+                  <span>Presupuesto $ {toComaSep(Number(contact.budget))}.</span>
+                {:else}
+                  <span>Rango: {contact.rangeProp}</span>
+              {/if}
+              <span>{contact.contactStage}</span>
+            </div>
 
-          <div class="notes">
-            {#if contact.comContact}
-              <h3>Notas:</h3>
-              <span>{contact.comContact}</span>              
-            {/if}
-          </div>  
+            <div class="notes">
+              {#if contact.comContact}
+                <h3>Notas:</h3>
+                <span>{contact.comContact}</span>              
+              {/if}
+            </div>  
 
-          <div class="cont__contact">
-            <span>Contactar en:</span>
-            {#if contact.telephon}
-              <span>Tel: {toTele(contact.telephon)}</span>
-            {/if}
-            {#if contact.email}
-              <span>Email: {contact.email}</span>              
-            {/if}
-          </div>
+            <div class="cont__contact">
+              <span>Contactar en:</span>
+              {#if contact.telephon}
+                <span>Tel: {toTele(contact.telephon)}</span>
+              {/if}
+              {#if contact.email}
+                <span>Email: {contact.email}</span>              
+              {/if}
+            </div>
   
-          <div class="cont__requires">          
-         
-            
-            <div class="features__search">
-              {#if contact.numBeds}
-                <span>{contact.numBeds} <i class="fa-solid fa-bed to__show"></i></span>              
-              {/if}
-              {#if contact.numBaths}
-                <span>{contact.numBaths} <i class="fa-solid fa-bath to__show"></i></span>              
-              {/if}
-              {#if contact.halfBathroom}
-                <span>{contact.halfBathroom} <i class="fa-solid fa-toilet to__show"></i></span>              
-              {/if}
-              {#if contact.numParks}
-                <span>{contact.numParks} <i class="fa-solid fa-car-rear to__show"></i></span>              
-              {/if}
-
-                <div>
-                  {#if contact.locaProperty}
-                    <span> <i class="fa-sharp fa-regular fa-compass to__showR"></i> {contact.locaProperty.toString().replaceAll(",", ", ")} </span>              
-                  {/if}
-                  {#if contact.tagsProperty}
-                    <span><i class="fa-solid fa-tags to__showR"></i> {contact.tagsProperty.toString().replaceAll("_", " ").replaceAll(",", ", ")} </span>              
-                  {/if}
-                </div>
-
-            </div> 
-
-          </div>
-
-        </div>
-        
-        <!-- Buttons schedule, props, prop y return -->
-        <div class="btn__actions">
-
-          <div class="icon__actions">
-            <button class="btn__common" on:click={addSchedule}><i class="fa-solid fa-calendar-days"></i>Agendar</button>
-            <button class="btn__common" on:click={fitProp}><i class="fa-solid fa-house-laptop"></i>Propiedades</button>
-            <button class="btn__common" on:click={mostSearch}><i class="fa-solid fa-house-user"></i>Propiedad</button>
-            <button class="btn__common" on:click={onCancel}><i class="fa-solid fa-rotate-left"></i>Regresar</button>                      
-          </div>
-
-          {#if mostBusq}
-            <div class="search">
-              <Search bind:searchTerm on:input={searProp} on:keydown={()=>{}}/>
-            </div>
-          {/if} 
-
-          {#if isActivated}
-            <AddToShedule {contact} on:closeIt = {close} />
-          {/if}
+            <div class="cont__requires">          
+             
               
-          <!-- Botonies enviar WA o guardar nota para bitácora -->              
-          <div class="textAreaCont">
-            <textarea 
-              on:change={textAreaComm} 
-              class="texArea" 
-              bind:value={commInpuyBinnacle} 
-              placeholder="Ingresa un comentario"></textarea>
-            <div class="waSave">
-              {#if !!commInpuyBinnacle || $systStatus === "addContact" || $systStatus === "msgGratitude" || layOut === "sendProp" }
-                <button  class="btn__common" on:click={selMsgWA}><i class="fa-brands fa-square-whatsapp"></i>WhatsApp</button>
-                <button class="btn__common" on:click={saveNote}><i class="fa-solid fa-floppy-disk"></i>Guardar Info</button>
-              {/if}
-          </div>
-        </div>
-                
-        </div>
+              <div class="features__search">
+                {#if contact.numBeds}
+                  <span>{contact.numBeds} <i class="fa-solid fa-bed to__show"></i></span>              
+                {/if}
+                {#if contact.numBaths}
+                  <span>{contact.numBaths} <i class="fa-solid fa-bath to__show"></i></span>              
+                {/if}
+                {#if contact.halfBathroom}
+                  <span>{contact.halfBathroom} <i class="fa-solid fa-toilet to__show"></i></span>              
+                {/if}
+                {#if contact.numParks}
+                  <span>{contact.numParks} <i class="fa-solid fa-car-rear to__show"></i></span>              
+                {/if}
 
-      </div>
+                  <div>
+                    {#if contact.locaProperty}
+                      <span> <i class="fa-sharp fa-regular fa-compass to__showR"></i> {contact.locaProperty.toString().replaceAll(",", ", ")} </span>              
+                    {/if}
+                    {#if contact.tagsProperty}
+                      <span><i class="fa-solid fa-tags to__showR"></i> {contact.tagsProperty.toString().replaceAll("_", " ").replaceAll(",", ", ")} </span>              
+                    {/if}
+                  </div>
+
+              </div> 
+
+            </div>
+
+          </div>
+          
+          <!-- Buttons schedule, props, prop y return -->
+          <div class="btn__actions">
+
+            <div class="icon__actions">
+              <button class="btn__common" on:click={addSchedule}><i class="fa-solid fa-calendar-days"></i>Agendar</button>
+              <button class="btn__common" on:click={fitProp}><i class="fa-solid fa-house-laptop"></i>Propiedades</button>
+              <button class="btn__common" on:click={mostSearch}><i class="fa-solid fa-house-user"></i>Propiedad</button>
+              <button class="btn__common" on:click={onCancel}><i class="fa-solid fa-rotate-left"></i>Regresar</button>                      
+            </div>
+
+            {#if mostBusq}
+              <div class="search">
+                <Search bind:searchTerm on:input={searProp} on:keydown={()=>{}}/>
+              </div>
+            {/if} 
+
+            {#if isActivated}
+              <AddToShedule {contact} on:closeIt = {close} />
+            {/if}
+                
+            <!-- Botonies enviar WA o guardar nota para bitácora -->              
+            <div class="textAreaCont">
+              <textarea 
+                on:change={textAreaComm} 
+                class="texArea" 
+                bind:value={commInpuyBinnacle} 
+                placeholder="Ingresa un comentario"></textarea>
+              <div class="waSave">
+                {#if !!commInpuyBinnacle || $systStatus === "addContact" || $systStatus === "msgGratitude" || layOut === "sendProp" }
+                  <button  class="btn__common" on:click={selMsgWA}><i class="fa-brands fa-square-whatsapp"></i>WhatsApp</button>
+                  <button class="btn__common" on:click={saveNote}><i class="fa-solid fa-floppy-disk"></i>Guardar Info</button>
+                {/if}
+            </div>
+          </div>
+                  
+          </div>
+
+        </div>
       
-      <!-- Bitácora del contacto -->
-        {#if !layOut }
-          <div class="rigthContainer">
-            <h1 class="title">Bitácora</h1>
-            <div>
-              <div class="schedule">
-                <div class="binnacleHome">
-                  {#each sortedBinn as binn}
-                    <CardBinnacle {binn} />
-                  {/each}
-                </div>              
+        <!-- Bitácora del contacto -->
+          {#if !layOut }
+            <div class="rigthContainer">
+              <h1 class="title">Bitácora</h1>
+              <div>
+                <div class="schedule">
+                  <div class="binnacleHome">
+                    {#each sortedBinn as binn}
+                      <CardBinnacle {binn} />
+                    {/each}
+                  </div>              
+                </div>
               </div>
             </div>
-          </div>
-        {/if}
+          {/if}
 
-      </div>
+        </div>
+      {/if}
+
     </div>
 
   <!-- Tarjeta para propiedad -->

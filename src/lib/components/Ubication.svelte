@@ -1,5 +1,5 @@
 <script lang="ts">
-let ubication: string[] = [];
+export let ubication: string[] = [];
 
 </script>
 

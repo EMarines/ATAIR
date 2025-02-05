@@ -12,16 +12,16 @@ export interface Contact {
   tagsProperty: string[];
   locaProperty: string[];
   selecMC: string;
-  numBeds: string;
-  numBaths: string;
-  numParks: string;
-  halfBathroom: string;
+  numBeds: number;
+  numBaths: number;
+  numParks: number;
+  halfBathroom: number;
   modePay: string;
   rangeProp: string;
   color?: string;
   contactType?: string;
   contMode?: string;
-  id?: string;
+  id: string;
   lastContact?: number;
   propCont?: string;
   selecTO?: string;
@@ -157,9 +157,9 @@ export interface Binnacle {
 }
 
 export interface Todo {
-  id?: string;
+  id: string;
   stage: string;
-  endTask: number;
+  endTask: string | number;
   createdAt: number;
   notes: string;
   isCompleted: boolean;
