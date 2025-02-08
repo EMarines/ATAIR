@@ -44,12 +44,11 @@ export const operTypes = [
 
   export const oneToThree: string[] = ['1', '2', '3'];
 
-  export const oneToFour = [
-    1,
-    2,
-    3,
-    4,
-    ""
+  export const oneToFour: string[] = [
+    '1',
+    '2',
+    '3',
+    '4'
   ]
   
   export const oneToFive: string[] = ['1', '2', '3', '4', '5'];

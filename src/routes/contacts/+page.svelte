@@ -110,7 +110,14 @@
         {#each contacts as cont}
           <div 
             class="card__container" 
+            role="button"
+            tabindex="0"
             on:click={() => seleContact(cont)}
+            on:keydown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                seleContact(cont);
+              }
+            }}
           >
             <CardContact {cont} />
           </div>

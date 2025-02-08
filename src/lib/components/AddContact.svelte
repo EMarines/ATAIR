@@ -1,6 +1,5 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
-    import type { AddContactEvents } from '$lib/types';
     import { goto } from '$app/navigation';
     import { collection, addDoc, deleteDoc, getDoc, getDocs, doc, updateDoc} from 'firebase/firestore';
     import { db } from '$lib/firebase';
@@ -8,7 +7,8 @@
     import { Search, Tags, Ubication, InputText, InputOptions, InputEmail, InputDate, CardProperty, Button } from '$components';
     import { mosRange, infoToBinnacle, cleanNumber, cleanName, convertOperationEbFb } from '$functions'
     import { typeContacts, modeContact, typeProperties, modePays, oneToFive, oneToFour, oneToThree, contStage, range } from '$lib/parameters';
-    import type { Property, Contact } from '$lib/types';
+    import type { Property, Contact, AddContactEvents } from '$lib/types';
+    import { v4 as uuidv4 } from 'uuid';
 
     const dispatch = createEventDispatcher<AddContactEvents>();
 
@@ -16,7 +16,7 @@
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const PHONE_REGEX = /^\+?[\d\s-]{10,}$/;
 
-    interface FormErrors {
+    interface ErroresFormulario {
         name?: string;
         lastname?: string;
         email?: string;
@@ -24,8 +24,10 @@
         general?: string;
     }
 
-    let formErrors: FormErrors = {};
-    let touchedFields = {
+    let erroresFormulario: ErroresFormulario = {};
+    // Crear un tipo para los campos que queremos validar
+    type CamposValidados = Pick<Contact, 'name' | 'lastname' | 'email' | 'telephon'>;
+    let camposModificados: Record<keyof CamposValidados, boolean> = {
         name: false,
         lastname: false,
         email: false,
@@ -36,7 +38,7 @@
     let showProp = false;
     let searchTerm = "";
     let propToRender = $propertiesStore;
-    let showAdditionalFields = false; // Variable para controlar campos adicionales
+    let showAdditionalFields = false;
 
     // Estado unificado del formulario
     export let existingContact: Contact | null = null;
@@ -61,52 +63,56 @@
         selecTP: '',
         comContact: '',
         modePay: '',
-        rangeProp: ''
+        rangeProp: '',
+        notes: ''
     };
 
-    function handleBlur(field: string) {
-        touchedFields[field] = true;
-        validateField(field, contact[field]);
+    function handleBlur(field: keyof CamposValidados) {
+        if (field in camposModificados) {
+            camposModificados[field] = true;
+            validateField(field, contact[field]);
+        }
     }
 
-    function validateField(field: string, value: string) {
+    function validateField(field: keyof CamposValidados, value: any) {
         // Solo validar si el campo ha sido tocado o si el formulario está siendo enviado
-        if (!touchedFields[field] && !isDirty) {
+        if (!camposModificados[field] && !isDirty) {
             return;
         }
 
-        formErrors[field] = '';
+        erroresFormulario[field] = '';
 
         switch(field) {
             case 'name':
             case 'lastname':
                 if (!value?.trim()) {
-                    formErrors[field] = `El ${field === 'name' ? 'nombre' : 'apellido'} es requerido`;
+                    erroresFormulario[field] = `El ${field === 'name' ? 'nombre' : 'apellido'} es requerido`;
                 } else if (value.length < 2) {
-                    formErrors[field] = `El ${field === 'name' ? 'nombre' : 'apellido'} es muy corto`;
+                    erroresFormulario[field] = `El ${field === 'name' ? 'nombre' : 'apellido'} es muy corto`;
                 }
                 break;
             case 'email':
                 if (!value?.trim()) {
-                    formErrors.email = 'El email es requerido';
+                    erroresFormulario.email = 'El email es requerido';
                 } else if (!EMAIL_REGEX.test(value)) {
-                    formErrors.email = 'Email inválido';
+                    erroresFormulario.email = 'Email inválido';
                 }
                 break;
             case 'telephon':
                 if (!value?.trim()) {
-                    formErrors.telephon = 'El teléfono es requerido';
+                    erroresFormulario.telephon = 'El teléfono es requerido';
                 } else if (!PHONE_REGEX.test(value)) {
-                    formErrors.telephon = 'Formato de teléfono inválido';
+                    erroresFormulario.telephon = 'Formato de teléfono inválido';
                 }
                 break;
         }
+        console.log('Errores formulario:', erroresFormulario);
     }
 
     async function handleSubmit() {
         try {
             isSubmitting = true;
-            formErrors.general = null;
+            erroresFormulario.general = undefined;
 
             // Validar todos los campos
             validateField('name', contact.name);
@@ -115,14 +121,39 @@
             validateField('telephon', contact.telephon);
 
             // Verificar si hay errores
-            if (Object.values(formErrors).some(error => error)) {
+            if (Object.values(erroresFormulario).some(error => error)) {
                 throw new Error('Por favor corrija los errores en el formulario');
             }
 
+            const requiredFields = ['createdAt', 'name', 'typeContact', 'telephon'];
+            const missingFields = requiredFields.filter(field => !(field in contact));
+            if (missingFields.length > 0) {
+                throw new Error(`Faltan los siguientes campos: ${missingFields.join(', ')}`);
+            }
+
             // Preparar el contacto para guardar
-            const contactToSave = {
-                ...contact,
-                createdAt: contact.createdAt || Date.now()
+            const contactToSave: Contact = {
+                id: uuidv4(), // Genera un ID único
+                createdAt: new Date().getTime(),
+                name: contact.name,
+                lastname: contact.lastname,
+                email: contact.email,
+                telephon: contact.telephon,
+                contactStage: contact.contactStage,
+                typeContact: contact.typeContact,
+                selecMC: contact.selecMC,
+                numBeds: contact.numBeds,
+                numBaths: contact.numBaths,
+                numParks: contact.numParks,
+                halfBathroom: contact.halfBathroom,
+                budget: contact.budget,
+                tagsProperty: contact.tagsProperty,
+                locaProperty: contact.locaProperty,
+                selecTP: contact.selecTP,
+                comContact: contact.comContact,
+                modePay: contact.modePay,
+                rangeProp: contact.rangeProp,
+                notes: contact.notes,
             };
 
             let result;
@@ -131,12 +162,11 @@
                 result = await contactsStore.update(contactToSave);
             } else {
                 // Si es nuevo contacto, agregar
-                delete contactToSave.id;
                 result = await contactsStore.add(contactToSave);
             }
             
             if (!result.success) {
-                throw new Error(result.error || 'Error al guardar el contacto');
+                throw new Error(result.error ? String(result.error) : 'Error al guardar el contacto');
             }
 
             // Notificar éxito y redirigir
@@ -149,7 +179,14 @@
             }
 
         } catch (err) {
-            formErrors.general = err.message;
+            if (err instanceof Error) {
+                erroresFormulario.general = err.message;
+                console.log('Error general:', erroresFormulario.general);
+            } else {
+                erroresFormulario.general = 'Error desconocido'; // Mensaje por defecto
+                console.log('Error desconocido');
+            }
+            console.log('Errores formulario:', erroresFormulario);
             dispatch('error', { error: err });
         } finally {
             isSubmitting = false;
@@ -182,9 +219,9 @@
 <div class="cont__alta">
     <h1 class="title">Alta de Contacto</h1>
     <form on:submit|preventDefault={handleSubmit} id="altaContactos" class="form-container">      
-        {#if formErrors.general}
+        {#if erroresFormulario.general}
             <div class="error-message">
-                {formErrors.general}
+                {erroresFormulario.general}
             </div>
         {/if}
 
@@ -196,10 +233,10 @@
                         name="Nombre *" 
                         bind:value={contact.name}
                         on:blur={() => handleBlur('name')}
-                        error={formErrors.name}
+                        error={erroresFormulario.name || undefined}
                     />
-                    {#if touchedFields.name && formErrors.name}
-                        <span class="field-error">{formErrors.name}</span>
+                    {#if camposModificados.name && erroresFormulario.name}
+                        <span class="field-error">{erroresFormulario.name}</span>
                     {/if}
                 </div>
                 
@@ -209,10 +246,10 @@
                         name="Apellido *" 
                         bind:value={contact.lastname}
                         on:blur={() => handleBlur('lastname')}
-                        error={formErrors.lastname}
+                        error={erroresFormulario.lastname || undefined}
                     />
-                    {#if touchedFields.lastname && formErrors.lastname}
-                        <span class="field-error">{formErrors.lastname}</span>
+                    {#if camposModificados.lastname && erroresFormulario.lastname}
+                        <span class="field-error">{erroresFormulario.lastname}</span>
                     {/if}
                 </div>
             </div>
@@ -224,11 +261,11 @@
                         name="Teléfono *" 
                         bind:value={contact.telephon}
                         on:blur={() => handleBlur('telephon')}
-                        error={formErrors.telephon}
+                        error={erroresFormulario.telephon || undefined}
                         placeholder="+52 1234567890"
                     />
-                    {#if touchedFields.telephon && formErrors.telephon}
-                        <span class="field-error">{formErrors.telephon}</span>
+                    {#if camposModificados.telephon && erroresFormulario.telephon}
+                        <span class="field-error">{erroresFormulario.telephon}</span>
                     {/if}
                 </div>
 
@@ -238,10 +275,10 @@
                         name="Email *" 
                         bind:value={contact.email}
                         on:blur={() => handleBlur('email')}
-                        error={formErrors.email}
+                        error={erroresFormulario.email || undefined}
                     />
-                    {#if touchedFields.email && formErrors.email}
-                        <span class="field-error">{formErrors.email}</span>
+                    {#if camposModificados.email && erroresFormulario.email}
+                        <span class="field-error">{erroresFormulario.email}</span>
                     {/if}
                 </div>
             </div>
@@ -314,7 +351,7 @@
                             identificador="rangeProp" 
                             name="Rango de Propiedad" 
                             choices={range} 
-                            value={contact.rangeProp}
+                            value={String(contact.rangeProp)}
                             on:change={(e) => contact.rangeProp = e.detail}
                         />
                     </div>
@@ -324,31 +361,32 @@
                             identificador="numBeds" 
                             name="Recámaras" 
                             choices={oneToFive} 
-                            value={Number(contact.numBeds)}
+                            value={String(contact.numBeds)}
                             on:change={(e) => contact.numBeds = e.detail}
                         />
                         <InputOptions 
                             identificador="numBaths" 
                             name="Baños Completos" 
                             choices={oneToFour} 
-                            value={Number(contact.numBaths)}
+                            value={String(contact.numBaths)}
                             on:change={(e) => contact.numBaths = e.detail}
                         />
                     </div>
 
+      
                     <div class="inp__lat">
                         <InputOptions 
                             identificador="halfBathroom" 
                             name="Medios Baños" 
                             choices={oneToThree} 
-                            value={contact.halfBathroom}
+                            value={String(contact.halfBathroom)}
                             on:change={(e) => contact.halfBathroom = e.detail}
                         />
                         <InputOptions 
                             identificador="numParks" 
                             name="Estacionamientos" 
                             choices={oneToFour} 
-                            value={contact.numParks}
+                            value={String(contact.numParks)}
                             on:change={(e) => contact.numParks = e.detail}
                         />
                     </div>
@@ -365,7 +403,7 @@
                     element="button"
                     type="submit"
                     variant="solid"
-                    disabled={isSubmitting || Object.values(formErrors).some(error => error)}
+                    disabled={isSubmitting || Object.values(erroresFormulario).some(error => error)}
                 >
                     {isSubmitting ? 'Guardando...' : 'Guardar'}
                 </Button>

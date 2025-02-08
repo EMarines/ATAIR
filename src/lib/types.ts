@@ -5,17 +5,17 @@ export interface Contact {
   telephon: string;
   lastname: string;
   email: string;
-  budget: number;
+  budget: string | number;
   selecTP: string;
   contactStage: string;
   comContact: string;
   tagsProperty: string[];
   locaProperty: string[];
+  numBeds: string | number;
+  numParks: string | number;
+  numBaths: string | number;
+  halfBathroom: string | number;
   selecMC: string;
-  numBeds: number;
-  numBaths: number;
-  numParks: number;
-  halfBathroom: number;
   modePay: string;
   rangeProp: string;
   color?: string;
@@ -29,6 +29,8 @@ export interface Contact {
   title?: string;
   typeProperty?: string;
   typeOperation?: string;
+  isActive?: boolean;
+  notes?: string;
 }
 
 export interface PropertyFB {
