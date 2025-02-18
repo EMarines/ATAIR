@@ -186,13 +186,13 @@
 			<div class="prop__ima__info">
 				<div class="prop__image">
 					<p class="prop__clave">{property.public_id}</p>
-					<img src={property.images[0].url} alt={property.location.name} />
+					<img src={property.title_image_thumb} alt={property.location} />
 				</div>
 
 				<div class="prop__card">
 					<div class="prop__info">
 						<div class="propTitle">
-							<h1 class="title">{property.property_type} en {property.location.name.replace("Chihuahua, Chihuahua", "").replace("I,", "")} en {property.operations[0].type === "sale" ? "Venta" : "Renta"}</h1>
+							<h1 class="title">{property.property_type} en {property.location.replace("Chihuahua, Chihuahua", "").replace("I,", "")} en {property.operations[0].type === "sale" ? "Venta" : "Renta"}</h1>
 						</div>
 						<div class="prop__price">
 							<h2>Precio $ {toComaSep(property.operations[0].amount)}.</h2>
@@ -218,7 +218,7 @@
 								{/if}
 							</div>
 							<div class="prop__features">
-								{#if property.tags.length > 0}
+								{#if property.tags?.length > 0}
 										<span> <i class="fa-sharp fa-regular fa-compass to__showR"></i> {tagToUbicacion(property?.tags)} </span>              
 										<span><i class="fa-solid fa-tags to__showR"></i> {tagToFeatures(property.tags)} </span>              
 								{/if}

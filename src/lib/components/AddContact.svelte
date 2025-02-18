@@ -187,7 +187,7 @@
                 console.log('Error desconocido');
             }
             console.log('Errores formulario:', erroresFormulario);
-            dispatch('error', { error: err });
+            dispatch('error', { error: new Error(String(err)) });
         } finally {
             isSubmitting = false;
         }
@@ -207,7 +207,7 @@
         if (searchTerm.length !== 0) {
             showProp = true;
             propToRender = $propertiesStore.filter((property) => {
-                const searchInfo = `${property.location.name} ${property.title} ${property.public_id}`.toLowerCase();
+                const searchInfo = `${property.location} ${property.title} ${property.public_id}`.toLowerCase();
                 return searchInfo.includes(searchTerm.toLowerCase());
             });
         } else {
@@ -233,7 +233,6 @@
                         name="Nombre *" 
                         bind:value={contact.name}
                         on:blur={() => handleBlur('name')}
-                        error={erroresFormulario.name || undefined}
                     />
                     {#if camposModificados.name && erroresFormulario.name}
                         <span class="field-error">{erroresFormulario.name}</span>
@@ -246,7 +245,6 @@
                         name="Apellido *" 
                         bind:value={contact.lastname}
                         on:blur={() => handleBlur('lastname')}
-                        error={erroresFormulario.lastname || undefined}
                     />
                     {#if camposModificados.lastname && erroresFormulario.lastname}
                         <span class="field-error">{erroresFormulario.lastname}</span>
@@ -261,8 +259,6 @@
                         name="Teléfono *" 
                         bind:value={contact.telephon}
                         on:blur={() => handleBlur('telephon')}
-                        error={erroresFormulario.telephon || undefined}
-                        placeholder="+52 1234567890"
                     />
                     {#if camposModificados.telephon && erroresFormulario.telephon}
                         <span class="field-error">{erroresFormulario.telephon}</span>
@@ -275,7 +271,6 @@
                         name="Email *" 
                         bind:value={contact.email}
                         on:blur={() => handleBlur('email')}
-                        error={erroresFormulario.email || undefined}
                     />
                     {#if camposModificados.email && erroresFormulario.email}
                         <span class="field-error">{erroresFormulario.email}</span>
@@ -344,8 +339,7 @@
                         <InputText 
                             identifier="budget" 
                             name="Presupuesto" 
-                            type="number"
-                            bind:value={contact.budget}
+                            value={contact.budget}
                         />
                         <InputOptions 
                             identificador="rangeProp" 

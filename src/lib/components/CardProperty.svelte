@@ -1,33 +1,69 @@
 <script lang="ts">
   import { toComaSep } from '$lib/functions/format'
+  import type { Property } from '$lib/types'
 
-  export let prop={};
+  export let property: Property;
+
+  // Función para formatear la ubicación
+  const formatLocation = (location: string | undefined | null) => {
+    // Si no hay ubicación o no es string, retornar valor por defecto
+    if (!location || typeof location !== 'string') return 'Sin dirección';
+    
+    try {
+      return location
+        .toString()
+        .replace("Chihuahua, Chihuahua", "")
+        .replaceAll(",", "")
+        .replace("I, ", "")
+        .replace("II", "")
+        .replace("III", "")
+        .replace("IV", "")
+        .replace("V ", "")
+        .replaceAll("Y ", "")
+        .trim();
+    } catch (error) {
+      console.error('Error formateando ubicación:', error);
+      return 'Sin dirección';
+    }
+  };
+
 </script>
 
+<div class="card__container">
   <div class="card__prop">
   
     <div class="img__cont">
-      <img src="{prop.images[0].url}" alt="casa">
+      <img src="{property?.title_image_thumb || ''}" alt="casa">
     </div>
 
     <div class="info__cont">
 
       <div class="card__info">
-        <span class="capitalize">{prop.location.name.replace("Chihuahua, Chihuahua", "").replaceAll(",", "").replace("I, ", "").replace("II", "").replace("III", "").replace("IV", "").replace("V ", "").replaceAll("Y ", "")}</span>
-        <span>$ {toComaSep(Number(prop.operations[0].amount))}.</span>
+        <span class="capitalize">
+          {formatLocation(property?.location)}
+        </span>
+        <span>$ {toComaSep(Number(property?.operations?.[0]?.amount || 0))}</span>
       </div>
 
       <div class="card__features">
-        {#if  prop.property_type === "casa" || prop.property_type === "departamento"}
-            <span>Recámaras {Number(prop.bedrooms)}</span>
-            <span>Baños {Number(prop.bathrooms)}</span> 
-          {:else if prop.property_type === "terreno"}  
-            <span>{toComaSep(Number(prop.lot_size))} m²</span>
+        {#if property?.property_type?.toLowerCase() === "casa" ||
+         property?.property_type?.toLowerCase() === "departamento"}
+          <span>Recámaras {property?.bedrooms || 0}</span>
+          <span>Baños {Number(property?.bathrooms || 0)}</span> 
+        {:else if property?.property_type?.toLowerCase() === "terreno" ||
+         property?.property_type?.toLowerCase() === "local comercial"}  
+          <span>{toComaSep(Number(property?.construction_size || 0))} m²</span>
+        {:else if property?.property_type?.toLowerCase() === "edificio" ||
+         property?.property_type?.toLowerCase().startsWith("bodega")}
+          <span>{toComaSep(Number(property?.construction_size || 0))} m²</span>
+          <span>{toComaSep(Number(property?.lot_size || 0))} m²</span>
         {/if}
       </div>
 
     </div>
+    
   </div> 
+</div>
 
 <style>
 

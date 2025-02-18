@@ -8,7 +8,10 @@
   let searchTerm = "";
 //   let property: Property = {} as Property;
 
-  $: properties = $propertiesStore
+  // Ordenar propiedades por fecha de creación (más recientes primero)
+  $: properties = $propertiesStore.sort((a, b) => {
+    return Number(b.created_at) - Number(a.created_at);
+  });
 
 //   /  Le da el valor de prop a $property y Redirige a propSelect
     function seleProperty(prop: Property) {
@@ -17,10 +20,15 @@
 
   // Search property by title, id y description
     function searProp() {
-      return properties = $propertiesStore.filter((propety) => {
-        let contInfo = (propety.title + " " + propety.description + " " + propety.public_id).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        return contInfo.includes(searchTerm.toLowerCase());
-      });  
+      return properties = $propertiesStore
+        .sort((a, b) => Number(b.created_at) - Number(a.created_at))
+        .filter((propety) => {
+          let contInfo = (propety.title + " " + propety.description + " " + propety.public_id)
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+          return contInfo.includes(searchTerm.toLowerCase());
+        });  
     };
 
 
@@ -47,7 +55,7 @@
           role="button"
           tabindex="0"
         >
-          <CardProperty {prop} />
+          <CardProperty property={prop} />
         </div>
       {/each}  
     </div>

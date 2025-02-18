@@ -72,6 +72,36 @@
       });
   }
 </script>
-<Navbar />
-<slot />
-<Footer />
+
+<div class="app">
+    <header>
+        <Navbar />
+    </header>
+    
+    <main>
+        <slot />
+    </main>
+
+    <footer>
+        <Footer />
+    </footer>
+</div>
+
+<style>
+    .app {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh; /* Altura mínima del viewport */
+    }
+
+    main {
+        flex: 1;  /* Hace que el main ocupe todo el espacio disponible */
+    }
+
+    footer {
+        margin-top: auto; /* Empuja el footer al fondo */
+        padding: 1rem;
+        background: rgb(56, 56, 56);
+        text-align: center;
+    }
+</style>

@@ -160,11 +160,19 @@
               inActivated = true;
             };
     
-    // Modifica la función mostIcons para manejar el estado individual
+    // Modifica la función toggleActions
     function toggleActions(todoId: string) {
-        activeActions.set(todoId, !activeActions.get(todoId));
-        activeActions = activeActions;
-          }
+        // Crear un nuevo Map limpio
+        const newMap = new Map<string, boolean>();
+        
+        // Si el todo actual no estaba activo, activarlo
+        if (!activeActions.get(todoId)) {
+            newMap.set(todoId, true);
+        }
+        
+        // Actualizar el estado
+        activeActions = newMap;
+    }
     
         // Close
             function cancel() {
@@ -264,7 +272,7 @@
                   <h3 class="title">Hoy</h3>
                 <table>
                     <tbody>
-                        {#each sortedTodos as todo (todo.id)}
+                        {#each sortedTodos as todo, index (todo.id + '-' + todo.endTask + '-' + index)}
                             <tr 
                                 on:click={() => toggleActions(todo.id)}
                                 class="todo-row"
@@ -278,7 +286,7 @@
                                         <button
                                             class="icon-button"
                                             aria-label="Marcar como completada"
-                                            on:click={() => handleUpdateTodo({...todo, isCompleted: !todo.isCompleted})}
+                                            on:click|stopPropagation={() => handleUpdateTodo({...todo, isCompleted: !todo.isCompleted})}
                                         >
                           <i class="fa-sharp fa-regular fa-square-check"></i>
                                         </button>
@@ -286,7 +294,7 @@
                                         <button 
                                             class="icon-button"
                                             aria-label="Editar tarea"
-                                            on:click={() => editTodo(todo)}
+                                            on:click|stopPropagation={() => editTodo(todo)}
                                         >
                                             <i class="fa-regular fa-pen-to-square"></i>
                                         </button>
@@ -294,7 +302,7 @@
                                         <button
                                             class="icon-button"
                                             aria-label="Eliminar tarea"
-                                            on:click={() => handleDeleteTodo(todo.id)}
+                                            on:click|stopPropagation={() => handleDeleteTodo(todo.id)}
                                         >
                                             <i class="fa-regular fa-trash-can"></i>
                                         </button>

@@ -117,119 +117,149 @@
 </nav>
 
 <style>
-    nav{
+    nav {
         position: sticky;
         top: 0;
         padding: 0.5em;
-
+        width: 100%;
+        z-index: 1000;
+        background: var(--surface-1);
     }
-    .container{
+
+    .container {
         display: flex;
         align-items: center;
+        justify-content: space-between;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
     }
-    ul{
+
+    ul {
         display: flex;
         margin: 0;
-        margin-left: auto;
+        padding: 0;
         list-style: none;
-        font-size: 1em;
-        gap: 15px;
-    } 
-    .wide, .small {
-      display: flex;
-      flex-direction: row;
-      gap: 20px;
+        gap: 1.5rem;
     }
- 
-    h1{
+
+    .wide, .small {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    h1 {
         margin: 0;
         font-size: 1.3em;
-        font-weight: normal;
+        font-weight: 600;
     }
-    a{
+
+    a {
         text-decoration: none;
-        color: #aaa;        
-    }
-    .nav__target{
-      display: none;
-      padding: 23px;
-      background: #343a40;
-      border: none;
+        color: var(--text-1);
+        transition: color 0.2s;
     }
 
-    @media(max-width: 800px) {
-      nav{
-        color: blue;
-        position: static;
-      }
-      .nav__links {
-        flex-direction: column;
-        color: red;
-        padding-right: 50px;
-      }
-   
-    }
- 
-  @media(max-width: 402px){
-      
-    nav{
-      position: sticky;
-      width: 100%;
-      padding: 0 40px;
-      height: 80px;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      /* justify-content: space-between; */
+    a:hover {
+        color: var(--brand);
     }
 
-    .wide{
-      display: none;
+    .nav__target {
+        display: none;
+        padding: 0.5rem;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: var(--text-1);
     }
 
+    /* Tablet */
+    @media (max-width: 800px) {
+        .container {
+            padding: 0 2rem;
+        }
+
+        ul {
+            gap: 1rem;
+        }
+    }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+        nav {
+            position: sticky;
+            height: 60px;
+        }
+
+        .container {
+            padding: 0 1rem;
+        }
+
+        .nav__target {
+            display: block;
+        }
+
+        .wide {
+            display: none;
+        }
+
+        .small {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--surface-1);
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 2rem;
+            gap: 1.5rem;
+            overflow-y: auto;
+            z-index: 1000;
+            height: calc(100vh - 60px); /* Altura total menos la altura del nav */
+        }
+
+        ul {
+            width: 100%;
+        }
+
+        li {
+            width: 100%;
+            padding: 0.5rem 0;
+        }
+
+        .nav__link {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 0;
+        }
+    }
+
+    /* Animaciones */
     .small {
-      display: block;
-      flex-direction: column;
-      position: fixed;
-      left: 0px;
-      bottom: 0;
-      top: 80px;
-      right: 0px;
-      color:#343a40;
-      background-color: gray;
-      height: 500px;
-      width: 100%;
-      gap: 40px;
-      padding: 10px 0 0 150px;
+        animation: slideIn 0.3s ease-out;
     }
 
-    .nav__target{
-      display: block;
+    @keyframes slideIn {
+        from {
+            transform: translateX(-100%);
+        }
+        to {
+            transform: translateX(0);
+        }
     }
 
-    .container{
-      display: flex;
-      width: 100%;
-      gap: 100px;
+    /* Accesibilidad */
+    .nav__target:focus,
+    a:focus {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
     }
 
-    li{
-      padding: 10px 0;
-      margin-bottom: 20px;
+    /* Estado deshabilitado */
+    .disabled {
+        opacity: 0.5;
+        pointer-events: none;
     }
-
-    .nav__link {
-    text-decoration: none;
-    color: #fff;			 
-    }
-/* 
-    .nav__icon{
-      font-size: 2rem;
-    } */
-
-
-
-  }
-
-
 </style> 
