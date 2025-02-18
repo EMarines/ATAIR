@@ -20,15 +20,14 @@
   let contInterested = '';
 	let contInterest: Contact[] = [];
   let contToRender: Contact[] = [];
-  let contInitial = [];
-  let msgToShow = '';
-  let poroShowTo: ContactOption[] = ["Posobles_Interesados", "Por_Enviar", "Ya_Se_Envió"];
-  let showBtn = false;
-  let contIntToSend = 0;
-  let contFalt = 0;
-  let contCheck: Contact[] = [];
+	let contInitial = [];
+	let msgToShow = '';
+	let poroShowTo: ContactOption[] = ["Posobles_Interesados", "Por_Enviar", "Ya_Se_Envió"];
+	let showBtn = false;
+	let contIntToSend = 0;
+	let contFalt = 0;
+	let contCheck: Contact[] = [];
 	let contToSend: Contact;
-  console.log(property);
 
 	$: contacts = $contactsStore as Contact[];
 	$: currProperty = property as Property;

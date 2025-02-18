@@ -42,23 +42,24 @@
         }
     }
 
-    async function syncProps() {
-        if (!changes?.total) return;
-        
+    async function syncChanges() {
         isSyncing = true;
         error = null;
-
+        
         try {
-            console.log(changes, "changes");
-            // syncProperties();
-            // Implementar la sincronización aquí
-            // ...
+            const propertiesToUpload = await easyBroker.preparePropertiesToUpload({
+                new: changes?.new.map(p => p.public_id) || [],
+                modified: changes?.modified.map(p => p.public_id) || []
+            });
+            
+            await easyBroker.syncChanges(propertiesToUpload);
+            
+            // Recargar propiedades después de sincronizar
+            const ebProperties = await easyBroker.getProperties();
+            changes = easyBroker.compareProperties(ebProperties, $propertiesStore);
+            
         } catch (err) {
-            if (err instanceof Error) {
-                error = err.message;
-            } else {
-                error = 'Error desconocido al sincronizar';
-            }
+            error = err instanceof Error ? err.message : 'Error desconocido durante la sincronización';
         } finally {
             isSyncing = false;
         }
@@ -75,8 +76,8 @@
             <Button 
                 element="button"
                 variant="solid"
-                disabled={isChecking}
-                on:click={changes?.total ? syncProps : checkChanges}
+                disabled={isChecking || isSyncing}
+                on:click={changes?.total ? syncChanges : checkChanges}
                 style={changes?.total ? "background-color: #6b21a8;" : ""}
             >
                 {#if isChecking}
@@ -84,7 +85,7 @@
                 {:else if isSyncing}
                     Sincronizando...
                 {:else if changes?.total}
-                    Sincronizar Cambios ({changes.total})
+                    Sincronizar ({changes.total} cambios)
                 {:else}
                     Verificar Cambios
                 {/if}
@@ -165,7 +166,7 @@
                     {#each changes.deleted as property}
                         <div class="property-item">
                             <img 
-                                src={property.title_image_thumb || '/placeholder-property.png'} 
+                                src={property.title_image_thumb || 'https://via.placeholder.com/200x150'} 
                                 alt={property.title}
                                 class="property-thumb"
                             />
@@ -334,9 +335,9 @@
         justify-content: center;
     }
 
-    .summary p {
+    /* .summary p {
         margin: 0;
-    }
+    } */
 
     .summary strong {
         color: var(--primary);

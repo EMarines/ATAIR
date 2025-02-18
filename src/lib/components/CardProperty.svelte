@@ -5,13 +5,10 @@
   export let property: Property;
 
   // Función para formatear la ubicación
-  const formatLocation = (location: string | undefined | null) => {
-    // Si no hay ubicación o no es string, retornar valor por defecto
-    if (!location || typeof location !== 'string') return 'Sin dirección';
-    
-    try {
-      return location
-        .toString()
+  const formatLocation = (location: string | { name: string } | undefined | null) => {
+    if (!location) return 'Sin dirección';
+    const locationStr = typeof location === 'string' ? location : location.name;
+    return locationStr
         .replace("Chihuahua, Chihuahua", "")
         .replaceAll(",", "")
         .replace("I, ", "")
@@ -21,10 +18,6 @@
         .replace("V ", "")
         .replaceAll("Y ", "")
         .trim();
-    } catch (error) {
-      console.error('Error formateando ubicación:', error);
-      return 'Sin dirección';
-    }
   };
 
 </script>
@@ -33,7 +26,10 @@
   <div class="card__prop">
   
     <div class="img__cont">
-      <img src="{property?.title_image_thumb || ''}" alt="casa">
+      <img 
+        src={property?.title_image_thumb || 'https://via.placeholder.com/200x150'} 
+        alt="casa"
+      >
     </div>
 
     <div class="info__cont">

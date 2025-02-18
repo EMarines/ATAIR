@@ -75,17 +75,17 @@ export interface Property {
   public_id: string,
   property_status: string,
   title: string,
-  title_image_full: string,
+  // title_image_full: string,
   title_image_thumb: string,
   bedrooms: number,
   bathrooms: number,
   parking_spaces: number,
   half_bathrooms: number,
-  location: string,
+  location: string | { name: string },
   property_type: string,
   updated_at: string,
-  show_prices: boolean,
-  share_commission: boolean,
+  // show_prices: boolean,
+  // share_commission: boolean,
   tags: string[],
   operations: [
     {
@@ -107,7 +107,8 @@ export interface Property {
       currency: string,
       period: string
     }
-  ]
+  ],
+  property_images?: Array<{ url: string }>;
 }
   
 

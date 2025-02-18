@@ -1,4 +1,6 @@
 import type { Property } from '$lib/types';
+import { writeBatch, doc, getDoc } from 'firebase/firestore';
+import { db } from '$lib/firebase';
 
 export class EasyBrokerService {
     private apiKey: string;
@@ -7,6 +9,71 @@ export class EasyBrokerService {
 
     constructor(apiKey: string) {
         this.apiKey = apiKey;
+    }
+
+    // Obtener detalles completos de una propiedad
+    private async getPropertyDetails(propertyId: string): Promise<Property> {
+        try {
+            await new Promise(resolve => setTimeout(resolve, this.rateLimit));
+            
+            const response = await fetch(`/api/properties/${propertyId}`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log(`Obtenidos detalles de propiedad ${propertyId}`);
+            return data;
+        } catch (error) {
+            console.error(`Error obteniendo detalles de propiedad ${propertyId}:`, error);
+            throw error;
+        }
+    }
+
+    // Preparar propiedades para subir
+    private formatPropertyForFirebase(property: Property): Property {
+        return {
+            created_at: new Date(property.created_at).getTime(),
+            lot_size: property.lot_size || 0,
+            public_url: property.public_url.replace('https://www.easybroker.com/mx/listings', 'https://www.matchhome.net/property'),
+            construction_size: property.construction_size || 0,
+            description: property.description || '',
+            agent: property.agent || '',
+            public_id: property.public_id,
+            property_status: property.property_status || 'available',
+            title: property.title || '',
+            title_image_thumb: property.property_images?.[0]?.url || property.title_image_thumb || '',
+            bedrooms: property.bedrooms || 0,
+            bathrooms: property.bathrooms || 0,
+            parking_spaces: property.parking_spaces || 0,
+            half_bathrooms: property.half_bathrooms || 0,
+            location: typeof property.location === 'string' ? property.location : property.location?.name || '',
+            property_type: property.property_type || '',
+            updated_at: property.updated_at || new Date().toISOString(),
+            tags: property.tags || [],
+            operations: property.operations || []
+        };
+    }
+
+    async preparePropertiesToUpload(propertiesToProcess: { new: string[], modified: string[] }): Promise<Property[]> {
+        const propertiesToUpload: Property[] = [];
+
+        console.log('Procesando propiedades nuevas y modificadas...');
+
+        // Procesar tanto nuevas como modificadas
+        for (const id of [...propertiesToProcess.new, ...propertiesToProcess.modified]) {
+            try {
+                const propertyDetails = await this.getPropertyDetails(id);
+                propertiesToUpload.push(this.formatPropertyForFirebase(propertyDetails));
+                console.log(`Propiedad ${id} lista para subir`);
+            } catch (error) {
+                console.error(`Error procesando propiedad ${id}:`, error);
+            }
+        }
+
+        console.log(`Total de propiedades listas para subir: ${propertiesToUpload.length}`);
+        return propertiesToUpload;
     }
 
     async getProperties(): Promise<Property[]> {
@@ -56,5 +123,38 @@ export class EasyBrokerService {
 
         changes.total = changes.new.length + changes.modified.length + changes.deleted.length;
         return changes;
+    }
+
+    async syncChanges(propertiesToUpload: Property[]) {
+        const batch = writeBatch(db);
+        let addedCount = 0;
+        let updatedCount = 0;
+        
+        for (const property of propertiesToUpload) {
+            try {
+                const docRef = doc(db, 'properties', property.public_id);
+                const docSnap = await getDoc(docRef);
+                
+                batch.set(docRef, property, { merge: true });
+                if (docSnap.exists()) {
+                    updatedCount++;
+                } else {
+                    addedCount++;
+                }
+            } catch (error) {
+                console.error(`Error procesando propiedad ${property.public_id}:`, error);
+            }
+        }
+
+        try {
+            await batch.commit();
+            console.log(`Sincronización completada:
+                - ${addedCount} propiedades nuevas
+                - ${updatedCount} propiedades actualizadas`);
+            return true;
+        } catch (error) {
+            console.error('Error al sincronizar propiedades:', error);
+            throw error;
+        }
     }
 } 

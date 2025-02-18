@@ -109,7 +109,8 @@
       layOut = "sendProp";
     }
       return propToRender = properties.filter((propety) => {
-        let contInfo = (propety.public_id + " " + propety.title + " " + propety.location.name).toLowerCase();
+        const locationStr = typeof propety.location === 'string' ? propety.location : propety.location.name;
+        let contInfo = (propety.public_id + " " + propety.title + " " + locationStr).toLowerCase();
         return contInfo.includes(searchTerm.toLowerCase());
       });  
     };
@@ -411,16 +412,16 @@
           
         
         <div class="card__container">          
-          {#each propToRender as prop}
+          {#each propToRender as property}
             <div class="select__props">
               <input type="checkbox" 
-                value={prop} 
-                name={prop.public_id} 
+                value={property} 
+                name={property.public_id} 
                 class="form__propCheck" 
                 bind:group={propCheck} 
                 on:click={sendPropF}
               />	
-              <CardProperty {prop} />
+              <CardProperty {property} />
             </div>
           {/each}
         </div>
