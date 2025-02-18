@@ -185,13 +185,21 @@
 			<div class="prop__ima__info">
 				<div class="prop__image">
 					<p class="prop__clave">{property.public_id}</p>
-					<img src={property.title_image_thumb} alt={property.location} />
+					<img 
+						src={property.title_image_thumb} 
+						alt={typeof property.location === 'string' ? property.location : property.location.name} 
+					/>
 				</div>
 
 				<div class="prop__card">
 					<div class="prop__info">
 						<div class="propTitle">
-							<h1 class="title">{property.property_type} en {property.location.replace("Chihuahua, Chihuahua", "").replace("I,", "")} en {property.operations[0].type === "sale" ? "Venta" : "Renta"}</h1>
+							<h1 class="title">
+								{property.property_type} en {typeof property.location === 'string' ? 
+									property.location.replace("Chihuahua, Chihuahua", "").replace("I,", "") : 
+									property.location.name.replace("Chihuahua, Chihuahua", "").replace("I,", "")
+								} en {property.operations[0].type === "sale" ? "Venta" : "Renta"}
+							</h1>
 						</div>
 						<div class="prop__price">
 							<h2>Precio $ {toComaSep(property.operations[0].amount)}.</h2>
