@@ -107,10 +107,17 @@ export class EasyBrokerService {
             
             if (!fbProp) {
                 changes.new.push(ebProp);
-            } else if (
-                ebProp.operations?.[0]?.amount !== fbProp.operations?.[0]?.amount
-            ) {
-                changes.modified.push(ebProp);
+            } else {
+                // Normalizar fechas a timestamps para comparación
+                const ebDate = new Date(ebProp.updated_at).getTime();
+                const fbDate = new Date(fbProp.updated_at).getTime();
+                
+                if (ebDate !== fbDate) {
+                    console.log(`Propiedad ${ebProp.public_id} modificada:`);
+                    console.log('Fecha EB:', ebProp.updated_at, '→', ebDate);
+                    console.log('Fecha FB:', fbProp.updated_at, '→', fbDate);
+                    changes.modified.push(ebProp);
+                }
             }
         });
 

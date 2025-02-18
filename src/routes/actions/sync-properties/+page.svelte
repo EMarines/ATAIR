@@ -54,8 +54,27 @@
             
             await easyBroker.syncChanges(propertiesToUpload);
             
-            // Recargar propiedades después de sincronizar
+            // Actualizar el store con las propiedades sincronizadas
+            propertiesStore.update(props => {
+                // Eliminar propiedades que ya no existen
+                const updatedProps = props.filter(p => !changes?.deleted.find(d => d.public_id === p.public_id));
+                
+                // Actualizar o agregar nuevas propiedades
+                propertiesToUpload.forEach(newProp => {
+                    const index = updatedProps.findIndex(p => p.public_id === newProp.public_id);
+                    if (index >= 0) {
+                        updatedProps[index] = newProp;
+                    } else {
+                        updatedProps.push(newProp);
+                    }
+                });
+                
+                return updatedProps;
+            });
+            
+            // Recargar datos de EasyBroker y verificar cambios
             const ebProperties = await easyBroker.getProperties();
+            ebPropertiesCount = ebProperties.length;
             changes = easyBroker.compareProperties(ebProperties, $propertiesStore);
             
         } catch (err) {
