@@ -1,14 +1,12 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { goto } from '$app/navigation';
-    import { collection, addDoc, deleteDoc, getDoc, getDocs, doc, updateDoc} from 'firebase/firestore';
-    import { db } from '$lib/firebase';
     import { systStatus, propertiesStore, property, contactsStore } from '$lib/stores/dataStore';
     import { Search, Tags, Ubication, InputText, InputOptions, InputEmail, InputDate, CardProperty, Button } from '$components';
-    import { mosRange, infoToBinnacle, cleanNumber, cleanName, convertOperationEbFb } from '$functions'
     import { typeContacts, modeContact, typeProperties, modePays, oneToFive, oneToFour, oneToThree, contStage, range } from '$lib/parameters';
     import type { Property, Contact, AddContactEvents } from '$lib/types';
-    import { v4 as uuidv4 } from 'uuid';
+    import { ranPrice } from '$lib/functions/rangeValue';
+    import { onMount, onDestroy } from 'svelte';
 
     const dispatch = createEventDispatcher<AddContactEvents>();
 
@@ -44,27 +42,27 @@
     export let existingContact: Contact | null = null;
     
     let contact: Contact = existingContact ? { ...existingContact } : {
-        id: '',
-        name: '',
-        lastname: '',
-        email: '',
-        telephon: '',
-        createdAt: Date.now(),
-        contactStage: '',
-        typeContact: '',
-        selecMC: '',
-        numBeds: 0,
-        numBaths: 0,
-        numParks: 0,
-        halfBathroom: 0,
         budget: 0,
-        tagsProperty: [],
-        locaProperty: [],
-        selecTP: '',
         comContact: '',
+        contactStage: 'Etapa1',
+        createdAt: Date.now(),
+        email: '',
+        halfBathroom: 0,
+        id: '',
+        lastname: '',
+        locaProperty: [],
         modePay: '',
+        name: '',
+        notes: '',
+        numBaths: 0,
+        numBeds: 0,
+        numParks: 0,
         rangeProp: '',
-        notes: ''
+        selecMC: '',
+        selecTP: '',
+        tagsProperty: [],
+        telephon: '',
+        typeContact: '',
     };
 
     function handleBlur(field: keyof CamposValidados) {
@@ -110,6 +108,7 @@
     }
 
     async function handleSubmit() {
+        console.log('contact', contact);
         try {
             isSubmitting = true;
             erroresFormulario.general = undefined;
@@ -132,37 +131,39 @@
             }
 
             // Preparar el contacto para guardar
-            const contactToSave: Contact = {
-                id: uuidv4(), // Genera un ID único
-                createdAt: new Date().getTime(),
-                name: contact.name,
-                lastname: contact.lastname,
-                email: contact.email,
-                telephon: contact.telephon,
-                contactStage: contact.contactStage,
-                typeContact: contact.typeContact,
-                selecMC: contact.selecMC,
-                numBeds: contact.numBeds,
-                numBaths: contact.numBaths,
-                numParks: contact.numParks,
-                halfBathroom: contact.halfBathroom,
-                budget: contact.budget,
-                tagsProperty: contact.tagsProperty,
-                locaProperty: contact.locaProperty,
-                selecTP: contact.selecTP,
-                comContact: contact.comContact,
-                modePay: contact.modePay,
-                rangeProp: contact.rangeProp,
-                notes: contact.notes,
+            const cleanContactData: Contact = {
+                ...(existingContact?.id ? { id: existingContact.id } : {}),
+                budget: contact.budget || 0,
+                comContact: contact.comContact || '',
+                contactStage: contact.contactStage || 'Etapa1',
+                createdAt: existingContact?.createdAt || Date.now(),
+                email: contact.email || '',
+                halfBathroom: contact.halfBathroom || 0,
+                isActive: true,
+                lastname: contact.lastname || '',
+                locaProperty: contact.locaProperty || [],
+                modePay: contact.modePay || '',
+                name: contact.name || '',
+                notes: contact.notes || '',
+                numBaths: contact.numBaths || 0,
+                numBeds: contact.numBeds || 0,
+                numParks: contact.numParks || 0,
+                propCont: contact.propCont || '',
+                rangeProp: contact.rangeProp || '',
+                selecMC: contact.selecMC || '',
+                selecTP: contact.selecTP || '',
+                tagsProperty: contact.tagsProperty || [],
+                telephon: contact.telephon || '',
+                typeContact: contact.typeContact || '',
             };
 
             let result;
             if (existingContact) {
                 // Si es una edición, actualizar el contacto existente
-                result = await contactsStore.update(contactToSave);
+                result = await contactsStore.update(cleanContactData);
             } else {
                 // Si es nuevo contacto, agregar
-                result = await contactsStore.add(contactToSave);
+                result = await contactsStore.add(cleanContactData);
             }
             
             if (!result.success) {
@@ -170,7 +171,7 @@
             }
 
             // Notificar éxito y redirigir
-            dispatch('success', { contact: contactToSave });
+            dispatch('success', { contact: cleanContactData });
             
             if (result.id) {
                 goto(`/contact/${result.id}`);
@@ -203,6 +204,24 @@
         dispatch('cancel');
     }
 
+    // Agregar función para manejar clics fuera del componente
+    function handleClickOutside(event: MouseEvent) {
+        const searchContainer = document.querySelector('.search-container');
+        if (searchContainer && !searchContainer.contains(event.target as Node)) {
+            showProp = false;
+        }
+    }
+
+    // Agregar y remover el event listener cuando el componente se monta/desmonta
+    onMount(() => {
+        document.addEventListener('click', handleClickOutside);
+    });
+
+    onDestroy(() => {
+        document.removeEventListener('click', handleClickOutside);
+    });
+
+    // Modificar la función searProp
     function searProp(searchTerm: string) {
         if (searchTerm.length !== 0) {
             showProp = true;
@@ -212,8 +231,14 @@
             });
         } else {
             showProp = false;
+            propToRender = [];
         }
     }
+
+    // Agregar esta función
+    const autofocus = (node: HTMLElement) => {
+        node.focus();
+    };
 </script>
 
 <div class="cont__alta">
@@ -228,11 +253,11 @@
         <div class="features">
             <div class="inp__lat">  
                 <div class="input-group">
-                    <InputText 
-                        identifier="name" 
-                        name="Nombre *" 
+                    <InputText
+                        identifier="name"
+                        name="Nombre" 
                         bind:value={contact.name}
-                        on:blur={() => handleBlur('name')}
+                        on:input={() => handleBlur('name')}
                     />
                     {#if camposModificados.name && erroresFormulario.name}
                         <span class="field-error">{erroresFormulario.name}</span>
@@ -303,6 +328,47 @@
                 ></textarea>
             </div>
 
+            <!-- Agregar el componente de búsqueda aquí -->
+            <div class="search-container">
+                <Search
+                    placeHolder="Buscar propiedad..."
+                    bind:searchTerm={searchTerm}
+                    on:input={() => searProp(searchTerm)}
+                />
+                
+                {#if showProp && propToRender.length > 0}
+                    <div class="search-results">
+                        {#each propToRender as property}
+                            <div class="property-item">
+                                <input 
+                                    type="radio" 
+                                    name="selectedProperty"
+                                    value={property.public_id}
+                                    class="property-selector"
+                                    on:change={() => {
+                                        contact.propCont = property.public_id;
+                                        contact.selecTP = property.property_type || '';
+                                        contact.rangeProp = property.operations?.[0]?.amount 
+                                            ? ranPrice(property.operations[0].amount)
+                                            : '';
+                                        propToRender = [];
+                                        showProp = false;
+                                        searchTerm = "";
+                                    }}
+                                />
+                                <div class="card-wrapper">
+                                    <CardProperty {property} />
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else if showProp && searchTerm}
+                    <div class="no-results">
+                        No se encontraron propiedades
+                    </div>
+                {/if}
+            </div>
+
             <!-- Botón para mostrar campos adicionales -->
             <div class="form-actions">
                 <Button 
@@ -339,7 +405,7 @@
                         <InputText 
                             identifier="budget" 
                             name="Presupuesto" 
-                            value={contact.budget}
+                            value={String(contact.budget || '')}
                         />
                         <InputOptions 
                             identificador="rangeProp" 
@@ -386,7 +452,7 @@
                     </div>
 
                     <div class="inp__lat">
-                        <Tags bind:tags={contact.tagsProperty} />
+                        <Tags bind:propTags={contact.tagsProperty} />
                         <Ubication bind:ubication={contact.locaProperty} />
                     </div>
                 </div>
@@ -502,5 +568,54 @@
         .additional-fields {
             padding: 15px;
         }
+    }
+
+    .search-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 300px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 1000;
+    }
+
+    .no-results {
+        padding: 1rem;
+        text-align: center;
+        color: #666;
+        background: #f5f5f5;
+        border-radius: 4px;
+    }
+
+    .property-item {
+        position: relative;
+        padding: 5px;
+    }
+
+    .card-wrapper {
+        position: relative;
+        width: 100%;
+    }
+
+    .property-selector {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        z-index: 1001;
+        margin: 0;
+        cursor: pointer;
+        width: 20px;
+        height: 20px;
+        accent-color: #6b21a8;
     }
 </style>

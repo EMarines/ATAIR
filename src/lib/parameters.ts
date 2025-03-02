@@ -101,6 +101,7 @@ export const operTypes = [
     "Lista para Habitarse",
     "Nueva",
     "En Avenida",
+    "Alberca",
     ""
   ]
 

@@ -35,6 +35,12 @@ function handleChange(event: Event) {
 
   </label>
 
+  {#if value}
+    <div class="sub-content">
+      <slot></slot>
+    </div>
+  {/if}
+
 </div>
 
 <style>
@@ -43,4 +49,8 @@ function handleChange(event: Event) {
     position: relative;
   }
 
-  </style>
+  .sub-content {
+    margin-top: 0.5rem;
+  }
+
+</style>

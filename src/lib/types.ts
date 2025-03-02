@@ -1,37 +1,37 @@
 export interface Contact {
-  createdAt: number;
-  name: string;
-  typeContact: string;
-  telephon: string;
-  lastname: string;
-  email: string;
   budget: string | number;
-  selecTP: string;
-  contactStage: string;
-  comContact: string;
-  tagsProperty: string[];
-  locaProperty: string[];
-  numBeds: string | number;
-  numParks: string | number;
-  numBaths: string | number;
-  halfBathroom: string | number;
-  selecMC: string;
-  modePay: string;
-  rangeProp: string;
   color?: string;
+  comContact: string;
+  contactStage: string;
   contactType?: string;
   contMode?: string;
-  id: string;
-  lastContact?: number;
-  lastResponse?: number;
-  propCont?: string;
-  selecTO?: string;
-  sendedProperties?: string[];
-  title?: string;
-  typeProperty?: string;
-  typeOperation?: string;
+  createdAt: number;
+  email: string;
+  halfBathroom: string | number;
+  id?: string;
   isActive?: boolean;
+  lastContact?: number;
+  lastname: string;
+  lastResponse?: number;
+  locaProperty: string[];
+  modePay: string;
+  name: string;
   notes?: string;
+  numBaths: string | number;
+  numBeds: string | number;
+  numParks: string | number;
+  propCont?: string;
+  rangeProp: string;
+  selecMC: string;
+  selecTO?: string;
+  selecTP: string;
+  sendedProperties?: string[];
+  tagsProperty: string[];
+  telephon: string;
+  title?: string;
+  typeContact: string;
+  typeOperation?: string;
+  typeProperty?: string;
 }
 
 export interface PropertyFB {
@@ -246,4 +246,4 @@ export interface AddContactEvents {
       error: Error;
   };
   cancel: void;
-} 
+}

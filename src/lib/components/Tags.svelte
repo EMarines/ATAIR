@@ -1,50 +1,26 @@
 <script lang="ts">
-
-    export  let tags: string[] = [];
-  
+    import { tags } from '$lib/parameters';
+    export let propTags: string[] = [];
 </script>
 
-	<div class="mainContainer">
-
-		<div class="rowContainer">
-			<label>Fracc. Privado
-				<input type="checkbox"  value="Fracc._Privado" bind:group={tags}/>
-	   	</label>
-      <label>Frente a Parque
-         <input type="checkbox" value="Frente_a_Parque"  bind:group={tags}  />
-      </label>	
-		</div>
-
-		<div class="rowContainer">
-      <label>Una Planta
-         <input type="checkbox" value="Una_Planta"  bind:group={tags} />
-      </label>
-			<label>Recamara en P.B.
-				<input type="checkbox" value="Recamara_ en_PB" bind:group={tags} />
-			</label>	
-		</div>
-			
-		<div class="rowContainer">
-			<label>Patio Amplio
-				<input type="checkbox" value="Patio_Amplio" bind:group={tags} />
-			</label>			
-			<label>Lista para Habitarse
-				<input type="checkbox" value="Lista_Habitarse" bind:group={tags} />
-			</label>
-		
-		</div>
-			
-		<div class="rowContainer">
-			<label>Nueva
-				<input type="checkbox" value="Nueva" bind:group={tags} />
-			</label>
-			<label>En Avenida
-				<input type="checkbox" value="En_Avenida" bind:group={tags} />
-			</label>
-		</div>
-
-	</div>
-
+<div class="mainContainer">
+    {#each tags as tag, i}
+        {#if i % 2 === 0}
+            <div class="rowContainer">
+                <label>
+                    {tag}
+                    <input type="checkbox" value={tag} bind:group={propTags} />
+                </label>
+                {#if tags[i + 1]}
+                    <label>
+                        {tags[i + 1]}
+                        <input type="checkbox" value={tags[i + 1]} bind:group={propTags} />
+                    </label>
+                {/if}
+            </div>
+        {/if}
+    {/each}
+</div>
 
 <style>
 	.mainContainer{

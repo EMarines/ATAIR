@@ -22,13 +22,13 @@
       description: 'Actualizar contactos desde EasyBroker'
     },
     {
-      id: 'filter-properties',
+      id: 'prop-filter',
       icon: 'fa-solid fa-filter',
       title: 'Filtrar Propiedades',
       description: 'Encontrar propiedades para enviar a clientes'
     },
     {
-      id: 'filter-contacts',
+      id: 'cont-filter',
       icon: 'fa-solid fa-user-check',
       title: 'Filtrar Contactos',
       description: 'Encontrar clientes para una propiedad'
@@ -45,6 +45,18 @@
     switch (actionId) {
       case 'sync-properties':
         goto('/actions/sync-properties');
+        break;
+      case 'cont-filter':
+        goto('/actions/cont-filter');
+        break;
+      case 'prop-filter':
+        goto('/actions/prop-filter');
+        break;
+      case 'cont-filter':
+        goto('/actions/cont-filter');
+        break;
+      case 'configuration':
+        goto('/actions/contfiguration');
         break;
       // Aquí agregaremos más casos cuando implementemos las otras acciones
       default:

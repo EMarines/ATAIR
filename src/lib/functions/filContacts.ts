@@ -8,15 +8,19 @@ const dateTo = new Date().getTime();
 // Filtrar property -- properties
  
     export function filtPropContInte(property: Property, contacts: Contact[]): Contact[] {  
+
+      console.log(contacts, property);
       
       // busqueda de Hoy hasta 1/ene/23
         let conInt = contacts.filter((cont) => cont.createdAt <=  dateTo && cont.createdAt >= 1672596060000 || cont.contactStage === "Etapa4");   
+        // console.log(conInt);
 
-      // Tipo de contacto    
+        // Tipo de contacto    
         conInt = conInt.filter((cont) => cont.typeContact === "Comprador"  || cont.contactType === "Comprador");        
         
       // Tipo de propiedad
         conInt = conInt.filter((cont) => cont.selecTP === property.property_type);
+        // console.log(conInt);  
       
       // Numero de recámaras   
         if (property.bedrooms > 0) {
@@ -24,6 +28,8 @@ const dateTo = new Date().getTime();
               cont.numBeds && Number(cont.numBeds) <= property.bedrooms
           );
         };
+        // console.log(conInt);
+
         
       // Numero de baños
         if (property.bathrooms > 0) {
@@ -38,6 +44,8 @@ const dateTo = new Date().getTime();
               cont.numParks && Number(cont.numParks) <= property.parking_spaces
           );
         };
+        console.log(conInt);
+
 
       // Presupuesto
       try {
@@ -62,6 +70,7 @@ const dateTo = new Date().getTime();
       } catch (error) {
         console.log('Error al filtrar por presupuesto:', error);
       }
+      // console.log(conInt);
 
       // Filtra por Ubicación
       try {
@@ -69,11 +78,11 @@ const dateTo = new Date().getTime();
         // Solo filtramos si la propiedad tiene ubicación
         if (ubicPropTag) {
             const filteredContacts = conInt.filter(cont => {
+              
                 // Si el contacto no tiene preferencias de ubicación, lo incluimos
                 if (!cont.locaProperty || cont.locaProperty.length === 0) {
                     return true;
-                }
-                
+                }                
                 // Verificar si alguna de las ubicaciones que busca el contacto
                 // coincide con la ubicación de la propiedad
                 return cont.locaProperty.some(location => 
@@ -86,18 +95,21 @@ const dateTo = new Date().getTime();
     } catch (error) {
         console.log('Error al filtrar por ubicación:', error);
     }
+    // console.log(conInt);
 
       // Filtra por Etiquetas
       try {
-        if(tagToFeatures(property.tags)){
+        const features = tagToFeatures(property.tags);
+        if (features) {
           const filteredContacts = conInt.reduce<Contact[]>((acc, cont) => {
+              // Si el contacto no tiene preferencias de tags, lo incluimos
               if (!cont.tagsProperty || cont.tagsProperty.length === 0) {
                   acc.push(cont);
                   return acc;
               }
-      // cambio de "if (!features && cont.tagsProperty.every(tag => features.includes(tag))) {" a esto
-              const features = tagToFeatures(property.tags);
-              if (features && cont.tagsProperty.every(tag => features.includes(tag))) {
+              
+              // Verificamos que todas las tags que busca el contacto estén en la propiedad
+              if (cont.tagsProperty.every(tag => features.includes(tag))) {
                   acc.push(cont);
               }
 
@@ -108,6 +120,9 @@ const dateTo = new Date().getTime();
       } catch (error) {
         console.log('Error al filtrar por etiquetas:', error);
       }
+
+      // console.log(conInt);
+
 
       return conInt;
     };

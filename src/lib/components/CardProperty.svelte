@@ -15,8 +15,8 @@
         .replace("II", "")
         .replace("III", "")
         .replace("IV", "")
-        .replace("V ", "")
-        .replaceAll("Y ", "")
+        .replace(" V ", "")
+        .replaceAll(" Y ", "")
         .trim();
   };
 
@@ -62,35 +62,48 @@
 </div>
 
 <style>
-
     .card__prop { 
       display: flex; 
       flex-direction: column;   
-      width: 200px;
+      width: 100%;
+      max-width: 300px;
       height: 250px;     
-      border: 1px solid grey;
-      border-radius: 5px;
+      background: rgb(56, 56, 56);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      transition: transform 0.2s, box-shadow 0.2s;
       justify-content: center;
       padding: 8px;
       gap: 4px;
+      margin: 0 auto;
+      cursor: pointer;
+      position: relative;
+      z-index: 1;
     }
 
-    .img__cont{
+    .card__prop:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      background: rgb(76, 76, 76);
+    }
+
+    .img__cont {
       display: flex;
       width: 100%;
       height: 50%;
-      align-items: baseline;
+      align-items: center;
       justify-content: center;
       margin-bottom: 20px;
+      overflow: hidden;
     }    
     
-    img{
+    img {
       width: 100%;
-      height:100%;
+      height: 100%;
       object-fit: cover;
       border-radius: 8px;
-      margin-bottom: 0 0 20px 0;
-      /* object-position: center; */
+      margin: 0;
+      aspect-ratio: 16/9;
     }
     
     .info__cont{
@@ -117,31 +130,35 @@
       justify-content: center;
     }
 
-    @media(max-width: 400px){
-  
-      .img__cont{
-        display: flex;
-        width: 340px;
-        align-items: center;
-        height: auto;
-        justify-content: center;
-    }
-    img{
-      width: 100%;
-      max-height: 195px;
-      /* padding: 15px 5px 0 5px; */
+    @media(max-width: 400px) {
+      .card__prop {
+        max-width: 100%;
+        height: 200px;
+      }
 
+      .img__cont {
+        height: 60%;
+      }
+
+      .info__cont {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        padding: 15px 10px;
+        color: white;
+      }
+
+      span {
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      }
     }
-    span{
-      color: blue;
-      font-weight: 800;
+
+    /* Asegurar que el input quede por encima */
+    :global(input) {
       position: relative;
-      top: -80px;
+      z-index: 2;
     }
-
-    .info__cont {
-      height: 0;
-    }
-    
-  }
 </style>

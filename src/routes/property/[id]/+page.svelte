@@ -5,7 +5,7 @@
   import type { Property, Contact, ContactOption, Binnacle } from '$lib/types';
 	import { goto } from '$app/navigation';
 	import { filtContPropInte } from '$lib/functions/filProperties';
-	import { filtPropContInte } from '$lib/functions/filContacts.js'
+	import { filtPropContInte } from '$lib/functions/filContacts'
 	import {  contactsStore, binnaclesStore, systStatus } from '$lib/stores/dataStore';
 	import { deleteDoc, doc, addDoc, collection } from 'firebase/firestore';
 	import { db } from '$lib/firebase';
@@ -28,6 +28,7 @@
 	let contFalt = 0;
 	let contCheck: Contact[] = [];
 	let contToSend: Contact;
+	let enviados = 0;
 
 	$: contacts = $contactsStore as Contact[];
 	$: currProperty = property as Property;
@@ -65,34 +66,47 @@
     } 
   };
 
+  // Función para manejar cambios en checkboxes individuales
+  function handleCheckboxChange() {
+    contIntToSend = contCheck.length;
+    contFalt = contCheck.length - enviados;
+  }
+
   const selectAll = (e: Event) => {
-    contCheck = (e.target as HTMLInputElement).checked ? [...contToRender] : [];
+    const isChecked = (e.target as HTMLInputElement).checked;
+    contCheck = isChecked ? [...contToRender] : [];
+    handleCheckboxChange();
   };
 
   // Envía en bucle la propiedad a uno o varios contactos
 	function sendProperty() {
-		let sig = 0;
-			if(mensaje === ""){
-				alert("Tienes que escribir un mensaje para enviar las propiedades")
-				return
-			}
-			contToSend = contCheck[sig]
-			contFalt = contCheck.length - (sig + 1)
-			$systStatus = "sendProps"
-			sendWA(contToSend)
-			if ( contIntToSend === sig + 1 ) {
-				setTimeout ( function(){
-					$systStatus = "";
-					contCheck = [];
-					contIntToSend = 0;
-					show__contacts = false;
-					sig = 0;
-					contFalt = 0;
-					return
-				}, 2000);
-			};
-				sig ++
-		};
+		if(mensaje === "") {
+			alert("Tienes que escribir un mensaje para enviar las propiedades");
+			return;
+		}
+		if(contCheck.length === 0) {
+			alert("Selecciona al menos un contacto");
+			return;
+		}
+		
+		contToSend = contCheck[enviados];
+		contFalt = contCheck.length - (enviados + 1);
+		$systStatus = "sendProps";
+		sendWA(contToSend);
+		
+		enviados++;
+		
+		if (enviados === contCheck.length) {
+			setTimeout(() => {
+				$systStatus = "";
+				contCheck = [];
+				contIntToSend = 0;
+				enviados = 0;
+				contFalt = 0;
+				show__contacts = false;
+			}, 2000);
+		}
+	};
 
   const sendWA = async (contact: Contact) => {
     if (!contact || !contact.telephon) {
@@ -329,22 +343,35 @@
 					</div>
 				</div>
 				
-	<!-- Muestra los contactos a los que le puede interesar la propiedad -->
+				<!-- Muestra los contactos a los que le puede interesar la propiedad -->
 				<div class="btn__send">
 					{#if showBtn}
-						<button id="Evio_prop_selec" class="send__Prop" on:click={sendProperty}>{`Total para enviar ${contIntToSend}. faltan ${contFalt}`}</button>
+						<button id="Evio_prop_selec" class="send__Prop" on:click={sendProperty}>
+							{#if enviados === 0}
+								Enviar a {contCheck.length} contactos
+							{:else}
+								Enviados: {enviados}, Faltan: {contCheck.length - enviados}
+							{/if}
+						</button>
 						<label>
-							<input type="checkbox" on:change={selectAll}> Seleccionar todos
+							<input 
+								type="checkbox" 
+								on:change={selectAll}
+								checked={contCheck.length === contToRender.length}
+							> 
+							Seleccionar todos
 						</label>
-						{/if}
+					{/if}
 				</div>
+
 				<div class="cards__container">
 					{#each contToRender as cont}
 					<div class="card__container">
-						<input type="checkbox" 
-							value={cont.id} 
-							name={cont.id}  
-							bind:group={contCheck} 
+						<input 
+							type="checkbox" 
+							value={cont}
+							bind:group={contCheck}
+							on:change={handleCheckboxChange}
 						>
 						<CardContact {cont}/>         
 					</div>
@@ -483,8 +510,24 @@
 		width: 650px;
 		height: 50px;
 		font-size: 1rem;
-		background: transparent;
-			}
+		background: rgb(56, 56, 56);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 8px;
+		color: white;
+		padding: 0.75rem;
+		resize: vertical;
+		transition: border-color 0.2s;
+	}
+
+	.sel__msg textarea:focus {
+		outline: none;
+		border-color: rgba(255, 255, 255, 0.3);
+		box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+	}
+
+	.sel__msg textarea::placeholder {
+		color: rgba(255, 255, 255, 0.5);
+	}
 
 	.sect__Title {
 		display: flex;
@@ -510,15 +553,36 @@
 
 	.btn__send {
 		display: flex;
-		justify-content: space-evenly;	
-		padding: 10px;
-		/* background: yellowgreen;	 */
+		align-items: center;
+		justify-content: center;
+		gap: 2rem;
+		padding: 1rem;
 	}
 
 	.send__Prop {
-		background: green;
-		padding: 5px 15px;
-		border-radius: 5px;
+		background: rgb(56, 56, 56);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 8px;
+		padding: 0.75rem 1.5rem;
+		cursor: pointer;
+		transition: transform 0.2s, box-shadow 0.2s;
+	}
+
+	.send__Prop:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+		background: rgb(76, 76, 76);
+	}
+
+	.btn__send label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+	}
+
+	.btn__send input[type="checkbox"] {
+		cursor: pointer;
 	}
 
 	.card__container { 

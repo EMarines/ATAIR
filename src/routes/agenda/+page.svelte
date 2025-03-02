@@ -2,10 +2,11 @@
     import { onMount } from 'svelte';
     import { firebase } from '$lib/stores/firebaseStores';
     import type { Todo } from '$lib/types';
-    import schedule from '$lib/images/schedule.png';
+         import schedule from '$lib/images/schedule.png';
     import { systStatus, todoStore } from '$lib/stores/dataStore'
     import { goto } from '$app/navigation';
-    import { formatDate } from '$lib/functions/dateFunctions.js'
+         import { formatDate } from '$lib/functions/dateFunctions.js'
+    import { writable } from 'svelte/store';
     // import AddToSchedule from '$lib/components/AddToSchedule.svelte';
     // import { sortTodos } from '$lib/functions/sort.js'
     // import { onDestroy } from 'svelte';
@@ -126,6 +127,11 @@
         }
     }
 
+    function editTodo(todoToEdit: Todo) {
+        todo = { ...todoToEdit };
+        $systStatus = "editing";
+    }
+
     
       // Declaraciones
     // let editStatus = false;
@@ -134,43 +140,23 @@
           $systStatus = "";
     // $: todoToRender = $todoStore
 
-    // Agrega un Map para manejar el estado de mostActions por cada todo
+    // Volvemos a usar let para el Map
     let activeActions = new Map<string, boolean>();
-      
-      // CRUD
-          // Edita la tarea
-    function editTodo(item: Todo) {
-        const timestamp = typeof item.endTask === 'string' ? parseInt(item.endTask) : item.endTask;
-        todo = {
-            ...item,
-            endTask: formatDateForInput(timestamp)
-        };
-        $systStatus = "editing";
-    }
-    
-      // Close
-         function close() {
-          //  $todo=[]; 
-           inActivated = false;
-            // goto("/contactos")
-          };
-    
-      // Mostrar Schedule
-          function addSchedule(){
-              inActivated = true;
-            };
-    
-    // Modifica la función toggleActions
+
     function toggleActions(todoId: string) {
-        // Crear un nuevo Map limpio
-        const newMap = new Map<string, boolean>();
+        // Creamos una copia del Map actual
+        const newMap = new Map(activeActions);
         
-        // Si el todo actual no estaba activo, activarlo
-        if (!activeActions.get(todoId)) {
+        // Si ya está activo, lo removemos
+        if (newMap.get(todoId)) {
+            newMap.delete(todoId);
+        } else {
+            // Limpiamos el map y agregamos solo el nuevo
+            newMap.clear();
             newMap.set(todoId, true);
         }
         
-        // Actualizar el estado
+        // Actualizamos el Map
         activeActions = newMap;
     }
     

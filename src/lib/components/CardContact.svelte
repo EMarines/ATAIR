@@ -1,12 +1,12 @@
 <script lang="ts">
-// @ts-nocheck
   import { toComaSep, toTele } from '$lib/functions/format'
   import { formatDate } from '$lib/functions/dateFunctions'
+  import type { Contact } from '$lib/types'
 
-  export let cont = {}; 
+  export let cont: Partial<Contact> = {} as Partial<Contact>;
 </script>
 
-
+<div class="card__contact">
   <div class="card__info">
     <div class="card__infoHead">
       <span class="card__Title">{cont.name} {cont.lastname}</span>
@@ -35,13 +35,28 @@
         {/if}
       </div>
     </div>
-
   </div>
- 
+</div>
 
 <style>
+  .card__contact {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: rgb(56, 56, 56);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    gap: 0.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
 
-    
+  .card__contact:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    background: rgb(76, 76, 76);
+  }
+
   .card__info {
     display: flex;
     flex-direction: column;
@@ -49,7 +64,6 @@
     width: 100%;
     height: 100%;
     font-weight: 400;
-
   }
 
   .card__Title {
@@ -92,8 +106,6 @@
     justify-content: center;
     font-size: .75rem;
     font-weight: 500;
-    /* overflow: hidden; */
-    /* gap: 10px; */
   }
 
   .info__tags {
@@ -105,6 +117,9 @@
     gap: 15px;
   }
 
-
-
+  @media (max-width: 400px) {
+    .card__contact {
+      max-width: 100%;
+    }
+  }
 </style>

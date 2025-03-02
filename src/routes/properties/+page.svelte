@@ -69,15 +69,18 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px;
   align-items: center;
 }
 
-.title__head{
+.title__head {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  height: auto;
+  margin-bottom: 1rem;
 }
 
 .title__inter {
@@ -85,57 +88,48 @@
   flex-direction: row;
   width: 100%;
   justify-content: space-around;
-  align-items: baseline;
-
+  align-items: center;
+  padding: 0 1rem;
 }
 
 .card__container {
-    display: flex;
-    flex-direction: row;
-    margin: 0 auto;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem;
 }
 
-/* .card__prop { 
-    display: flex; 
-    flex-direction: column;   
-    width: 200px;
-    height: 250px;     
-    border: 1px solid grey;
-    border-radius: 5px;
-    justify-content: center;
-    padding: 8px;
-    gap: 4px;
-  } */
+.card__prop {
+  display: flex;
+  background-color: transparent;
+  /* border-radius: 5px; */
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
 
-  @media(max-width: 400px) {
-    .card__container {
+.card__prop :global(> *) {
+  background-color: rgb(31, 31, 31);
+  border-radius: 5px;
+  width: 100%;
+  height: 100%;
+  transition: background-color 0.2s ease;
+}
+
+.card__prop:hover :global(> *) {
+  background-color: rgb(63, 63, 63);
+}
+
+@media (max-width: 768px) {
+  .title__inter {
     flex-direction: column;
-    width: 100%;
-    gap: 20px;
+    gap: 1rem;
   }
-  .card__prop {
-    border: none;
-    padding: 5px;
-    width: 100%;
-    height: 200px;
-    align-items: center;
-    }
-    .title__head {
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 5px;
-    }
-    .title__inter {
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      margin: 15px 0;
-    }
-  }
-  
 
+  .card__container {
+    grid-template-columns: 1fr;
+    padding: 0.5rem;
+  }
+}
 
 </style>

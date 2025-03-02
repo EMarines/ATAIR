@@ -141,12 +141,13 @@
 </div> 
 
 <style>
-
 .headContainer {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-around;
+  width: 100%;
+  padding: 0 1rem;
 }
 
 .mainContainer {
@@ -162,60 +163,33 @@
 }
 
 .cards__container {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px;
-}
-
-.card__container{
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 10px;
-  justify-content: center;
-  background-color: rgb(31, 31, 31);
-  border-radius: 5px;
-}
-
-.card__container:hover{
-  background-color: rgb(63, 63, 63);
-}
-
-/* .card__info {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.9rem;
-  font-weight: 300;
-  align-items: center;
-  padding: 10px;
-}
-
-.card__infoHead {
-  display: flex;
-  font-weight: 600;
-  padding-top: 8px;
-  gap: 15px;
-}
-
-span.date {
-  left: 50px;
-  font-size: .7rem;
-  font-weight: 500;
-}
-
-.info__cont{
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
   width: 100%;
-  height: 38%;
-  align-items: center;
+  padding: 1rem;
+}
+
+.card__container {
+  display: flex;
+  width: 100%;
+}
+
+/* .card__container > div {
+  width: 100%;
 } */
 
-/* 
-@media (max-width:400px){
+@media (max-width: 768px) {
   .headContainer {
-    display: flex;
     flex-direction: column;
+    gap: 1rem;
     width: 100%;
+    padding: 0 1rem;
   }
-} */
+
+  .cards__container {
+    grid-template-columns: 1fr;
+    padding: 0.5rem;
+  }
+}
 </style>

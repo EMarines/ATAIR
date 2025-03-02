@@ -16,7 +16,9 @@ function createFirebaseStore() {
         subscribe,
         delete: async (collectionName: string, id: string) => {
             try {
-                await deleteDoc(doc(db, collectionName, id));
+                const todoRef = doc(db, collectionName, id);
+                await deleteDoc(todoRef);
+                console.log('Todo deleted successfully');
                 return { success: true };
             } catch (error) {
                 console.error('Error deleting document:', error);

@@ -26,30 +26,34 @@ export function setRange(rng: string) {
     } 
 };
   
-    /**
- * @param {number} price
- */
-    export function ranPrice(price: number){
-      if(price <= 1000000){
-        lowRange = 0; upRange=1000000                 // PRM
-      }
-      else if (price <= 2500000) {
-        lowRange = 1000001; upRange=2500000           // SGN
-      }
-      else if (price <= 5000000) {
-        lowRange = 2500001; upRange=5000000           // TRC
-      }
-      else if (price <= 8000000) {
-        lowRange = 5000001; upRange=8000000           // CRT
-      }
-      else if (price <= 12000000) {                   // QNT
-        return rng = "qnt"
-      }
+
+    export function ranPrice(price: number) {
+        if(price <= 1000000){
+            lowRange = 0; upRange = 1000000   
+            return "prm"               // PRM
+        }
+        else if (price <= 2500000) {
+            lowRange = 1000001; upRange = 2500000 
+            return "sgn"               // SGN
+        }
+        else if (price <= 5000000) {
+            lowRange = 2500001; upRange = 5000000 
+            return "trc"               // TRC
+        }
+        else if (price <= 8000000) {
+            lowRange = 5000001; upRange = 8000000 
+            return "crt"               // CRT
+        }
+        else if (price <= 12000000) {                       // QNT
+            lowRange = 8000001; upRange = 12000000
+            return "qnt"
+        }
         else if (price > 12000000) {
-        lowRange = 12000000; upRange=1500000000       // SXTre
-      } 
-      return 
-    };
+            lowRange = 12000000; upRange = 1500000000       // SXT
+            return "sxt"
+        } 
+        return rng
+    }
 
   // Devuelve el rango en letras de un valor
     /**

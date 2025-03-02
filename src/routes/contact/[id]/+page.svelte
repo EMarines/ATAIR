@@ -63,6 +63,7 @@
 
    // Delete contact
    async function deleContact(contactId: string) {
+    console.log("contactId", contactId)
     if (!contactId) {
         console.error("No se puede eliminar: ID de contacto no disponible");
         return;
@@ -243,12 +244,14 @@
                 </div>
                 <div class="rigth__title">
                   <div class="icon__title">
+
                     <i on:click={()=>{editContact()}} 
                        on:keydown={()=>{}} 
                        class="fa-regular fa-pen-to-square"
                        role="button"
                        tabindex="0"></i>
-                    <i on:click={() => deleContact} 
+
+                    <i on:click={() => deleContact(contact.id)} 
                        on:keydown={()=>{}} 
                        class="fa-regular fa-trash-can"
                        role="button"
@@ -273,7 +276,7 @@
             <div class="notes">
               {#if contact.comContact}
                 <h3>Notas:</h3>
-                <span>{contact.comContact}</span>              
+                <span>{contact.notes}</span>              
               {/if}
             </div>  
 
@@ -437,7 +440,7 @@
       flex-direction: row;
       justify-content: center;
       align-items: center;
-      gap: 10px;
+      gap: 15px;
       flex: 1;
     }
   
@@ -550,12 +553,7 @@
       flex-wrap: wrap;
       align-items: center;
       justify-content: center;
-      border: 1px solid rgb(56, 56, 56);
-      border-radius: 8px;
-      box-shadow: 1px 2px rgba(255,255,255, 0.5);
-      background: rgb(56, 56, 56);
-      gap: 4px;
-      padding: 15px;
+      gap: 15px;
     }
 
     .btn__actions {
