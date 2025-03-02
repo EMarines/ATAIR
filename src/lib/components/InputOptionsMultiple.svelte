@@ -41,7 +41,18 @@
 
 <div class="select-container">
     <label for={identificador}>{name}</label>
-    <div class="selected-options" on:click={toggleDropdown}>
+    <div 
+        class="selected-options"
+        role="button"
+        tabindex="0"
+        on:click={toggleDropdown}
+        on:keydown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleDropdown();
+            }
+        }}
+    >
         {#if value.length === 0}
             <span class="placeholder">Seleccionar opciones...</span>
         {:else}
@@ -70,6 +81,14 @@
                         class="option"
                         class:selected={value.includes(choice)}
                         on:click={() => toggleOption(choice)}
+                        on:keydown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                toggleOption(choice);
+                            }
+                        }}
+                        role="button"
+                        tabindex="0"
                     >
                         <input
                             type="checkbox"
