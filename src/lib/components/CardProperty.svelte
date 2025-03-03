@@ -27,7 +27,7 @@
   
     <div class="img__cont">
       <img 
-        src={property?.title_image_thumb || 'https://via.placeholder.com/200x150'} 
+        src={property?.title_image_thumb || 'https://placehold.co/200x150'} 
         alt="casa"
       >
     </div>

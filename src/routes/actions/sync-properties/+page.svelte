@@ -185,7 +185,7 @@
                     {#each changes.deleted as property}
                         <div class="property-item">
                             <img 
-                                src={property.title_image_thumb || 'https://via.placeholder.com/200x150'} 
+                                src={property.title_image_thumb || 'https://placehold.co/200x150'} 
                                 alt={property.title}
                                 class="property-thumb"
                             />

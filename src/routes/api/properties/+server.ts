@@ -68,7 +68,7 @@ async function getAllProperties(): Promise<Property[]> {
     return allProperties;
 }
 
-export const GET: RequestHandler = async ({ request }) => {
+export const GET: RequestHandler = async () => {
     // Verificar API key
     if (!env.PRIVATE_EASYBROKER_API_KEY) {
         console.error('API key no configurada');
