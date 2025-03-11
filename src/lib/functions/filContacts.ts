@@ -25,7 +25,7 @@ const dateTo = new Date().getTime();
       // Numero de recámaras   
         if (property.bedrooms > 0) {
           conInt = conInt.filter(cont => 
-              cont.numBeds && Number(cont.numBeds) <= property.bedrooms
+              !cont.numBeds || (cont.numBeds && Number(cont.numBeds) <= property.bedrooms)
           );
         };
         // console.log(conInt);
@@ -34,14 +34,14 @@ const dateTo = new Date().getTime();
       // Numero de baños
         if (property.bathrooms > 0) {
           conInt = conInt.filter(cont => 
-              cont.numBaths && Number(cont.numBaths) <= property.bathrooms
+              !cont.numBaths || (cont.numBaths && Number(cont.numBaths) <= property.bathrooms)
           );
         };
 
         // Estacionamientos
         if (property.parking_spaces > 0) {
           conInt = conInt.filter(cont => 
-              cont.numParks && Number(cont.numParks) <= property.parking_spaces
+              !cont.numParks || (cont.numParks && Number(cont.numParks) <= property.parking_spaces)
           );
         };
         console.log(conInt);
@@ -126,5 +126,3 @@ const dateTo = new Date().getTime();
 
       return conInt;
     };
-
-
