@@ -158,7 +158,7 @@
             };
 
             let result;
-            if (existingContact) {
+            if (existingContact && existingContact.id) {
                 // Si es una edición, actualizar el contacto existente
                 result = await contactsStore.update(cleanContactData);
             } else {
@@ -174,6 +174,8 @@
             dispatch('success', { contact: cleanContactData });
             
             if (result.id) {
+                // Asegurarse de que el contacto tenga un ID antes de redirigir
+                cleanContactData.id = result.id;
                 goto(`/contact/${result.id}`);
             } else {
                 throw new Error('No se recibió el ID del contacto');

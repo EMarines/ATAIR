@@ -38,6 +38,11 @@
   $: properties = $propertiesStore;
   $: binnacles = $binnaclesStore;
   const contact = data.contact as Contact;
+  
+  // Verificación reactiva para asegurar que el contacto tenga un ID válido
+  $: if (contact && (!contact.id || contact.id.trim() === '')) {
+    console.error('Error: Contacto cargado sin ID válido', contact);
+  }
 
   // Función para mostrar/ocultar la búsqueda
   const mostSearch = () => {
@@ -64,8 +69,9 @@
    // Delete contact
    async function deleContact(contactId: string) {
     console.log("contactId", contactId)
-    if (!contactId) {
-        console.error("No se puede eliminar: ID de contacto no disponible");
+    if (!contactId || contactId.trim() === '') {
+        console.error("No se puede eliminar: ID de contacto no disponible o vacío");
+        alert("Error: No se puede eliminar el contacto porque el ID no es válido");
         return;
     }
 
@@ -76,9 +82,11 @@
                 goto("/contacts");
             } else {
                 console.error("Error al eliminar el contacto:", result?.error);
+                alert("Error al eliminar el contacto: " + (result?.error || "Error desconocido"));
             }
         } catch (error) {
             console.error("Error al eliminar el contacto:", error);
+            alert("Error al eliminar el contacto: " + error);
         }
     }
   }

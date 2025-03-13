@@ -17,11 +17,20 @@ export const load: PageLoad = async ({ params }) => {
         }
 
         const data = docSnap.data();
+        // Asegurarse de que el ID del contacto esté siempre presente
+        const contactData = {
+            ...data,
+            id: params.id // Usar el ID del parámetro de la URL
+        };
+
+        // Verificar que el ID esté presente
+        if (!contactData.id) {
+            console.error('Error: ID de contacto faltante después de cargar los datos', contactData);
+            throw error(500, 'Error al cargar el contacto: ID faltante');
+        }
+
         return {
-            contact: {
-                ...data,
-                id: params.id // Usar el ID del parámetro de la URL
-            }
+            contact: contactData
         };
     } catch (e) {
         console.error('Error loading contact:', e);
