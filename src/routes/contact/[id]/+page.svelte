@@ -3,10 +3,12 @@
   // import { deleteDoc, doc } from 'firebase/firestore';
   import { goto } from '$app/navigation';
   import type { Contact, Binnacle, Property } from '$lib/types';
-  import { CardContact, CardBinnacle, AddToShedule, CardProperty, Search, AddContact } from '$components';
+  import { contactsStore, propertiesStore, systStatus, binnaclesStore } from '$lib/stores/dataStore';
+  import { onMount, onDestroy } from 'svelte';
+  import { AddToShedule, CardBinnacle, CardProperty, Search } from '$components';
+  import AddContact from '$lib/components/AddContact.svelte';
+  import GoogleContactsSync from '$lib/components/GoogleContactsSync.svelte';
   import { formatDate, toComaSep, toTele, infoToBinnacle, filtContPropInte, sendWhatsApp, sortBinnacle } from '$lib/functions';
-  import { systStatus, propertiesStore, binnaclesStore } from '$lib/stores/dataStore';
-
 
   export let data;
 
@@ -77,6 +79,40 @@
 
     if (confirm("¿Deseas eliminar definitivamente al contacto?")) {
         try {
+            // Verificar si el contacto está sincronizado con Google
+            const googleContactsMapStr = localStorage.getItem('googleContactsMap');
+            if (googleContactsMapStr) {
+                const googleContactsMap = JSON.parse(googleContactsMapStr);
+                const googleResourceName = googleContactsMap[contactId];
+                
+                // Si está sincronizado con Google, eliminarlo automáticamente
+                if (googleResourceName) {
+                    try {
+                        // Importar la función necesaria para eliminar de Google
+                        const { deleteGoogleContact, getAccessToken } = await import('$lib/services/googleService');
+                        
+                        // Obtener token de acceso
+                        const accessToken = getAccessToken();
+                        if (!accessToken) {
+                            console.log("No se pudo obtener un token de acceso válido para Google. El contacto se eliminará solo de la base de datos local.");
+                        } else {
+                            // Eliminar de Google
+                            await deleteGoogleContact(googleResourceName, accessToken);
+                            
+                            // Eliminar la asociación
+                            delete googleContactsMap[contactId];
+                            localStorage.setItem('googleContactsMap', JSON.stringify(googleContactsMap));
+                            
+                            console.log("Contacto eliminado exitosamente de Google Contacts");
+                        }
+                    } catch (googleError) {
+                        console.error("Error al eliminar el contacto de Google:", googleError);
+                        console.log("Error al eliminar el contacto de Google Contacts. El contacto se eliminará solo de la base de datos local.");
+                    }
+                }
+            }
+            
+            // Eliminar de Firebase
             const result = await firebase.delete("contacts", contactId);
             if (result?.success) {
                 goto("/contacts");
@@ -340,6 +376,11 @@
               <button class="btn__common" on:click={onCancel}><i class="fa-solid fa-rotate-left"></i>Regresar</button>                      
             </div>
 
+            <!-- Google Contacts Sync Button -->
+            <div class="google-sync-container">
+              <GoogleContactsSync contact={contact} />
+            </div>
+
             {#if mostBusq}
               <div class="search">
                 <Search bind:searchTerm on:input={searProp} on:keydown={()=>{}}/>
@@ -362,8 +403,8 @@
                   <button  class="btn__common" on:click={selMsgWA}><i class="fa-brands fa-square-whatsapp"></i>WhatsApp</button>
                   <button class="btn__common" on:click={saveNote}><i class="fa-solid fa-floppy-disk"></i>Guardar Info</button>
                 {/if}
+              </div>
             </div>
-          </div>
                   
           </div>
 
@@ -755,6 +796,18 @@
          
     }
 
+    /* Google Sync Container */
+    .google-sync-container {
+      display: flex;
+      width: 100%;
+      margin: 1rem 0;
+      justify-content: center;
+    }
+
+    .google-sync-container :global(.google-sync) {
+      width: 100%;
+      max-width: 400px;
+    }
   
       
 </style>

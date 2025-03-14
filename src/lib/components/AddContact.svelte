@@ -7,6 +7,8 @@
     import type { Property, Contact, AddContactEvents } from '$lib/types';
     import { ranPrice } from '$lib/functions/rangeValue';
     import { onMount, onDestroy } from 'svelte';
+    // Importar las funciones necesarias para sincronizar con Google
+    import { syncContact, getAccessToken } from '$lib/services/googleService';
 
     const dispatch = createEventDispatcher<AddContactEvents>();
 
@@ -82,18 +84,10 @@
 
         switch(field) {
             case 'name':
-            case 'lastname':
                 if (!value?.trim()) {
-                    erroresFormulario[field] = `El ${field === 'name' ? 'nombre' : 'apellido'} es requerido`;
+                    erroresFormulario.name = 'El nombre es requerido';
                 } else if (value.length < 2) {
-                    erroresFormulario[field] = `El ${field === 'name' ? 'nombre' : 'apellido'} es muy corto`;
-                }
-                break;
-            case 'email':
-                if (!value?.trim()) {
-                    erroresFormulario.email = 'El email es requerido';
-                } else if (!EMAIL_REGEX.test(value)) {
-                    erroresFormulario.email = 'Email inválido';
+                    erroresFormulario.name = 'El nombre es muy corto';
                 }
                 break;
             case 'telephon':
@@ -103,42 +97,56 @@
                     erroresFormulario.telephon = 'Formato de teléfono inválido';
                 }
                 break;
+            case 'email':
+                if (!value?.trim()) {
+                    erroresFormulario.email = 'El email es requerido';
+                } else if (!EMAIL_REGEX.test(value)) {
+                    erroresFormulario.email = 'Email inválido';
+                }
+                break;
+            case 'lastname':
+                if (!value?.trim()) {
+                    erroresFormulario.lastname = 'El apellido es requerido';
+                } else if (value.length < 2) {
+                    erroresFormulario.lastname = 'El apellido es muy corto';
+                }
+                break;
         }
         console.log('Errores formulario:', erroresFormulario);
     }
 
     async function handleSubmit() {
-        console.log('contact', contact);
         try {
             isSubmitting = true;
-            erroresFormulario.general = undefined;
-
-            // Validar todos los campos
-            validateField('name', contact.name);
-            validateField('lastname', contact.lastname);
-            validateField('email', contact.email);
-            validateField('telephon', contact.telephon);
-
-            // Verificar si hay errores
-            if (Object.values(erroresFormulario).some(error => error)) {
-                throw new Error('Por favor corrija los errores en el formulario');
-            }
-
-            const requiredFields = ['createdAt', 'name', 'typeContact', 'telephon'];
-            const missingFields = requiredFields.filter(field => !(field in contact));
+            
+            // Validar campos requeridos de forma segura para TypeScript
+            const missingFields = [];
+            if (!contact.name) missingFields.push('name');
+            if (!contact.telephon) missingFields.push('telephon');
+            
             if (missingFields.length > 0) {
                 throw new Error(`Faltan los siguientes campos: ${missingFields.join(', ')}`);
             }
 
-            // Preparar el contacto para guardar
+            // Verificar si estamos editando o creando un nuevo contacto
+            const isEditing = existingContact !== null && existingContact.id !== undefined && existingContact.id !== '';
+            
+            // Si estamos editando, asegurarnos de usar el ID existente
+            if (isEditing && existingContact) {
+                console.log('Editando contacto con ID:', existingContact.id);
+                contact.id = existingContact.id;
+            }
+
+            // Preparar datos del contacto
             const cleanContactData: Contact = {
-                ...(existingContact?.id ? { id: existingContact.id } : {}),
+                ...contact,
                 budget: contact.budget || 0,
                 comContact: contact.comContact || '',
                 contactStage: contact.contactStage || 'Etapa1',
                 createdAt: existingContact?.createdAt || Date.now(),
                 email: contact.email || '',
                 halfBathroom: contact.halfBathroom || 0,
+                id: contact.id || '', // El ID ya debe estar establecido si estamos editando
                 isActive: true,
                 lastname: contact.lastname || '',
                 locaProperty: contact.locaProperty || [],
@@ -157,8 +165,10 @@
                 typeContact: contact.typeContact || '',
             };
 
+            console.log('Guardando contacto:', isEditing ? 'Actualización' : 'Nuevo', 'ID:', cleanContactData.id);
+            
             let result;
-            if (existingContact && existingContact.id) {
+            if (isEditing) {
                 // Si es una edición, actualizar el contacto existente
                 result = await contactsStore.update(cleanContactData);
             } else {
@@ -168,6 +178,12 @@
             
             if (!result.success) {
                 throw new Error(result.error ? String(result.error) : 'Error al guardar el contacto');
+            }
+
+            // Sincronizar con Google Contacts si hay un token válido
+            const accessToken = await getAccessToken();
+            if (accessToken) {
+                await syncContact(cleanContactData, accessToken);
             }
 
             // Notificar éxito y redirigir
@@ -257,7 +273,7 @@
                 <div class="input-group">
                     <InputText
                         identifier="name"
-                        name="Nombre" 
+                        name="Nombre *" 
                         bind:value={contact.name}
                         on:input={() => handleBlur('name')}
                     />
@@ -269,7 +285,7 @@
                 <div class="input-group">
                     <InputText 
                         identifier="lastname" 
-                        name="Apellido *" 
+                        name="Apellido" 
                         bind:value={contact.lastname}
                         on:blur={() => handleBlur('lastname')}
                     />
@@ -295,7 +311,7 @@
                 <div class="input-group">
                     <InputEmail 
                         identifier="email" 
-                        name="Email *" 
+                        name="Email" 
                         bind:value={contact.email}
                         on:blur={() => handleBlur('email')}
                     />
