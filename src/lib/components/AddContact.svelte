@@ -174,6 +174,14 @@
             } else {
                 // Si es nuevo contacto, agregar
                 result = await contactsStore.add(cleanContactData);
+                
+                // Asignar inmediatamente el ID devuelto por Firebase al contacto
+                if (result.success && result.id) {
+                    cleanContactData.id = result.id;
+                    console.log('ID asignado al nuevo contacto:', result.id);
+                } else {
+                    throw new Error('No se recibió un ID válido para el nuevo contacto');
+                }
             }
             
             if (!result.success) {
@@ -183,18 +191,23 @@
             // Sincronizar con Google Contacts si hay un token válido
             const accessToken = await getAccessToken();
             if (accessToken) {
+                // Asegurarse de que el contacto tiene un ID válido antes de sincronizar
+                if (!cleanContactData.id || cleanContactData.id.trim() === '') {
+                    console.error('Error: Intentando sincronizar contacto sin ID válido', cleanContactData);
+                    throw new Error('ID de contacto faltante o inválido');
+                }
                 await syncContact(cleanContactData, accessToken);
             }
 
             // Notificar éxito y redirigir
             dispatch('success', { contact: cleanContactData });
             
-            if (result.id) {
-                // Asegurarse de que el contacto tenga un ID antes de redirigir
-                cleanContactData.id = result.id;
-                goto(`/contact/${result.id}`);
+            // Verificar nuevamente que el ID sea válido antes de redirigir
+            if (cleanContactData.id && cleanContactData.id.trim() !== '') {
+                goto(`/contact/${cleanContactData.id}`);
             } else {
-                throw new Error('No se recibió el ID del contacto');
+                console.error('Error: ID de contacto faltante o inválido', cleanContactData);
+                throw new Error('ID de contacto faltante o inválido');
             }
 
         } catch (err) {
