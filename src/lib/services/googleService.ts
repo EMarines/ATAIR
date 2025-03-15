@@ -172,6 +172,7 @@ export function tieneTokenValido() {
 }
 
 // Obtener el token de acceso actual
+// Esta función es asíncrona y maneja automáticamente el refresco del token si está a punto de expirar
 export async function getAccessToken() {
     if (!isBrowser) return null;
     
