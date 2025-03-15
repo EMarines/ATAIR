@@ -172,16 +172,19 @@ export function tieneTokenValido() {
 }
 
 // Obtener el token de acceso actual
-export function getAccessToken() {
+export async function getAccessToken() {
     if (!isBrowser) return null;
     
     try {
         // Verificar si tenemos tokens en caché
         if (cachedTokens && cachedTokens.access_token) {
-            // Si está a punto de expirar, refrescarlo en segundo plano
+            // Si está a punto de expirar, refrescarlo
             if (cachedTokens.expiry_date < Date.now() + (5 * 60 * 1000)) {
-                console.log('Token a punto de expirar, refrescando en segundo plano...');
-                refreshToken();
+                console.log('Token a punto de expirar, refrescando...');
+                const newTokens = await refreshToken();
+                if (newTokens) {
+                    return newTokens.access_token;
+                }
             }
             return cachedTokens.access_token;
         }
@@ -194,10 +197,13 @@ export function getAccessToken() {
         // Guardar en caché
         cachedTokens = tokens;
         
-        // Si está a punto de expirar, refrescarlo en segundo plano
+        // Si está a punto de expirar, refrescarlo
         if (tokens.expiry_date < Date.now() + (5 * 60 * 1000)) {
-            console.log('Token a punto de expirar, refrescando en segundo plano...');
-            refreshToken();
+            console.log('Token a punto de expirar, refrescando...');
+            const newTokens = await refreshToken();
+            if (newTokens) {
+                return newTokens.access_token;
+            }
         }
         
         return tokens.access_token;
@@ -259,22 +265,37 @@ export async function syncContact(contactData: any, accessToken: string) {
     try {
         if (!isBrowser) return;
         
+        // Verificar que el contacto tenga un ID válido
+        if (!contactData || !contactData.id || contactData.id.trim() === '') {
+            console.error('Error: No se puede sincronizar un contacto sin ID válido', contactData);
+            throw new Error('ID de contacto faltante o inválido');
+        }
+        
         // Obtener token válido
-        const token = accessToken || getAccessToken();
+        let token = accessToken;
         if (!token) {
-            console.log('No hay token válido, redirigiendo a autenticación');
-            window.location.href = getAuthUrl();
-            return;
+            token = await getAccessToken();
+            if (!token) {
+                console.log('No hay token válido, redirigiendo a autenticación');
+                window.location.href = getAuthUrl();
+                return;
+            }
         }
 
         // Verificar si el contacto ya existe en Google Contacts
         const googleContactsMapStr = localStorage.getItem('googleContactsMap');
         let googleResourceName = null;
         
-        if (googleContactsMapStr && contactData.id) {
-            const googleContactsMap = JSON.parse(googleContactsMapStr);
-            googleResourceName = googleContactsMap[contactData.id];
-            console.log(`Contacto ${contactData.id} ${googleResourceName ? 'encontrado' : 'no encontrado'} en Google Contacts`);
+        if (googleContactsMapStr) {
+            try {
+                const googleContactsMap = JSON.parse(googleContactsMapStr);
+                googleResourceName = googleContactsMap[contactData.id];
+                console.log(`Contacto ${contactData.id} ${googleResourceName ? 'encontrado' : 'no encontrado'} en Google Contacts`);
+            } catch (e) {
+                console.error('Error al parsear el mapa de contactos de Google:', e);
+                // Reiniciar el mapa si hay un error
+                localStorage.setItem('googleContactsMap', JSON.stringify({}));
+            }
         }
 
         // Preparar datos para Google
@@ -293,6 +314,22 @@ export async function syncContact(contactData: any, accessToken: string) {
             });
             
             if (!getContactResponse.ok) {
+                // Si hay un error de autorización, intentar refrescar el token
+                if (getContactResponse.status === 401) {
+                    console.log('Token expirado o inválido al obtener etag, intentando refrescar...');
+                    const newTokens = await refreshToken();
+                    
+                    if (newTokens) {
+                        // Reintentar con el nuevo token
+                        return syncContact(contactData, newTokens.access_token);
+                    } else {
+                        // Si no se pudo refrescar, redirigir a autenticación
+                        localStorage.removeItem('googleTokens');
+                        window.location.href = getAuthUrl();
+                        return;
+                    }
+                }
+                
                 console.error('Error al obtener etag del contacto:', await getContactResponse.text());
                 throw new Error('Error al obtener información del contacto en Google');
             }
@@ -335,7 +372,7 @@ export async function syncContact(contactData: any, accessToken: string) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Error en la respuesta de Google:', errorText);
+            console.error('Error en la respuesta de Google:', JSON.parse(errorText));
             
             // Si el error es de autorización, intentar refrescar el token
             if (response.status === 401) {

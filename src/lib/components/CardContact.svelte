@@ -1,12 +1,41 @@
 <script lang="ts">
   import { toComaSep, toTele } from '$lib/functions/format'
   import { formatDate } from '$lib/functions/dateFunctions'
-  import type { Contact } from '$lib/types'
+  import type { Contact } from '$lib/types';
+  import { onMount } from 'svelte';
 
-  export let cont: Partial<Contact> = {} as Partial<Contact>;
+  export let cont: Contact;
+  
+  // Validación del contacto
+  let isValidContact = false;
+  
+  // Función para validar el contacto
+  function validateContact() {
+    // Verificar que el contacto exista y tenga un ID válido
+    if (!cont || !cont.id || typeof cont.id !== 'string' || cont.id.trim() === '') {
+      console.error('Error: Contacto inválido o sin ID válido', cont);
+      isValidContact = false;
+      return;
+    }
+    
+    // Contacto válido
+    isValidContact = true;
+  }
+  
+  // Validar el contacto cuando cambie
+  $: {
+    if (cont) {
+      validateContact();
+    }
+  }
+  
+  onMount(() => {
+    validateContact();
+  });
 </script>
 
-<div class="card__contact">
+{#if isValidContact}
+<div class="card">
   <div class="card__info">
     <div class="card__infoHead">
       <span class="card__Title">{cont.name} {cont.lastname}</span>
@@ -37,9 +66,21 @@
     </div>
   </div>
 </div>
+{:else}
+  <div class="card card--invalid">
+    <div class="card__info">
+      <div class="card__infoHead">
+        <span class="card__Title">Contacto inválido</span>
+      </div>
+      <div class="info__cont">
+        <span>Este contacto no tiene un ID válido</span>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
-  .card__contact {
+  .card {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -51,10 +92,15 @@
     transition: transform 0.2s, box-shadow 0.2s;
   }
 
-  .card__contact:hover {
+  .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     background: rgb(76, 76, 76);
+  }
+
+  .card--invalid {
+    background-color: #553333;
+    border: 1px solid #aa5555;
   }
 
   .card__info {
@@ -85,7 +131,7 @@
 
   .info__cont {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     width: 100%;
     height: 20%;
     align-items: center;
@@ -111,6 +157,7 @@
   .info__tags {
     display: flex;
     flex-direction: row;
+    width: 100%;
     height: 20%;
     font-size: .75rem;
     flex-wrap: wrap;
@@ -118,7 +165,7 @@
   }
 
   @media (max-width: 400px) {
-    .card__contact {
+    .card {
       max-width: 100%;
     }
   }

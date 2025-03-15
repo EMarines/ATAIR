@@ -33,41 +33,79 @@
       onSnapshot(
         collection(db, 'contacts'),
         (snapshot: QuerySnapshot<DocumentData>) => {
-          const datos = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              createdAt: data.createdAt || Date.now(),
-              name: data.name || '',
-              lastname: data.lastname || '',
-              email: data.email || '',
-              telephon: data.telephon || '',
-              typeContact: data.typeContact || '',
-              selecMC: data.selecMC || '',
-              comContact: data.comContact || '',
-              contactStage: data.contactStage || 0,
-              isActive: data.isActive !== undefined ? data.isActive : true,
-              properties: Array.isArray(data.properties) ? data.properties : [],
-              budget: data.budget || 0,
-              halfBathroom: data.halfBathroom || '',
-              locaProperty: Array.isArray(data.locaProperty) ? data.locaProperty : [],
-              modePay: data.modePay || '',
-              numBaths: data.numBaths || '',
-              numBeds: data.numBeds || '',
-              numParks: data.numParks || '',
-              propCont: data.propCont || '',
-              rangeProp: data.rangeProp || '',
-              selecTO: data.selecTO || '',
-              sendedProperties: Array.isArray(data.sendedProperties) ? data.sendedProperties : [],
-              title: data.title || '',
-              typeProperty: data.typeProperty || '',
-              typeOperation: data.typeOperation || '',
-              selecTP: data.selecTP || '',
-              tagsProperty: Array.isArray(data.tagsProperty) ? data.tagsProperty : [],
-              ...data
-            } as Contact;
-          }) as Contact[];
-          contactsStore.set(datos);
+          try {
+            // Procesar todos los documentos, incluso aquellos que podrían estar en proceso de creación
+            console.log(`Procesando ${snapshot.docs.length} documentos totales`);
+            
+            const datos = snapshot.docs.map(doc => {
+              try {
+                const data = doc.data();
+                
+                // Verificar si el documento tiene los datos mínimos necesarios
+                if (!data) {
+                  console.error('Error: Documento sin datos', doc.id);
+                  return null;
+                }
+                
+                // Crear el objeto de contacto con el ID del documento
+                const contactData = {
+                  // Asignar explícitamente el ID del documento y asegurarse de que sea una cadena
+                  id: doc.id,
+                  createdAt: data.createdAt || Date.now(),
+                  name: data.name || '',
+                  lastname: data.lastname || '',
+                  email: data.email || '',
+                  telephon: data.telephon || '',
+                  typeContact: data.typeContact || '',
+                  selecMC: data.selecMC || '',
+                  comContact: data.comContact || '',
+                  contactStage: data.contactStage || 0,
+                  isActive: data.isActive !== undefined ? data.isActive : true,
+                  properties: Array.isArray(data.properties) ? data.properties : [],
+                  budget: data.budget || 0,
+                  selecTP: data.selecTP || '',
+                  rangeProp: data.rangeProp || '',
+                  numBaths: data.numBaths || 0,
+                  numBeds: data.numBeds || 0,
+                  numParks: data.numParks || 0,
+                  halfBathroom: data.halfBathroom || '',
+                  locaProperty: Array.isArray(data.locaProperty) ? data.locaProperty : [],
+                  tagsProperty: Array.isArray(data.tagsProperty) ? data.tagsProperty : [],
+                  // Incluir el resto de los datos
+                  ...data
+                };
+                
+                // Verificación adicional para asegurarse de que el ID esté presente
+                if (!contactData.id || contactData.id.trim() === '') {
+                  console.error('Error: Contacto sin ID válido después de procesamiento', contactData);
+                  return null;
+                }
+                
+                // Verificación específica para el contacto problemático
+                if (contactData.name === 'aabbcx' && contactData.lastname === 'zzzzz') {
+                  console.log('Encontrado contacto específico aabbcx zzzzz con ID:', contactData.id);
+                }
+                
+                return contactData;
+              } catch (docError) {
+                console.error('Error al procesar documento:', docError);
+                return null;
+              }
+            })
+            .filter(contact => contact !== null && contact.id && contact.id.trim() !== '');
+              
+            console.log(`Cargados ${datos.length} contactos válidos desde Firebase`);
+            
+            // Actualizar el store solo si hay contactos válidos
+            if (datos.length > 0) {
+              contactsStore.set(datos);
+            }
+          } catch (error) {
+            console.error('Error al procesar los contactos:', error);
+          }
+        },
+        (error) => {
+          console.error('Error en el listener de contactos:', error);
         }
       )
     );

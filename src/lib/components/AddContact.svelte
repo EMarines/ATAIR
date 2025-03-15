@@ -9,6 +9,7 @@
     import { onMount, onDestroy } from 'svelte';
     // Importar las funciones necesarias para sincronizar con Google
     import { syncContact, getAccessToken } from '$lib/services/googleService';
+    import { get } from 'svelte/store';
 
     const dispatch = createEventDispatcher<AddContactEvents>();
 
@@ -39,6 +40,7 @@
     let searchTerm = "";
     let propToRender = $propertiesStore;
     let showAdditionalFields = false;
+    let errorMessage = ''; // Variable para almacenar mensajes de error
 
     // Estado unificado del formulario
     export let existingContact: Contact | null = null;
@@ -66,6 +68,15 @@
         telephon: '',
         typeContact: '',
     };
+
+    // Función para generar un UUID
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
 
     function handleBlur(field: keyof CamposValidados) {
         if (field in camposModificados) {
@@ -119,107 +130,125 @@
         try {
             isSubmitting = true;
             
-            // Validar campos requeridos de forma segura para TypeScript
-            const missingFields = [];
-            if (!contact.name) missingFields.push('name');
-            if (!contact.telephon) missingFields.push('telephon');
-            
-            if (missingFields.length > 0) {
-                throw new Error(`Faltan los siguientes campos: ${missingFields.join(', ')}`);
+            // Validar que los campos requeridos estén presentes
+            if (!contact.name || !contact.telephon) {
+                errorMessage = 'Nombre y teléfono son campos obligatorios';
+                return;
             }
 
-            // Verificar si estamos editando o creando un nuevo contacto
-            const isEditing = existingContact !== null && existingContact.id !== undefined && existingContact.id !== '';
-            
-            // Si estamos editando, asegurarnos de usar el ID existente
-            if (isEditing && existingContact) {
-                console.log('Editando contacto con ID:', existingContact.id);
-                contact.id = existingContact.id;
-            }
-
-            // Preparar datos del contacto
-            const cleanContactData: Contact = {
-                ...contact,
-                budget: contact.budget || 0,
-                comContact: contact.comContact || '',
-                contactStage: contact.contactStage || 'Etapa1',
-                createdAt: existingContact?.createdAt || Date.now(),
-                email: contact.email || '',
-                halfBathroom: contact.halfBathroom || 0,
-                id: contact.id || '', // El ID ya debe estar establecido si estamos editando
-                isActive: true,
-                lastname: contact.lastname || '',
-                locaProperty: contact.locaProperty || [],
-                modePay: contact.modePay || '',
+            // Crear una copia limpia del contacto con valores por defecto para campos vacíos
+            const cleanContactData = {
+                id: contact.id || '',
+                createdAt: contact.createdAt || Date.now(),
                 name: contact.name || '',
-                notes: contact.notes || '',
+                lastname: contact.lastname || '',
+                email: contact.email || '',
+                telephon: contact.telephon || '',
+                typeContact: contact.typeContact || '',
+                selecMC: contact.selecMC || '',
+                comContact: contact.comContact || '',
+                contactStage: contact.contactStage || 0,
+                isActive: contact.isActive !== undefined ? contact.isActive : true,
+                properties: Array.isArray(contact.properties) ? contact.properties : [],
+                budget: contact.budget || 0,
+                selecTP: contact.selecTP || '',
+                rangeProp: contact.rangeProp || '',
                 numBaths: contact.numBaths || 0,
                 numBeds: contact.numBeds || 0,
                 numParks: contact.numParks || 0,
-                propCont: contact.propCont || '',
-                rangeProp: contact.rangeProp || '',
-                selecMC: contact.selecMC || '',
-                selecTP: contact.selecTP || '',
-                tagsProperty: contact.tagsProperty || [],
-                telephon: contact.telephon || '',
+                halfBathroom: contact.halfBathroom || '',
+                locaProperty: Array.isArray(contact.locaProperty) ? contact.locaProperty : [],
+                tagsProperty: Array.isArray(contact.tagsProperty) ? contact.tagsProperty : [],
                 typeContact: contact.typeContact || '',
             };
 
-            console.log('Guardando contacto:', isEditing ? 'Actualización' : 'Nuevo', 'ID:', cleanContactData.id);
+            // Asegurarse de que el contacto tenga un ID válido
+            if (!cleanContactData.id || cleanContactData.id.trim() === '') {
+                // Generar un ID único si no existe
+                cleanContactData.id = generateUUID();
+                console.log('Generando nuevo ID para el contacto:', cleanContactData.id);
+            }
+
+            // Validación final del ID
+            if (!cleanContactData.id || cleanContactData.id.trim() === '') {
+                console.error('Error crítico: Fallo al asignar ID al contacto', cleanContactData);
+                throw new Error('Error crítico: Fallo al asignar ID al contacto');
+            }
+
+            // Añadir fecha de creación si no existe
+            if (!cleanContactData.createdAt) {
+                cleanContactData.createdAt = Date.now();
+            }
+
+            console.log('Guardando contacto con ID:', cleanContactData.id);
             
+            // Guardar el contacto en Firebase
             let result;
-            if (isEditing) {
-                // Si es una edición, actualizar el contacto existente
+            if (existingContact) {
                 result = await contactsStore.update(cleanContactData);
             } else {
-                // Si es nuevo contacto, agregar
                 result = await contactsStore.add(cleanContactData);
-                
-                // Asignar inmediatamente el ID devuelto por Firebase al contacto
-                if (result.success && result.id) {
-                    cleanContactData.id = result.id;
-                    console.log('ID asignado al nuevo contacto:', result.id);
-                } else {
-                    throw new Error('No se recibió un ID válido para el nuevo contacto');
-                }
             }
-            
+
             if (!result.success) {
-                throw new Error(result.error ? String(result.error) : 'Error al guardar el contacto');
+                throw new Error(result.error || 'Error al guardar el contacto');
             }
 
-            // Sincronizar con Google Contacts si hay un token válido
-            const accessToken = await getAccessToken();
-            if (accessToken) {
-                // Asegurarse de que el contacto tiene un ID válido antes de sincronizar
-                if (!cleanContactData.id || cleanContactData.id.trim() === '') {
-                    console.error('Error: Intentando sincronizar contacto sin ID válido', cleanContactData);
-                    throw new Error('ID de contacto faltante o inválido');
+            // Asegurarse de que el contacto tenga el ID correcto después de guardarlo
+            if (!existingContact && result.id) {
+                cleanContactData.id = result.id;
+            }
+
+            // Forzar una actualización manual del store para asegurar que el contacto aparezca en la lista
+            if (!existingContact) {
+                // Obtener la lista actual de contactos
+                const currentContacts = get(contactsStore);
+                
+                // Verificar si el contacto ya existe en la lista
+                const existingIndex = currentContacts.findIndex(c => c.id === cleanContactData.id);
+                
+                if (existingIndex >= 0) {
+                  // Actualizar el contacto existente
+                  currentContacts[existingIndex] = { ...cleanContactData };
+                } else {
+                  // Añadir el nuevo contacto a la lista
+                  currentContacts.push({ ...cleanContactData });
                 }
-                await syncContact(cleanContactData, accessToken);
+                
+                // Actualizar el store con la nueva lista
+                contactsStore.set([...currentContacts]);
+                
+                console.log('Contacto añadido/actualizado manualmente en el store:', cleanContactData);
             }
 
-            // Notificar éxito y redirigir
+            // Sincronizar con Google Contacts (automáticamente sin confirmación)
+            try {
+                const accessToken = await getAccessToken();
+                if (accessToken) {
+                  await syncContact(cleanContactData, accessToken);
+                  console.log('Contacto sincronizado con Google Contacts');
+                }
+            } catch (googleError) {
+                console.error('Error al sincronizar con Google Contacts:', googleError);
+                // Continuar a pesar del error con Google
+            }
+
+            // Emitir evento de éxito
             dispatch('success', { contact: cleanContactData });
+            
+            // Registrar el contacto guardado para depuración
+            console.log('Contacto guardado exitosamente:', cleanContactData);
             
             // Verificar nuevamente que el ID sea válido antes de redirigir
             if (cleanContactData.id && cleanContactData.id.trim() !== '') {
-                goto(`/contact/${cleanContactData.id}`);
+                console.log('ID válido para redirección:', cleanContactData.id);
             } else {
-                console.error('Error: ID de contacto faltante o inválido', cleanContactData);
-                throw new Error('ID de contacto faltante o inválido');
+                console.error('Error: ID inválido después de guardar', cleanContactData);
             }
-
-        } catch (err) {
-            if (err instanceof Error) {
-                erroresFormulario.general = err.message;
-                console.log('Error general:', erroresFormulario.general);
-            } else {
-                erroresFormulario.general = 'Error desconocido'; // Mensaje por defecto
-                console.log('Error desconocido');
-            }
-            console.log('Errores formulario:', erroresFormulario);
-            dispatch('error', { error: new Error(String(err)) });
+            
+        } catch (error) {
+            console.error('Error en handleSubmit:', error);
+            errorMessage = `Error: ${error.message || 'Desconocido'}`;
         } finally {
             isSubmitting = false;
         }

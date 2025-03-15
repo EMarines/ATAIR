@@ -39,11 +39,25 @@
   $: faltanProp = propCheck.length;
   $: properties = $propertiesStore;
   $: binnacles = $binnaclesStore;
-  const contact = data.contact as Contact;
+  
+  // Verificar que el contacto tenga un ID válido
+  let contactData = data.contact as Contact;
+  let contact: Contact;
+  
+  // Verificación inmediata del ID del contacto
+  if (!contactData || !contactData.id || contactData.id.trim() === '') {
+    console.error('Error crítico: Contacto cargado sin ID válido', contactData);
+    // Redirigir a la lista de contactos si el ID no es válido
+    goto("/contacts");
+  } else {
+    // Solo asignar el contacto si tiene un ID válido
+    contact = contactData;
+  }
   
   // Verificación reactiva para asegurar que el contacto tenga un ID válido
   $: if (contact && (!contact.id || contact.id.trim() === '')) {
     console.error('Error: Contacto cargado sin ID válido', contact);
+    goto("/contacts");
   }
 
   // Función para mostrar/ocultar la búsqueda
@@ -376,10 +390,10 @@
               <button class="btn__common" on:click={onCancel}><i class="fa-solid fa-rotate-left"></i>Regresar</button>                      
             </div>
 
-            <!-- Google Contacts Sync Button -->
-            <div class="google-sync-container">
+            <!-- Componente invisible que maneja la sincronización en segundo plano - solo se renderiza si el contacto tiene un ID válido -->
+            {#if contact && contact.id && contact.id.trim() !== ''}
               <GoogleContactsSync contact={contact} />
-            </div>
+            {/if}
 
             {#if mostBusq}
               <div class="search">
