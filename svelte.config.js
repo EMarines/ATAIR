@@ -17,14 +17,21 @@ const config = {
 		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 		adapter: adapter({
 			// Opciones específicas para el adaptador de Vercel
-			runtime: 'nodejs18.x',
+			external: [],
 			edge: false,
 			split: false
 		}),
 		alias: {
 			$components: 'src/lib/components',
 			$functions: 'src/lib/functions'
-		}
+		},
+		// Configuración específica para el manejo de rutas
+		paths: {
+			base: '',
+			assets: ''
+		},
+		// Asegurarse de que las rutas se manejen correctamente
+		trailingSlash: 'never'
 	}
 };
 
