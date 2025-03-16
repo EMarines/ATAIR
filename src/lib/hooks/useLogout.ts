@@ -46,8 +46,13 @@ export function useLogout() {
       
       // Redirigir al login
       goto('/login')
-    } catch (err) {
-      error.set(err.message)
+    } catch (err: unknown) {
+      // Manejar el error de tipo unknown de manera segura
+      if (err instanceof Error) {
+        error.set(err.message)
+      } else {
+        error.set('Error desconocido durante el cierre de sesión')
+      }
     } finally {
       loading.set(false)
     }
