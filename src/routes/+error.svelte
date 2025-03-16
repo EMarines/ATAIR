@@ -2,12 +2,15 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
 
   // Redirigir a la página principal en caso de error 404
   onMount(() => {
-    if ($page.status === 404) {
-      // Intentar redirigir a la página principal
-      goto('/');
+    if (browser && $page.status === 404) {
+      // Esperar un momento y luego redirigir
+      setTimeout(() => {
+        goto('/');
+      }, 100);
     }
   });
 </script>
@@ -22,7 +25,7 @@
   {/if}
   
   <div class="actions">
-    <button on:click={() => goto('/')}>Ir a la página principal</button>
+    <a href="/" class="button">Ir a la página principal</a>
   </div>
 </div>
 
@@ -46,7 +49,7 @@
     margin-top: 2rem;
   }
   
-  button {
+  .button {
     background-color: #4a6da7;
     color: white;
     border: none;
@@ -54,9 +57,11 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 1rem;
+    text-decoration: none;
+    display: inline-block;
   }
   
-  button:hover {
+  .button:hover {
     background-color: #3a5a8f;
   }
 </style>
