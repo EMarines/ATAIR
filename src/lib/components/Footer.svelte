@@ -29,6 +29,8 @@
         color: var(--color);
         padding: 1rem 0;
         margin-top: auto;
+        position: relative;
+        z-index: 1;
     }
 
     .footer__content {

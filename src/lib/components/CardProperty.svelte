@@ -3,6 +3,9 @@
   import type { Property } from '$lib/types'
 
   export let property: Property;
+  export let selectable = false;
+  export let onSelect = () => {};
+  export let isSelected = false;
 
   // Función para formatear la ubicación
   const formatLocation = (location: string | { name: string } | undefined | null) => {
@@ -23,6 +26,14 @@
 </script>
 
 <div class="card__container">
+  {#if selectable}
+    <input 
+      type="radio" 
+      class="property-selector"
+      checked={isSelected}
+      on:change={onSelect}
+    />
+  {/if}
   <div class="card__prop">
   
     <div class="img__cont">
@@ -62,29 +73,50 @@
 </div>
 
 <style>
+    .card__container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+    }
+
+    .property-selector {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 1001;
+      margin: 0;
+      cursor: pointer;
+      width: 20px;
+      height: 20px;
+      accent-color: #6b21a8;
+    }
+
     .card__prop { 
+      position: relative;
       display: flex; 
       flex-direction: column;   
       width: 100%;
-      max-width: 300px;
       height: 250px;     
       background: rgb(56, 56, 56);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
-      transition: transform 0.2s, box-shadow 0.2s;
+      overflow: visible; /* Cambiado de hidden a visible para permitir que el contenido se expanda */
+      transition: all 0.3s ease;
+      z-index: 10;
+      max-width: 300px;
       justify-content: center;
       padding: 8px;
       gap: 4px;
       margin: 0 auto;
       cursor: pointer;
-      position: relative;
-      z-index: 1;
     }
 
     .card__prop:hover {
       transform: translateY(-5px);
       box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
       background: rgb(76, 76, 76);
+      z-index: 1000; /* Aumentar z-index al hacer hover */
     }
 
     .img__cont {
@@ -94,7 +126,6 @@
       align-items: center;
       justify-content: center;
       margin-bottom: 20px;
-      overflow: hidden;
     }    
     
     img {

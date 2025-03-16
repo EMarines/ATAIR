@@ -1,18 +1,26 @@
 <script lang="ts">
-  import '../styles/main.css'
+  import "../styles/main.css";
   import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { db } from '$lib/firebase';
   import { collection, onSnapshot } from 'firebase/firestore';
   import type { QuerySnapshot, DocumentData } from 'firebase/firestore';
   import { contactsStore, binnaclesStore, propertiesStore } from '$lib/stores/dataStore';
-  import { Navbar, Footer } from '$components';
   import type { Contact, Binnacle, Property } from '$lib/types';
+  import Navbar from '$lib/components/Navbar.svelte';
+  import Footer from '$lib/components/Footer.svelte';
   import { useAuth } from '$lib/hooks/useAuth';
   import { goto } from '$app/navigation';
+  import { testMode } from '$lib/stores/testModeStore';
 
   const { isAuthenticated, checkAuth } = useAuth();
   const unsubscribes: (() => void)[] = [];
+
+  // Función para obtener la instancia de Firestore
+  const getDb = () => db();
+
+  // Variable para mostrar el indicador de modo de prueba
+  let isTestMode = false;
 
   onMount(async () => {
     if (browser) {
@@ -20,7 +28,20 @@
       if (!isValid && window.location.pathname !== '/login') {
         goto('/login');
       }
+      
+      // Suscribirse al store de testMode
+      const unsubscribeTestMode = testMode.subscribe(value => {
+        isTestMode = value;
+        console.log('Modo de prueba actualizado en layout:', value);
+      });
+      
+      unsubscribes.push(unsubscribeTestMode);
     }
+    
+    return () => {
+      // Desuscribirse de todos los listeners
+      unsubscribes.forEach(unsubscribe => unsubscribe());
+    };
   });
 
   $: if (browser && $isAuthenticated) {
@@ -31,7 +52,7 @@
     // Configurar nuevos listeners
     unsubscribes.push(
       onSnapshot(
-        collection(db, 'contacts'),
+        collection(getDb(), 'contacts'),
         (snapshot: QuerySnapshot<DocumentData>) => {
           try {
             // Procesar todos los documentos, incluso aquellos que podrían estar en proceso de creación
@@ -47,10 +68,17 @@
                   return null;
                 }
                 
+                // Asegurar que el ID del documento sea válido
+                const docId = doc.id && doc.id.trim() !== '' ? doc.id : null;
+                if (!docId) {
+                  console.error('Error: Documento con ID inválido', doc.id);
+                  return null;
+                }
+                
                 // Crear el objeto de contacto con el ID del documento
                 const contactData = {
                   // Asignar explícitamente el ID del documento y asegurarse de que sea una cadena
-                  id: doc.id,
+                  id: docId,
                   createdAt: data.createdAt || Date.now(),
                   name: data.name || '',
                   lastname: data.lastname || '',
@@ -74,12 +102,6 @@
                   // Incluir el resto de los datos
                   ...data
                 };
-                
-                // Verificación adicional para asegurarse de que el ID esté presente
-                if (!contactData.id || contactData.id.trim() === '') {
-                  console.error('Error: Contacto sin ID válido después de procesamiento', contactData);
-                  return null;
-                }
                 
                 // Verificación específica para el contacto problemático
                 if (contactData.name === 'aabbcx' && contactData.lastname === 'zzzzz') {
@@ -112,7 +134,7 @@
 
     unsubscribes.push(
       onSnapshot(
-        collection(db, 'binnacles'),
+        collection(getDb(), 'binnacles'),
         (snapshot: QuerySnapshot<DocumentData>) => {
           const binnacles = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -125,7 +147,7 @@
 
     unsubscribes.push(
       onSnapshot(
-        collection(db, 'properties'),
+        collection(getDb(), 'properties'),
         (snapshot: QuerySnapshot<DocumentData>) => {
           const datos = snapshot.docs.map(doc => ({
             public_id: doc.id,
@@ -143,34 +165,60 @@
 </script>
 
 <div class="app">
-    <header>
-        <Navbar />
-    </header>
-    
-    <main>
-        <slot />
-    </main>
+  {#if isTestMode}
+    <div class="test-mode-indicator">
+      MODO PRUEBA - Base de datos: Curso Svelte
+    </div>
+  {/if}
+  
+  <header>
+    <Navbar />
+  </header>
+  
+  <main>
+    <slot />
+  </main>
 
-    <footer>
-        <Footer />
-    </footer>
+  <div class="footer-container">
+    <Footer />
+  </div>
 </div>
 
 <style>
-    .app {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-    }
-
-    main {
-        flex: 1;
-    }
-
-    footer {
-        margin-top: auto;
-        padding: 1rem;
-        background: rgb(56, 56, 56);
-        text-align: center;
-    }
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: hidden; /* Evitar scroll horizontal */
+  }
+  
+  main {
+    flex: 1;
+    position: relative;
+    z-index: 2;
+    margin-bottom: 4rem; /* Añadir margen inferior para que el contenido no quede oculto detrás del footer */
+  }
+  
+  .footer-container {
+    margin-top: auto;
+    padding: 1rem;
+    background: rgb(56, 56, 56);
+    text-align: center;
+    position: fixed; /* Cambiar a fixed para que sea fijo */
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1;
+  }
+  
+  .test-mode-indicator {
+    background-color: #ff9800;
+    color: white;
+    text-align: center;
+    padding: 0.5rem;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
 </style>

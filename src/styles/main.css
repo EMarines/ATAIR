@@ -256,3 +256,6 @@ a {
   -webkit-overflow-scrolling: touch;
 }
 
+.hidden-footer {
+  display: none !important;
+}

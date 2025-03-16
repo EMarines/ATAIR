@@ -1,7 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { goto } from '$app/navigation';
-    import { systStatus, propertiesStore, property, contactsStore } from '$lib/stores/dataStore';
+    import { systStatus, propertiesStore, property as propertyStore, contactsStore } from '$lib/stores/dataStore';
     import { Search, Tags, Ubication, InputText, InputOptions, InputEmail, InputDate, CardProperty, Button } from '$components';
     import { typeContacts, modeContact, typeProperties, modePays, oneToFive, oneToFour, oneToThree, contStage, range } from '$lib/parameters';
     import type { Property, Contact, AddContactEvents } from '$lib/types';
@@ -41,6 +41,7 @@
     let propToRender = $propertiesStore;
     let showAdditionalFields = false;
     let errorMessage = ''; // Variable para almacenar mensajes de error
+    let showFooter = true; // Variable para controlar la visibilidad del footer
 
     // Estado unificado del formulario
     export let existingContact: Contact | null = null;
@@ -137,19 +138,17 @@
             }
 
             // Crear una copia limpia del contacto con valores por defecto para campos vacíos
-            const cleanContactData = {
+            const cleanContactData: Contact = {
                 id: contact.id || '',
                 createdAt: contact.createdAt || Date.now(),
                 name: contact.name || '',
                 lastname: contact.lastname || '',
                 email: contact.email || '',
                 telephon: contact.telephon || '',
-                typeContact: contact.typeContact || '',
                 selecMC: contact.selecMC || '',
                 comContact: contact.comContact || '',
-                contactStage: contact.contactStage || 0,
+                contactStage: contact.contactStage || 'Etapa1',
                 isActive: contact.isActive !== undefined ? contact.isActive : true,
-                properties: Array.isArray(contact.properties) ? contact.properties : [],
                 budget: contact.budget || 0,
                 selecTP: contact.selecTP || '',
                 rangeProp: contact.rangeProp || '',
@@ -159,8 +158,29 @@
                 halfBathroom: contact.halfBathroom || '',
                 locaProperty: Array.isArray(contact.locaProperty) ? contact.locaProperty : [],
                 tagsProperty: Array.isArray(contact.tagsProperty) ? contact.tagsProperty : [],
+                modePay: contact.modePay || '',
                 typeContact: contact.typeContact || '',
+                // Propiedades opcionales - usar cadenas vacías para campos de texto
+                color: contact.color || '',
+                contactType: contact.contactType || '',
+                contMode: contact.contMode || '',
+                notes: contact.notes || '',
+                propCont: contact.propCont || '',
+                selecTO: contact.selecTO || '',
+                sendedProperties: Array.isArray(contact.sendedProperties) ? contact.sendedProperties : [],
+                title: contact.title || '',
+                typeOperation: contact.typeOperation || '',
+                typeProperty: contact.typeProperty || ''
             };
+            
+            // Añadir propiedades opcionales de tipo number solo si tienen un valor
+            if (contact.lastContact) {
+                cleanContactData.lastContact = contact.lastContact;
+            }
+            
+            if (contact.lastResponse) {
+                cleanContactData.lastResponse = contact.lastResponse;
+            }
 
             // Asegurarse de que el contacto tenga un ID válido
             if (!cleanContactData.id || cleanContactData.id.trim() === '') {
@@ -191,11 +211,14 @@
             }
 
             if (!result.success) {
-                throw new Error(result.error || 'Error al guardar el contacto');
+                const errorMessage = result.error ? 
+                    (typeof result.error === 'string' ? result.error : JSON.stringify(result.error)) 
+                    : 'Error al guardar el contacto';
+                throw new Error(errorMessage);
             }
 
             // Asegurarse de que el contacto tenga el ID correcto después de guardarlo
-            if (!existingContact && result.id) {
+            if (!existingContact && result.success && 'id' in result && result.id) {
                 cleanContactData.id = result.id;
             }
 
@@ -242,13 +265,28 @@
             // Verificar nuevamente que el ID sea válido antes de redirigir
             if (cleanContactData.id && cleanContactData.id.trim() !== '') {
                 console.log('ID válido para redirección:', cleanContactData.id);
+                
+                // Establecer el estado del sistema para activar la sección de comentarios en la página de detalles
+                $systStatus = "addContact";
+                
+                // Redirigir a la página de detalles del contacto
+                goto(`/contact/${cleanContactData.id}`);
             } else {
                 console.error('Error: ID inválido después de guardar', cleanContactData);
             }
             
         } catch (error) {
             console.error('Error en handleSubmit:', error);
-            errorMessage = `Error: ${error.message || 'Desconocido'}`;
+            // Manejar el error de manera segura verificando su tipo
+            let errorMsg = 'Desconocido';
+            if (error instanceof Error) {
+                errorMsg = error.message;
+            } else if (typeof error === 'string') {
+                errorMsg = error;
+            } else if (error && typeof error === 'object') {
+                errorMsg = JSON.stringify(error);
+            }
+            errorMessage = `Error: ${errorMsg}`;
         } finally {
             isSubmitting = false;
         }
@@ -299,6 +337,15 @@
     const autofocus = (node: HTMLElement) => {
         node.focus();
     };
+
+    // Función reactiva que no hace nada con el footer
+    $: {
+        if (showProp && propToRender.length > 0) {
+            // No hacemos nada con el footer
+        } else {
+            // No hacemos nada con el footer
+        }
+    }
 </script>
 
 <div class="cont__alta">
@@ -400,24 +447,26 @@
                     <div class="search-results">
                         {#each propToRender as property}
                             <div class="property-item">
-                                <input 
-                                    type="radio" 
-                                    name="selectedProperty"
-                                    value={property.public_id}
-                                    class="property-selector"
-                                    on:change={() => {
-                                        contact.propCont = property.public_id;
-                                        contact.selecTP = property.property_type || '';
-                                        contact.rangeProp = property.operations?.[0]?.amount 
-                                            ? ranPrice(property.operations[0].amount)
-                                            : '';
-                                        propToRender = [];
-                                        showProp = false;
-                                        searchTerm = "";
-                                    }}
-                                />
                                 <div class="card-wrapper">
-                                    <CardProperty {property} />
+                                    <CardProperty 
+                                        {property} 
+                                        selectable={true}
+                                        isSelected={contact.propCont === property.public_id}
+                                        onSelect={() => {
+                                            contact.propCont = property.public_id;
+                                            contact.selecTP = property.property_type || '';
+                                            contact.rangeProp = property.operations?.[0]?.amount 
+                                                ? ranPrice(property.operations[0].amount)
+                                                : '';
+                                            
+                                            // Guardar la propiedad seleccionada en el store
+                                            propertyStore.set(property);
+                                            
+                                            propToRender = [];
+                                            showProp = false;
+                                            searchTerm = "";
+                                        }}
+                                    />
                                 </div>
                             </div>
                         {/each}
@@ -444,34 +493,56 @@
 
             {#if showAdditionalFields}
                 <div class="additional-fields">
-                    <div class="inp__lat">
-                        <InputOptions 
-                            identificador="selecTP" 
-                            name="Tipo de Propiedad" 
-                            choices={typeProperties} 
-                            value={contact.selecTP}
-                            on:change={(e) => contact.selecTP = e.detail}
-                        />
-                        <InputOptions 
-                            identificador="modePay" 
-                            name="Modo de Pago" 
-                            choices={modePays} 
-                            value={contact.modePay}
-                            on:change={(e) => contact.modePay = e.detail}
-                        />
-                    </div>
+                    <table class="property-table">
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <InputOptions 
+                                        identificador="selecTP" 
+                                        name="Tipo de Propiedad" 
+                                        choices={typeProperties} 
+                                        value={contact.selecTP ? String(contact.selecTP) : ''}
+                                        on:change={(e) => contact.selecTP = e.detail}
+                                    />
+                                </td>
+                                <td>
+                                    <InputOptions 
+                                        identificador="modePay" 
+                                        name="Modo de Pago" 
+                                        choices={modePays} 
+                                        value={contact.modePay ? String(contact.modePay) : ''}
+                                        on:change={(e) => contact.modePay = e.detail}
+                                    />
+                                </td>
+                                <td>
+                                    <InputOptions 
+                                        identificador="contactStage" 
+                                        name="Etapa" 
+                                        choices={contStage} 
+                                        value={contact.contactStage ? String(contact.contactStage) : ''}
+                                        on:change={(e) => contact.contactStage = e.detail}
+                                    />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
                     <div class="inp__lat">
                         <InputText 
                             identifier="budget" 
                             name="Presupuesto" 
-                            value={String(contact.budget || '')}
+                            value={contact.budget ? String(contact.budget) : ''}
+                            on:blur={(e) => {
+                                // Convertir a número si es posible, o dejar como string si no
+                                const value = e.detail.value;
+                                contact.budget = value ? (isNaN(Number(value)) ? value : Number(value)) : '';
+                            }}
                         />
                         <InputOptions 
                             identificador="rangeProp" 
                             name="Rango de Propiedad" 
                             choices={range} 
-                            value={String(contact.rangeProp)}
+                            value={contact.rangeProp ? String(contact.rangeProp) : ''}
                             on:change={(e) => contact.rangeProp = e.detail}
                         />
                     </div>
@@ -481,16 +552,17 @@
                             identificador="numBeds" 
                             name="Recámaras" 
                             choices={oneToFive} 
-                            value={String(contact.numBeds)}
+                            value={contact.numBeds ? String(contact.numBeds) : ''}
                             on:change={(e) => contact.numBeds = e.detail}
                         />
                         <InputOptions 
                             identificador="numBaths" 
                             name="Baños Completos" 
                             choices={oneToFour} 
-                            value={String(contact.numBaths)}
+                            value={contact.numBaths ? String(contact.numBaths) : ''}
                             on:change={(e) => contact.numBaths = e.detail}
                         />
+                        
                     </div>
 
       
@@ -499,14 +571,14 @@
                             identificador="halfBathroom" 
                             name="Medios Baños" 
                             choices={oneToThree} 
-                            value={String(contact.halfBathroom)}
+                            value={contact.halfBathroom ? String(contact.halfBathroom) : ''}
                             on:change={(e) => contact.halfBathroom = e.detail}
                         />
                         <InputOptions 
                             identificador="numParks" 
                             name="Estacionamientos" 
                             choices={oneToFour} 
-                            value={String(contact.numParks)}
+                            value={contact.numParks ? String(contact.numParks) : ''}
                             on:change={(e) => contact.numParks = e.detail}
                         />
                     </div>
@@ -527,6 +599,7 @@
                 >
                     {isSubmitting ? 'Guardando...' : 'Guardar'}
                 </Button>
+                
                 <Button
                     element="button"
                     type="button"
@@ -539,6 +612,10 @@
         </div>
     </form>
 </div>
+
+{#if showFooter}
+    <!-- Aquí va el contenido del footer -->
+{/if}
 
 <style>
     .form-container {
@@ -598,15 +675,57 @@
         display: flex;
         gap: 20px;
         position: relative;
+        flex-wrap: wrap;
+        justify-content: space-between;
     }
 
-    .notes {
+    .inp__lat.property-options {
+        gap: 10px;
+        justify-content: space-between;
+        padding: 0;
         width: 100%;
-        min-height: 100px;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        resize: vertical;
+    }
+    
+    :global(.inp__lat > div) {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .option-wrapper {
+        width: 22%;
+        padding: 0 3px;
+        box-sizing: border-box;
+        margin-right: 3px;
+    }
+    
+    /* Ajustar el primer y último elemento para eliminar padding innecesario */
+    .option-wrapper:first-child {
+        padding-left: 0;
+    }
+    
+    .option-wrapper:last-child {
+        padding-right: 0;
+        margin-right: 0;
+    }
+
+    /* Estilos específicos para los inputs de la sección de propiedades */
+    :global(.property-options .in__sel) {
+        font-size: 0.8rem;
+        padding-right: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Ajustar el ancho del contenedor de etiquetas */
+    :global(.property-options .label__title) {
+        width: 100%;
+        overflow: hidden;
+    }
+
+    :global(.property-options .label__title p) {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .additional-fields {
@@ -618,64 +737,135 @@
         border-radius: 10px;
         background-color: rgba(107, 33, 168, 0.05);
         margin: 10px 0;
+        box-sizing: border-box;
     }
 
-    @media (max-width: 600px) {
-        .inp__lat {
-            flex-direction: column;
-        }
-
-        .additional-fields {
-            padding: 15px;
-        }
+    .notes {
+        width: 100%;
+        min-height: 100px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        resize: vertical;
     }
 
     .search-container {
         position: relative;
         width: 100%;
+        z-index: 100;
     }
 
     .search-results {
         position: absolute;
         top: 100%;
         left: 0;
-        right: 0;
-        max-height: 300px;
-        overflow-y: auto;
-        background: white;
-        border: 1px solid #ccc;
+        width: 100%;
+        background: #1f1f1f;
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 4px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 8px 16px rgba(0,0,0,0.5);
+        z-index: 100;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        padding: 1rem;
+        margin-bottom: 2rem;
     }
 
     .no-results {
         padding: 1rem;
         text-align: center;
-        color: #666;
-        background: #f5f5f5;
+        color: #ccc;
+        background: #2a2a2a;
         border-radius: 4px;
+        grid-column: 1 / -1;
     }
 
     .property-item {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        overflow: hidden;
         position: relative;
-        padding: 5px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+        z-index: 100;
+    }
+
+    .property-item:hover {
+        transform: translateY(-5px);
     }
 
     .card-wrapper {
         position: relative;
         width: 100%;
+        height: 100%;
+        z-index: 100;
     }
 
     .property-selector {
-        position: absolute;
-        top: 15px;
-        left: 15px;
-        z-index: 1001;
-        margin: 0;
-        cursor: pointer;
-        width: 20px;
-        height: 20px;
-        accent-color: #6b21a8;
+        display: none;
+    }
+    
+    /* Estilos para que las tarjetas se vean como en la página de propiedades */
+    .property-item :global(.card__container) {
+        width: 100%;
+        height: 100%;
+    }
+
+    .property-item :global(.card__prop) {
+        background-color: rgb(31, 31, 31);
+        border-radius: 5px;
+        transition: background-color 0.2s ease;
+    }
+
+    .property-item:hover :global(.card__prop) {
+        background-color: rgb(63, 63, 63);
+    }
+
+    .property-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 10px 0;
+    }
+
+    .property-table td {
+        padding: 0;
+        border: none;
+        width: 33.33%;
+        vertical-align: top;
+    }
+    
+    :global(.property-table .in__sel) {
+        width: 100%;
+        font-size: 0.8rem;
+        padding-right: 15px;
+    }
+
+    :global(.property-table .label__title) {
+        width: 100%;
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 600px) {
+        .property-table, .property-table tbody, .property-table tr {
+            display: block;
+            width: 100%;
+        }
+        
+        .property-table td {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .inp__lat {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .option-wrapper {
+            width: 100%;
+            padding: 0;
+        }
     }
 </style>
