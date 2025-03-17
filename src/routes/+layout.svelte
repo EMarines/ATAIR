@@ -17,7 +17,7 @@
   const unsubscribes: (() => void)[] = [];
 
   // Función para obtener la instancia de Firestore
-  const getDb = () => db();
+  const getDb = () => db;
 
   // Variable para mostrar el indicador de modo de prueba
   let isTestMode = false;

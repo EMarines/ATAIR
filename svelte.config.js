@@ -18,7 +18,7 @@ const config = {
 		adapter: adapter({
 			// Opciones específicas para el adaptador de Vercel
 			external: [],
-			edge: false,
+			runtime: 'nodejs18.x',
 			split: false
 		}),
 		alias: {
@@ -29,9 +29,7 @@ const config = {
 		paths: {
 			base: '',
 			assets: ''
-		},
-		// Asegurarse de que las rutas se manejen correctamente
-		trailingSlash: 'never'
+		}
 	}
 };
 
