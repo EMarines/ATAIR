@@ -678,54 +678,10 @@
         flex-wrap: wrap;
         justify-content: space-between;
     }
-
-    .inp__lat.property-options {
-        gap: 10px;
-        justify-content: space-between;
-        padding: 0;
-        width: 100%;
-    }
     
     :global(.inp__lat > div) {
         flex: 1;
         min-width: 150px;
-    }
-
-    .option-wrapper {
-        width: 22%;
-        padding: 0 3px;
-        box-sizing: border-box;
-        margin-right: 3px;
-    }
-    
-    /* Ajustar el primer y último elemento para eliminar padding innecesario */
-    .option-wrapper:first-child {
-        padding-left: 0;
-    }
-    
-    .option-wrapper:last-child {
-        padding-right: 0;
-        margin-right: 0;
-    }
-
-    /* Estilos específicos para los inputs de la sección de propiedades */
-    :global(.property-options .in__sel) {
-        font-size: 0.8rem;
-        padding-right: 12px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* Ajustar el ancho del contenedor de etiquetas */
-    :global(.property-options .label__title) {
-        width: 100%;
-        overflow: hidden;
-    }
-
-    :global(.property-options .label__title p) {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
     .additional-fields {
@@ -802,26 +758,6 @@
         z-index: 100;
     }
 
-    .property-selector {
-        display: none;
-    }
-    
-    /* Estilos para que las tarjetas se vean como en la página de propiedades */
-    .property-item :global(.card__container) {
-        width: 100%;
-        height: 100%;
-    }
-
-    .property-item :global(.card__prop) {
-        background-color: rgb(31, 31, 31);
-        border-radius: 5px;
-        transition: background-color 0.2s ease;
-    }
-
-    .property-item:hover :global(.card__prop) {
-        background-color: rgb(63, 63, 63);
-    }
-
     .property-table {
         width: 100%;
         border-collapse: separate;
@@ -861,11 +797,6 @@
         .inp__lat {
             flex-direction: column;
             gap: 15px;
-        }
-        
-        .option-wrapper {
-            width: 100%;
-            padding: 0;
         }
     }
 </style>
