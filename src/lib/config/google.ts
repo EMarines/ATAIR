@@ -1,9 +1,6 @@
 // Verificar si estamos en el navegador
 const isBrowser = typeof window !== 'undefined';
 
-// Importar credenciales directas para producción
-import { GOOGLE_CREDENTIALS } from './google-credentials';
-
 // Obtener variables de entorno de manera segura para SSR
 function getEnvVariable(name: string, defaultValue: string = ''): string {
     if (isBrowser && typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[name]) {
@@ -21,9 +18,8 @@ function getBaseUrl(): string {
 }
 
 export const GOOGLE_CONFIG = {
-    // Usar credenciales directas como fallback si las variables de entorno no están disponibles
-    clientId: getEnvVariable('VITE_GOOGLE_CLIENT_ID', GOOGLE_CREDENTIALS.clientId),
-    clientSecret: getEnvVariable('VITE_GOOGLE_CLIENT_SECRET', GOOGLE_CREDENTIALS.clientSecret),
+    clientId: getEnvVariable('VITE_GOOGLE_CLIENT_ID'),
+    clientSecret: getEnvVariable('VITE_GOOGLE_CLIENT_SECRET'),
     redirectUri: `${getBaseUrl()}/auth/callback`,
     scopes: [
         'https://www.googleapis.com/auth/contacts',
