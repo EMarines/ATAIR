@@ -1,11 +1,21 @@
 <script lang="ts">
   import { toComaSep } from '$lib/functions/format'
   import type { Property } from '$lib/types'
+  import { onMount } from 'svelte';
 
   export let property: Property;
   export let selectable = false;
   export let onSelect = () => {};
   export let isSelected = false;
+  
+  let imgError = false;
+  let imgSrc = property?.title_image_thumb || '/placeholder-property.png';
+
+  // Función para manejar errores de carga de imagen
+  function handleImageError() {
+    imgError = true;
+    imgSrc = '/placeholder-property.png';
+  }
 
   // Función para formatear la ubicación
   const formatLocation = (location: string | { name: string } | undefined | null) => {
@@ -38,9 +48,13 @@
   
     <div class="img__cont">
       <img 
-        src={property?.title_image_thumb || 'https://placehold.co/200x150'} 
-        alt="casa"
+        src={imgSrc} 
+        alt="Imagen de propiedad"
+        on:error={handleImageError}
       >
+      {#if imgError}
+        <div class="img-error-overlay">Sin imagen</div>
+      {/if}
     </div>
 
     <div class="info__cont">
@@ -120,6 +134,7 @@
     }
 
     .img__cont {
+      position: relative;
       display: flex;
       width: 100%;
       height: 50%;
@@ -135,6 +150,21 @@
       border-radius: 8px;
       margin: 0;
       aspect-ratio: 16/9;
+    }
+    
+    .img-error-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-size: 1rem;
+      border-radius: 8px;
     }
     
     .info__cont{

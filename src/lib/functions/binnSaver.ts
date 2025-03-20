@@ -4,7 +4,6 @@ import { collection, addDoc } from 'firebase/firestore';
 import type { Binnacle } from '$lib/types'
 
 export async function infoToBinnacle (binn: Binnacle) {  
-   console.log("binn", binn)
    try {
       const validatedBinn = {
          date: binn.date || '',

@@ -113,9 +113,9 @@ export class EasyBrokerService {
                 const fbDate = new Date(fbProp.updated_at).getTime();
                 
                 if (ebDate !== fbDate) {
-                    console.log(`Propiedad ${ebProp.public_id} modificada:`);
-                    console.log('Fecha EB:', ebProp.updated_at, '→', ebDate);
-                    console.log('Fecha FB:', fbProp.updated_at, '→', fbDate);
+                    // console.log(`Propiedad ${ebProp.public_id} modificada:`);
+                    // console.log('Fecha EB:', ebProp.updated_at, '→', ebDate);
+                    // console.log('Fecha FB:', fbProp.updated_at, '→', fbDate);
                     changes.modified.push(ebProp);
                 }
             }

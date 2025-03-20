@@ -251,9 +251,15 @@
 
             // Sincronizar con Google Contacts (automáticamente sin confirmación)
             try {
+                console.log('Intentando sincronizar con Google Contacts...');
                 const accessToken = await getAccessToken();
+                console.log('Token de acceso obtenido:', accessToken ? 'Sí' : 'No');
                 if (accessToken) {
+                  console.log('Iniciando sincronización con Google Contacts...');
                   await syncContact(cleanContactData, accessToken);
+                  console.log('Sincronización con Google Contacts completada');
+                } else {
+                  console.error('No se pudo obtener un token de acceso válido para Google');
                 }
             } catch (googleError) {
                 console.error('Error al sincronizar con Google Contacts:', googleError);

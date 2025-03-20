@@ -23,7 +23,12 @@
       return properties = $propertiesStore
         .sort((a, b) => Number(b.created_at) - Number(a.created_at))
         .filter((propety) => {
-          let contInfo = (propety.title + " " + propety.description + " " + propety.public_id)
+          // Asegurarse de que los valores existan antes de usarlos
+          const title = propety.title || '';
+          const description = propety.description || '';
+          const publicId = propety.public_id || '';
+          
+          let contInfo = (title + " " + description + " " + publicId)
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .toLowerCase();
@@ -39,7 +44,7 @@
       
     <div class="title__head">
 
-      <h1 class="title">Propiedadess</h1>
+      <h1 class="title">Propiedades</h1>
       <div class="title__inter">
         <Search bind:searchTerm on:input={searProp} on:keydown={()=>{}}/>
       </div>

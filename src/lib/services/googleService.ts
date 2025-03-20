@@ -263,150 +263,76 @@ function transformarParaGoogle(contactData: any, isUpdate = false) {
 
 // Sincronizar contacto
 export async function syncContact(contactData: any, accessToken: string) {
+    if (!accessToken) {
+        console.error('No hay token de acceso para sincronizar con Google');
+        return null;
+    }
+
     try {
-        if (!isBrowser) return;
+        console.log('Iniciando búsqueda de contacto existente en Google...');
+        // Primero buscar si el contacto ya existe en Google
+        const existingContact = await buscarContacto(contactData, accessToken);
         
-        // Verificar que el contacto tenga un ID válido
-        if (!contactData || !contactData.id || contactData.id.trim() === '') {
-            console.error('Error: No se puede sincronizar un contacto sin ID válido', contactData);
-            throw new Error('ID de contacto faltante o inválido');
-        }
-        
-        // Obtener token válido
-        let token = accessToken;
-        if (!token) {
-            token = await getAccessToken();
-            if (!token) {
-                console.log('No hay token válido, redirigiendo a autenticación');
-                window.location.href = getAuthUrl();
-                return;
-            }
-        }
-
-        // Verificar si el contacto ya existe en Google Contacts
-        const googleContactsMapStr = localStorage.getItem('googleContactsMap');
-        let googleResourceName = null;
-        
-        if (googleContactsMapStr) {
-            try {
-                const googleContactsMap = JSON.parse(googleContactsMapStr);
-                googleResourceName = googleContactsMap[contactData.id];
-                console.log(`Contacto ${contactData.id} ${googleResourceName ? 'encontrado' : 'no encontrado'} en Google Contacts`);
-            } catch (e) {
-                console.error('Error al parsear el mapa de contactos de Google:', e);
-                // Reiniciar el mapa si hay un error
-                localStorage.setItem('googleContactsMap', JSON.stringify({}));
-            }
-        }
-
-        // Preparar datos para Google
-        const isUpdate = !!googleResourceName;
-        const googleData = transformarParaGoogle(contactData, isUpdate);
-
-        let response;
-        
-        if (isUpdate) {
-            // Si el contacto ya existe, primero obtener su etag
-            console.log(`Obteniendo etag para contacto: ${googleResourceName}`);
-            const getContactResponse = await fetch(`https://people.googleapis.com/v1/${googleResourceName}?personFields=metadata`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
+        if (existingContact) {
+            console.log('Contacto encontrado en Google, actualizando...', existingContact.resourceName);
+            // Si existe, actualizar
+            const result = await updateGoogleContact(existingContact.resourceName, contactData, accessToken);
+            
+            // Guardar la relación entre el ID local y el resourceName de Google
+            if (isBrowser && contactData.id) {
+                try {
+                    const mapStr = localStorage.getItem('googleContactsMap') || '{}';
+                    const map = JSON.parse(mapStr);
+                    map[contactData.id] = existingContact.resourceName;
+                    localStorage.setItem('googleContactsMap', JSON.stringify(map));
+                    console.log('Mapa de contactos actualizado para contacto existente');
+                } catch (e) {
+                    console.error('Error al guardar mapa de contactos:', e);
                 }
-            });
-            
-            if (!getContactResponse.ok) {
-                // Si hay un error de autorización, intentar refrescar el token
-                if (getContactResponse.status === 401) {
-                    console.log('Token expirado o inválido al obtener etag, intentando refrescar...');
-                    const newTokens = await refreshToken();
-                    
-                    if (newTokens) {
-                        // Reintentar con el nuevo token
-                        return syncContact(contactData, newTokens.access_token);
-                    } else {
-                        // Si no se pudo refrescar, redirigir a autenticación
-                        localStorage.removeItem('googleTokens');
-                        window.location.href = getAuthUrl();
-                        return;
-                    }
-                }
-                
-                console.error('Error al obtener etag del contacto:', await getContactResponse.text());
-                throw new Error('Error al obtener información del contacto en Google');
             }
             
-            const contactInfo = await getContactResponse.json();
-            const etag = contactInfo.etag;
-            
-            if (!etag) {
-                console.error('No se pudo obtener el etag del contacto');
-                throw new Error('Error al obtener etag del contacto en Google');
-            }
-            
-            console.log(`Etag obtenido: ${etag}`);
-            
-            // Incluir etag en los datos para la actualización
-            googleData.etag = etag;
-            
-            // Actualizar el contacto
-            console.log(`Actualizando contacto existente en Google: ${googleResourceName}`);
-            response = await fetch(`https://people.googleapis.com/v1/${googleResourceName}:updateContact?updatePersonFields=names,emailAddresses,phoneNumbers,organizations,biographies`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(googleData)
-            });
+            return result;
         } else {
-            // Si es un contacto nuevo, crearlo
-            console.log('Creando nuevo contacto en Google');
-            response = await fetch('https://people.googleapis.com/v1/people:createContact', {
+            console.log('Contacto no encontrado en Google, creando nuevo...');
+            // Si no existe, crear nuevo
+            const googleData = transformarParaGoogle(contactData);
+            
+            // Hacer la solicitud a la API
+            const response = await fetch('https://people.googleapis.com/v1/people:createContact', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
                 },
                 body: JSON.stringify(googleData)
             });
-        }
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Error en la respuesta de Google:', JSON.parse(errorText));
             
-            // Si el error es de autorización, intentar refrescar el token
-            if (response.status === 401) {
-                console.log('Token expirado o inválido, intentando refrescar...');
-                const newTokens = await refreshToken();
-                
-                if (newTokens) {
-                    // Reintentar con el nuevo token
-                    return syncContact(contactData, newTokens.access_token);
-                } else {
-                    // Si no se pudo refrescar, redirigir a autenticación
-                    localStorage.removeItem('googleTokens');
-                    window.location.href = getAuthUrl();
-                }
-                return;
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error al crear contacto en Google:', response.status, errorText);
+                throw new Error(`Error al crear contacto: ${response.status} ${errorText}`);
             }
             
-            throw new Error('Error al sincronizar contacto');
+            const result = await response.json();
+            console.log('Contacto creado en Google:', result.resourceName);
+            
+            // Guardar la relación entre el ID local y el resourceName de Google
+            if (isBrowser && contactData.id && result.resourceName) {
+                try {
+                    const mapStr = localStorage.getItem('googleContactsMap') || '{}';
+                    const map = JSON.parse(mapStr);
+                    map[contactData.id] = result.resourceName;
+                    localStorage.setItem('googleContactsMap', JSON.stringify(map));
+                    console.log('Mapa de contactos actualizado para nuevo contacto');
+                } catch (e) {
+                    console.error('Error al guardar mapa de contactos:', e);
+                }
+            }
+            
+            return result;
         }
-
-        const responseData = await response.json();
-        
-        // Si es un contacto nuevo, actualizar el mapa de contactos
-        if (!isUpdate && responseData.resourceName && contactData.id) {
-            const googleContactsMap = googleContactsMapStr ? JSON.parse(googleContactsMapStr) : {};
-            googleContactsMap[contactData.id] = responseData.resourceName;
-            localStorage.setItem('googleContactsMap', JSON.stringify(googleContactsMap));
-            console.log(`Contacto ${contactData.id} mapeado a ${responseData.resourceName}`);
-        }
-
-        return responseData;
     } catch (error) {
-        console.error('Error al sincronizar contacto:', error);
+        console.error('Error en syncContact:', error);
         throw error;
     }
 }
@@ -416,7 +342,7 @@ export async function buscarContacto(contactData: any, accessToken: string) {
     try {
         // Obtener la lista de contactos
         const response = await fetch(
-            '/google-api/v1/people/me/connections' +
+            'https://people.googleapis.com/v1/people/me/connections' +
             '?personFields=metadata,names,emailAddresses,phoneNumbers' +
             '&pageSize=1000',
             {
