@@ -5,6 +5,7 @@
     import { onMount } from 'svelte';
     import Moon from "./icons/moon.svelte";
     import Sun from "./icons/sun.svelte";
+    import GoogleConnectButton from './GoogleConnectButton.svelte';
     // import { isLoggedIn, user } from '../store';
 
   let currentTheme = "";
@@ -76,6 +77,9 @@
               <!-- <li><a href="/(app)/profile">Profile</a></li> -->
               <li><a href="/tramites">Trámites</a></li>
               <li><a href="/actions">Acciones</a></li>
+              <li class="google-connect-container">
+                <GoogleConnectButton buttonText="Google Contacts" small={true} />
+              </li>
               <li>
                 <a 
                     href="/" 
@@ -262,4 +266,16 @@
         opacity: 0.5;
         pointer-events: none;
     }
-</style> 
+    
+    .google-connect-container {
+        display: flex;
+        align-items: center;
+        margin: 0 10px;
+    }
+    
+    @media (max-width: 768px) {
+        .google-connect-container {
+            margin: 10px 0;
+        }
+    }
+</style>

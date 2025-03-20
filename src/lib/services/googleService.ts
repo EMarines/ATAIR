@@ -1,4 +1,5 @@
 import { GOOGLE_CONFIG } from '../config/google';
+import { notifications } from '$lib/stores/notificationStore';
 
 // Constantes
 const GOOGLE_CLIENT_ID = GOOGLE_CONFIG.clientId;
@@ -191,7 +192,11 @@ export async function getAccessToken() {
         }
         
         const tokensStr = localStorage.getItem('googleTokens');
-        if (!tokensStr) return null;
+        if (!tokensStr) {
+            console.log('No hay tokens almacenados en localStorage');
+            notifications.warning('No hay conexión con Google Contacts. Conéctate para sincronizar contactos.');
+            return null;
+        }
         
         const tokens = JSON.parse(tokensStr);
         
@@ -210,6 +215,7 @@ export async function getAccessToken() {
         return tokens.access_token;
     } catch (error) {
         console.error('Error al obtener access token:', error);
+        notifications.error(`Error al obtener token de acceso: ${error instanceof Error ? error.message : String(error)}`);
         return null;
     }
 }
@@ -265,6 +271,7 @@ function transformarParaGoogle(contactData: any, isUpdate = false) {
 export async function syncContact(contactData: any, accessToken: string) {
     if (!accessToken) {
         console.error('No hay token de acceso para sincronizar con Google');
+        notifications.error('No hay token de acceso para sincronizar con Google Contacts');
         return null;
     }
 
@@ -291,6 +298,7 @@ export async function syncContact(contactData: any, accessToken: string) {
                 }
             }
             
+            notifications.success('Contacto actualizado en Google Contacts');
             return result;
         } else {
             console.log('Contacto no encontrado en Google, creando nuevo...');
@@ -310,6 +318,7 @@ export async function syncContact(contactData: any, accessToken: string) {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Error al crear contacto en Google:', response.status, errorText);
+                notifications.error(`Error al crear contacto en Google: ${response.status} ${errorText}`);
                 throw new Error(`Error al crear contacto: ${response.status} ${errorText}`);
             }
             
@@ -329,10 +338,12 @@ export async function syncContact(contactData: any, accessToken: string) {
                 }
             }
             
+            notifications.success('Contacto creado en Google Contacts');
             return result;
         }
     } catch (error) {
         console.error('Error en syncContact:', error);
+        notifications.error(`Error al sincronizar contacto con Google: ${error instanceof Error ? error.message : String(error)}`);
         throw error;
     }
 }
@@ -353,7 +364,9 @@ export async function buscarContacto(contactData: any, accessToken: string) {
         );
 
         if (!response.ok) {
-            console.error('Error en la respuesta de Google:', await response.text());
+            const errorText = await response.text();
+            console.error('Error en la respuesta de Google:', errorText);
+            notifications.error(`Error al obtener contactos de Google: ${response.status} ${errorText}`);
             throw new Error('Error al obtener contactos de Google');
         }
 
@@ -383,6 +396,7 @@ export async function buscarContacto(contactData: any, accessToken: string) {
         return contactoEncontrado || null;
     } catch (error) {
         console.error('Error al buscar contacto:', error);
+        notifications.error(`Error al buscar contacto en Google: ${error instanceof Error ? error.message : String(error)}`);
         throw error;
     }
 }

@@ -12,6 +12,7 @@
   import { useAuth } from '$lib/hooks/useAuth';
   import { goto } from '$app/navigation';
   import { testMode } from '$lib/stores/testModeStore';
+  import NotificationContainer from '$lib/components/NotificationContainer.svelte';
 
   const { isAuthenticated, checkAuth } = useAuth();
   const unsubscribes: (() => void)[] = [];
@@ -170,6 +171,8 @@
       MODO PRUEBA - Base de datos: Curso Svelte
     </div>
   {/if}
+  
+  <NotificationContainer />
   
   <header>
     <Navbar />

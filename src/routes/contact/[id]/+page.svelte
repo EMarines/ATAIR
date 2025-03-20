@@ -203,7 +203,7 @@
             console.log("Propiedad encontrada en el store:", selectedProperty);
             
             // Si la propiedad tiene public_url, usarla directamente
-            if (selectedProperty.public_url) {
+            if (selectedProperty && selectedProperty.public_url) {
               commInpuyBinnacle = selectedProperty.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
               console.log("URL pública cargada directamente desde propertyStore.public_url:", commInpuyBinnacle);
               foundProperty = true;
@@ -259,9 +259,16 @@
       } else if($systStatus === "sendProps"){
           faltanProp = propCheck.length - (sig + 1)
           console.log("propCheck", propCheck[sig], sig)
-          let msg = propCheck[sig].public_url
+          let msg = propCheck[sig] && propCheck[sig].public_url ? 
+            propCheck[sig].public_url : 
+            "No hay URL pública disponible para esta propiedad";
           sendWhatsApp(tel, msg)
-          let binnacle = {"date": Date.now(), "comment": propCheck[sig].public_id, "to": contact.id, "action": "Propiedad enviada: "}
+          let binnacle = {
+            "date": Date.now(), 
+            "comment": propCheck[sig] && propCheck[sig].public_id ? propCheck[sig].public_id : "Sin ID público", 
+            "to": contact.id, 
+            "action": "Propiedad enviada: "
+          }
           infoToBinnacle(binnacle)
           if ( propCheck.length === sig + 1 ) {
             setTimeout ( function(){
@@ -325,7 +332,7 @@
     }
 
   onMount(() => {
-    // Verificar si el contacto tiene un ID válido
+    // Verificar que el contacto tenga un ID válido
     if (!contact || !contact.id || contact.id.trim() === '') {
       console.error('Error en onMount: Contacto cargado sin ID válido', contact);
       goto("/contacts");
@@ -334,7 +341,7 @@
 
     // Cargar la URL pública en el textarea
     // Prioridad 1: Usar la URL del contacto si existe
-    if (property.public_url) {
+    if (property && property.public_url) {
       commInpuyBinnacle = property.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
       console.log("URL pública cargada desde el contacto:", commInpuyBinnacle);
       return;
@@ -346,7 +353,7 @@
         console.log("Propiedad encontrada en el store:", selectedProperty);
         
         // Si la propiedad tiene public_url, usarla directamente
-        if (selectedProperty.public_url) {
+        if (selectedProperty && selectedProperty.public_url) {
           commInpuyBinnacle = selectedProperty.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
           console.log("URL pública cargada directamente desde propertyStore.public_url:", commInpuyBinnacle);
         } 
