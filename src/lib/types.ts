@@ -21,6 +21,7 @@ export interface Contact {
   numBeds: string | number;
   numParks: string | number;
   propCont?: string;
+  publicUrl?: string; 
   rangeProp: string;
   selecMC: string;
   selecTO?: string;

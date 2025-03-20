@@ -3,7 +3,7 @@
   // import { deleteDoc, doc } from 'firebase/firestore';
   import { goto } from '$app/navigation';
   import type { Contact, Binnacle, Property } from '$lib/types';
-  import { contactsStore, propertiesStore, systStatus, binnaclesStore } from '$lib/stores/dataStore';
+  import { contactsStore, propertiesStore, systStatus, binnaclesStore, property as propertyStore } from '$lib/stores/dataStore';
   import { onMount, onDestroy } from 'svelte';
   import { AddToShedule, CardBinnacle, CardProperty, Search } from '$components';
   import AddContact from '$lib/components/AddContact.svelte';
@@ -33,12 +33,14 @@
   let propInterested = "Por Enviar";
   let sig = 0;
   let msg = "";
-  let property: Property;
+  // let property: Property;
 
   $: tel = contact?.telephon;
   $: faltanProp = propCheck.length;
   $: properties = $propertiesStore;
   $: binnacles = $binnaclesStore;
+  $: property = $propertyStore;
+
   
   // Verificar que el contacto tenga un ID válido
   let contactData = data.contact as Contact;
@@ -106,7 +108,7 @@
                         const { deleteGoogleContact, getAccessToken } = await import('$lib/services/googleService');
                         
                         // Obtener token de acceso
-                        const accessToken = getAccessToken();
+                        const accessToken = await getAccessToken();
                         if (!accessToken) {
                             console.log("No se pudo obtener un token de acceso válido para Google. El contacto se eliminará solo de la base de datos local.");
                         } else {
@@ -182,25 +184,70 @@
 
     // Selecciona Mensaje para WA
     async function selMsgWA() {
-      property = propCheck[sig]
-      console.log("Property", property, sig, $systStatus)
+      // Primero intentamos usar la propiedad seleccionada de la lista
+      // property = propCheck[sig];
+      
+      // Si no hay propiedad seleccionada, verificamos si el contacto tiene una propiedad asociada
+      if (!property) {
+        // Prioridad 1: Usar la URL del contacto si existe
+        if (contact.publicUrl) {
+          console.log("Usando URL pública del contacto:", contact.publicUrl);
+          commInpuyBinnacle = contact.publicUrl;
+          return;
+        }
+        
+        // Prioridad 2: Usar la propiedad del store
+        let foundProperty = false;
+        const unsubscribe = propertyStore.subscribe(selectedProperty => {
+          if (selectedProperty) {
+            console.log("Propiedad encontrada en el store:", selectedProperty);
+            
+            // Si la propiedad tiene public_url, usarla directamente
+            if (selectedProperty.public_url) {
+              commInpuyBinnacle = selectedProperty.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
+              console.log("URL pública cargada directamente desde propertyStore.public_url:", commInpuyBinnacle);
+              foundProperty = true;
+            } 
+            // Si no tiene public_url pero tiene public_id, generar la URL
+            else if (selectedProperty.public_id) {
+              const public_url = "https://matchhome.net";
+              commInpuyBinnacle = public_url;
+              foundProperty = true;
+            }
+          }
+        });
+        
+        // Limpiar la suscripción
+        unsubscribe();
+        
+        if (foundProperty) {
+          return;
+        }
+        
+        // Si no hay ninguna propiedad disponible
+        console.error("Error: No hay una propiedad seleccionada para compartir");
+        alert("No hay una propiedad seleccionada para compartir");
+        return;
+      }
+      
       // Envía la propiedad seleccionada del listado (propCheck) Alta de Contacto
       if($systStatus === "addContact"){
           let binnacle: Binnacle = {"date": Date.now(), "comment": (`${contact.name} ${contact.lastname}`), "to": contact.id, "action": "Se agregó a: "}
           infoToBinnacle(binnacle)          
-          msg = property.public_url;
-          console.log("msg", msg, $systStatus)
+          msg = commInpuyBinnacle;
           sendWhatsApp(tel, msg)
           binnacle = {"date": Date.now(), "comment": (property.public_id), "to": contact.id, "action": "Propiedad enviada: "}
           infoToBinnacle(binnacle)
           $systStatus = "msgGratitude";
+          commInpuyBinnacle = "Gracias por contactarnos. Enrique Marines, asesor de ventas en Match Home, tel. 614 540 4003, email matchhome@hotmail.com ✔ Visita matchhome.net ✔ ¡Seguro encuentras algo de interés!";
       // Envia mensaje de agradecimiento después de enviar la propiedad en alta de contacto
       } else if($systStatus === "msgGratitude") {
         // Envía en mensaje de agradecimiento
            let binnacle = {"date": Date.now(), "comment": property.public_id, "to": contact.telephon, "action": "Propiedad enviada: "}
           infoToBinnacle(binnacle)
-          msg = "Gracias por contactarnos. Enrique Marines, asesor de ventas en Match Home, tel. 614 540 4003, email matchhome@hotmail.com ✔ Visita matchhome.net ✔ ¡Seguro encuentras algo de interés!"
+          msg = commInpuyBinnacle;
           sendWhatsApp(tel, msg)
+          $systStatus = "";
       // Envía por WA lo que está en TextArea y guarda la bitácora
       } else if($systStatus === "sendComm"){
           msg = commInpuyBinnacle;
@@ -276,6 +323,50 @@
         contBinn();
         commInpuyBinnacle = "";
     }
+
+  onMount(() => {
+    // Verificar si el contacto tiene un ID válido
+    if (!contact || !contact.id || contact.id.trim() === '') {
+      console.error('Error en onMount: Contacto cargado sin ID válido', contact);
+      goto("/contacts");
+      return;
+    }
+
+    // Cargar la URL pública en el textarea
+    // Prioridad 1: Usar la URL del contacto si existe
+    if (property.public_url) {
+      commInpuyBinnacle = property.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
+      console.log("URL pública cargada desde el contacto:", commInpuyBinnacle);
+      return;
+    }
+    
+    // Prioridad 2: Usar la propiedad del store
+    const unsubscribe = propertyStore.subscribe(selectedProperty => {
+      if (selectedProperty) {
+        console.log("Propiedad encontrada en el store:", selectedProperty);
+        
+        // Si la propiedad tiene public_url, usarla directamente
+        if (selectedProperty.public_url) {
+          commInpuyBinnacle = selectedProperty.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
+          console.log("URL pública cargada directamente desde propertyStore.public_url:", commInpuyBinnacle);
+        } 
+        // Si no tiene public_url pero tiene public_id, generar la URL
+        else if (selectedProperty.public_id) {
+          const publicUrl = `https://atair.com.mx/property/${selectedProperty.public_id}`;
+          commInpuyBinnacle = publicUrl;
+          console.log("URL pública generada desde propertyStore.public_id:", publicUrl);
+        }
+      }
+    });
+    
+    // Limpiar la suscripción después de obtener el valor
+    unsubscribe();
+    
+    // Si después de todo esto el textarea sigue vacío, mostrar un mensaje en la consola
+    if (!commInpuyBinnacle) {
+      console.log("No se encontró ninguna URL pública para cargar en el textarea");
+    }
+  });
 </script>
 
   <!-- Contact Data -->
@@ -407,14 +498,28 @@
                 
             <!-- Botonies enviar WA o guardar nota para bitácora -->              
             <div class="textAreaCont">
-              <textarea 
-                on:change={textAreaComm} 
-                class="texArea" 
-                bind:value={commInpuyBinnacle} 
-                placeholder="Ingresa un comentario"></textarea>
+              <div class="textarea-wrapper">
+                <textarea 
+                  on:change={textAreaComm} 
+                  class="texArea" 
+                  bind:value={commInpuyBinnacle} 
+                  placeholder="Ingresa un comentario o selecciona una propiedad para compartir"></textarea>
+                {#if commInpuyBinnacle && commInpuyBinnacle.includes('atair.com.mx/property/')}
+                  <button 
+                    class="copy-button" 
+                    on:click={() => {
+                      navigator.clipboard.writeText(commInpuyBinnacle);
+                      alert('URL copiada al portapapeles');
+                    }}
+                    title="Copiar al portapapeles"
+                  >
+                    <i class="fa-regular fa-copy"></i>
+                  </button>
+                {/if}
+              </div>
               <div class="waSave">
                 {#if !!commInpuyBinnacle || $systStatus === "addContact" || $systStatus === "msgGratitude" || layOut === "sendProp" }
-                  <button  class="btn__common" on:click={selMsgWA}><i class="fa-brands fa-square-whatsapp"></i>WhatsApp</button>
+                  <button class="btn__common" on:click={selMsgWA}><i class="fa-brands fa-square-whatsapp"></i>WhatsApp</button>
                   <button class="btn__common" on:click={saveNote}><i class="fa-solid fa-floppy-disk"></i>Guardar Info</button>
                 {/if}
               </div>
@@ -824,4 +929,30 @@
     }
   
       
+    .textarea-wrapper {
+      position: relative;
+      width: 100%;
+    }
+  
+    .copy-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #6b21a8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+  
+    .copy-button:hover {
+      background: #8b5cf6;
+      transform: scale(1.05);
+    }
 </style>

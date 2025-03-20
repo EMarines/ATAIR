@@ -301,4 +301,5 @@ export const propertiesStore = writable<Property[]>([]);
 export const property = writable<Property | null>(null);
 export const contact = createContactStore();
 export const systStatus = writable<string>("");
-export const todoStore = writable<Todo[]>([]);
+
+export const todoStore = writable<Todo[]>([])

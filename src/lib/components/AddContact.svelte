@@ -52,7 +52,7 @@
         contactStage: 'Etapa1',
         createdAt: Date.now(),
         email: '',
-        halfBathroom: 0,
+        halfBathroom: '',
         id: '',
         lastname: '',
         locaProperty: [],
@@ -68,6 +68,7 @@
         tagsProperty: [],
         telephon: '',
         typeContact: '',
+        publicUrl: '', // Añadir campo para la URL pública
     };
 
     // Función para generar un UUID
@@ -132,8 +133,15 @@
             isSubmitting = true;
             
             // Validar que los campos requeridos estén presentes
-            if (!contact.name || !contact.telephon) {
-                errorMessage = 'Nombre y teléfono son campos obligatorios';
+            if (!contact.name) {
+                erroresFormulario.name = 'El nombre es obligatorio';
+                isSubmitting = false;
+                return;
+            }
+            
+            if (!contact.telephon) {
+                erroresFormulario.telephon = 'El teléfono es obligatorio';
+                isSubmitting = false;
                 return;
             }
 
@@ -166,6 +174,7 @@
                 contMode: contact.contMode || '',
                 notes: contact.notes || '',
                 propCont: contact.propCont || '',
+                publicUrl: contact.publicUrl || '', // Añadir campo para la URL pública
                 selecTO: contact.selecTO || '',
                 sendedProperties: Array.isArray(contact.sendedProperties) ? contact.sendedProperties : [],
                 title: contact.title || '',
@@ -186,7 +195,6 @@
             if (!cleanContactData.id || cleanContactData.id.trim() === '') {
                 // Generar un ID único si no existe
                 cleanContactData.id = generateUUID();
-                console.log('Generando nuevo ID para el contacto:', cleanContactData.id);
             }
 
             // Validación final del ID
@@ -200,8 +208,6 @@
                 cleanContactData.createdAt = Date.now();
             }
 
-            console.log('Guardando contacto con ID:', cleanContactData.id);
-            
             // Guardar el contacto en Firebase
             let result;
             if (existingContact) {
@@ -241,7 +247,6 @@
                 // Actualizar el store con la nueva lista
                 contactsStore.set([...currentContacts]);
                 
-                console.log('Contacto añadido/actualizado manualmente en el store:', cleanContactData);
             }
 
             // Sincronizar con Google Contacts (automáticamente sin confirmación)
@@ -249,7 +254,6 @@
                 const accessToken = await getAccessToken();
                 if (accessToken) {
                   await syncContact(cleanContactData, accessToken);
-                  console.log('Contacto sincronizado con Google Contacts');
                 }
             } catch (googleError) {
                 console.error('Error al sincronizar con Google Contacts:', googleError);
@@ -258,9 +262,6 @@
 
             // Emitir evento de éxito
             dispatch('success', { contact: cleanContactData });
-            
-            // Registrar el contacto guardado para depuración
-            console.log('Contacto guardado exitosamente:', cleanContactData);
             
             // Verificar nuevamente que el ID sea válido antes de redirigir
             if (cleanContactData.id && cleanContactData.id.trim() !== '') {
@@ -449,10 +450,11 @@
                             <div class="property-item">
                                 <div class="card-wrapper">
                                     <CardProperty 
-                                        {property} 
+                                        {property}                                         
                                         selectable={true}
                                         isSelected={contact.propCont === property.public_id}
                                         onSelect={() => {
+                                            
                                             contact.propCont = property.public_id;
                                             contact.selecTP = property.property_type || '';
                                             contact.rangeProp = property.operations?.[0]?.amount 
@@ -587,6 +589,35 @@
                         <Tags bind:propTags={contact.tagsProperty} />
                         <Ubication bind:ubication={contact.locaProperty} />
                     </div>
+                
+                    <div class="input-group full-width">
+                        <label for="notes">Notas</label>
+                        <textarea
+                            id="notes"
+                            class="notes"
+                            placeholder="Notas adicionales..."
+                            bind:value={contact.notes}
+                        ></textarea>
+                    </div>
+                    
+                    {#if contact.publicUrl}
+                    <div class="input-group full-width">
+                        <label for="publicUrl">Enlace para compartir por WhatsApp</label>
+                        <textarea
+                            id="publicUrl"
+                            class="public-url"
+                            readonly
+                            bind:value={contact.publicUrl}
+                            style="background-color: #f9f9f9; cursor: pointer;"
+                            on:click={(e) => {
+                                e.target.select();
+                                navigator.clipboard.writeText(contact.publicUrl);
+                                alert('¡Enlace copiado al portapapeles!');
+                            }}
+                        ></textarea>
+                        <small class="helper-text">Haz clic para copiar el enlace</small>
+                    </div>
+                    {/if}
                 </div>
             {/if}
             
@@ -640,7 +671,30 @@
         position: relative;
         flex: 1;
     }
-
+    
+    .full-width {
+        width: 100%;
+        margin: 15px 0;
+    }
+    
+    .public-url {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 0.9rem;
+        min-height: 60px;
+        margin-bottom: 5px;
+    }
+    
+    .helper-text {
+        color: #666;
+        font-size: 0.8rem;
+        margin-top: 2px;
+    }
+    
     .field-error {
         color: #ff3e3e;
         font-size: 0.8rem;
@@ -656,13 +710,6 @@
         padding: 10px;
         border-radius: 4px;
         margin-bottom: 20px;
-    }
-
-    .form-actions {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        margin-top: 20px;
     }
 
     .features {

@@ -13,6 +13,35 @@
   let selectedContact: Contact | null = null;
   let isLoading = false;
 
+  // Función para normalizar el valor de la etapa a un número
+  function normalizeStage(stage: any): number {
+    if (stage === undefined || stage === null || stage === 0) return 1;
+    
+    // Si ya es un número, devolver directamente
+    if (typeof stage === 'number') {
+      return stage <= 0 ? 1 : stage; // Si es 0 o negativo, devolver 1
+    }
+    
+    // Si es una cadena, intentar convertir
+    if (typeof stage === 'string') {
+      // Si es "Etapa1", "Etapa2", etc.
+      if (stage.startsWith('Etapa')) {
+        const num = parseInt(stage.replace('Etapa', '')) || 1;
+        return num <= 0 ? 1 : num; // Si es 0 o negativo, devolver 1
+      }
+      // Si es "E1", "E2", etc.
+      if (stage.startsWith('E')) {
+        const num = parseInt(stage.replace('E', '')) || 1;
+        return num <= 0 ? 1 : num; // Si es 0 o negativo, devolver 1
+      }
+      // Si es "1", "2", etc.
+      const num = parseInt(stage) || 1;
+      return num <= 0 ? 1 : num; // Si es 0 o negativo, devolver 1
+    }
+    
+    return 1; // Valor por defecto
+  }
+
   // Función para generar un UUID
   function generateUUID() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -49,9 +78,6 @@
     if (searchTerm.toLowerCase().includes('aabbcx') || searchTerm.toLowerCase().includes('zzzzz')) {
       const isMatch = (contact.name?.toLowerCase() === 'aabbcx' || 
                       contact.lastname?.toLowerCase() === 'zzzzz');
-      if (isMatch) {
-        console.log('Encontrado contacto específico en búsqueda:', contact);
-      }
       return isMatch;
     }
     
@@ -153,7 +179,7 @@
 
 <div class="container">
 
-  <nav class="navbar">
+  <!-- <div class="navbar"> -->
     <div class="mainContainer">
       {#if $systStatus === ""}
         <div class="title__container">
@@ -184,6 +210,26 @@
                 }
               }}
             >
+              <!-- Etapa del contacto - Siempre mostrar, con E1 por defecto -->
+              <div class="stage-indicator" style="position: absolute; top: 5px; right: 5px; width: 30px; height: 30px; border-radius: 50%; background-color: {
+                (() => {
+                  const stage = normalizeStage(cont.contactStage);
+                  switch(stage) {
+                    case 2: return '#ff8844';
+                    case 3: return '#ffcc44';
+                    case 4: return '#44cc44';
+                    case 5: return '#8844cc';
+                    default: return '#ff4444'; // E1 por defecto
+                  }
+                })()
+              }; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; font-family: 'Segoe UI', Arial, sans-serif; font-size: 0.85rem; letter-spacing: 0.5px; z-index: 9999; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: 2px solid white;">
+                {
+                  (() => {
+                    const stage = normalizeStage(cont.contactStage);
+                    return `E${stage}`;
+                  })()
+                }
+              </div>
               <CardContact {cont} />
             </div>
           {/each}
@@ -202,7 +248,7 @@
         />
       {/if}
     </div>
-  </nav>
+  <!-- </div> -->
   <footer class="footer">
   </footer>
 </div> 
@@ -264,7 +310,7 @@
     height: 10%;
     justify-content: space-between;
     align-items: center;
-    padding: 0;
+    padding: 1rem 5rem;
     margin: 0;
     gap: 10px;
   }
@@ -277,7 +323,7 @@
     height: 80%;
     justify-content: flex-start;
     align-items: flex-start;
-    padding: 0;
+    padding: 1rem;
     margin: 0;
     gap: 1rem;
     overflow-y: auto;
@@ -292,6 +338,12 @@
     padding: 0;
     margin: 0;
     cursor: pointer;
+    transition: transform 0.2s ease;
+    position: relative; /* Añadido para posicionar el indicador de etapa */
+  }
+
+  .card__container:hover {
+    transform: translateY(-5px);
   }
 
   .footer {
