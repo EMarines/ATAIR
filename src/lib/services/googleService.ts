@@ -23,6 +23,7 @@ let cachedTokens: {
 export function getAuthUrl() {
     // Registrar la URI de redirección para depuración
     console.log('REDIRECT_URI utilizada:', REDIRECT_URI);
+    console.log('GOOGLE_CLIENT_ID utilizado:', GOOGLE_CLIENT_ID);
     
     const params = new URLSearchParams({
         client_id: GOOGLE_CLIENT_ID,
@@ -33,40 +34,54 @@ export function getAuthUrl() {
         prompt: 'select_account consent'
     });
 
-    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    console.log('URL de autorización completa:', authUrl);
+    return authUrl;
 }
 
 // Obtener tokens con el código de autorización
 export async function getTokens(code: string) {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-            client_id: GOOGLE_CLIENT_ID,
-            client_secret: GOOGLE_CLIENT_SECRET,
-            redirect_uri: REDIRECT_URI,
-            grant_type: 'authorization_code',
-            code
-        })
-    });
+    console.log('Obteniendo tokens con código:', code);
+    console.log('Usando REDIRECT_URI:', REDIRECT_URI);
+    console.log('Usando GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID);
+    
+    try {
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                client_id: GOOGLE_CLIENT_ID,
+                client_secret: GOOGLE_CLIENT_SECRET,
+                redirect_uri: REDIRECT_URI,
+                grant_type: 'authorization_code',
+                code
+            })
+        });
 
-    if (!response.ok) {
-        throw new Error('Error al obtener tokens');
-    }
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('Error en respuesta de Google:', errorData);
+            throw new Error(`Error al obtener tokens: ${response.status} ${response.statusText} - ${errorData}`);
+        }
 
-    const tokens = await response.json();
-    
-    // Calcular la fecha de expiración si no viene incluida
-    if (!tokens.expiry_date) {
-        tokens.expiry_date = Date.now() + (tokens.expires_in * 1000);
+        const tokens = await response.json();
+        console.log('Tokens obtenidos correctamente:', { ...tokens, access_token: '***REDACTED***' });
+        
+        // Calcular la fecha de expiración si no viene incluida
+        if (!tokens.expiry_date) {
+            tokens.expiry_date = Date.now() + (tokens.expires_in * 1000);
+        }
+        
+        // Guardar en caché
+        cachedTokens = tokens;
+        
+        return tokens;
+    } catch (error) {
+        console.error('Error al obtener tokens:', error);
+        throw error;
     }
-    
-    // Guardar en caché
-    cachedTokens = tokens;
-    
-    return tokens;
 }
 
 // Actualizar token usando refresh_token

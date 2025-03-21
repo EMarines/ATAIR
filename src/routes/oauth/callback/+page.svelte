@@ -7,16 +7,34 @@
 
     let isLoading = true;
     let error = '';
+    let debugInfo = '';
 
     onMount(async () => {
         try {
             // Obtener el código de autorización de la URL
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
+            const errorParam = urlParams.get('error');
             
             // Registrar para depuración
             console.log('URL de callback completa:', window.location.href);
             console.log('Código de autorización recibido:', code);
+            console.log('Error recibido en parámetros:', errorParam);
+            
+            // Guardar información de depuración
+            debugInfo = `URL: ${window.location.href}\nCódigo: ${code || 'No recibido'}\nError: ${errorParam || 'Ninguno'}`;
+
+            if (errorParam) {
+                error = `Error de Google: ${errorParam}`;
+                isLoading = false;
+                
+                notifications.add({
+                    type: 'error',
+                    message: `Error de autenticación de Google: ${errorParam}`,
+                    duration: 8000
+                });
+                return;
+            }
 
             if (code) {
                 // Obtener tokens con el código
@@ -56,7 +74,7 @@
             }
         } catch (err) {
             console.error('Error en la autenticación:', err);
-            error = 'Error al procesar la autenticación con Google';
+            error = err instanceof Error ? err.message : 'Error al procesar la autenticación con Google';
             isLoading = false;
             
             // Mostrar notificación de error
@@ -77,6 +95,14 @@
     {:else if error}
         <h2>Error de autenticación</h2>
         <p>{error}</p>
+        
+        {#if debugInfo}
+        <details>
+            <summary>Información de depuración</summary>
+            <pre>{debugInfo}</pre>
+        </details>
+        {/if}
+        
         <a href="/" class="btn">Volver al inicio</a>
     {/if}
 </div>
@@ -99,7 +125,6 @@
         width: 50px;
         height: 50px;
         animation: spin 1s linear infinite;
-        margin: 20px auto;
     }
     
     @keyframes spin {
@@ -109,16 +134,39 @@
     
     .btn {
         display: inline-block;
-        background-color: #4285f4;
+        background-color: #3498db;
         color: white;
-        padding: 10px 20px;
-        text-decoration: none;
+        padding: 0.5rem 1rem;
         border-radius: 4px;
-        margin-top: 20px;
-        font-weight: bold;
+        text-decoration: none;
+        margin-top: 1rem;
     }
     
     .btn:hover {
-        background-color: #3367d6;
+        background-color: #2980b9;
+    }
+    
+    details {
+        margin: 1rem 0;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        max-width: 100%;
+        text-align: left;
+    }
+    
+    summary {
+        cursor: pointer;
+        font-weight: bold;
+    }
+    
+    pre {
+        white-space: pre-wrap;
+        word-break: break-all;
+        background-color: #f5f5f5;
+        padding: 0.5rem;
+        border-radius: 4px;
+        max-width: 100%;
+        overflow-x: auto;
     }
 </style>
