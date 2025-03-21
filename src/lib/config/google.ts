@@ -9,18 +9,35 @@ function getEnvVariable(name: string, defaultValue: string = ''): string {
     return defaultValue;
 }
 
-// Obtener la URL base actual
-function getBaseUrl(): string {
-    if (isBrowser) {
-        return `${window.location.protocol}//${window.location.host}`;
+// Obtener la URI de redirección según el entorno
+function getRedirectUri(): string {
+    // Primero intentar obtener la URI desde variables de entorno (prioridad máxima)
+    const envRedirectUri = getEnvVariable('VITE_GOOGLE_REDIRECT_URI');
+    if (envRedirectUri) {
+        return envRedirectUri;
     }
-    return 'http://localhost:5173'; // Valor por defecto para SSR
+    
+    // Si no hay variable de entorno, usar lógica basada en el entorno
+    if (isBrowser) {
+        const hostname = window.location.hostname;
+        
+        // Entorno de producción (dominio real)
+        if (hostname !== 'localhost' && !hostname.includes('127.0.0.1')) {
+            return `${window.location.protocol}//${hostname}/oauth/callback`;
+        }
+        
+        // Entorno de desarrollo local
+        return 'http://localhost:5173/oauth/callback';
+    }
+    
+    // Valor por defecto para SSR
+    return 'http://localhost:5173/oauth/callback';
 }
 
 export const GOOGLE_CONFIG = {
     clientId: getEnvVariable('VITE_GOOGLE_CLIENT_ID'),
     clientSecret: getEnvVariable('VITE_GOOGLE_CLIENT_SECRET'),
-    redirectUri: `${getBaseUrl()}/auth/callback`,
+    redirectUri: getRedirectUri(),
     scopes: [
         'https://www.googleapis.com/auth/contacts',
         'https://www.googleapis.com/auth/contacts.readonly'

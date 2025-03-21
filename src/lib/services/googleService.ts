@@ -21,13 +21,16 @@ let cachedTokens: {
 
 // Obtener URL de autorización
 export function getAuthUrl() {
+    // Registrar la URI de redirección para depuración
+    console.log('REDIRECT_URI utilizada:', REDIRECT_URI);
+    
     const params = new URLSearchParams({
         client_id: GOOGLE_CLIENT_ID,
         redirect_uri: REDIRECT_URI,
         response_type: 'code',
         scope: SCOPES.join(' '),
         access_type: 'offline',
-        prompt: 'consent'
+        prompt: 'select_account consent'
     });
 
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
