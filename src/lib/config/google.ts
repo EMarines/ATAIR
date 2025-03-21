@@ -21,7 +21,12 @@ function getRedirectUri(): string {
     if (isBrowser) {
         const hostname = window.location.hostname;
         
-        // Entorno de producción (dominio real)
+        // Entorno de producción (Vercel)
+        if (hostname === 'atair.vercel.app') {
+            return 'https://atair.vercel.app/oauth/callback';
+        }
+        
+        // Otro entorno de producción (dominio real)
         if (hostname !== 'localhost' && !hostname.includes('127.0.0.1')) {
             return `${window.location.protocol}//${hostname}/oauth/callback`;
         }
