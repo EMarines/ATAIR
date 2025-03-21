@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Depuración de OAuth</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .section {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Depuración de OAuth de Google</h1>
+    
+    <div class="section">
+        <h2>1. Información del Entorno</h2>
+        <button id="checkEnv">Verificar Variables de Entorno</button>
+        <div id="envResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Verificar Configuración de Google</h2>
+        <button id="checkConfig">Verificar Configuración</button>
+        <div id="configResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Generar URL de Autenticación</h2>
+        <button id="generateUrl">Generar URL de Auth</button>
+        <div id="urlResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. Limpiar Tokens</h2>
+        <button id="clearTokens">Limpiar Tokens de Google</button>
+        <div id="clearResult" class="result"></div>
+    </div>
+    
+    <script>
+        // Función para mostrar información de manera segura (ocultar secretos)
+        function safeDisplay(obj) {
+            const copy = {...obj};
+            if (copy.clientSecret && copy.clientSecret.length > 8) {
+                copy.clientSecret = copy.clientSecret.substring(0, 4) + '...' + 
+                    copy.clientSecret.substring(copy.clientSecret.length - 4);
+            }
+            return JSON.stringify(copy, null, 2);
+        }
+        
+        // 1. Verificar variables de entorno
+        document.getElementById('checkEnv').addEventListener('click', function() {
+            const result = document.getElementById('envResult');
+            
+            try {
+                // Intentar obtener variables de entorno de Vite
+                const envVars = {
+                    VITE_GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'No definido',
+                    VITE_GOOGLE_CLIENT_SECRET: import.meta.env.VITE_GOOGLE_CLIENT_SECRET ? 
+                        'Definido (valor oculto por seguridad)' : 'No definido',
+                    VITE_GOOGLE_REDIRECT_URI: import.meta.env.VITE_GOOGLE_REDIRECT_URI || 'No definido'
+                };
+                
+                result.innerHTML = '<h3>Variables de Entorno:</h3>' +
+                    '<pre>' + JSON.stringify(envVars, null, 2) + '</pre>';
+                
+                // Información del entorno
+                const envInfo = {
+                    hostname: window.location.hostname,
+                    protocol: window.location.protocol,
+                    fullUrl: window.location.href
+                };
+                
+                result.innerHTML += '<h3>Información del Entorno:</h3>' +
+                    '<pre>' + JSON.stringify(envInfo, null, 2) + '</pre>';
+                
+            } catch (error) {
+                result.innerHTML = '<p>Error al verificar variables de entorno: ' + error.message + '</p>';
+            }
+        });
+        
+        // 2. Verificar configuración de Google
+        document.getElementById('checkConfig').addEventListener('click', async function() {
+            const result = document.getElementById('configResult');
+            
+            try {
+                // Intentar importar la configuración de Google dinámicamente
+                const googleConfig = {
+                    clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'No disponible',
+                    clientSecret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET || 'No disponible',
+                    redirectUri: import.meta.env.VITE_GOOGLE_REDIRECT_URI || 
+                        `${window.location.protocol}//${window.location.hostname}/oauth/callback`,
+                    scopes: [
+                        'https://www.googleapis.com/auth/contacts',
+                        'https://www.googleapis.com/auth/contacts.readonly'
+                    ]
+                };
+                
+                result.innerHTML = '<h3>Configuración de Google:</h3>' +
+                    '<pre>' + safeDisplay(googleConfig) + '</pre>';
+                
+            } catch (error) {
+                result.innerHTML = '<p>Error al verificar configuración: ' + error.message + '</p>';
+            }
+        });
+        
+        // 3. Generar URL de autenticación
+        document.getElementById('generateUrl').addEventListener('click', function() {
+            const result = document.getElementById('urlResult');
+            
+            try {
+                const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+                
+                if (!clientId) {
+                    result.innerHTML = '<p>Error: No se encontró VITE_GOOGLE_CLIENT_ID</p>';
+                    return;
+                }
+                
+                const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || 
+                    `${window.location.protocol}//${window.location.hostname}/oauth/callback`;
+                
+                const scopes = [
+                    'https://www.googleapis.com/auth/contacts',
+                    'https://www.googleapis.com/auth/contacts.readonly'
+                ];
+                
+                const params = new URLSearchParams({
+                    client_id: clientId,
+                    redirect_uri: redirectUri,
+                    response_type: 'code',
+                    scope: scopes.join(' '),
+                    access_type: 'offline',
+                    prompt: 'select_account consent'
+                });
+                
+                const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+                
+                result.innerHTML = '<h3>URL de Autenticación:</h3>' +
+                    '<pre>' + authUrl + '</pre>' +
+                    '<p><a href="' + authUrl + '" target="_blank">Abrir URL de Autenticación</a></p>';
+                
+            } catch (error) {
+                result.innerHTML = '<p>Error al generar URL: ' + error.message + '</p>';
+            }
+        });
+        
+        // 4. Limpiar tokens
+        document.getElementById('clearTokens').addEventListener('click', function() {
+            const result = document.getElementById('clearResult');
+            
+            try {
+                // Eliminar tokens de Google
+                localStorage.removeItem('googleTokens');
+                localStorage.removeItem('googleContactsMap');
+                
+                result.innerHTML = '<p>Tokens eliminados correctamente.</p>';
+                
+            } catch (error) {
+                result.innerHTML = '<p>Error al limpiar tokens: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>
