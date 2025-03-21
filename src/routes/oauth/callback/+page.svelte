@@ -1,109 +1,137 @@
 <!-- Página de callback para autenticación de Google -->
-<script lang="ts">
+<script>
     import { onMount } from 'svelte';
-    import { getTokens } from '$lib/services/googleService';
     import { goto } from '$app/navigation';
+    import { getTokens, hasRequiredScopes } from '$lib/services/googleService';
     import { notifications } from '$lib/stores/notificationStore';
-
-    let isLoading = true;
-    let error = '';
-    let debugInfo = '';
-
+    import { GOOGLE_CONFIG } from '$lib/config/google';
+    
+    let loading = true;
+    let error = null;
+    let debugInfo = {
+        code: null,
+        error: null,
+        errorDescription: null,
+        state: null,
+        redirectUri: GOOGLE_CONFIG.redirectUri,
+        clientId: GOOGLE_CONFIG.clientId ? GOOGLE_CONFIG.clientId.substring(0, 8) + '...' : 'No disponible'
+    };
+    
     onMount(async () => {
         try {
-            // Obtener el código de autorización de la URL
+            // Obtener parámetros de la URL
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const errorParam = urlParams.get('error');
-            
-            // Registrar para depuración
-            console.log('URL de callback completa:', window.location.href);
-            console.log('Código de autorización recibido:', code);
-            console.log('Error recibido en parámetros:', errorParam);
+            const errorDescription = urlParams.get('error_description');
+            const state = urlParams.get('state');
             
             // Guardar información de depuración
-            debugInfo = `URL: ${window.location.href}\nCódigo: ${code || 'No recibido'}\nError: ${errorParam || 'Ninguno'}`;
-
+            debugInfo.code = code ? 'Presente (valor oculto)' : 'No presente';
+            debugInfo.error = errorParam;
+            debugInfo.errorDescription = errorDescription;
+            debugInfo.state = state;
+            
+            // Si hay un error en la respuesta de Google
             if (errorParam) {
-                error = `Error de Google: ${errorParam}`;
-                isLoading = false;
-                
-                notifications.add({
-                    type: 'error',
-                    message: `Error de autenticación de Google: ${errorParam}`,
-                    duration: 8000
-                });
+                error = `Error de Google: ${errorParam}${errorDescription ? ` - ${errorDescription}` : ''}`;
+                loading = false;
                 return;
             }
-
-            if (code) {
-                // Obtener tokens con el código
-                const tokens = await getTokens(code);
-                
-                // Asegurarse de que tengamos una fecha de expiración
-                if (!tokens.expiry_date) {
-                    tokens.expiry_date = Date.now() + (tokens.expires_in * 1000);
-                }
-                
-                // Guardar tokens
-                localStorage.setItem('googleTokens', JSON.stringify(tokens));
-                
-                // Mostrar notificación de éxito
+            
+            // Si no hay código de autorización
+            if (!code) {
+                error = 'No se recibió código de autorización. Por favor, intenta nuevamente.';
+                loading = false;
+                return;
+            }
+            
+            console.log('Código de autorización recibido, obteniendo tokens...');
+            
+            // Obtener tokens con el código
+            const tokens = await getTokens(code);
+            
+            // Verificar si se obtuvieron todos los permisos necesarios
+            if (!hasRequiredScopes(tokens)) {
                 notifications.add({
-                    type: 'success',
-                    message: 'Conectado a Google Contacts correctamente',
-                    duration: 5000
-                });
-                
-                // Recuperar la página de redirección guardada o ir a contactos
-                const redirectPath = localStorage.getItem('googleAuthRedirect') || '/contacts';
-                localStorage.removeItem('googleAuthRedirect'); // Limpiar después de usar
-                
-                // Redirigir de vuelta a la página correspondiente
-                goto(redirectPath);
-            } else {
-                error = 'No se recibió código de autorización';
-                isLoading = false;
-                
-                // Mostrar notificación de error
-                notifications.add({
-                    type: 'error',
-                    message: 'No se recibió código de autorización de Google',
+                    type: 'warning',
+                    message: 'No se concedieron todos los permisos necesarios. Algunas funciones de sincronización podrían no estar disponibles.',
                     duration: 8000
                 });
+            } else {
+                // Notificar éxito
+                notifications.add({
+                    type: 'success',
+                    message: 'Conexión con Google Contacts establecida correctamente',
+                    duration: 5000
+                });
             }
-        } catch (err) {
-            console.error('Error en la autenticación:', err);
-            error = err instanceof Error ? err.message : 'Error al procesar la autenticación con Google';
-            isLoading = false;
             
-            // Mostrar notificación de error
-            notifications.add({
-                type: 'error',
-                message: 'Error al procesar la autenticación con Google',
-                duration: 8000
-            });
+            // Redirigir a la página principal
+            goto('/');
+            
+        } catch (err) {
+            console.error('Error en el proceso de autenticación:', err);
+            error = err.message || 'Error desconocido durante la autenticación';
+            loading = false;
         }
     });
 </script>
 
-<div class="container">
-    {#if isLoading}
-        <h2>Autenticando...</h2>
-        <p>Por favor espera mientras procesamos tu inicio de sesión con Google.</p>
-        <div class="loader"></div>
+<div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-4">Autenticación con Google</h1>
+    
+    {#if loading}
+        <div class="bg-blue-100 p-4 rounded mb-4">
+            <p class="text-blue-800">Procesando autenticación con Google...</p>
+            <div class="mt-2 w-full bg-blue-200 rounded-full h-2.5">
+                <div class="bg-blue-600 h-2.5 rounded-full animate-pulse w-full"></div>
+            </div>
+        </div>
     {:else if error}
-        <h2>Error de autenticación</h2>
-        <p>{error}</p>
+        <div class="bg-red-100 p-4 rounded mb-4">
+            <h2 class="text-xl font-semibold text-red-800 mb-2">Error de autenticación</h2>
+            <p class="text-red-700">{error}</p>
+            
+            <div class="mt-4">
+                <a href="/" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Volver al inicio
+                </a>
+                <button 
+                    class="ml-2 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                    on:click={() => window.location.href = GOOGLE_CONFIG.authUrl}
+                >
+                    Reintentar autenticación
+                </button>
+            </div>
+        </div>
         
-        {#if debugInfo}
-        <details>
-            <summary>Información de depuración</summary>
-            <pre>{debugInfo}</pre>
-        </details>
-        {/if}
-        
-        <a href="/" class="btn">Volver al inicio</a>
+        <div class="mt-6 bg-gray-100 p-4 rounded">
+            <h3 class="text-lg font-semibold mb-2">Información de depuración</h3>
+            <pre class="bg-gray-200 p-2 rounded text-sm overflow-x-auto">
+{JSON.stringify(debugInfo, null, 2)}
+            </pre>
+            
+            <div class="mt-4">
+                <h4 class="font-semibold">Posibles soluciones:</h4>
+                <ul class="list-disc pl-5 mt-2">
+                    <li>Verifica que las credenciales de Google estén correctamente configuradas</li>
+                    <li>Asegúrate de que la URI de redirección ({debugInfo.redirectUri}) esté autorizada en la consola de Google Cloud</li>
+                    <li>Limpia los tokens almacenados y vuelve a intentar</li>
+                    <li>Verifica que la cuenta de Google tenga permisos para acceder a la API de Contacts</li>
+                </ul>
+            </div>
+            
+            <div class="mt-4">
+                <a 
+                    href="/static/clear-tokens.html" 
+                    target="_blank"
+                    class="text-blue-600 hover:text-blue-800 underline"
+                >
+                    Limpiar tokens almacenados
+                </a>
+            </div>
+        </div>
     {/if}
 </div>
 
