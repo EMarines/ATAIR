@@ -366,6 +366,54 @@ export async function getAccessToken() {
     }
 }
 
+// Obtener token de acceso válido
+export async function getAccessTokenRefreshed() {
+    if (!isBrowser) return null;
+    
+    try {
+        // Intentar obtener de la caché primero
+        if (cachedTokens) {
+            // Si está a punto de expirar, refrescarlo
+            if (cachedTokens.expiry_date < Date.now() + (5 * 60 * 1000)) {
+                console.log('Token a punto de expirar, refrescando...');
+                if (cachedTokens.refresh_token) {
+                    const newTokens = await refreshToken(cachedTokens.refresh_token);
+                    if (newTokens) {
+                        return newTokens.access_token;
+                    }
+                }
+            } else {
+                return cachedTokens.access_token;
+            }
+        }
+        
+        // Si no está en caché, intentar obtenerlo de localStorage
+        const tokensStr = localStorage.getItem('googleTokens');
+        if (!tokensStr) return null;
+        
+        const tokens = JSON.parse(tokensStr);
+        
+        // Actualizar caché
+        cachedTokens = tokens;
+        
+        // Si está a punto de expirar, refrescarlo
+        if (tokens.expiry_date < Date.now() + (5 * 60 * 1000)) {
+            console.log('Token a punto de expirar, refrescando...');
+            if (tokens.refresh_token) {
+                const newTokens = await refreshToken(tokens.refresh_token);
+                if (newTokens) {
+                    return newTokens.access_token;
+                }
+            }
+        }
+        
+        return tokens.access_token;
+    } catch (error) {
+        console.error('Error al obtener access token:', error);
+        return null;
+    }
+}
+
 // Transformar datos para Google
 function transformarParaGoogle(contactData: any, isUpdate = false) {
     // Concatenar notes con prpCont
@@ -603,7 +651,7 @@ export async function deleteGoogleContact(resourceName: string, accessToken: str
         if (!isBrowser) return;
         
         // Obtener token válido
-        const token = accessToken || getAccessToken();
+        const token = accessToken || getAccessTokenRefreshed();
         if (!token) {
             console.log('No hay token válido, redirigiendo a autenticación');
             window.location.href = getAuthUrl();
@@ -653,7 +701,7 @@ export async function updateGoogleContact(resourceName: string, contactData: any
         if (!isBrowser) return;
         
         // Obtener token válido
-        const token = accessToken || getAccessToken();
+        const token = accessToken || getAccessTokenRefreshed();
         if (!token) {
             console.log('No hay token válido, redirigiendo a autenticación');
             window.location.href = getAuthUrl();
@@ -772,53 +820,5 @@ export async function isGoogleAuthenticated() {
     } catch (error) {
         console.error('Error al verificar autenticación de Google:', error);
         return false;
-    }
-}
-
-// Obtener token de acceso válido
-export async function getAccessToken() {
-    if (!isBrowser) return null;
-    
-    try {
-        // Intentar obtener de la caché primero
-        if (cachedTokens) {
-            // Si está a punto de expirar, refrescarlo
-            if (cachedTokens.expiry_date < Date.now() + (5 * 60 * 1000)) {
-                console.log('Token a punto de expirar, refrescando...');
-                if (cachedTokens.refresh_token) {
-                    const newTokens = await refreshToken(cachedTokens.refresh_token);
-                    if (newTokens) {
-                        return newTokens.access_token;
-                    }
-                }
-            } else {
-                return cachedTokens.access_token;
-            }
-        }
-        
-        // Si no está en caché, intentar obtenerlo de localStorage
-        const tokensStr = localStorage.getItem('googleTokens');
-        if (!tokensStr) return null;
-        
-        const tokens = JSON.parse(tokensStr);
-        
-        // Actualizar caché
-        cachedTokens = tokens;
-        
-        // Si está a punto de expirar, refrescarlo
-        if (tokens.expiry_date < Date.now() + (5 * 60 * 1000)) {
-            console.log('Token a punto de expirar, refrescando...');
-            if (tokens.refresh_token) {
-                const newTokens = await refreshToken(tokens.refresh_token);
-                if (newTokens) {
-                    return newTokens.access_token;
-                }
-            }
-        }
-        
-        return tokens.access_token;
-    } catch (error) {
-        console.error('Error al obtener access token:', error);
-        return null;
     }
 }
