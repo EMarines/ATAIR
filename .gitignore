@@ -27,3 +27,10 @@ vite.config.ts.timestamp-*
 # Archivos de credenciales
 src/lib/config/google-credentials.ts
 functions/service-account-key.json
+src/lib/functions/service-account-key.json
+
+# Archivos de diagnóstico
+debug-tokens.html
+diagnostico-google.html
+diagnostico-simple.html
+firebase-debug.log
