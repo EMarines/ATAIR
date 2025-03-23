@@ -24,17 +24,55 @@
             const code = urlParams.get('code');
             const errorParam = urlParams.get('error');
             const errorDescription = urlParams.get('error_description');
-            const state = urlParams.get('state');
+            const stateParam = urlParams.get('state');
+            
+            // Parsear el estado si existe
+            let parsedState = null;
+            let returnPath = '/';
+            
+            if (stateParam) {
+                try {
+                    parsedState = JSON.parse(stateParam);
+                    if (parsedState && parsedState.returnTo) {
+                        returnPath = parsedState.returnTo;
+                    }
+                } catch (e) {
+                    console.warn('Error al parsear el estado:', e);
+                }
+            }
             
             // Guardar información de depuración
             debugInfo.code = code ? 'Presente (valor oculto)' : 'No presente';
             debugInfo.error = errorParam;
             debugInfo.errorDescription = errorDescription;
-            debugInfo.state = state;
+            debugInfo.state = stateParam;
             
             // Si hay un error en la respuesta de Google
             if (errorParam) {
-                error = `Error de Google: ${errorParam}${errorDescription ? ` - ${errorDescription}` : ''}`;
+                if (errorParam === 'access_denied') {
+                    error = 'Has cancelado el acceso a Google Contacts. No se ha establecido la conexión.';
+                } else {
+                    error = `Error de Google: ${errorParam}${errorDescription ? ` - ${errorDescription}` : ''}`;
+                }
+                
+                // Si el error es relacionado con la verificación de la app
+                if (errorParam === 'admin_policy_enforced' || errorDescription?.includes('unverified')) {
+                    notifications.add({
+                        type: 'info',
+                        message: 'Puedes ver instrucciones sobre cómo manejar la advertencia de "App no verificada" en la página de ayuda.',
+                        duration: 8000
+                    });
+                    
+                    // Añadir botón para ir a la página de ayuda
+                    setTimeout(() => {
+                        const helpButton = document.createElement('a');
+                        helpButton.href = '/oauth/help';
+                        helpButton.className = 'ml-2 bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded';
+                        helpButton.textContent = 'Ver instrucciones de ayuda';
+                        document.querySelector('.error-actions')?.appendChild(helpButton);
+                    }, 100);
+                }
+                
                 loading = false;
                 return;
             }
@@ -67,8 +105,8 @@
                 });
             }
             
-            // Redirigir a la página principal
-            goto('/');
+            // Redirigir a la página de retorno o a la principal
+            goto(returnPath);
             
         } catch (err) {
             console.error('Error en el proceso de autenticación:', err);
@@ -93,108 +131,26 @@
             <h2 class="text-xl font-semibold text-red-800 mb-2">Error de autenticación</h2>
             <p class="text-red-700">{error}</p>
             
-            <div class="mt-4">
+            <div class="mt-4 error-actions">
                 <a href="/" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                     Volver al inicio
                 </a>
                 <button 
                     class="ml-2 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-                    on:click={() => window.location.href = GOOGLE_CONFIG.authUrl}
+                    on:click={() => window.location.href = '/'}
                 >
-                    Reintentar autenticación
+                    Intentar nuevamente
                 </button>
             </div>
-        </div>
-        
-        <div class="mt-6 bg-gray-100 p-4 rounded">
-            <h3 class="text-lg font-semibold mb-2">Información de depuración</h3>
-            <pre class="bg-gray-200 p-2 rounded text-sm overflow-x-auto">
+            
+            <div class="mt-6">
+                <details>
+                    <summary class="cursor-pointer text-blue-600 hover:text-blue-800">Información de depuración</summary>
+                    <pre class="mt-2 bg-gray-100 p-2 rounded text-xs overflow-auto">
 {JSON.stringify(debugInfo, null, 2)}
-            </pre>
-            
-            <div class="mt-4">
-                <h4 class="font-semibold">Posibles soluciones:</h4>
-                <ul class="list-disc pl-5 mt-2">
-                    <li>Verifica que las credenciales de Google estén correctamente configuradas</li>
-                    <li>Asegúrate de que la URI de redirección ({debugInfo.redirectUri}) esté autorizada en la consola de Google Cloud</li>
-                    <li>Limpia los tokens almacenados y vuelve a intentar</li>
-                    <li>Verifica que la cuenta de Google tenga permisos para acceder a la API de Contacts</li>
-                </ul>
-            </div>
-            
-            <div class="mt-4">
-                <a 
-                    href="/static/clear-tokens.html" 
-                    target="_blank"
-                    class="text-blue-600 hover:text-blue-800 underline"
-                >
-                    Limpiar tokens almacenados
-                </a>
+                    </pre>
+                </details>
             </div>
         </div>
     {/if}
 </div>
-
-<style>
-    .container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 50vh;
-        padding: 2rem;
-        text-align: center;
-    }
-    
-    .loader {
-        border: 5px solid #f3f3f3;
-        border-top: 5px solid #3498db;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    .btn {
-        display: inline-block;
-        background-color: #3498db;
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        text-decoration: none;
-        margin-top: 1rem;
-    }
-    
-    .btn:hover {
-        background-color: #2980b9;
-    }
-    
-    details {
-        margin: 1rem 0;
-        padding: 0.5rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        max-width: 100%;
-        text-align: left;
-    }
-    
-    summary {
-        cursor: pointer;
-        font-weight: bold;
-    }
-    
-    pre {
-        white-space: pre-wrap;
-        word-break: break-all;
-        background-color: #f5f5f5;
-        padding: 0.5rem;
-        border-radius: 4px;
-        max-width: 100%;
-        overflow-x: auto;
-    }
-</style>

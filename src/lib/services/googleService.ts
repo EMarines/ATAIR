@@ -32,8 +32,12 @@ export function getAuthUrl() {
         response_type: 'code',
         scope: SCOPES.join(' '),
         access_type: 'offline',
-        prompt: 'select_account consent',
-        include_granted_scopes: 'true' // Incluir permisos ya concedidos
+        prompt: 'consent', // Siempre solicitar consentimiento para asegurar refresh_token
+        include_granted_scopes: 'true', // Incluir permisos ya concedidos
+        state: JSON.stringify({
+            returnTo: window.location.pathname,
+            timestamp: Date.now()
+        })
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -329,39 +333,129 @@ export async function getAccessToken() {
             // Si está a punto de expirar, refrescarlo
             if (cachedTokens.expiry_date < Date.now() + (5 * 60 * 1000)) {
                 console.log('Token a punto de expirar, refrescando...');
-                const newTokens = await refreshToken(cachedTokens.refresh_token);
-                if (newTokens) {
-                    return newTokens.access_token;
+                if (cachedTokens.refresh_token) {
+                    const newTokens = await refreshToken(cachedTokens.refresh_token);
+                    if (newTokens) {
+                        return newTokens.access_token;
+                    } else {
+                        // Si no se pudo refrescar, intentar obtener de localStorage
+                        console.log('No se pudo refrescar el token, intentando obtener de localStorage');
+                    }
+                } else {
+                    console.error('No hay refresh_token en cachedTokens');
+                    cachedTokens = null; // Invalidar caché
                 }
+            } else {
+                return cachedTokens.access_token;
             }
-            return cachedTokens.access_token;
         }
         
+        // Intentar obtener tokens de localStorage
         const tokensStr = localStorage.getItem('googleTokens');
         if (!tokensStr) {
             console.log('No hay tokens almacenados en localStorage');
-            notifications.warning('No hay conexión con Google Contacts. Conéctate para sincronizar contactos.');
+            notifications.add({
+                type: 'info',
+                message: 'Es necesario conectarse a Google Contacts para sincronizar contactos',
+                duration: 5000
+            });
             return null;
         }
         
-        const tokens = JSON.parse(tokensStr);
-        
-        // Guardar en caché
-        cachedTokens = tokens;
-        
-        // Si está a punto de expirar, refrescarlo
-        if (tokens.expiry_date < Date.now() + (5 * 60 * 1000)) {
-            console.log('Token a punto de expirar, refrescando...');
-            const newTokens = await refreshToken(tokens.refresh_token);
-            if (newTokens) {
-                return newTokens.access_token;
+        try {
+            const tokens = JSON.parse(tokensStr);
+            
+            // Validar que el token tiene la estructura esperada
+            if (!tokens || !tokens.access_token || !tokens.expiry_date) {
+                console.error('Tokens almacenados inválidos, eliminando...');
+                localStorage.removeItem('googleTokens');
+                notifications.add({
+                    type: 'error',
+                    message: 'La conexión con Google Contacts es inválida. Por favor, conéctate nuevamente. Los tokens almacenados no tienen la estructura esperada.',
+                    duration: 5000
+                });
+                return null;
             }
+            
+            // Guardar en caché
+            cachedTokens = tokens;
+            
+            // Si está a punto de expirar, refrescarlo
+            if (tokens.expiry_date < Date.now() + (5 * 60 * 1000)) {
+                console.log('Token a punto de expirar, refrescando...');
+                if (tokens.refresh_token) {
+                    const newTokens = await refreshToken(tokens.refresh_token);
+                    if (newTokens) {
+                        return newTokens.access_token;
+                    } else {
+                        console.error('No se pudo refrescar el token');
+                        // Si el token está expirado y no se pudo refrescar, notificar al usuario
+                        if (tokens.expiry_date < Date.now()) {
+                            notifications.add({
+                                type: 'error',
+                                message: 'Tu sesión con Google Contacts ha expirado. Por favor, conéctate nuevamente.',
+                                duration: 5000
+                            });
+                            localStorage.removeItem('googleTokens');
+                            cachedTokens = null;
+                            return null;
+                        }
+                    }
+                } else {
+                    console.error('No hay refresh_token en tokens de localStorage');
+                    localStorage.removeItem('googleTokens');
+                    cachedTokens = null;
+                    notifications.add({
+                        type: 'error',
+                        message: 'La conexión con Google Contacts es inválida (falta refresh token). Por favor, conéctate nuevamente.',
+                        duration: 5000
+                    });
+                    return null;
+                }
+            }
+            
+            return tokens.access_token;
+        } catch (parseError) {
+            console.error('Error al parsear tokens de localStorage:', parseError);
+            localStorage.removeItem('googleTokens');
+            cachedTokens = null;
+            notifications.add({
+                type: 'error',
+                message: 'La conexión con Google Contacts está corrupta. Por favor, conéctate nuevamente.',
+                duration: 5000
+            });
+            return null;
+        }
+    } catch (error) {
+        console.error('Error al obtener token de acceso:', error);
+        
+        // Verificar si el error está relacionado con la app no verificada
+        if (error instanceof Error && 
+            (error.message.includes('unverified') || 
+             error.message.includes('verificada') || 
+             error.message.includes('policy'))) {
+            
+            notifications.add({
+                type: 'warning',
+                message: 'Error de verificación de Google. Consulta la página de ayuda para instrucciones sobre cómo proceder.',
+                duration: 8000
+            });
+            
+            // Sugerir ir a la página de ayuda
+            setTimeout(() => {
+                if (confirm('¿Deseas ver instrucciones sobre cómo manejar la advertencia de "App no verificada"?')) {
+                    window.location.href = '/oauth/help';
+                }
+            }, 1000);
+        } else {
+            notifications.add({
+                type: 'error',
+                message: `Error al obtener token de acceso: ${error instanceof Error ? error.message : String(error)}`,
+                duration: 5000
+            });
         }
         
-        return tokens.access_token;
-    } catch (error) {
-        console.error('Error al obtener access token:', error);
-        notifications.error(`Error al obtener token de acceso: ${error instanceof Error ? error.message : String(error)}`);
+        cachedTokens = null;
         return null;
     }
 }
@@ -513,7 +607,7 @@ export async function syncContact(contactData: any, accessToken: string) {
                 const errorText = await response.text();
                 console.error('Error al crear contacto en Google:', response.status, errorText);
                 notifications.error(`Error al crear contacto en Google: ${response.status} ${errorText}`);
-                throw new Error(`Error al crear contacto: ${response.status} ${errorText}`);
+                throw new Error(`Error al crear contacto: ${response.status} ${response.statusText} - ${errorText}`);
             }
             
             const result = await response.json();
@@ -672,17 +766,33 @@ export async function deleteGoogleContact(resourceName: string, accessToken: str
             // Si el error es de autorización, intentar refrescar el token
             if (response.status === 401) {
                 console.log('Token expirado o inválido, intentando refrescar...');
-                const newTokens = await refreshToken();
-                
-                if (newTokens) {
-                    // Reintentar con el nuevo token
-                    return deleteGoogleContact(resourceName, newTokens.access_token);
-                } else {
-                    // Si no se pudo refrescar, redirigir a autenticación
+                const tokensStr = localStorage.getItem('googleTokens');
+                if (!tokensStr) {
+                    console.error('No hay tokens almacenados para refrescar');
                     localStorage.removeItem('googleTokens');
                     window.location.href = getAuthUrl();
+                    return null;
                 }
-                return;
+                
+                try {
+                    const tokens = JSON.parse(tokensStr);
+                    const newTokens = await refreshToken(tokens.refresh_token);
+                    
+                    if (newTokens) {
+                        // Reintentar con el nuevo token
+                        return deleteGoogleContact(resourceName, newTokens.access_token);
+                    } else {
+                        // Si no se pudo refrescar, redirigir a autenticación
+                        localStorage.removeItem('googleTokens');
+                        window.location.href = getAuthUrl();
+                        return null;
+                    }
+                } catch (error) {
+                    console.error('Error al refrescar token:', error);
+                    localStorage.removeItem('googleTokens');
+                    window.location.href = getAuthUrl();
+                    return null;
+                }
             }
             
             throw new Error('Error al eliminar contacto de Google');
@@ -725,17 +835,33 @@ export async function updateGoogleContact(resourceName: string, contactData: any
             // Si el error es de autorización, intentar refrescar el token
             if (getResponse.status === 401) {
                 console.log('Token expirado o inválido, intentando refrescar...');
-                const newTokens = await refreshToken();
-                
-                if (newTokens) {
-                    // Reintentar con el nuevo token
-                    return updateGoogleContact(resourceName, contactData, newTokens.access_token);
-                } else {
-                    // Si no se pudo refrescar, redirigir a autenticación
+                const tokensStr = localStorage.getItem('googleTokens');
+                if (!tokensStr) {
+                    console.error('No hay tokens almacenados para refrescar');
                     localStorage.removeItem('googleTokens');
                     window.location.href = getAuthUrl();
+                    return null;
                 }
-                return;
+                
+                try {
+                    const tokens = JSON.parse(tokensStr);
+                    const newTokens = await refreshToken(tokens.refresh_token);
+                    
+                    if (newTokens) {
+                        // Reintentar con el nuevo token
+                        return updateGoogleContact(resourceName, contactData, newTokens.access_token);
+                    } else {
+                        // Si no se pudo refrescar, redirigir a autenticación
+                        localStorage.removeItem('googleTokens');
+                        window.location.href = getAuthUrl();
+                        return null;
+                    }
+                } catch (error) {
+                    console.error('Error al refrescar token:', error);
+                    localStorage.removeItem('googleTokens');
+                    window.location.href = getAuthUrl();
+                    return null;
+                }
             }
             
             throw new Error('Error al obtener información del contacto en Google');
@@ -770,17 +896,33 @@ export async function updateGoogleContact(resourceName: string, contactData: any
             // Si el error es de autorización, intentar refrescar el token
             if (response.status === 401) {
                 console.log('Token expirado o inválido, intentando refrescar...');
-                const newTokens = await refreshToken();
-                
-                if (newTokens) {
-                    // Reintentar con el nuevo token
-                    return updateGoogleContact(resourceName, contactData, newTokens.access_token);
-                } else {
-                    // Si no se pudo refrescar, redirigir a autenticación
+                const tokensStr = localStorage.getItem('googleTokens');
+                if (!tokensStr) {
+                    console.error('No hay tokens almacenados para refrescar');
                     localStorage.removeItem('googleTokens');
                     window.location.href = getAuthUrl();
+                    return null;
                 }
-                return;
+                
+                try {
+                    const tokens = JSON.parse(tokensStr);
+                    const newTokens = await refreshToken(tokens.refresh_token);
+                    
+                    if (newTokens) {
+                        // Reintentar con el nuevo token
+                        return updateGoogleContact(resourceName, contactData, newTokens.access_token);
+                    } else {
+                        // Si no se pudo refrescar, redirigir a autenticación
+                        localStorage.removeItem('googleTokens');
+                        window.location.href = getAuthUrl();
+                        return null;
+                    }
+                } catch (error) {
+                    console.error('Error al refrescar token:', error);
+                    localStorage.removeItem('googleTokens');
+                    window.location.href = getAuthUrl();
+                    return null;
+                }
             }
             
             throw new Error('Error al actualizar contacto en Google');

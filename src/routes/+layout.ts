@@ -1,6 +1,5 @@
 import { browser } from '$app/environment';
 import { db } from '$lib/firebase';
-import { collection, onSnapshot, getDocs } from 'firebase/firestore';
 import { contactsStore, binnaclesStore, propertiesStore, todoStore } from '$lib/stores/dataStore';
 import type { Contact, Binnacle, Property, Todo } from '$lib/types';
 
@@ -13,6 +12,24 @@ export const load = async () => {
 
     if (browser) {
         try {
+            // Importar dinámicamente las funciones de Firestore
+            let collection, onSnapshot, getDocs;
+            try {
+                const firestore = await import('firebase/firestore');
+                collection = firestore.collection;
+                onSnapshot = firestore.onSnapshot;
+                getDocs = firestore.getDocs;
+            } catch (error) {
+                console.error('Error importing Firestore modules:', error);
+                // Si no se pueden importar los módulos, devolver datos vacíos
+                return {
+                    contacts: [],
+                    binnacles: [],
+                    properties: [],
+                    todos: []
+                };
+            }
+
             // Carga inicial de datos
             const [contactsSnap, binnaclesSnap, propertiesSnap, todosSnap] = await Promise.all([
                 getDocs(collection(db, 'contacts')),

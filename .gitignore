@@ -26,3 +26,4 @@ vite.config.ts.timestamp-*
 
 # Archivos de credenciales
 src/lib/config/google-credentials.ts
+functions/service-account-key.json

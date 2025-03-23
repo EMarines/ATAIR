@@ -2,6 +2,7 @@
   import { contactsStore, propertiesStore, systStatus, contact } from '$lib/stores/dataStore';
   import { Search, CardContact, Button } from '$components';
   import AddContact from '$lib/components/AddContact.svelte';
+  import GoogleSyncManager from '$lib/components/GoogleSyncManager.svelte';
   import type { Contact } from '$lib/types';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
@@ -184,6 +185,9 @@
       {#if $systStatus === ""}
         <div class="title__container">
           <h1 class="title">Contactos</h1>
+          <div class="sync-container">
+            <GoogleSyncManager />
+          </div>
         </div>
         
         <div class="headContainer">
@@ -254,54 +258,41 @@
 </div> 
 
 <style>
-  /* .container {
-    display: flex;
-    flex-direction: column;
+  .container {
     width: 100%;
     height: 100%;
-    padding: 0;
-    margin: 0;
-    overflow-y: auto;
-  } */
-
-  /* .navbar {
     display: flex;
     flex-direction: column;
-    width: 100%;
-    height: 10%;
-    justify-content: center;
     align-items: center;
-    padding: 0;
-    margin: 0;
-  } */
+    justify-content: flex-start;
+    padding: 20px;
+    box-sizing: border-box;
+  }
 
   .mainContainer {
+    width: 100%;
+    max-width: 1200px;
     display: flex;
     flex-direction: column;
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    margin: 0;
-    overflow-y: auto;
+    gap: 20px;
   }
 
   .title__container {
     display: flex;
-    flex-direction: row;
-    width: 100%;
-    justify-content: center;
     align-items: center;
-
+    justify-content: space-between;
+    width: 100%;
   }
 
-  /* .title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #fff;
-    text-align: center;
+  .sync-container {
+    max-width: 400px;
+  }
+
+  .title {
+    font-size: 2rem;
+    font-weight: 600;
     margin: 0;
-    padding: 0;
-  } */
+  }
 
   .headContainer {
     display: flex;

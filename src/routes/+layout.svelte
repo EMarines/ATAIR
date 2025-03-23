@@ -13,6 +13,7 @@
   import { goto } from '$app/navigation';
   import { testMode } from '$lib/stores/testModeStore';
   import NotificationContainer from '$lib/components/NotificationContainer.svelte';
+  import { initSyncListeners } from '$lib/services/syncService';
 
   const { isAuthenticated, checkAuth } = useAuth();
   const unsubscribes: (() => void)[] = [];
@@ -37,6 +38,26 @@
       });
       
       unsubscribes.push(unsubscribeTestMode);
+      
+      // Inicializar el servicio de sincronización automática con Google Contacts
+      if ($isAuthenticated) {
+        try {
+          console.log('Inicializando servicio de sincronización automática con Google Contacts');
+          // Importar la función para verificar la autenticación con Google
+          const { isGoogleAuthenticated } = await import('$lib/services/googleService');
+          
+          // Verificar si el usuario está autenticado con Google antes de inicializar
+          const googleAuth = await isGoogleAuthenticated();
+          if (googleAuth) {
+            console.log('Usuario autenticado con Google, inicializando sincronización');
+            initSyncListeners();
+          } else {
+            console.log('Usuario no autenticado con Google, la sincronización automática no se iniciará');
+          }
+        } catch (error) {
+          console.error('Error al inicializar el servicio de sincronización:', error);
+        }
+      }
     }
     
     return () => {
