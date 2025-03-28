@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
     import { onMount } from 'svelte';
     import { notifications } from '$lib/stores/notificationStore';
     import { db } from '$lib/firebase';
@@ -285,4 +285,4 @@
     .icon {
         font-weight: bold;
     }
-</style>
+</style> -->

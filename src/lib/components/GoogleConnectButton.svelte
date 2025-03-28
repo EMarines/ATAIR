@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
     import { getAuthUrl, tieneTokenValido } from '$lib/services/googleService';
     import { onMount } from 'svelte';
     import { notifications } from '$lib/stores/notificationStore';
@@ -168,4 +168,4 @@
     .disconnect-button:hover {
         background-color: rgba(217, 48, 37, 0.04);
     }
-</style>
+</style> -->

@@ -1,4 +1,4 @@
-<!-- Componente para sincronización con Google Contacts -->
+<!-- Componente para sincronización con Google Contacts
 <script lang="ts">
     import { getAuthUrl, getContacts, syncContact, tieneTokenValido, deleteGoogleContact, updateGoogleContact, getAccessToken } from '$lib/services/googleService';
     import { contactsStore } from '$lib/stores/dataStore';
@@ -152,4 +152,4 @@
 </script>
 
 <!-- Componente invisible que solo maneja la sincronización en segundo plano -->
-<div style="display: none;"></div>
+<div style="display: none;"></div> -->
