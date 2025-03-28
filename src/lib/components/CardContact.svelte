@@ -43,7 +43,7 @@
     </div>
     <div class="info__cont">      
       {#if cont.telephon}
-        <span> <i class="fa-solid fa-mobile-screen-button"></i> {toTele(cont.telephon)} {cont.contactStage}</span>
+        <span> <i class="fa-solid fa-mobile-screen-button"></i>{toTele(cont.telephon)}</span>
       {/if}
       {#if cont.email }
         <span> <i class="fa-regular fa-envelope"></i> {cont.email} </span>
@@ -80,6 +80,12 @@
 {/if}
 
 <style>
+  /* .card-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  } */
+
   .card {
     display: flex;
     flex-direction: column;
@@ -90,6 +96,8 @@
     padding: 1rem;
     gap: 0.5rem;
     transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+    box-sizing: border-box;
   }
 
   .card:hover {
@@ -110,6 +118,7 @@
     width: 100%;
     height: 100%;
     font-weight: 400;
+    justify-content: space-between;
   }
 
   .card__Title {
@@ -122,51 +131,5 @@
     width: 100%;
     height: 30%;
     justify-content: space-around;
-    align-items: center;
-    font-size: 1rem;
-    font-weight:400;
-    padding-top: 8px;
-    gap: 15px;
-  }
-
-  .info__cont {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 20%;
-    align-items: center;
-    justify-content: center;
-    font-size: .75rem;
-    font-weight: 500;
-    gap: 10px;
-    margin-bottom: 5px;
-    overflow: hidden;
-  }
-
-  .info__features {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 20%;
-    align-items: center;
-    justify-content: center;
-    font-size: .75rem;
-    font-weight: 500;
-  }
-
-  .info__tags {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    height: 20%;
-    font-size: .75rem;
-    flex-wrap: wrap;
-    gap: 15px;
-  }
-
-  @media (max-width: 400px) {
-    .card {
-      max-width: 100%;
-    }
   }
 </style>

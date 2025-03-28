@@ -42,6 +42,7 @@
     let showAdditionalFields = false;
     let errorMessage = ''; // Variable para almacenar mensajes de error
     let showFooter = true; // Variable para controlar la visibilidad del footer
+    let selectedProperties: string[] = [];
   
     // Estado unificado del formulario
     export let existingContact: Contact | null = null;
@@ -128,8 +129,10 @@
     }
   
     async function handleSubmit() {
+        console.log($propertyStore, contact, "handleSubmit");
         try {
             isSubmitting = true;
+           
             
             // Validar que los campos requeridos estén presentes
             if (!contact.name || !contact.telephon) {
@@ -244,17 +247,17 @@
                 console.log('Contacto añadido/actualizado manualmente en el store:', cleanContactData);
             }
   
-            // Sincronizar con Google Contacts (automáticamente sin confirmación)
-            try {
-                const accessToken = await getAccessToken();
-                if (accessToken) {
-                  await syncContact(cleanContactData, accessToken);
-                  console.log('Contacto sincronizado con Google Contacts');
-                }
-            } catch (googleError) {
-                console.error('Error al sincronizar con Google Contacts:', googleError);
-                // Continuar a pesar del error con Google
-            }
+            // // Sincronizar con Google Contacts (automáticamente sin confirmación)
+            // try {
+            //     const accessToken = await getAccessToken();
+            //     if (accessToken) {
+            //       await syncContact(cleanContactData, accessToken);
+            //       console.log('Contacto sincronizado con Google Contacts');
+            //     }
+            // } catch (googleError) {
+            //     console.error('Error al sincronizar con Google Contacts:', googleError);
+            //     // Continuar a pesar del error con Google
+            // }
   
             // Emitir evento de éxito
             dispatch('success', { contact: cleanContactData });
@@ -291,6 +294,16 @@
             isSubmitting = false;
         }
     }
+
+    function handlePropertySelection(property: string) {
+    if (selectedProperties.includes(property)) {
+      // Si la propiedad ya está seleccionada, la eliminamos
+      selectedProperties = selectedProperties.filter(p => p !== property);
+    } else {
+      // Si la propiedad no está seleccionada, la agregamos
+      selectedProperties = [...selectedProperties, property];
+    }
+  }
   
     async function onCancel() {
         if (isDirty) {
@@ -355,7 +368,7 @@
             <div class="error-message">
                 {erroresFormulario.general}
             </div>
-        {/if}
+        {/if} 
   
         <div class="features">
             <div class="inp__lat">  

@@ -1,6 +1,6 @@
 <script>
-	  export let searchTerm = "";
-		 export let placeHolder ="";
+	export let searchTerm = "";
+	export let placeHolder ="";
 </script>
 
 <div id="search-input-cont">

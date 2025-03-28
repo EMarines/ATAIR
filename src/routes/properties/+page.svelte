@@ -15,6 +15,7 @@
 
 //   /  Le da el valor de prop a $property y Redirige a propSelect
     function seleProperty(prop: Property) {
+      console.log(prop);
       goto("/property/" + prop.public_id)
     }
 

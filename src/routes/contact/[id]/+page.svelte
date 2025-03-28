@@ -489,9 +489,9 @@
             </div>
 
             <!-- Componente invisible que maneja la sincronización en segundo plano - solo se renderiza si el contacto tiene un ID válido -->
-            {#if contact && contact.id && contact.id.trim() !== ''}
+            <!-- {#if contact && contact.id && contact.id.trim() !== ''}
               <GoogleContactsSync contact={contact} />
-            {/if}
+            {/if} -->
 
             {#if mostBusq}
               <div class="search">
@@ -813,11 +813,11 @@
       justify-content: space-evenly;
     }
 
-      .schedule{
+      /* .schedule{
         display: flex;
         align-items: left;
         justify-content: left;
-      }
+      } */
       .binnacleHome {
         display: flex;
         flex-direction: column;
@@ -923,18 +923,18 @@
     }
 
     /* Google Sync Container */
-    .google-sync-container {
+    /* .google-sync-container {
       display: flex;
       width: 100%;
       margin: 1rem 0;
       justify-content: center;
-    }
+    } */
 
-    .google-sync-container :global(.google-sync) {
+    /* .google-sync-container :global(.google-sync) {
       width: 100%;
       max-width: 400px;
     }
-  
+   */
       
     .textarea-wrapper {
       position: relative;
