@@ -9,7 +9,7 @@
   export let isSelected = false;
   
   let imgError = false;
-  let imgSrc = property?.title_image_thumb || '/placeholder-property.png';
+  $: imgSrc = property?.title_image_thumb || '/placeholder-property.png';
 
   // Función para manejar errores de carga de imagen
   function handleImageError() {
@@ -32,6 +32,8 @@
         .replaceAll(" Y ", "")
         .trim();
   };
+
+
 
 </script>
 

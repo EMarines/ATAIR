@@ -184,9 +184,6 @@
 
     // Selecciona Mensaje para WA
     async function selMsgWA() {
-      // Primero intentamos usar la propiedad seleccionada de la lista
-      // property = propCheck[sig];
-      
       // Si no hay propiedad seleccionada, verificamos si el contacto tiene una propiedad asociada
       if (!property) {
         // Prioridad 1: Usar la URL del contacto si existe
@@ -225,9 +222,11 @@
         }
         
         // Si no hay ninguna propiedad disponible
-        console.error("Error: No hay una propiedad seleccionada para compartir");
-        alert("No hay una propiedad seleccionada para compartir");
-        return;
+        if($systStatus === "sendProps"){
+          console.error("Error: No hay una propiedad seleccionada para compartir");
+          alert("No hay una propiedad seleccionada para compartir");
+          return;
+        }
       }
       
       // Envía la propiedad seleccionada del listado (propCheck) Alta de Contacto
