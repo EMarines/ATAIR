@@ -217,6 +217,7 @@
         // Limpiar la suscripción
         unsubscribe();
         
+        
         if (foundProperty) {
           return;
         }

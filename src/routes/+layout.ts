@@ -3,6 +3,9 @@ import { db } from '$lib/firebase/firebase';
 import { collection, onSnapshot, getDocs } from 'firebase/firestore';
 import { contactsStore, binnaclesStore, propertiesStore, todoStore } from '$lib/stores/dataStore';
 import type { Contact, Binnacle, Property, Todo } from '$lib/types';
+import { initializeFirebase } from '$lib/firebase/firebase';
+
+await initializeFirebase();
 
 export const load = async () => {
     // Inicializa los stores con arrays vacíos
