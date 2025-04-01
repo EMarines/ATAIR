@@ -1,4 +1,4 @@
-<!-- Página de callback para autenticación de Google -->
+<!-- Página de callback para autenticación de Google
 <script>
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
@@ -153,4 +153,4 @@
             </div>
         </div>
     {/if}
-</div>
+</div> -->

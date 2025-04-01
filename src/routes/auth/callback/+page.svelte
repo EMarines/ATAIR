@@ -1,7 +1,7 @@
-<!-- Página de callback para autenticación de Google -->
+<!-- Página de callback para autenticación de Google
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { getTokens } from '$lib/services/googleService';
+    // import { getTokens } from '$lib/services/googleService';
     import { goto } from '$app/navigation';
 
     let isLoading = true;
@@ -104,4 +104,4 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
-</style>
+</style> -->

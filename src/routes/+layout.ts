@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { db } from '$lib/firebase/firebase';
-import { collection, onSnapshot, getDocs } from 'firebase/firestore';
+// import { collection, onSnapshot, getDocs } from 'firebase/firestore';
 import { contactsStore, binnaclesStore, propertiesStore, todoStore } from '$lib/stores/dataStore';
 import type { Contact, Binnacle, Property, Todo } from '$lib/types';
 

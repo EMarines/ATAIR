@@ -13,63 +13,63 @@
   import { goto } from '$app/navigation';
   import { testMode } from '$lib/stores/testModeStore';
   import NotificationContainer from '$lib/components/NotificationContainer.svelte';
-  import { initSyncListeners } from '$lib/services/syncService';
+  // import { initSyncListeners } from '$lib/services/syncService';
 
-  const { isAuthenticated, checkAuth } = useAuth();
+  // const { isAuthenticated, checkAuth } = useAuth();
   const unsubscribes: (() => void)[] = [];
 
   // Función para obtener la instancia de Firestore
   const getDb = () => db;
 
-  // Variable para mostrar el indicador de modo de prueba
-  let isTestMode = false;
+  // // Variable para mostrar el indicador de modo de prueba
+  // let isTestMode = false;
 
-  onMount(async () => {
-    if (browser) {
-      const isValid = await checkAuth();
-      if (!isValid && window.location.pathname !== '/login') {
-        goto('/login');
-      }
+  // onMount(async () => {
+  //   if (browser) {
+  //     const isValid = await checkAuth();
+  //     if (!isValid && window.location.pathname !== '/login') {
+  //       goto('/login');
+  //     }
       
-      // Suscribirse al store de testMode
-      const unsubscribeTestMode = testMode.subscribe(value => {
-        isTestMode = value;
-        console.log('Modo de prueba actualizado en layout:', value);
-      });
+  //     // Suscribirse al store de testMode
+  //     const unsubscribeTestMode = testMode.subscribe(value => {
+  //       isTestMode = value;
+  //       console.log('Modo de prueba actualizado en layout:', value);
+  //     });
       
-      unsubscribes.push(unsubscribeTestMode);
+  //     unsubscribes.push(unsubscribeTestMode);
       
-      // Inicializar el servicio de sincronización automática con Google Contacts
-      if ($isAuthenticated) {
-        try {
-          console.log('Inicializando servicio de sincronización automática con Google Contacts');
-          // Importar la función para verificar la autenticación con Google
-          const { isGoogleAuthenticated } = await import('$lib/services/googleService');
+    //   // Inicializar el servicio de sincronización automática con Google Contacts
+    //   if ($isAuthenticated) {
+    //     try {
+    //       console.log('Inicializando servicio de sincronización automática con Google Contacts');
+    //       // Importar la función para verificar la autenticación con Google
+    //       const { isGoogleAuthenticated } = await import('$lib/services/googleService');
           
-          // Verificar si el usuario está autenticado con Google antes de inicializar
-          const googleAuth = await isGoogleAuthenticated();
-          if (googleAuth) {
-            console.log('Usuario autenticado con Google, inicializando sincronización');
-            initSyncListeners();
-          } else {
-            console.log('Usuario no autenticado con Google, la sincronización automática no se iniciará');
-          }
-        } catch (error) {
-          console.error('Error al inicializar el servicio de sincronización:', error);
-        }
-      }
-    }
+    //       // Verificar si el usuario está autenticado con Google antes de inicializar
+    //       const googleAuth = await isGoogleAuthenticated();
+    //       if (googleAuth) {
+    //         console.log('Usuario autenticado con Google, inicializando sincronización');
+    //         initSyncListeners();
+    //       } else {
+    //         console.log('Usuario no autenticado con Google, la sincronización automática no se iniciará');
+    //       }
+    //     } catch (error) {
+    //       console.error('Error al inicializar el servicio de sincronización:', error);
+    //     }
+    //   }
+    // }
     
-    return () => {
-      // Desuscribirse de todos los listeners
-      unsubscribes.forEach(unsubscribe => unsubscribe());
-    };
-  });
+  //   return () => {
+  //     // Desuscribirse de todos los listeners
+  //     unsubscribes.forEach(unsubscribe => unsubscribe());
+  //   };
+  // });
 
-  $: if (browser && $isAuthenticated) {
-    // Limpiar subscripciones anteriores
-    unsubscribes.forEach(unsubscribe => unsubscribe());
-    unsubscribes.length = 0;
+  // $: if (browser && $isAuthenticated) {
+  //   // Limpiar subscripciones anteriores
+  //   unsubscribes.forEach(unsubscribe => unsubscribe());
+  //   unsubscribes.length = 0;
 
     // Configurar nuevos listeners
     unsubscribes.push(
@@ -121,6 +121,7 @@
                   halfBathroom: data.halfBathroom || '',
                   locaProperty: Array.isArray(data.locaProperty) ? data.locaProperty : [],
                   tagsProperty: Array.isArray(data.tagsProperty) ? data.tagsProperty : [],
+                  modePay: data.modePay || '', // Ensure modePay is included
                   // Incluir el resto de los datos
                   ...data
                 };
@@ -179,20 +180,20 @@
         }
       )
     );
-  }
+  // }
 
-  onDestroy(() => {
-    unsubscribes.forEach(unsubscribe => unsubscribe());
-  });
+  // onDestroy(() => {
+  //   unsubscribes.forEach(unsubscribe => unsubscribe());
+  // });
 </script>
 
 <div class="app">
-  {#if isTestMode}
+  <!-- {#if isTestMode}
     <div class="test-mode-indicator">
       MODO PRUEBA - Base de datos: Curso Svelte
     </div>
-  {/if}
-  
+  {/if} -->
+</div>
   <NotificationContainer />
   
   <header>
@@ -206,7 +207,7 @@
   <div class="footer-container">
     <Footer />
   </div>
-</div>
+<!-- </div> -->
 
 <style>
   .app {
@@ -234,7 +235,7 @@
     width: 100%;
     z-index: 1;
   }
-  
+/*   
   .test-mode-indicator {
     background-color: #ff9800;
     color: white;
@@ -244,5 +245,5 @@
     position: sticky;
     top: 0;
     z-index: 1000;
-  }
+  } */
 </style>

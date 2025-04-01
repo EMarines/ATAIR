@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
     import { goto } from '$app/navigation';
     import { getAuthUrl } from '$lib/services/googleService';
 </script>
@@ -185,4 +185,4 @@
             width: 100%;
         }
     }
-</style>
+</style> -->

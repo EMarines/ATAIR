@@ -7,7 +7,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { AddToShedule, CardBinnacle, CardProperty, Search } from '$components';
   import AddContact from '$lib/components/AddContact.svelte';
-  import GoogleContactsSync from '$lib/components/GoogleContactsSync.svelte';
+  // import GoogleContactsSync from '$lib/components/GoogleContactsSync.svelte';
   import { formatDate, toComaSep, toTele, infoToBinnacle, filtContPropInte, sendWhatsApp, sortBinnacle } from '$lib/functions';
 
   export let data;
@@ -95,38 +95,38 @@
 
     if (confirm("¿Deseas eliminar definitivamente al contacto?")) {
         try {
-            // Verificar si el contacto está sincronizado con Google
-            const googleContactsMapStr = localStorage.getItem('googleContactsMap');
-            if (googleContactsMapStr) {
-                const googleContactsMap = JSON.parse(googleContactsMapStr);
-                const googleResourceName = googleContactsMap[contactId];
+            // // Verificar si el contacto está sincronizado con Google
+            // const googleContactsMapStr = localStorage.getItem('googleContactsMap');
+            // if (googleContactsMapStr) {
+            //     const googleContactsMap = JSON.parse(googleContactsMapStr);
+            //     const googleResourceName = googleContactsMap[contactId];
                 
-                // Si está sincronizado con Google, eliminarlo automáticamente
-                if (googleResourceName) {
-                    try {
-                        // Importar la función necesaria para eliminar de Google
-                        const { deleteGoogleContact, getAccessToken } = await import('$lib/services/googleService');
+            //     // Si está sincronizado con Google, eliminarlo automáticamente
+            //     if (googleResourceName) {
+            //         try {
+            //             // Importar la función necesaria para eliminar de Google
+            //             const { deleteGoogleContact, getAccessToken } = await import('$lib/services/googleService');
                         
-                        // Obtener token de acceso
-                        const accessToken = await getAccessToken();
-                        if (!accessToken) {
-                            console.log("No se pudo obtener un token de acceso válido para Google. El contacto se eliminará solo de la base de datos local.");
-                        } else {
-                            // Eliminar de Google
-                            await deleteGoogleContact(googleResourceName, accessToken);
+            //             // Obtener token de acceso
+            //             const accessToken = await getAccessToken();
+            //             if (!accessToken) {
+            //                 console.log("No se pudo obtener un token de acceso válido para Google. El contacto se eliminará solo de la base de datos local.");
+            //             } else {
+            //                 // Eliminar de Google
+            //                 await deleteGoogleContact(googleResourceName, accessToken);
                             
-                            // Eliminar la asociación
-                            delete googleContactsMap[contactId];
-                            localStorage.setItem('googleContactsMap', JSON.stringify(googleContactsMap));
+            //                 // Eliminar la asociación
+            //                 delete googleContactsMap[contactId];
+            //                 localStorage.setItem('googleContactsMap', JSON.stringify(googleContactsMap));
                             
-                            console.log("Contacto eliminado exitosamente de Google Contacts");
-                        }
-                    } catch (googleError) {
-                        console.error("Error al eliminar el contacto de Google:", googleError);
-                        console.log("Error al eliminar el contacto de Google Contacts. El contacto se eliminará solo de la base de datos local.");
-                    }
-                }
-            }
+            //                 console.log("Contacto eliminado exitosamente de Google Contacts");
+            //             }
+            //         } catch (googleError) {
+            //             console.error("Error al eliminar el contacto de Google:", googleError);
+            //             console.log("Error al eliminar el contacto de Google Contacts. El contacto se eliminará solo de la base de datos local.");
+            //         }
+            //     }
+            // }
             
             // Eliminar de Firebase
             const result = await firebase.delete("contacts", contactId);
@@ -404,13 +404,15 @@
                        on:keydown={()=>{}} 
                        class="fa-regular fa-pen-to-square"
                        role="button"
-                       tabindex="0"></i>
-
+                       tabindex="0"
+                       aria-label="Edit Contact"></i>
+                    
                     <i on:click={() => deleContact(contact.id)} 
                        on:keydown={()=>{}} 
                        class="fa-regular fa-trash-can"
                        role="button"
-                       tabindex="0"></i>
+                       tabindex="0"
+                       aria-label="Delete Contact"></i>
                   </div>
                     <span>Alta el: {formatDate(contact.createdAt)}</span>  
                 </div>

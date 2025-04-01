@@ -8,7 +8,7 @@
     import { ranPrice } from '$lib/functions/rangeValue';
     import { onMount, onDestroy } from 'svelte';
     // Importar las funciones necesarias para sincronizar con Google
-    import { syncContact, getAccessToken } from '$lib/services/googleService';
+    // import { syncContact, getAccessToken } from '$lib/services/googleService';
     import { get } from 'svelte/store';
   
     const dispatch = createEventDispatcher<AddContactEvents>();

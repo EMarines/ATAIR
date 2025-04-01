@@ -1,17 +1,17 @@
-<script lang="ts">
-    import { isTestMode, setTestMode } from '$lib/services/googleService';
+<!-- <script lang="ts">
+    // import { isTestMode, setTestMode } from '$lib/services/googleService';
     import { onMount } from 'svelte';
     
     let testModeEnabled = false;
     
-    onMount(() => {
-        testModeEnabled = isTestMode();
-    });
+    // onMount(() => {
+    //     testModeEnabled = isTestMode();
+    // });
     
-    function toggleTestMode() {
-        testModeEnabled = !testModeEnabled;
-        setTestMode(testModeEnabled);
-    }
+    // function toggleTestMode() {
+    //     testModeEnabled = !testModeEnabled;
+    //     setTestMode(testModeEnabled);
+    // }
 </script>
 
 <div class="test-mode-container">
@@ -111,4 +111,4 @@
     .test-mode-info p {
         margin: 0;
     }
-</style>
+</style> -->
