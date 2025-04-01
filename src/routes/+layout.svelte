@@ -187,13 +187,6 @@
   // });
 </script>
 
-<div class="app">
-  <!-- {#if isTestMode}
-    <div class="test-mode-indicator">
-      MODO PRUEBA - Base de datos: Curso Svelte
-    </div>
-  {/if} -->
-</div>
   <NotificationContainer />
   
   <header>
@@ -201,7 +194,9 @@
   </header>
   
   <main>
-    <slot />
+    <div class="app">
+      <slot />
+    </div>
   </main>
 
   <div class="footer-container">
@@ -210,13 +205,7 @@
 <!-- </div> -->
 
 <style>
-  .app {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    overflow-x: hidden; /* Evitar scroll horizontal */
-  }
-  
+
   main {
     flex: 1;
     position: relative;
