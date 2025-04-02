@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
+const env = import.meta.env;
 import type { Property } from '$lib/types';
 
 const LIMIT = 50; // EasyBroker recomienda este límite por página
@@ -34,7 +34,7 @@ async function getAllProperties(): Promise<Property[]> {
     let hasMore = true;
 
     const headers = {
-        'X-Authorization': env.PRIVATE_EASYBROKER_API_KEY,
+        'X-Authorization': env.VITE_EASYBROKER_API_KEY,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };
@@ -70,7 +70,7 @@ async function getAllProperties(): Promise<Property[]> {
 
 export const GET: RequestHandler = async () => {
     // Verificar API key
-    if (!env.PRIVATE_EASYBROKER_API_KEY) {
+    if (!env.VITE_EASYBROKER_API_KEY) {
         console.error('API key no configurada');
         return json(
             { error: 'Configuración del servidor incompleta' }, 
