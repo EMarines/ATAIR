@@ -501,7 +501,7 @@
         border-color: var(--primary-color);
     }
 
-    .time-input input[type="time"]:focus {
+    .time-input input[type="time"] {
         outline: none;
         border-color: var(--primary-color);
         box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);

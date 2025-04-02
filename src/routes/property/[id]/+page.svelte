@@ -521,7 +521,7 @@
 		transition: border-color 0.2s;
 	}
 
-	.sel__msg textarea:focus {
+	.sel__msg textarea {
 		outline: none;
 		border-color: rgba(255, 255, 255, 0.3);
 		box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);

@@ -255,8 +255,8 @@
     }
 
     /* Accesibilidad */
-    .nav__target:focus,
-    a:focus {
+    .nav__target,
+    a {
         outline: 2px solid var(--brand);
         outline-offset: 2px;
     }
