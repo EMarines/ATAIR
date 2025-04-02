@@ -7,4 +7,5 @@ export { mosRange } from './rangeValue';
 export { convertOperationEbFb } from './converterEb-Fb';
 export { cleanNumber, cleanName } from './format';
 export { sendWhatsApp } from './sendWhatsApp';
+export { resetContact } from './contactErase';
 // export { sortProp } from './sortProp';

@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { goto } from '$app/navigation';
     import { systStatus, propertiesStore, property as propertyStore, contactsStore } from '$lib/stores/dataStore';
@@ -678,4 +678,4 @@
         margin-top: 20px;
         justify-content: flex-end;
     }
-</style>
+</style> -->

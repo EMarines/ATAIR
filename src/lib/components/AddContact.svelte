@@ -63,6 +63,7 @@
         numBaths: 0,
         numBeds: 0,
         numParks: 0,
+        propCont: '',
         rangeProp: '',
         selecMC: '',
         selecTP: '',
@@ -133,7 +134,6 @@
         try {
             isSubmitting = true;
            
-            
             // Validar que los campos requeridos estén presentes
             if (!contact.name || !contact.telephon) {
                 errorMessage = 'Nombre y teléfono son campos obligatorios';
@@ -211,6 +211,7 @@
                 result = await contactsStore.update(cleanContactData);
             } else {
                 result = await contactsStore.add(cleanContactData);
+
             }
   
             if (!result.success) {
@@ -292,6 +293,9 @@
             errorMessage = `Error: ${errorMsg}`;
         } finally {
             isSubmitting = false;
+            // contact.propCont = '';
+            // contact.selecTP = '';
+            // contact.rangeProp = '';
         }
     }
 

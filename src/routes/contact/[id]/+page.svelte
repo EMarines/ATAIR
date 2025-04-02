@@ -144,9 +144,11 @@
   }
 
     // Muestra las propiedades que le podrían intesar
-    function fitProp() {
+    function filtProp() {
+      console.log('estas en la funcion', contact);
       // contacto = $contact
       propToRender = filtContPropInte(contact) 
+      console.log(propToRender, "Propidaes a buscar");
       showProp = true;
       layOut = "sendProps"
     };
@@ -188,7 +190,7 @@
       if (!property) {
         // Prioridad 1: Usar la URL del contacto si existe
         if (contact.publicUrl) {
-          console.log("Usando URL pública del contacto:", contact.publicUrl);
+          // console.log("Usando URL pública del contacto:", contact.publicUrl);
           commInpuyBinnacle = contact.publicUrl;
           return;
         }
@@ -205,12 +207,12 @@
               console.log("URL pública cargada directamente desde propertyStore.public_url:", commInpuyBinnacle);
               foundProperty = true;
             } 
-            // Si no tiene public_url pero tiene public_id, generar la URL
-            else if (selectedProperty.public_id) {
-              const public_url = "https://matchhome.net";
-              commInpuyBinnacle = public_url;
-              foundProperty = true;
-            }
+            // // Si no tiene public_url pero tiene public_id, generar la URL
+            // else if (selectedProperty.public_id) {
+            //   const public_url = "https://matchhome.net";
+            //   commInpuyBinnacle = public_url;
+            //   foundProperty = true;
+            // }
           }
         });
         
@@ -221,12 +223,12 @@
           return;
         }
         
-        // Si no hay ninguna propiedad disponible
-        if($systStatus === "sendProps"){
-          console.error("Error: No hay una propiedad seleccionada para compartir");
-          alert("No hay una propiedad seleccionada para compartir");
-          return;
-        }
+        // // Si no hay ninguna propiedad disponible
+        // if($systStatus === "sendProps"){
+        //   console.error("Error: No hay una propiedad seleccionada para compartir");
+        //   alert("No hay una propiedad seleccionada para compartir");
+        //   return;
+        // }
       }
       
       // Envía la propiedad seleccionada del listado (propCheck) Alta de Contacto
@@ -340,7 +342,7 @@
 
     // Cargar la URL pública en el textarea
     // Prioridad 1: Usar la URL del contacto si existe
-    if (property && property.public_url) {
+    if (property && property.public_url && $systStatus === "addContact") {
       commInpuyBinnacle = property.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
       console.log("URL pública cargada desde el contacto:", commInpuyBinnacle);
       return;
@@ -352,16 +354,16 @@
         console.log("Propiedad encontrada en el store:", selectedProperty);
         
         // Si la propiedad tiene public_url, usarla directamente
-        if (selectedProperty && selectedProperty.public_url) {
+        if (selectedProperty && selectedProperty.public_url && $systStatus === "addContact") {
           commInpuyBinnacle = selectedProperty.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
           console.log("URL pública cargada directamente desde propertyStore.public_url:", commInpuyBinnacle);
         } 
         // Si no tiene public_url pero tiene public_id, generar la URL
-        else if (selectedProperty.public_id) {
-          const publicUrl = `https://atair.com.mx/property/${selectedProperty.public_id}`;
-          commInpuyBinnacle = publicUrl;
-          console.log("URL pública generada desde propertyStore.public_id:", publicUrl);
-        }
+        // else if (selectedProperty.public_id) {
+        //   const publicUrl = `https://atair.com.mx/property/${selectedProperty.public_id}`;
+        //   commInpuyBinnacle = publicUrl;
+        //   console.log("URL pública generada desde propertyStore.public_id:", publicUrl);
+        // }
       }
     });
     
@@ -484,7 +486,7 @@
 
             <div class="icon__actions">
               <button class="btn__common" on:click={addSchedule}><i class="fa-solid fa-calendar-days"></i>Agendar</button>
-              <button class="btn__common" on:click={fitProp}><i class="fa-solid fa-house-laptop"></i>Propiedades</button>
+              <button class="btn__common" on:click={filtProp}><i class="fa-solid fa-house-laptop"></i>Propiedades</button>
               <button class="btn__common" on:click={mostSearch}><i class="fa-solid fa-house-user"></i>Propiedad</button>
               <button class="btn__common" on:click={onCancel}><i class="fa-solid fa-rotate-left"></i>Regresar</button>                      
             </div>
@@ -576,7 +578,7 @@
             </div>          
           {/if}
           
-          <div class="propRegister">
+          <!-- <div class="propRegister">
             {#each propsStatus as list}
                 <label>
                     <input type="radio" 
@@ -587,7 +589,7 @@
                     {list}
                 </label>
             {/each}
-          </div>
+          </div> -->
           
         
         <div class="card__container">          
@@ -871,7 +873,9 @@
 
       .form__propCheck {
         position: absolute;
-        top: 10px; left: 10px;
+        top: 10px;
+        left: 10px;
+        z-index: 20;
       }
 
 
