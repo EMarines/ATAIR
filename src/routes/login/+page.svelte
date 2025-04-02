@@ -26,6 +26,7 @@
           type="email" 
           placeholder="email"
           disabled={$formState.isLoading}
+          autocomplete="email"
         >
       </label>
 
@@ -36,6 +37,7 @@
           type="password" 
           placeholder="Password"
           disabled={$formState.isLoading}
+          autocomplete="current-password"
         >
       </label>
 
@@ -47,6 +49,7 @@
             type="password" 
             placeholder="Confirmar Password"
             disabled={$formState.isLoading}
+            autocomplete="new-password"
           >
         </label>
       {/if}
