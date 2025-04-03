@@ -170,19 +170,20 @@
     if(searchTerm.length > 0 ) {
       $systStatus = "sendProp";
       layOut = "sendProp";
-    }
+
       return propToRender = properties.filter((propety) => {
-        const locationStr = typeof propety.location === 'string' ? propety.location : propety.location.name;
-        let contInfo = (propety.public_id + " " + propety.title + " " + locationStr).toLowerCase();
+        // const locationStr = typeof propety.location === 'string' ? propety.location : propety.location;
+        let contInfo = ( propety.public_id + " " + propety.title + " " + propety.location ).toLowerCase();
         return contInfo.includes(searchTerm.toLowerCase());
       });  
     };
+  }
 
-      // Cambia el systStatus as escojer una propiedad o varias propiedades
-      function sendPropF() {
-        $systStatus = "sendProps"
-        commInpuyBinnacle = "";
-      };
+  // Cambia el systStatus as escojer una propiedad o varias propiedades
+  function sendPropF() {
+    $systStatus = "sendProps"
+    commInpuyBinnacle = "";
+  };
 
     // Selecciona Mensaje para WA
     async function selMsgWA() {
@@ -366,7 +367,7 @@
         // }
       }
     });
-    
+        
     // Limpiar la suscripción después de obtener el valor
     unsubscribe();
     
@@ -375,9 +376,10 @@
       console.log("No se encontró ninguna URL pública para cargar en el textarea");
     }
   });
+
 </script>
 
-  <!-- Contact Data -->
+    <!-- Contact Data -->
     <div class="container">
       {#if $systStatus === "editContact"}
         <AddContact 

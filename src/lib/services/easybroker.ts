@@ -52,10 +52,30 @@ export class EasyBrokerService {
             property_type: property.property_type || '',
             updated_at: property.updated_at || new Date().toISOString(),
             tags: property.tags || [],
-            operations: property.operations || []
+            operations: property.operations.length === 2 ? property.operations : [
+                {
+                    type: '',
+                    amount: 0,
+                    formated_amount: '',
+                    currency: '',
+                    unit: '',
+                    commission: {
+                        type: '',
+                        value: 0,
+                        currency: ''
+                    }
+                },
+                {
+                    type: '',
+                    amount: 0,
+                    formated_amount: '',
+                    currency: '',
+                    period: ''
+                }
+            ]
         };
     }
-
+    
     async preparePropertiesToUpload(propertiesToProcess: { new: string[], modified: string[] }): Promise<Property[]> {
         const propertiesToUpload: Property[] = [];
 

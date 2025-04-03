@@ -65,8 +65,7 @@ export interface PropertyFB {
   urlSinergy?: string;
 }
 
-export interface Property {
-    
+export interface Property {    
   created_at: number,
   lot_size: number,
   public_url: string,
