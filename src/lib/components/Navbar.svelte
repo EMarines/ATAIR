@@ -59,64 +59,55 @@
       </button>
     <!-- </div> -->
 
-      <ul>
-          <div 
-            class={nav__links} 
-            id="menu" 
-            on:click={showHide} 
-            on:keypress={showHide}
-            role="menu"
-            tabindex="0"
-          >
-            
-            <li><a href="/">Home</a></li>
-            {#if $isAuthenticated}
-              <li><a href="/contacts" class="nav__link">Contacto</a></li>
-              <li><a href="/properties" class="nav__link">Propiedades</a></li>
-              <li><a href="/agenda" class="nav__link">Agenda</a></li>
-              <!-- <li><a href="/(app)/profile">Profile</a></li> -->
-              <li><a href="/tramites">Trámites</a></li>
-              <li><a href="/actions">Acciones</a></li>
-              <!-- <li class="google-connect-container">
-                <GoogleConnectButton buttonText="Google Contacts" small={true} />
-              </li> -->
-              <li>
-                <a 
-                    href="/" 
-                    class="nav__link" 
-                    on:click={logout}
-                    class:disabled={$logoutLoading}
-                >
-                    {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
-                </a>
-              </li> 
-            {:else}
-              <li><a href="/login" class="nav__link">Login</a></li>
-            {/if}
-            <li class="relative">
-              {#if currentTheme == "light"}
-                <a 
-                  class="moon" 
-                  href={"#"} 
-                  on:click={() => setTheme("dark")}
-                  aria-label="Cambiar a modo oscuro"
-                >
-                  <Moon />
-                </a>
-              {:else}
-                <a 
-                  class="sun" 
-                  href={"#"} 
-                  on:click={() => setTheme("light")}
-                  aria-label="Cambiar a modo claro"
-                >
-                  <Sun />
-                </a>
-              {/if}
-            </li>
-
-          </div>
-      </ul>
+    <ul 
+  class={nav__links} 
+  id="menu" 
+  on:click={showHide} 
+  on:keypress={showHide}
+  role="menu"
+>
+  <li role="menuitem"><a href="/">Home</a></li>
+  {#if $isAuthenticated}
+    <li role="menuitem"><a href="/contacts" class="nav__link">Contacto</a></li>
+    <li role="menuitem"><a href="/properties" class="nav__link">Propiedades</a></li>
+    <li role="menuitem"><a href="/agenda" class="nav__link">Agenda</a></li>
+    <li role="menuitem"><a href="/tramites">Trámites</a></li>
+    <li role="menuitem"><a href="/actions">Acciones</a></li>
+    <li role="menuitem">
+      <a 
+        href="/" 
+        class="nav__link" 
+        on:click={logout}
+        class:disabled={$logoutLoading}
+      >
+        {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
+      </a>
+    </li>
+  {:else}
+    <li role="menuitem"><a href="/login" class="nav__link">Login</a></li>
+  {/if}
+  <li class="relative" role="menuitem">
+    {#if currentTheme == "light"}
+      <a 
+        class="moon" 
+        href={"#"} 
+        on:click={() => setTheme("dark")}
+        aria-label="Cambiar a modo oscuro"
+      >
+        <Moon />
+      </a>
+    {:else}
+      <a 
+        class="sun" 
+        href={"#"} 
+        on:click={() => setTheme("light")}
+        aria-label="Cambiar a modo claro"
+      >
+        <Sun />
+      </a>
+    {/if}
+  </li>
+</ul>
   </div>
 </nav>
 
