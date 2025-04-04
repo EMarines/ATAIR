@@ -214,11 +214,11 @@
 								{property.property_type} en {typeof property.location === 'string' ? 
 									property.location.replace("Chihuahua, Chihuahua", "").replace("I,", "") : 
 									property.location.name.replace("Chihuahua, Chihuahua", "").replace("I,", "")
-								} en {property.operations[0].type === "sale" ? "Venta" : "Renta"}
+								} en {property.selecTO === "sale" ? "Venta" : "Renta"}
 							</h1>
 						</div>
 						<div class="prop__price">
-							<h2>Precio $ {toComaSep(property.operations[0].amount)}.</h2>
+							<h2>Precio $ {toComaSep(property.price)}.</h2>
 							<p class="alta__prop">Alta: {formatDate(Number(property.created_at))}</p>
 						</div>
 						<div class="prop__cont">

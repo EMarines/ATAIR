@@ -1,4 +1,4 @@
-<!-- <script>
+<script>
 
   import { toComaSep, toTele } from '$lib/functions/format'
   import { formatDate } from '$lib/functions/dateFunctions.js'
@@ -358,4 +358,4 @@
     content: "•";
     margin-left: 0.5rem;
   }
-</style> -->
+</style>

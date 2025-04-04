@@ -21,10 +21,10 @@
 
     const easyBroker = new EasyBrokerService(import.meta.env.VITE_EASYBROKER_API_KEY);
 
+    // Revisa si hay cambios propiedades, nuevas, modificadas o eliminadas
     async function checkChanges() {
         isChecking = true;
-        error = null;
-        
+        error = null;        
         try {
             const ebProperties = await easyBroker.getProperties();
             ebPropertiesCount = ebProperties.length;
@@ -42,23 +42,20 @@
         }
     }
 
+    //Sincroniza los cambios en las propiedades
     async function syncChanges() {
         isSyncing = true;
-        error = null;
-        
+        error = null;        
         try {
             const propertiesToUpload = await easyBroker.preparePropertiesToUpload({
                 new: changes?.new.map(p => p.public_id) || [],
                 modified: changes?.modified.map(p => p.public_id) || []
-            });
-            
-            await easyBroker.syncChanges(propertiesToUpload);
-            
+            });            
+            await easyBroker.syncChanges(propertiesToUpload);            
             // Actualizar el store con las propiedades sincronizadas
             propertiesStore.update(props => {
                 // Eliminar propiedades que ya no existen
-                const updatedProps = props.filter(p => !changes?.deleted.find(d => d.public_id === p.public_id));
-                
+                const updatedProps = props.filter(p => !changes?.deleted.find(d => d.public_id === p.public_id));                
                 // Actualizar o agregar nuevas propiedades
                 propertiesToUpload.forEach(newProp => {
                     const index = updatedProps.findIndex(p => p.public_id === newProp.public_id);
@@ -67,16 +64,13 @@
                     } else {
                         updatedProps.push(newProp);
                     }
-                });
-                
+                });                
                 return updatedProps;
-            });
-            
+            });            
             // Recargar datos de EasyBroker y verificar cambios
             const ebProperties = await easyBroker.getProperties();
             ebPropertiesCount = ebProperties.length;
-            changes = easyBroker.compareProperties(ebProperties, $propertiesStore);
-            
+            changes = easyBroker.compareProperties(ebProperties, $propertiesStore);            
         } catch (err) {
             error = err instanceof Error ? err.message : 'Error desconocido durante la sincronización';
         } finally {

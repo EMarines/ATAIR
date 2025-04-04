@@ -1,4 +1,4 @@
-import type { Property } from '$lib/types';
+import type { Property, PropertyEB } from '$lib/types';
 import { writeBatch, doc, getDoc } from 'firebase/firestore';
 import { db } from '$lib/firebase';
 
@@ -12,7 +12,7 @@ export class EasyBrokerService {
     }
 
     // Obtener detalles completos de una propiedad
-    private async getPropertyDetails(propertyId: string): Promise<Property> {
+    private async getPropertyDetails(propertyId: string): Promise<PropertyEB> {
         try {
             await new Promise(resolve => setTimeout(resolve, this.rateLimit));
             
@@ -32,7 +32,7 @@ export class EasyBrokerService {
     }
 
     // Preparar propiedades para subir
-    private formatPropertyForFirebase(property: Property): Property {
+    private formatPropertyForFirebase(property: PropertyEB): Property {
         return {
             created_at: new Date(property.created_at).getTime(),
             lot_size: property.lot_size || 0,
@@ -48,34 +48,32 @@ export class EasyBrokerService {
             bathrooms: property.bathrooms || 0,
             parking_spaces: property.parking_spaces || 0,
             half_bathrooms: property.half_bathrooms || 0,
-            location: typeof property.location === 'string' ? property.location : property.location?.name || '',
+            location: this.cleanColonyName(property.location?.name) || '',
             property_type: property.property_type || '',
             updated_at: property.updated_at || new Date().toISOString(),
             tags: property.tags || [],
-            operations: property.operations.length === 2 ? property.operations : [
-                {
-                    type: '',
-                    amount: 0,
-                    formated_amount: '',
-                    currency: '',
-                    unit: '',
-                    commission: {
-                        type: '',
-                        value: 0,
-                        currency: ''
-                    }
-                },
-                {
-                    type: '',
-                    amount: 0,
-                    formated_amount: '',
-                    currency: '',
-                    period: ''
-                }
-            ]
+            price: property.operations[0].amount || 0,
+            selecTO: property.operations[0].type || '',
+            selecTP: property.property_type || '',
         };
+    };
+
+    private cleanColonyName(colony: string): string {
+        if (!colony || typeof colony !== 'string') {
+            return '';
+        }    
+        // Expresión regular para detectar números romanos y sus separadores
+        const romanRegex = /\b(I|II|III|IV|V|VI|VII|VIII|IX|X)(,?\s?y?\s?(I|II|III|IV|V|VI|VII|VIII|IX|X))*\b/gi;    
+        // Reemplazar las etapas con números romanos por una cadena vacía
+        return colony
+            .replace(romanRegex, '') // Eliminar números romanos
+            .replace(/\s+/g, ' ')    // Eliminar espacios adicionales
+            .replace("Chihuahua, Chihuahua", "") // Eliminar "Chihuahua, Chihuahua"
+            .replace(",", "") // Eliminar "Chihuahua"
+            .trim();                 // Eliminar espacios al inicio y al final
     }
     
+    // Su
     async preparePropertiesToUpload(propertiesToProcess: { new: string[], modified: string[] }): Promise<Property[]> {
         const propertiesToUpload: Property[] = [];
 

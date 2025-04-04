@@ -65,7 +65,7 @@
         <span class="capitalize">
           {formatLocation(property?.location)}
         </span>
-        <span>$ {toComaSep(Number(property?.operations?.[0]?.amount || 0))}</span>
+        <span>$ {toComaSep(Number(property.price || 0))}</span>
       </div>
 
       <div class="card__features">

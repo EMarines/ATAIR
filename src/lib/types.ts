@@ -65,7 +65,7 @@ export interface PropertyFB {
   urlSinergy?: string;
 }
 
-export interface Property {    
+export interface PropertyEB {    
   created_at: number,
   lot_size: number,
   public_url: string,
@@ -81,7 +81,16 @@ export interface Property {
   bathrooms: number,
   parking_spaces: number,
   half_bathrooms: number,
-  location: string | { name: string },
+  location: {
+      name: string,
+      latitude: number,
+      longitude: number,
+      street: string,
+      postal_code: string,
+      show_exact_location: boolean,
+      exterior_number: string,
+      interior_number: string
+    },
   property_type: string,
   updated_at: string,
   // show_prices: boolean,
@@ -109,6 +118,30 @@ export interface Property {
     }
   ],
   property_images?: Array<{ url: string }>;
+}
+
+export interface Property {    
+  agent: string,
+  bathrooms: number,
+  bedrooms: number,
+  construction_size: number,
+  created_at: number,
+  description: string,
+  half_bathrooms: number,
+  location: string | { name: string },
+  lot_size: number,
+  parking_spaces: number,
+  price: number,
+  property_status: string,
+  property_type: string,
+  public_id: string,
+  public_url: string,
+  selecTO: string,
+  selecTP: string,
+  tags: string[],
+  title: string,
+  title_image_thumb: string,
+  updated_at: string,
 }
   
 
@@ -247,3 +280,96 @@ export interface AddContactEvents {
   };
   cancel: void;
 }
+
+// {
+//   "public_id": "EB-XXX123",
+//   "title": "Beautiful property in Condesa",
+//   "images": [
+//     {
+//       "url": "https://www.easybroker.com/assets/product/logo-be4da843987ccd1c05e26f8703f1787847471b36d08bdb1ec8a91ce4007b0e98.svg",
+//       "title": "Fitted kitchen with granite countertops"
+//     }
+//   ],
+//   "description": "This property is very well-lit in a lovely neighborhood overlooking a park.",
+//   "bedrooms": 0,
+//   "bathrooms": 0,
+//   "half_bathrooms": 0,
+//   "parking_spaces": 0,
+//   "lot_size": 0,
+//   "construction_size": 0,
+//   "lot_length": 0,
+//   "lot_width": 0,
+//   "covered_space": 0,
+//   "floors": 0,
+//   "floor": 0,
+//   "age": 2020,
+//   "internal_id": "custom-id-001",
+//   "expenses": "$100 USD",
+//   "property_type": "Apartment",
+//   "agent": {
+//     "id": 1234,
+//     "name": "John Smith",
+//     "full_name": "John Smith Doe",
+//     "mobile_phone": "5555550000",
+//     "profile_image_url": "https://www.easybroker.com/assets/product/logo-be4da843987ccd1c05e26f8703f1787847471b36d08bdb1ec8a91ce4007b0e98.svg",
+//     "email": "john@smith.com"
+//   },
+//   "created_at": "2025-04-03T18:34:02.497Z",
+//   "updated_at": "2025-04-03T18:34:02.497Z",
+//   "published_at": "2025-04-03T18:34:02.497Z",
+//   "features": [
+//     {
+//       "name": "Pets allowed",
+//       "category": "General"
+//     }
+//   ],
+//   "public_url": "https://www.easybroker.com/mx/inmueble/john-smith-amazing-house",
+//   "collaboration_notes": "25% per referral",
+//   "property_files": [
+//     "https://www.easybroker.com/assets/product/logo-be4da843987ccd1c05e26f8703f1787847471b36d08bdb1ec8a91ce4007b0e98.svg"
+//   ],
+//   "videos": [
+//     "https://www.youtube.com/watch?v=zVRu7AktR48"
+//   ],
+//   "virtual_tour": "https://my.matterport.com/show/?m=yHsh2roFXnp",
+//   "exclusive": false,
+//   "shared_commission_percentage": 50,
+//   "private_description": "Selling this property is our top priority and we are willing to offer a discount.",
+//   "location": {
+//     "name": "Condesa, Cuauhtemoc, Ciudad de México",
+//     "latitude": 20.676145,
+//     "longitude": -103.368962,
+//     "street": "Av. México",
+//     "postal_code": "06700",
+//     "show_exact_location": true,
+//     "exterior_number": "21A",
+//     "interior_number": "304"
+//   },
+//   "tags": [
+//     "premium",
+//     "exclusive"
+//   ],
+//   "show_prices": true,
+//   "share_commission": true,
+//   "operations": [
+//     {
+//       "type": "sale",
+//       "amount": 500000,
+//       "formated_amount": "US$ 500,000",
+//       "currency": "USD",
+//       "unit": "total",
+//       "commission": {
+//         "type": "amount",
+//         "value": 10000,
+//         "currency": "USD"
+//       }
+//     },
+//     {
+//       "type": "temporary_rental",
+//       "amount": 500,
+//       "formated_amount": "US$ 500",
+//       "currency": "USD",
+//       "period": "monthly"
+//     }
+//   ]
+// }
