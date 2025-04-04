@@ -130,9 +130,9 @@
 
   .title {
     text-align: center;
-    color: #6b21a8;
+    /* color: #6b21a8; */
     margin-bottom: 1.5rem;
-    font-family: 'Poppins', sans-serif;
+    /* font-family: 'Poppins', sans-serif; */
   }
 
   .actions-grid {
@@ -175,7 +175,7 @@
 
   .action-card p {
     font-size: 0.8rem;
-    color: #888;
+    color: rgb(236, 236, 236);
     margin: 0;
   }
 

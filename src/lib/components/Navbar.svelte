@@ -93,6 +93,7 @@
         href={"#"} 
         on:click={() => setTheme("dark")}
         aria-label="Cambiar a modo oscuro"
+        tabindex="-1"
       >
         <Moon />
       </a>
@@ -102,6 +103,7 @@
         href={"#"} 
         on:click={() => setTheme("light")}
         aria-label="Cambiar a modo claro"
+        tabindex="-1"
       >
         <Sun />
       </a>
