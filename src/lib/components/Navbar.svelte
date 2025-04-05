@@ -15,20 +15,22 @@
     const { logout, loading: logoutLoading } = useLogout()
 
     onMount(() => {
-    // currentTheme = document.documentElement.dataset.theme;
-    const userPrefersDarkMode = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-    const hasUserSetDarkModeManually =
-      document.documentElement.dataset.theme == "dark";
-    if (!hasUserSetDarkModeManually) {
-      setTheme(userPrefersDarkMode ? "dark" : "light");
-    }
-  });
+        // Intentar obtener el tema de la cookie
+        const cookies = document.cookie.split(';');
+        const themeCookie = cookies.find(cookie => cookie.trim().startsWith('siteTheme='));
+        const savedTheme = themeCookie ? themeCookie.split('=')[1].trim() : null;
+
+        if (savedTheme) {
+            setTheme(savedTheme);
+        } else {
+            const userPrefersDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            setTheme(userPrefersDarkMode ? "dark" : "light");
+        }
+    });
 
     const setTheme = (theme) => {
         document.documentElement.dataset.theme = theme;
-        document.cookie = `siteTheme = ${theme}; max-age=31536000;path="/"`;
+        document.cookie = `siteTheme=${theme}; max-age=31536000; path=/; SameSite=Strict`;
         currentTheme = theme;
     };
 

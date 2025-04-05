@@ -42,6 +42,11 @@ export function useLoginForm() {
     const $formData = get(formData)
     const $formState = get(formState)
 
+    console.log('Iniciando proceso de login/registro:', { 
+      email: $formData.email,
+      isRegisterMode: $formState.isRegisterMode
+    });
+
     formState.update(state => ({ 
       ...state, 
       isLoading: true, 
@@ -50,17 +55,21 @@ export function useLoginForm() {
 
     try {
       if ($formState.isRegisterMode) {
+        console.log('Intentando registrar nuevo usuario...');
         await createUserWithEmailAndPassword(
           auth, 
           $formData.email, 
           $formData.password
         )
+        console.log('Usuario registrado exitosamente');
       } else {
+        console.log('Intentando iniciar sesión...');
         await signInWithEmailAndPassword(
           auth, 
           $formData.email, 
           $formData.password
         )
+        console.log('Inicio de sesión exitoso');
       }
 
       // Limpiar formulario y redirigir
@@ -68,6 +77,7 @@ export function useLoginForm() {
       goto('/')
 
     } catch (error: unknown) {
+      console.error('Error en autenticación:', error);
       const err = error as { code: string }
       const errorMessage = getAuthErrorMessage(err.code)
       formState.update(state => ({

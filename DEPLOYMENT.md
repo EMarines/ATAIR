@@ -15,12 +15,13 @@ Este documento proporciona instrucciones para desplegar correctamente la aplicac
 Cuando crees un nuevo proyecto en Vercel, deberás configurar las siguientes variables de entorno:
 
 ```
-PUBLIC_FIREBASE_API_KEY=tu-api-key
-PUBLIC_FIREBASE_AUTH_DOMAIN=tu-auth-domain
-PUBLIC_FIREBASE_PROJECT_ID=tu-project-id
-PUBLIC_FIREBASE_STORAGE_BUCKET=tu-storage-bucket
-PUBLIC_FIREBASE_MESSAGING_SENDER_ID=tu-sender-id
-PUBLIC_FIREBASE_APP_ID=tu-app-id
+VITE_FIREBASE_API_KEY=tu-api-key
+VITE_FIREBASE_AUTH_DOMAIN=tu-auth-domain
+VITE_FIREBASE_PROJECT_ID=tu-project-id
+VITE_FIREBASE_STORAGE_BUCKET=tu-storage-bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=tu-sender-id
+VITE_FIREBASE_APP_ID=tu-app-id
+VITE_FIREBASE_DATA_BASE_URL=tu-database-url
 
 # Google API Configuration
 VITE_GOOGLE_CLIENT_ID=tu-google-client-id
