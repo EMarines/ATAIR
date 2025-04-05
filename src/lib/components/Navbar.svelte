@@ -48,71 +48,61 @@
 </script>
 
 
-<nav>
-  <div class="container">
-    <!-- <div class="nav__bugger"> -->
-      <h1>MatchHome</h1>  
-      <button 
-        class="nav__target" 
-        on:click={showHide}
-        aria-label="Abrir menú de navegación"
-      >
-        <i class="fa-solid fa-bars nav__icon"></i>
-      </button>
-    <!-- </div> -->
+<nav aria-label="Navegación principal">
+    <div class="container">
+        <h1>MatchHome</h1>  
+        <button 
+            class="nav__target" 
+            on:click={showHide}
+            aria-label="Abrir menú de navegación"
+            aria-expanded={nav__links === "small"}
+            aria-controls="menu"
+        >
+            <i class="fa-solid fa-bars nav__icon" aria-hidden="true"></i>
+        </button>
 
-    <ul 
-  class={nav__links} 
-  id="menu" 
-  on:click={showHide} 
-  on:keypress={showHide}
-  role="menu"
->
-  <li role="menuitem"><a href="/">Home</a></li>
-  {#if $isAuthenticated}
-    <li role="menuitem"><a href="/contacts" class="nav__link">Contacto</a></li>
-    <li role="menuitem"><a href="/properties" class="nav__link">Propiedades</a></li>
-    <li role="menuitem"><a href="/agenda" class="nav__link">Agenda</a></li>
-    <li role="menuitem"><a href="/tramites">Trámites</a></li>
-    <li role="menuitem"><a href="/actions">Acciones</a></li>
-    <li role="menuitem">
-      <a 
-        href="/" 
-        class="nav__link" 
-        on:click={logout}
-        class:disabled={$logoutLoading}
-      >
-        {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
-      </a>
-    </li>
-  {:else}
-    <li role="menuitem"><a href="/login" class="nav__link">Login</a></li>
-  {/if}
-  <li class="relative" role="menuitem">
-    {#if currentTheme == "light"}
-      <a 
-        class="moon" 
-        href={"#"} 
-        on:click={() => setTheme("dark")}
-        aria-label="Cambiar a modo oscuro"
-        tabindex="-1"
-      >
-        <Moon />
-      </a>
-    {:else}
-      <a 
-        class="sun" 
-        href={"#"} 
-        on:click={() => setTheme("light")}
-        aria-label="Cambiar a modo claro"
-        tabindex="-1"
-      >
-        <Sun />
-      </a>
-    {/if}
-  </li>
-</ul>
-  </div>
+        <ul 
+            class={nav__links} 
+            id="menu" 
+            role="menubar"
+        >
+            <li role="none"><a href="/" role="menuitem">Home</a></li>
+            {#if $isAuthenticated}
+                <li role="none"><a href="/contacts" class="nav__link" role="menuitem">Contacto</a></li>
+                <li role="none"><a href="/properties" class="nav__link" role="menuitem">Propiedades</a></li>
+                <li role="none"><a href="/agenda" class="nav__link" role="menuitem">Agenda</a></li>
+                <li role="none"><a href="/tramites" class="nav__link" role="menuitem">Trámites</a></li>
+                <li role="none"><a href="/actions" class="nav__link" role="menuitem">Acciones</a></li>
+                <li role="none">
+                    <a 
+                        href="/" 
+                        class="nav__link" 
+                        on:click={logout}
+                        class:disabled={$logoutLoading}
+                        role="menuitem"
+                    >
+                        {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
+                    </a>
+                </li>
+            {:else}
+                <li role="none"><a href="/login" class="nav__link" role="menuitem">Login</a></li>
+            {/if}
+            <li class="relative" role="none">
+                <button
+                    class={currentTheme === "light" ? "moon" : "sun"}
+                    on:click={() => setTheme(currentTheme === "light" ? "dark" : "light")}
+                    aria-label={currentTheme === "light" ? "Cambiar a modo oscuro" : "Cambiar a modo claro"}
+                    role="menuitem"
+                >
+                    {#if currentTheme === "light"}
+                        <Moon />
+                    {:else}
+                        <Sun />
+                    {/if}
+                </button>
+            </li>
+        </ul>
+    </div>
 </nav>
 
 <style>
