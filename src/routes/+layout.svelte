@@ -13,178 +13,16 @@
   import { goto } from '$app/navigation';
   import { testMode } from '$lib/stores/testModeStore';
   import NotificationContainer from '$lib/components/NotificationContainer.svelte';
-  // import { initSyncListeners } from '$lib/services/syncService';
 
-  // const { isAuthenticated, checkAuth } = useAuth();
   const unsubscribes: (() => void)[] = [];
 
-  // Función para obtener la instancia de Firestore
-  const getDb = () => db;
+  onMount(async () => {
+    // ...existing code...
+  });
 
-  // // Variable para mostrar el indicador de modo de prueba
-  // let isTestMode = false;
-
-  // onMount(async () => {
-  //   if (browser) {
-  //     const isValid = await checkAuth();
-  //     if (!isValid && window.location.pathname !== '/login') {
-  //       goto('/login');
-  //     }
-      
-  //     // Suscribirse al store de testMode
-  //     const unsubscribeTestMode = testMode.subscribe(value => {
-  //       isTestMode = value;
-  //       console.log('Modo de prueba actualizado en layout:', value);
-  //     });
-      
-  //     unsubscribes.push(unsubscribeTestMode);
-      
-    //   // Inicializar el servicio de sincronización automática con Google Contacts
-    //   if ($isAuthenticated) {
-    //     try {
-    //       console.log('Inicializando servicio de sincronización automática con Google Contacts');
-    //       // Importar la función para verificar la autenticación con Google
-    //       const { isGoogleAuthenticated } = await import('$lib/services/googleService');
-          
-    //       // Verificar si el usuario está autenticado con Google antes de inicializar
-    //       const googleAuth = await isGoogleAuthenticated();
-    //       if (googleAuth) {
-    //         console.log('Usuario autenticado con Google, inicializando sincronización');
-    //         initSyncListeners();
-    //       } else {
-    //         console.log('Usuario no autenticado con Google, la sincronización automática no se iniciará');
-    //       }
-    //     } catch (error) {
-    //       console.error('Error al inicializar el servicio de sincronización:', error);
-    //     }
-    //   }
-    // }
-    
-  //   return () => {
-  //     // Desuscribirse de todos los listeners
-  //     unsubscribes.forEach(unsubscribe => unsubscribe());
-  //   };
-  // });
-
-  // $: if (browser && $isAuthenticated) {
-  //   // Limpiar subscripciones anteriores
-  //   unsubscribes.forEach(unsubscribe => unsubscribe());
-  //   unsubscribes.length = 0;
-
-    // Configurar nuevos listeners
-    unsubscribes.push(
-      onSnapshot(
-        collection(getDb(), 'contacts'),
-        (snapshot: QuerySnapshot<DocumentData>) => {
-          try {
-            // Procesar todos los documentos, incluso aquellos que podrían estar en proceso de creación
-            console.log(`Procesando ${snapshot.docs.length} documentos totales`);
-            
-            const datos = snapshot.docs.map(doc => {
-              try {
-                const data = doc.data();
-                
-                // Verificar si el documento tiene los datos mínimos necesarios
-                if (!data) {
-                  console.error('Error: Documento sin datos', doc.id);
-                  return null;
-                }
-                
-                // Asegurar que el ID del documento sea válido
-                const docId = doc.id && doc.id.trim() !== '' ? doc.id : null;
-                if (!docId) {
-                  console.error('Error: Documento con ID inválido', doc.id);
-                  return null;
-                }
-                
-                // Crear el objeto de contacto con el ID del documento
-                const contactData = {
-                  // Asignar explícitamente el ID del documento y asegurarse de que sea una cadena
-                  id: docId,
-                  createdAt: data.createdAt || Date.now(),
-                  name: data.name || '',
-                  lastname: data.lastname || '',
-                  email: data.email || '',
-                  telephon: data.telephon || '',
-                  typeContact: data.typeContact || '',
-                  selecMC: data.selecMC || '',
-                  comContact: data.comContact || '',
-                  contactStage: data.contactStage || 0,
-                  isActive: data.isActive !== undefined ? data.isActive : true,
-                  properties: Array.isArray(data.properties) ? data.properties : [],
-                  budget: data.budget || 0,
-                  selecTP: data.selecTP || '',
-                  rangeProp: data.rangeProp || '',
-                  numBaths: data.numBaths || 0,
-                  numBeds: data.numBeds || 0,
-                  numParks: data.numParks || 0,
-                  halfBathroom: data.halfBathroom || '',
-                  locaProperty: Array.isArray(data.locaProperty) ? data.locaProperty : [],
-                  tagsProperty: Array.isArray(data.tagsProperty) ? data.tagsProperty : [],
-                  modePay: data.modePay || '', // Ensure modePay is included
-                  // Incluir el resto de los datos
-                  ...data
-                };
-                
-                // Verificación específica para el contacto problemático
-                if (contactData.name === 'aabbcx' && contactData.lastname === 'zzzzz') {
-                  console.log('Encontrado contacto específico aabbcx zzzzz con ID:', contactData.id);
-                }
-                
-                return contactData;
-              } catch (docError) {
-                console.error('Error al procesar documento:', docError);
-                return null;
-              }
-            })
-            .filter(contact => contact !== null && contact.id && contact.id.trim() !== '');
-              
-            console.log(`Cargados ${datos.length} contactos válidos desde Firebase`);
-            
-            // Actualizar el store solo si hay contactos válidos
-            if (datos.length > 0) {
-              contactsStore.set(datos);
-            }
-          } catch (error) {
-            console.error('Error al procesar los contactos:', error);
-          }
-        },
-        (error) => {
-          console.error('Error en el listener de contactos:', error);
-        }
-      )
-    );
-
-    unsubscribes.push(
-      onSnapshot(
-        collection(getDb(), 'binnacles'),
-        (snapshot: QuerySnapshot<DocumentData>) => {
-          const binnacles = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Binnacle[];
-          binnaclesStore.set(binnacles);
-        }
-      )
-    );
-
-    unsubscribes.push(
-      onSnapshot(
-        collection(getDb(), 'properties'),
-        (snapshot: QuerySnapshot<DocumentData>) => {
-          const datos = snapshot.docs.map(doc => ({
-            public_id: doc.id,
-            ...doc.data()
-          })) as Property[];
-          propertiesStore.set(datos);
-        }
-      )
-    );
-  // }
-
-  // onDestroy(() => {
-  //   unsubscribes.forEach(unsubscribe => unsubscribe());
-  // });
+  onDestroy(() => {
+    unsubscribes.forEach(unsubscribe => unsubscribe());
+  });
 </script>
 
 <NotificationContainer />
@@ -193,7 +31,7 @@
   <Navbar />
 </header>
 
-<main id="main-content" role="main" tabindex="-1" aria-label="Contenido principal">
+<main id="main-content" tabindex="-1" aria-label="Contenido principal">
   <div class="app">
     <slot />
   </div>
