@@ -25,21 +25,29 @@
   });
 </script>
 
-<NotificationContainer />
-  
-<header>
-  <Navbar />
-</header>
+<div class="layout">
+  <NotificationContainer />
+    
+  <header>
+    <Navbar />
+  </header>
 
-<main id="main-content" aria-label="Contenido principal">
-  <div class="app" inert={$testMode}>
-    <slot />
-  </div>
-</main>
+  <main role="main" id="main-content">
+    <div class="app-content" inert={$testMode}>
+      <slot />
+    </div>
+  </main>
 
-<Footer />
+  <Footer />
+</div>
 
 <style>
+  .layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
   main {
     flex: 1;
     position: relative;
@@ -47,9 +55,13 @@
     margin-bottom: 4rem;
   }
 
-  :global(.app) {
+  .app-content {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    min-height: 100%;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
   }
 </style>

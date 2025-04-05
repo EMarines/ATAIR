@@ -58,7 +58,9 @@
             aria-expanded={nav__links === "small"}
             aria-controls="menu"
         >
-            <i class="fa-solid fa-bars nav__icon" aria-hidden="true"></i>
+            <span class="nav__icon" aria-hidden="true">
+                <i class="fa-solid fa-bars"></i>
+            </span>
         </button>
 
         <ul 
@@ -80,6 +82,7 @@
                         on:click={logout}
                         class:disabled={$logoutLoading}
                         role="menuitem"
+                        aria-disabled={$logoutLoading}
                     >
                         {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
                     </a>
@@ -87,18 +90,20 @@
             {:else}
                 <li role="none"><a href="/login" class="nav__link" role="menuitem">Login</a></li>
             {/if}
-            <li class="relative" role="none">
+            <li class="theme-toggle" role="none">
                 <button
                     class={currentTheme === "light" ? "moon" : "sun"}
                     on:click={() => setTheme(currentTheme === "light" ? "dark" : "light")}
                     aria-label={currentTheme === "light" ? "Cambiar a modo oscuro" : "Cambiar a modo claro"}
                     role="menuitem"
                 >
-                    {#if currentTheme === "light"}
-                        <Moon />
-                    {:else}
-                        <Sun />
-                    {/if}
+                    <span aria-hidden="true">
+                        {#if currentTheme === "light"}
+                            <Moon />
+                        {:else}
+                            <Sun />
+                        {/if}
+                    </span>
                 </button>
             </li>
         </ul>
