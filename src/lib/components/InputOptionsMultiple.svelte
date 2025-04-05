@@ -35,16 +35,23 @@
             isOpen = false;
         }
     }
+
+    function handleKeyDown(event: KeyboardEvent) {
+        if (event.key === 'Escape') {
+            isOpen = false;
+        }
+    }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window on:click={handleClickOutside} on:keydown={handleKeyDown} />
 
-<div class="select-container">
-    <label for={identificador}>{name}</label>
+<div class="select-container" role="combobox" aria-expanded={isOpen} aria-haspopup="listbox" aria-controls="options-list">
+    <label id={`${identificador}-label`} for={identificador}>{name}</label>
     <div 
         class="selected-options"
-        role="button"
+        id={identificador}
         tabindex="0"
+        aria-labelledby={`${identificador}-label`}
         on:click={toggleDropdown}
         on:keydown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -56,11 +63,16 @@
         {#if value.length === 0}
             <span class="placeholder">Seleccionar opciones...</span>
         {:else}
-            <div class="tags">
+            <div class="tags" role="list">
                 {#each value as selected}
-                    <span class="tag">
+                    <span class="tag" role="listitem">
                         {selected}
-                        <button class="remove-tag" on:click|stopPropagation={() => toggleOption(selected)}>×</button>
+                        <button 
+                            type="button"
+                            class="remove-tag" 
+                            on:click|stopPropagation={() => toggleOption(selected)}
+                            aria-label={`Eliminar ${selected}`}
+                        >×</button>
                     </span>
                 {/each}
             </div>
@@ -68,18 +80,29 @@
     </div>
     
     {#if isOpen}
-        <div class="dropdown">
-            <input
-                type="text"
-                bind:value={searchText}
-                placeholder="Buscar..."
-                class="search-input"
-            />
+        <div 
+            class="dropdown" 
+            id="options-list" 
+            role="listbox" 
+            aria-multiselectable="true"
+        >
+            <div class="search-container">
+                <input
+                    type="text"
+                    bind:value={searchText}
+                    placeholder="Buscar..."
+                    class="search-input"
+                    aria-label="Buscar opciones"
+                />
+            </div>
             <div class="options-list">
                 {#each filteredChoices as choice}
                     <div 
                         class="option"
                         class:selected={value.includes(choice)}
+                        role="option"
+                        aria-selected={value.includes(choice)}
+                        tabindex="0"
                         on:click={() => toggleOption(choice)}
                         on:keydown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
@@ -87,12 +110,12 @@
                                 toggleOption(choice);
                             }
                         }}
-                        role="button"
-                        tabindex="0"
                     >
                         <input
                             type="checkbox"
                             checked={value.includes(choice)}
+                            aria-label={`Seleccionar ${choice}`}
+                            tabindex="-1"
                             readonly
                         />
                         {choice}
@@ -116,15 +139,22 @@
     }
     
     .selected-options {
-        border: 1px solid #ddd;
+        border: 1px solid var(--border, #ddd);
         padding: 0.5rem;
         border-radius: 4px;
         cursor: pointer;
         min-height: 42px;
+        background-color: var(--surface-2, white);
+    }
+    
+    .selected-options:focus {
+        outline: none;
+        border-color: var(--brand, #0052cc);
+        box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.1);
     }
     
     .placeholder {
-        color: #666;
+        color: var(--text-2, #666);
     }
     
     .dropdown {
@@ -132,24 +162,30 @@
         top: 100%;
         left: 0;
         right: 0;
-        background: white;
-        border: 1px solid #ddd;
+        background: var(--surface-2, white);
+        border: 1px solid var(--border, #ddd);
         border-radius: 4px;
         margin-top: 4px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         z-index: 1000;
     }
+
+    .search-container {
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--border, #ddd);
+    }
     
     .search-input {
         width: 100%;
         padding: 0.5rem;
-        border: none;
-        border-bottom: 1px solid #ddd;
+        border: 1px solid var(--border, #ddd);
+        border-radius: 4px;
     }
     
     .options-list {
         max-height: 200px;
         overflow-y: auto;
+        padding: 0.5rem;
     }
     
     .option {
@@ -158,14 +194,20 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        border-radius: 4px;
     }
     
     .option:hover {
-        background-color: #f5f5f5;
+        background-color: var(--surface-3, #f5f5f5);
+    }
+    
+    .option:focus {
+        outline: none;
+        background-color: var(--surface-3, #f5f5f5);
     }
     
     .option.selected {
-        background-color: #e6f3ff;
+        background-color: var(--surface-4, #e6f3ff);
     }
     
     .tags {
@@ -175,7 +217,7 @@
     }
     
     .tag {
-        background-color: #e6f3ff;
+        background-color: var(--surface-4, #e6f3ff);
         padding: 0.25rem 0.5rem;
         border-radius: 4px;
         display: flex;
@@ -191,10 +233,16 @@
         cursor: pointer;
         font-size: 1.2rem;
         line-height: 1;
-        color: #666;
+        color: var(--text-2, #666);
     }
     
     .remove-tag:hover {
-        color: #ff4444;
+        color: var(--error, #ff4444);
+    }
+
+    .remove-tag:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--brand, #0052cc);
+        border-radius: 2px;
     }
 </style>
