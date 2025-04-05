@@ -18,7 +18,9 @@
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<main id="main" role="main">
-			<div style="display: contents">%sveltekit.body%</div>
+			<div style="display: contents" title="Contenido principal de la aplicación">%sveltekit.body%</div>
 		</main>
+		<!-- Announcer para lectores de pantalla -->
+		<div id="svelte-announcer" aria-live="assertive" aria-atomic="true" aria-label="Anuncios de navegación"></div>
 	</body>
 </html>
