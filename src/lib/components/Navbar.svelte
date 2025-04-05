@@ -5,17 +5,14 @@
     import { onMount } from 'svelte';
     import Moon from "./icons/moon.svelte";
     import Sun from "./icons/sun.svelte";
-    // import GoogleConnectButton from './GoogleConnectButton.svelte';
-    // import { isLoggedIn, user } from '../store';
 
-  let currentTheme = "";
+    let currentTheme = "";
     let nav__links = "wide"
 
     const { isAuthenticated } = useAuth()
     const { logout, loading: logoutLoading } = useLogout()
 
     onMount(() => {
-        // Intentar obtener el tema de la cookie
         const cookies = document.cookie.split(';');
         const themeCookie = cookies.find(cookie => cookie.trim().startsWith('siteTheme='));
         const savedTheme = themeCookie ? themeCookie.split('=')[1].trim() : null;
@@ -38,66 +35,63 @@
     $: url = $page.url.href
 
     function showHide() {
-     if(nav__links === "small"){
-      nav__links = "wide"
-     } else {
-      nav__links = "small"
-     }
-    } 
-
+        if (nav__links === "small") {
+            nav__links = "wide"
+        } else {
+            nav__links = "small"
+        }
+    }
 </script>
-
 
 <nav aria-label="Navegación principal">
     <div class="container">
-        <h1>MatchHome</h1>  
+        <div class="logo">
+            <a href="/" class="brand">MatchHome</a>
+        </div>
+        
         <button 
             class="nav__target" 
             on:click={showHide}
-            aria-label="Abrir menú de navegación"
+            aria-label="Menú de navegación"
             aria-expanded={nav__links === "small"}
-            aria-controls="menu"
+            aria-controls="nav-menu"
         >
-            <span class="nav__icon" aria-hidden="true">
-                <i class="fa-solid fa-bars"></i>
-            </span>
+            <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </button>
 
         <ul 
             class={nav__links} 
-            id="menu" 
+            id="nav-menu"
             role="menubar"
         >
-            <li role="none"><a href="/" role="menuitem">Home</a></li>
+            <li role="none"><a href="/" role="menuitem">Inicio</a></li>
             {#if $isAuthenticated}
-                <li role="none"><a href="/contacts" class="nav__link" role="menuitem">Contacto</a></li>
-                <li role="none"><a href="/properties" class="nav__link" role="menuitem">Propiedades</a></li>
-                <li role="none"><a href="/agenda" class="nav__link" role="menuitem">Agenda</a></li>
-                <li role="none"><a href="/tramites" class="nav__link" role="menuitem">Trámites</a></li>
-                <li role="none"><a href="/actions" class="nav__link" role="menuitem">Acciones</a></li>
+                <li role="none"><a href="/contacts" role="menuitem">Contacto</a></li>
+                <li role="none"><a href="/properties" role="menuitem">Propiedades</a></li>
+                <li role="none"><a href="/agenda" role="menuitem">Agenda</a></li>
+                <li role="none"><a href="/tramites" role="menuitem">Trámites</a></li>
+                <li role="none"><a href="/actions" role="menuitem">Acciones</a></li>
                 <li role="none">
-                    <a 
-                        href="/" 
-                        class="nav__link" 
+                    <button
+                        class="nav-link"
                         on:click={logout}
-                        class:disabled={$logoutLoading}
+                        disabled={$logoutLoading}
                         role="menuitem"
-                        aria-disabled={$logoutLoading}
                     >
-                        {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
-                    </a>
+                        {$logoutLoading ? 'Cerrando sesión...' : 'Cerrar sesión'}
+                    </button>
                 </li>
             {:else}
-                <li role="none"><a href="/login" class="nav__link" role="menuitem">Login</a></li>
+                <li role="none"><a href="/login" role="menuitem">Iniciar sesión</a></li>
             {/if}
-            <li class="theme-toggle" role="none">
+            <li role="none" class="theme-toggle">
                 <button
-                    class={currentTheme === "light" ? "moon" : "sun"}
                     on:click={() => setTheme(currentTheme === "light" ? "dark" : "light")}
                     aria-label={currentTheme === "light" ? "Cambiar a modo oscuro" : "Cambiar a modo claro"}
+                    class="theme-button"
                     role="menuitem"
                 >
-                    <span aria-hidden="true">
+                    <span class="theme-icon" aria-hidden="true">
                         {#if currentTheme === "light"}
                             <Moon />
                         {:else}
@@ -129,34 +123,11 @@
         padding: 0 1rem;
     }
 
-    ul {
-        display: flex;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        gap: 1.5rem;
-    }
-
-    .wide, .small {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-    }
-
-    h1 {
-        margin: 0;
+    .brand {
         font-size: 1.3em;
         font-weight: 600;
-    }
-
-    a {
         text-decoration: none;
         color: var(--text-1);
-        transition: color 0.2s;
-    }
-
-    a:hover {
-        color: var(--brand);
     }
 
     .nav__target {
@@ -168,7 +139,54 @@
         color: var(--text-1);
     }
 
-    /* Tablet */
+    ul {
+        display: flex;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        gap: 1.5rem;
+    }
+
+    a, .nav-link {
+        text-decoration: none;
+        color: var(--text-1);
+        transition: color 0.2s;
+        background: none;
+        border: none;
+        font-size: inherit;
+        font-family: inherit;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    a:hover, .nav-link:hover {
+        color: var(--brand);
+    }
+
+    .nav-link:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .theme-button {
+        background: none;
+        border: none;
+        padding: 0.5rem;
+        cursor: pointer;
+        color: var(--text-1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .theme-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
     @media (max-width: 800px) {
         .container {
             padding: 0 2rem;
@@ -179,93 +197,25 @@
         }
     }
 
-    /* Mobile */
     @media (max-width: 600px) {
-        nav {
-            position: sticky;
-            height: 60px;
-        }
-
-        .container {
-            padding: 0 1rem;
-        }
-
         .nav__target {
             display: block;
         }
 
-        .wide {
+        .small {
             display: none;
         }
 
-        .small {
+        ul.small {
             position: fixed;
             top: 60px;
             left: 0;
             right: 0;
-            bottom: 0;
             background: var(--surface-1);
             flex-direction: column;
             align-items: flex-start;
             padding: 2rem;
             gap: 1.5rem;
-            overflow-y: auto;
-            z-index: 1000;
-            height: calc(100vh - 60px); /* Altura total menos la altura del nav */
-        }
-
-        ul {
-            width: 100%;
-        }
-
-        li {
-            width: 100%;
-            padding: 0.5rem 0;
-        }
-
-        .nav__link {
-            display: block;
-            width: 100%;
-            padding: 0.5rem 0;
-        }
-    }
-
-    /* Animaciones */
-    .small {
-        animation: slideIn 0.3s ease-out;
-    }
-
-    @keyframes slideIn {
-        from {
-            transform: translateX(-100%);
-        }
-        to {
-            transform: translateX(0);
-        }
-    }
-
-    /* Accesibilidad */
-    .nav__target,
-    a {
-        outline: 2px solid var(--brand);
-        outline-offset: 2px;
-    }
-
-    /* Estado deshabilitado */
-    .disabled {
-        opacity: 0.5;
-        pointer-events: none;
-    }
-    
-    .google-connect-container {
-        display: flex;
-        align-items: center;
-        margin: 0 10px;
-    }
-    
-    @media (max-width: 768px) {
-        .google-connect-container {
-            margin: 10px 0;
         }
     }
 </style>

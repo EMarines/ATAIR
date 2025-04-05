@@ -32,8 +32,8 @@
     <Navbar />
   </header>
 
-  <main role="main" id="main-content">
-    <div class="app-content" inert={$testMode}>
+  <main aria-label="Contenido principal">
+    <div class="app-content">
       <slot />
     </div>
   </main>
