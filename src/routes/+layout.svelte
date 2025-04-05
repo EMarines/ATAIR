@@ -31,8 +31,8 @@
   <Navbar />
 </header>
 
-<main id="main-content" tabindex="-1" aria-label="Contenido principal">
-  <div class="app">
+<main id="main-content" aria-label="Contenido principal">
+  <div class="app" inert={$testMode}>
     <slot />
   </div>
 </main>
@@ -45,7 +45,6 @@
     position: relative;
     z-index: 2;
     margin-bottom: 4rem;
-    outline: none;
   }
 
   :global(.app) {
