@@ -49,30 +49,47 @@
     );
 
     const binnaclesUnsubscribe = onSnapshot(
-      collection(db, "binnacles"),
+      collection(db, 'binnacles'),
       (snapshot: QuerySnapshot<DocumentData>) => {
         const binnacles = snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
+          id: doc.id,
+          ...doc.data()
         })) as Binnacle[];
         binnaclesStore.set(binnacles);
-      },
-      (error) => {
-        console.error("Error loading binnacles:", error);
       }
     );
 
     const propertiesUnsubscribe = onSnapshot(
-      collection(db, "properties"),
+      collection(db, 'properties'),
       (snapshot: QuerySnapshot<DocumentData>) => {
-        const properties = snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
-        })) as Property[];
+        const properties = snapshot.docs.map(doc => {
+          const data = doc.data();
+          // Asegurarse de que todos los campos requeridos estén presentes
+          return {
+            agent: data.agent || '',
+            bathrooms: data.bathrooms || 0,
+            bedrooms: data.bedrooms || 0,
+            construction_size: data.construction_size || 0,
+            created_at: data.created_at || Date.now(),
+            description: data.description || '',
+            half_bathrooms: data.half_bathrooms || 0,
+            location: data.location || '',
+            lot_size: data.lot_size || 0,
+            parking_spaces: data.parking_spaces || 0,
+            price: data.price || 0,
+            property_status: data.property_status || 'available',
+            property_type: data.property_type || '',
+            public_id: doc.id,
+            public_url: data.public_url || '',
+            selecTO: data.selecTO || '',
+            selecTP: data.selecTP || '',
+            tags: Array.isArray(data.tags) ? data.tags : [],
+            title: data.title || '',
+            title_image_thumb: data.title_image_thumb || '',
+            updated_at: data.updated_at || new Date().toISOString(),
+          } as Property;
+        });
         propertiesStore.set(properties);
-      },
-      (error) => {
-        console.error("Error loading properties:", error);
       }
     );
 
