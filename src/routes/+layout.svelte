@@ -13,12 +13,75 @@
   import { goto } from '$app/navigation';
   import { testMode } from '$lib/stores/testModeStore';
   import NotificationContainer from '$lib/components/NotificationContainer.svelte';
+  import { page } from '$app/stores';
 
+  const { isAuthenticated } = useAuth();
   const unsubscribes: (() => void)[] = [];
 
+  // Lista de rutas públicas que no requieren autenticación
+  const publicRoutes = ['/login', '/register'];
+
   onMount(async () => {
-    // ...existing code...
+    if (browser) {
+      // Verificar si la ruta actual requiere autenticación
+      const currentPath = $page.url.pathname;
+      if (!publicRoutes.includes(currentPath) && !$isAuthenticated) {
+        console.log('Usuario no autenticado, redirigiendo a login...');
+        goto('/login');
+      }
+    }
   });
+
+  $: if (browser && $isAuthenticated) {
+    // Suscribirse a las colecciones solo si el usuario está autenticado
+    const contactsUnsubscribe = onSnapshot(
+      collection(db, "contacts"),
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        const contacts = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as Contact[];
+        contactsStore.set(contacts);
+      },
+      (error) => {
+        console.error("Error loading contacts:", error);
+      }
+    );
+
+    const binnaclesUnsubscribe = onSnapshot(
+      collection(db, "binnacles"),
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        const binnacles = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as Binnacle[];
+        binnaclesStore.set(binnacles);
+      },
+      (error) => {
+        console.error("Error loading binnacles:", error);
+      }
+    );
+
+    const propertiesUnsubscribe = onSnapshot(
+      collection(db, "properties"),
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        const properties = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as Property[];
+        propertiesStore.set(properties);
+      },
+      (error) => {
+        console.error("Error loading properties:", error);
+      }
+    );
+
+    unsubscribes.push(
+      contactsUnsubscribe,
+      binnaclesUnsubscribe,
+      propertiesUnsubscribe
+    );
+  }
 
   onDestroy(() => {
     unsubscribes.forEach(unsubscribe => unsubscribe());
