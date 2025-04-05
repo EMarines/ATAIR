@@ -187,42 +187,32 @@
   // });
 </script>
 
-  <NotificationContainer />
+<NotificationContainer />
   
-  <header>
-    <Navbar />
-  </header>
-  
-  <main>
-    <div class="app">
-      <slot />
-    </div>
-  </main>
+<header>
+  <Navbar />
+</header>
 
-  <div class="footer-container">
-    <Footer />
+<main id="main-content" role="main" tabindex="-1" aria-label="Contenido principal">
+  <div class="app">
+    <slot />
   </div>
-<!-- </div> -->
+</main>
+
+<Footer />
 
 <style>
-
   main {
     flex: 1;
     position: relative;
     z-index: 2;
-    margin-bottom: 4rem; /* Añadir margen inferior para que el contenido no quede oculto detrás del footer */
-  }
-  
-  .footer-container {
-    margin-top: auto;
-    padding: 1rem;
-    background: rgb(56, 56, 56);
-    text-align: center;
-    position: fixed; /* Cambiar a fixed para que sea fijo */
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1;
+    margin-bottom: 4rem;
+    outline: none;
   }
 
+  :global(.app) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
 </style>
