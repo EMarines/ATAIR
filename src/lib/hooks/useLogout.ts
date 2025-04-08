@@ -1,26 +1,20 @@
-import { auth } from '../firebase'
-import { signOut } from 'firebase/auth'
 import { writable } from 'svelte/store'
 import { goto } from '$app/navigation'
 import { userStore } from '../stores/userStore'
+import { authService } from '../services/authService'
+import { browser } from '$app/environment'
 
+// Función auxiliar para eliminar todas las cookies
 function deleteAllCookies() {
-  const cookies = document.cookie.split(';')
+  if (!browser) return;
+  
+  const cookies = document.cookie.split(";");
   
   for (let i = 0; i < cookies.length; i++) {
-    const cookie = cookies[i]
-    const eqPos = cookie.indexOf('=')
-    const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie
-    
-    // Eliminar cookie estableciendo una fecha pasada y múltiples dominios/paths
-    document.cookie = name + 
-      '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=' + window.location.hostname
-    document.cookie = name + 
-      '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.' + window.location.hostname
-    document.cookie = name + 
-      '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain='
-    document.cookie = name + 
-      '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/'
+    const cookie = cookies[i];
+    const eqPos = cookie.indexOf("=");
+    const name = eqPos > -1 ? cookie.slice(0, eqPos).trim() : cookie.trim();
+    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
   }
 }
 
@@ -31,18 +25,18 @@ export function useLogout() {
   const logout = async () => {
     loading.set(true)
     try {
-      await signOut(auth)
+      // Usar el servicio centralizado para logout
+      await authService.logout()
       
       // Limpiar stores
       userStore.reset()
       
-      // Limpiar todo tipo de almacenamiento
-      deleteAllCookies()
-      localStorage.clear()
-      sessionStorage.clear()
-      
-      // Forzar limpieza de caché de autenticación
-      await auth.signOut()
+      // Limpiar todo tipo de almacenamiento si estamos en el navegador
+      if (browser) {
+        deleteAllCookies()
+        localStorage.clear()
+        sessionStorage.clear()
+      }
       
       // Redirigir al login
       goto('/login')

@@ -3,6 +3,7 @@ import { db } from '$lib/firebase/firebase';
 // import { collection, onSnapshot, getDocs } from 'firebase/firestore';
 import { contactsStore, binnaclesStore, propertiesStore, todoStore } from '$lib/stores/dataStore';
 import type { Contact, Binnacle, Property, Todo } from '$lib/types';
+import { authService } from '$lib/services/authService';
 
 export const load = async () => {
     // Inicializa los stores con arrays vacíos
@@ -12,6 +13,13 @@ export const load = async () => {
     todoStore.set([]);
 
     if (browser) {
+        // Verificar token al cargar layout
+        try {
+            await authService.verifyToken();
+        } catch (error) {
+            console.error('Error al verificar token en layout:', error);
+        }
+        
         try {
             // Importar dinámicamente las funciones de Firestore
             let collection, onSnapshot, getDocs;
