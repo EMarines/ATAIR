@@ -7,9 +7,9 @@
     import type { Property, Contact, AddContactEvents } from '$lib/types';
     import { ranPrice } from '$lib/functions/rangeValue';
     import { onMount, onDestroy } from 'svelte';
+    import { get } from 'svelte/store';
     // Importar las funciones necesarias para sincronizar con Google
     // import { syncContact, getAccessToken } from '$lib/services/googleService';
-    import { get } from 'svelte/store';
   
     const dispatch = createEventDispatcher<AddContactEvents>();
   
@@ -92,10 +92,8 @@
         // Solo validar si el campo ha sido tocado o si el formulario está siendo enviado
         if (!camposModificados[field] && !isDirty) {
             return;
-        }
-  
-        erroresFormulario[field] = '';
-  
+        }  
+        erroresFormulario[field] = '';  
         switch(field) {
             case 'name':
                 if (!value?.trim()) {
@@ -211,7 +209,6 @@
                 result = await contactsStore.update(cleanContactData);
             } else {
                 result = await contactsStore.add(cleanContactData);
-
             }
   
             if (!result.success) {
@@ -298,7 +295,6 @@
             // contact.rangeProp = '';
         }
     }
-
     function handlePropertySelection(property: string) {
     if (selectedProperties.includes(property)) {
       // Si la propiedad ya está seleccionada, la eliminamos
@@ -472,8 +468,8 @@
                                         onSelect={() => {
                                             contact.propCont = property.public_id;
                                             contact.selecTP = property.property_type || '';
-                                            contact.rangeProp = property.operations?.[0]?.amount 
-                                                ? ranPrice(property.operations[0].amount)
+                                            contact.rangeProp = property.price 
+                                                ? ranPrice(property.price)
                                                 : '';
                                             
                                             // Guardar la propiedad seleccionada en el store

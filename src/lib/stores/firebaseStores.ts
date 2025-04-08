@@ -10,7 +10,7 @@ interface FirebaseCondition {
 }
 
 function createFirebaseStore() {
-    const { subscribe, set, update } = writable({});
+    const { subscribe } = writable({});
 
     return {
         subscribe,
