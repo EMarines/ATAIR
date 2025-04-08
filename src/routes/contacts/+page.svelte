@@ -2,7 +2,6 @@
   import { contactsStore, propertiesStore, systStatus, contact } from '$lib/stores/dataStore';
   import { Search, CardContact, Button } from '$components';
   import AddContact from '$lib/components/AddContact.svelte';
-  // import GoogleSyncManager from '$lib/components/GoogleSyncManager.svelte';
   import type { Contact } from '$lib/types';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
@@ -185,9 +184,7 @@
       {#if $systStatus === ""}
         <div class="title__container">
           <h1 class="title">Contactos</h1>
-          <!-- <div class="sync-container">
-            <GoogleSyncManager />
-          </div> -->
+
         </div>
         
         <div class="headContainer">

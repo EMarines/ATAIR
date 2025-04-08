@@ -245,18 +245,6 @@
                 console.log('Contacto añadido/actualizado manualmente en el store:', cleanContactData);
             }
   
-            // // Sincronizar con Google Contacts (automáticamente sin confirmación)
-            // try {
-            //     const accessToken = await getAccessToken();
-            //     if (accessToken) {
-            //       await syncContact(cleanContactData, accessToken);
-            //       console.log('Contacto sincronizado con Google Contacts');
-            //     }
-            // } catch (googleError) {
-            //     console.error('Error al sincronizar con Google Contacts:', googleError);
-            //     // Continuar a pesar del error con Google
-            // }
-  
             // Emitir evento de éxito
             dispatch('success', { contact: cleanContactData });
             

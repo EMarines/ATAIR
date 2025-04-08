@@ -5,7 +5,6 @@
     import { onMount } from 'svelte';
     import Moon from "./icons/moon.svelte";
     import Sun from "./icons/sun.svelte";
-    // import GoogleConnectButton from './GoogleConnectButton.svelte';
     // import { isLoggedIn, user } from '../store';
 
   let currentTheme = "";
@@ -260,15 +259,5 @@
         pointer-events: none;
     }
     
-    .google-connect-container {
-        display: flex;
-        align-items: center;
-        margin: 0 10px;
-    }
-    
-    @media (max-width: 768px) {
-        .google-connect-container {
-            margin: 10px 0;
-        }
-    }
+   
 </style>

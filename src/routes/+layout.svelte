@@ -21,55 +21,6 @@
   // Función para obtener la instancia de Firestore
   const getDb = () => db;
 
-  // // Variable para mostrar el indicador de modo de prueba
-  // let isTestMode = false;
-
-  // onMount(async () => {
-  //   if (browser) {
-  //     const isValid = await checkAuth();
-  //     if (!isValid && window.location.pathname !== '/login') {
-  //       goto('/login');
-  //     }
-      
-  //     // Suscribirse al store de testMode
-  //     const unsubscribeTestMode = testMode.subscribe(value => {
-  //       isTestMode = value;
-  //       console.log('Modo de prueba actualizado en layout:', value);
-  //     });
-      
-  //     unsubscribes.push(unsubscribeTestMode);
-      
-    //   // Inicializar el servicio de sincronización automática con Google Contacts
-    //   if ($isAuthenticated) {
-    //     try {
-    //       console.log('Inicializando servicio de sincronización automática con Google Contacts');
-    //       // Importar la función para verificar la autenticación con Google
-    //       const { isGoogleAuthenticated } = await import('$lib/services/googleService');
-          
-    //       // Verificar si el usuario está autenticado con Google antes de inicializar
-    //       const googleAuth = await isGoogleAuthenticated();
-    //       if (googleAuth) {
-    //         console.log('Usuario autenticado con Google, inicializando sincronización');
-    //         initSyncListeners();
-    //       } else {
-    //         console.log('Usuario no autenticado con Google, la sincronización automática no se iniciará');
-    //       }
-    //     } catch (error) {
-    //       console.error('Error al inicializar el servicio de sincronización:', error);
-    //     }
-    //   }
-    // }
-    
-  //   return () => {
-  //     // Desuscribirse de todos los listeners
-  //     unsubscribes.forEach(unsubscribe => unsubscribe());
-  //   };
-  // });
-
-  // $: if (browser && $isAuthenticated) {
-  //   // Limpiar subscripciones anteriores
-  //   unsubscribes.forEach(unsubscribe => unsubscribe());
-  //   unsubscribes.length = 0;
 
     // Configurar nuevos listeners
     unsubscribes.push(

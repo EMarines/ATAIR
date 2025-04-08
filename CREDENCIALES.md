@@ -8,8 +8,7 @@ El proyecto utiliza varios tipos de credenciales sensibles:
 
 1. **Firebase API Keys y configuración**
 2. **EasyBroker API Key**
-3. **Google OAuth Credentials** (client ID y client secret)
-4. **Service Account de Firebase**
+3. **Service Account de Firebase**
 
 ## Uso Correcto de Credenciales
 
@@ -35,34 +34,14 @@ FIREBASE_SERVICE_ACCOUNT_AUTH_PROVIDER_CERT_URL=https://www.googleapis.com/oauth
 FIREBASE_SERVICE_ACCOUNT_CLIENT_CERT_URL=tu-client-cert-url
 ```
 
-### Despliegue en Vercel
-
-Al desplegar en Vercel, debes configurar todas estas variables de entorno en el panel de configuración de Vercel. Consulta el archivo `DEPLOYMENT.md` para más detalles.
-
 ## Archivos Sensibles que No Deben Subirse al Repositorio
 
 Los siguientes archivos contienen información sensible y nunca deben subirse al repositorio:
 
 1. `.env` - Contiene todas las credenciales
-2. `src/lib/functions/service-account-key.json` - Archivo de credenciales de Firebase (ahora reemplazado por variables de entorno)
+2. `src/lib/functions/service-account-key.json` - Archivo de credenciales de Firebase
 3. `debug-tokens.html` - Contiene información de diagnóstico que podría exponer tokens
-4. `diagnostico-google.html` y `diagnostico-simple.html` - Archivos de diagnóstico
+4. `diagnostico-simple.html` - Archivo de diagnóstico
 5. `firebase-debug.log` - Logs que podrían contener información sensible
 
-Estos archivos ya están incluidos en el `.gitignore` para evitar que se suban accidentalmente.
-
-## Migración de service-account-key.json a Variables de Entorno
-
-Si estás migrando de usar el archivo JSON a variables de entorno, sigue estos pasos:
-
-1. Abre tu archivo `service-account-key.json`
-2. Copia cada valor a la variable de entorno correspondiente en el archivo `.env`
-3. Para la `private_key`, asegúrate de incluir las comillas y reemplazar los saltos de línea con `\n`
-4. Elimina el archivo `service-account-key.json` una vez que hayas verificado que todo funciona correctamente
-
-## Seguridad Adicional
-
-- Nunca compartas tus credenciales con nadie
-- Considera rotar tus credenciales periódicamente
-- Utiliza permisos mínimos necesarios para cada credencial
-- Considera usar servicios de gestión de secretos para entornos de producción
+// ...resto del contenido existente...
