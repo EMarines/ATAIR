@@ -7,6 +7,7 @@
     import Sun from "./icons/sun.svelte";
     import { writable } from 'svelte/store';
     import { browser } from '$app/environment';
+    import { useTestDb } from '$lib/firebase/firebase';  // Asegúrate que esta importación es correcta
 
     let currentTheme = "";
     let nav__links = "wide"
@@ -41,31 +42,6 @@
             nav__links = "small"
         }
     }
-
-    // Store para controlar qué base de datos usamos
-    const createDbToggleStore = () => {
-        const initialValue = browser ?
-            localStorage.getItem('useTestDb') === 'true' :
-            false;
-
-        const { subscribe, set, update } = writable<boolean>(initialValue);
-
-        return {
-            subscribe,
-            toggle: () => {
-                update(value => {
-                    const newValue = !value;
-                    if (browser) {
-                        localStorage.setItem('useTestDb', String(newValue));
-                        window.location.reload();
-                    }
-                    return newValue;
-                });
-            }
-        };
-    };
-
-    const useTestDb = createDbToggleStore();
 
     $: dbLabel = $useTestDb ? 'Curso Svelte' : 'Match Home';
     $: dbIcon = $useTestDb ? '🔄' : '🔥';

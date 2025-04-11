@@ -116,4 +116,4 @@ try {
   if (!auth) auth = { currentUser: null };
 }
 
-export { app, db, auth, useTestDb };
+export { app, db, auth };
