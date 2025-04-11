@@ -1,4 +1,7 @@
 import type { Contact, Property, Todo } from '$lib/types';
+import { browser } from '$app/environment';
+import { useTestDb } from '$lib/firebase/firebase';
+import { get } from 'svelte/store';
 
 // Extend the Binnacle type to include contactId
 type Binnacle = {
@@ -9,7 +12,6 @@ type Binnacle = {
   to: string;
   contactId?: string; // Added contactId as optional
 };
-import { browser } from '$app/environment';
 
 // Funciones para preservar datos reales modificados
 let cachedContacts: Contact[] = [];
@@ -77,83 +79,88 @@ export function cacheMockData(
   binnacles: Binnacle[] = [],
   todos: Todo[] = []
 ) {
-  // Verificación defensiva para asegurarnos que tenemos arrays válidos
-  contacts = Array.isArray(contacts) ? contacts : [];
-  properties = Array.isArray(properties) ? properties : [];
-  binnacles = Array.isArray(binnacles) ? binnacles : [];
-  todos = Array.isArray(todos) ? todos : [];
+  // Solo cachear datos en modo de prueba
+  if (browser && get(useTestDb)) {
+    // Verificación defensiva para asegurarnos que tenemos arrays válidos
+    contacts = Array.isArray(contacts) ? contacts : [];
+    properties = Array.isArray(properties) ? properties : [];
+    binnacles = Array.isArray(binnacles) ? binnacles : [];
+    todos = Array.isArray(todos) ? todos : [];
 
-  console.log(`Preparando datos mock: ${contacts.length} contactos, ${properties.length} propiedades`);
+    console.log(`Preparando datos mock: ${contacts.length} contactos, ${properties.length} propiedades`);
 
-  // Si no hay datos para cachear, mantener los valores por defecto
-  if (contacts.length === 0 && properties.length === 0) {
-    console.log('No hay datos reales disponibles para crear mockups, usando datos por defecto');
-    return;
-  }
-
-  // Limitar a 50 contactos y 35 propiedades
-  const limitedContacts = contacts.slice(0, 50);
-  const limitedProperties = properties.slice(0, 35);
-  
-  // Anonimizar datos sensibles (dentro de try/catch para mayor seguridad)
-  try {
-    // Procesar contactos y propiedades
-    cachedContacts = limitedContacts.map(contact => anonymizeContact(contact));
-    cachedProperties = limitedProperties.map(property => anonymizeProperty(property));
-    
-    // Función segura para extraer ID 
-    const safeGetId = (obj: { id?: string }): string => {
-      return obj && obj.id ? String(obj.id).replace('mock-', '') : '';
-    };
-    
-    // Crear conjunto de IDs de contactos válidos
-    const validContactIds = new Set(cachedContacts.map(c => safeGetId(c)));
-    
-    // Función para verificar si un objeto tiene un contactId válido
-    const hasValidContactIdForBinnacle = (obj: Binnacle): boolean => {
-      const contactId = obj.contactId ? String(obj.contactId).replace('mock-', '') : '';
-      return validContactIds.has(contactId);
-    };
-
-    const hasValidContactIdForTodo = (obj: Todo): boolean => {
-      const contactId = obj.id ? String(obj.id).replace('mock-', '') : '';
-      return validContactIds.has(contactId);
-    };
-    
-    // Procesar bitácoras y tareas
-    cachedBinnacles = binnacles
-      .filter(hasValidContactIdForBinnacle)
-      .map(b => ({
-        ...b,
-        id: `mock-${b.id}`,
-        contactId: b.contactId ? `mock-${b.contactId}` : undefined
-      }))
-      .slice(0, 100);
-    
-    cachedTodos = todos
-      .filter(hasValidContactIdForTodo)
-      .map(t => ({
-        ...t,
-        id: `mock-${t.id}`,
-        contactId: t.id ? `mock-${t.id}` : undefined
-      }))
-      .slice(0, 50);
-    
-  } catch (error) {
-    console.error('Error al procesar datos para mock:', error);
-  }
-  
-  // Guardar en localStorage para persistencia
-  if (browser) {
-    try {
-      localStorage.setItem('mockContacts', JSON.stringify(cachedContacts));
-      localStorage.setItem('mockProperties', JSON.stringify(cachedProperties));
-      localStorage.setItem('mockBinnacles', JSON.stringify(cachedBinnacles));
-      localStorage.setItem('mockTodos', JSON.stringify(cachedTodos));
-      console.log(`Datos mock guardados: ${cachedContacts.length} contactos, ${cachedProperties.length} propiedades`);
-    } catch (error) {
-      console.error('Error al guardar datos mock en localStorage:', error);
+    // Si no hay datos para cachear, mantener los valores por defecto
+    if (contacts.length === 0 && properties.length === 0) {
+      console.log('No hay datos reales disponibles para crear mockups, usando datos por defecto');
+      return;
     }
+
+    // Limitar a 50 contactos y 35 propiedades
+    const limitedContacts = contacts.slice(0, 50);
+    const limitedProperties = properties.slice(0, 35);
+    
+    // Anonimizar datos sensibles (dentro de try/catch para mayor seguridad)
+    try {
+      // Procesar contactos y propiedades
+      cachedContacts = limitedContacts.map(contact => anonymizeContact(contact));
+      cachedProperties = limitedProperties.map(property => anonymizeProperty(property));
+      
+      // Función segura para extraer ID 
+      const safeGetId = (obj: { id?: string }): string => {
+        return obj && obj.id ? String(obj.id).replace('mock-', '') : '';
+      };
+      
+      // Crear conjunto de IDs de contactos válidos
+      const validContactIds = new Set(cachedContacts.map(c => safeGetId(c)));
+      
+      // Función para verificar si un objeto tiene un contactId válido
+      const hasValidContactIdForBinnacle = (obj: Binnacle): boolean => {
+        const contactId = obj.contactId ? String(obj.contactId).replace('mock-', '') : '';
+        return validContactIds.has(contactId);
+      };
+
+      const hasValidContactIdForTodo = (obj: Todo): boolean => {
+        const contactId = obj.id ? String(obj.id).replace('mock-', '') : '';
+        return validContactIds.has(contactId);
+      };
+      
+      // Procesar bitácoras y tareas
+      cachedBinnacles = binnacles
+        .filter(hasValidContactIdForBinnacle)
+        .map(b => ({
+          ...b,
+          id: `mock-${b.id}`,
+          contactId: b.contactId ? `mock-${b.contactId}` : undefined
+        }))
+        .slice(0, 100);
+      
+      cachedTodos = todos
+        .filter(hasValidContactIdForTodo)
+        .map(t => ({
+          ...t,
+          id: `mock-${t.id}`,
+          contactId: t.id ? `mock-${t.id}` : undefined
+        }))
+        .slice(0, 50);
+      
+    } catch (error) {
+      console.error('Error al procesar datos para mock:', error);
+    }
+    
+    // Guardar en localStorage para persistencia
+    if (browser) {
+      try {
+        localStorage.setItem('mockContacts', JSON.stringify(cachedContacts));
+        localStorage.setItem('mockProperties', JSON.stringify(cachedProperties));
+        localStorage.setItem('mockBinnacles', JSON.stringify(cachedBinnacles));
+        localStorage.setItem('mockTodos', JSON.stringify(cachedTodos));
+        console.log(`Datos mock guardados: ${cachedContacts.length} contactos, ${cachedProperties.length} propiedades`);
+      } catch (error) {
+        console.error('Error al guardar datos mock en localStorage:', error);
+      }
+    }
+  } else {
+    console.log('Modo de producción: No se cachean datos mock');
   }
 }
 
@@ -358,7 +365,14 @@ export function generateMockId(): string {
   return `mock-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
-// Cargar datos desde localStorage al inicializar
+// Cargar datos desde localStorage al inicializar solo en modo de prueba
 if (browser) {
-  loadCachedMockData();
+  useTestDb.subscribe(isTestMode => {
+    if (isTestMode) {
+      loadCachedMockData();
+      console.log('Modo de prueba: Cargando datos mock');
+    } else {
+      console.log('Modo de producción: No se usan datos mock');
+    }
+  });
 }
