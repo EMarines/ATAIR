@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { writable, get, derived } from 'svelte/store';
-import { testMode } from '$lib/stores/testModeStore';
+// Reemplazando el store eliminado con un store local
+const testMode = writable<boolean>(false);
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import type { FirebaseApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';

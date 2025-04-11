@@ -11,7 +11,7 @@
   import Footer from '$lib/components/Footer.svelte';
   import { useAuth } from '$lib/hooks/useAuth';
   import { goto } from '$app/navigation';
-  import { testMode } from '$lib/stores/testModeStore';
+  // Eliminada referencia a testModeStore
   import NotificationContainer from '$lib/components/NotificationContainer.svelte';
   // import { initSyncListeners } from '$lib/services/syncService';
 
