@@ -5,25 +5,25 @@
     import { onMount } from 'svelte';
     import Moon from "./icons/moon.svelte";
     import Sun from "./icons/sun.svelte";
-    // import { isLoggedIn, user } from '../store';
+    import { writable } from 'svelte/store';
+    import { browser } from '$app/environment';
 
-  let currentTheme = "";
+    let currentTheme = "";
     let nav__links = "wide"
 
     const { isAuthenticated } = useAuth()
     const { logout, loading: logoutLoading } = useLogout()
 
     onMount(() => {
-    // currentTheme = document.documentElement.dataset.theme;
-    const userPrefersDarkMode = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-    const hasUserSetDarkModeManually =
-      document.documentElement.dataset.theme == "dark";
-    if (!hasUserSetDarkModeManually) {
-      setTheme(userPrefersDarkMode ? "dark" : "light");
-    }
-  });
+        const userPrefersDarkMode = window.matchMedia(
+            "(prefers-color-scheme: dark)"
+        ).matches;
+        const hasUserSetDarkModeManually =
+            document.documentElement.dataset.theme == "dark";
+        if (!hasUserSetDarkModeManually) {
+            setTheme(userPrefersDarkMode ? "dark" : "light");
+        }
+    });
 
     const setTheme = (theme) => {
         document.documentElement.dataset.theme = theme;
@@ -35,19 +35,45 @@
     $: url = $page.url.href
 
     function showHide() {
-     if(nav__links === "small"){
-      nav__links = "wide"
-     } else {
-      nav__links = "small"
-     }
-    } 
+        if (nav__links === "small") {
+            nav__links = "wide"
+        } else {
+            nav__links = "small"
+        }
+    }
 
+    // Store para controlar qué base de datos usamos
+    const createDbToggleStore = () => {
+        const initialValue = browser ?
+            localStorage.getItem('useTestDb') === 'true' :
+            false;
+
+        const { subscribe, set, update } = writable<boolean>(initialValue);
+
+        return {
+            subscribe,
+            toggle: () => {
+                update(value => {
+                    const newValue = !value;
+                    if (browser) {
+                        localStorage.setItem('useTestDb', String(newValue));
+                        window.location.reload();
+                    }
+                    return newValue;
+                });
+            }
+        };
+    };
+
+    const useTestDb = createDbToggleStore();
+
+    $: dbLabel = $useTestDb ? 'Curso Svelte' : 'Match Home';
+    $: dbIcon = $useTestDb ? '🔄' : '🔥';
 </script>
 
 
 <nav>
   <div class="container">
-    <!-- <div class="nav__bugger"> -->
       <h1>MatchHome</h1>  
       <button 
         class="nav__target" 
@@ -56,59 +82,65 @@
       >
         <i class="fa-solid fa-bars nav__icon"></i>
       </button>
-    <!-- </div> -->
 
     <ul 
-  class={nav__links} 
-  id="menu" 
-  on:click={showHide} 
-  on:keypress={showHide}
-  role="menu"
->
-  <li role="menuitem"><a href="/">Home</a></li>
-  {#if $isAuthenticated}
-    <li role="menuitem"><a href="/contacts" class="nav__link">Contacto</a></li>
-    <li role="menuitem"><a href="/properties" class="nav__link">Propiedades</a></li>
-    <li role="menuitem"><a href="/agenda" class="nav__link">Agenda</a></li>
-    <li role="menuitem"><a href="/tramites">Trámites</a></li>
-    <li role="menuitem"><a href="/actions">Acciones</a></li>
-    <li role="menuitem">
-      <a 
-        href="/" 
-        class="nav__link" 
-        on:click={logout}
-        class:disabled={$logoutLoading}
-      >
-        {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
-      </a>
-    </li>
-  {:else}
-    <li role="menuitem"><a href="/login" class="nav__link">Login</a></li>
-  {/if}
-  <li class="relative" role="menuitem">
-    {#if currentTheme == "light"}
-      <a 
-        class="moon" 
-        href={"#"} 
-        on:click={() => setTheme("dark")}
-        aria-label="Cambiar a modo oscuro"
-        tabindex="-1"
-      >
-        <Moon />
-      </a>
-    {:else}
-      <a 
-        class="sun" 
-        href={"#"} 
-        on:click={() => setTheme("light")}
-        aria-label="Cambiar a modo claro"
-        tabindex="-1"
-      >
-        <Sun />
-      </a>
-    {/if}
-  </li>
-</ul>
+      class={nav__links} 
+      id="menu" 
+      on:click={showHide} 
+      on:keypress={showHide}
+      role="menu"
+    >
+      <li role="menuitem"><a href="/">Home</a></li>
+      {#if $isAuthenticated}
+        <li role="menuitem"><a href="/contacts" class="nav__link">Contacto</a></li>
+        <li role="menuitem"><a href="/properties" class="nav__link">Propiedades</a></li>
+        <li role="menuitem"><a href="/agenda" class="nav__link">Agenda</a></li>
+        <li role="menuitem"><a href="/tramites">Trámites</a></li>
+        <li role="menuitem"><a href="/actions">Acciones</a></li>
+        <li role="menuitem">
+          <a 
+            href="/" 
+            class="nav__link" 
+            on:click={logout}
+            class:disabled={$logoutLoading}
+          >
+            {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
+          </a>
+        </li>
+      {:else}
+        <li role="menuitem"><a href="/login" class="nav__link">Login</a></li>
+      {/if}
+      <li class="relative" role="menuitem">
+        {#if currentTheme == "light"}
+          <a 
+            class="moon" 
+            href={"#"} 
+            on:click={() => setTheme("dark")}
+            aria-label="Cambiar a modo oscuro"
+            tabindex="-1"
+          >
+            <Moon />
+          </a>
+        {:else}
+          <a 
+            class="sun" 
+            href={"#"} 
+            on:click={() => setTheme("light")}
+            aria-label="Cambiar a modo claro"
+            tabindex="-1"
+          >
+            <Sun />
+          </a>
+        {/if}
+      </li>
+    </ul>
+    
+    <div class="db-toggle">
+      <button on:click={() => useTestDb.toggle()} class="toggle-btn">
+        <span class="db-icon">{dbIcon}</span>
+        <span class="db-label">{dbLabel}</span>
+      </button>
+    </div>
   </div>
 </nav>
 
@@ -258,6 +290,37 @@
         opacity: 0.5;
         pointer-events: none;
     }
-    
-   
+
+    /* Estilos para el botón de toggle de base de datos */
+    .db-toggle {
+        margin-left: 15px;
+        display: flex;
+        align-items: center;
+    }
+  
+    .toggle-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: none;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 4px 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+  
+    .toggle-btn:hover {
+        background-color: #f0f0f0;
+    }
+  
+    .db-icon {
+        font-size: 16px;
+        margin-bottom: 2px;
+    }
+  
+    .db-label {
+        font-size: 10px;
+        color: #555;
+    }
 </style>
