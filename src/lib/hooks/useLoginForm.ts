@@ -32,7 +32,7 @@ export function useLoginForm() {
   // Crear un store dedicado para el estado de validación
   const validationStatus = derived(
     [formData, formState],
-    ([formData, formState]): ValidationStatus => {
+    ([formData]): ValidationStatus => {
       // MODIFICACIÓN IMPORTANTE: Hacer que la validación siempre pase para permitir login
       const isEmailValid = true; // Siempre considerar el email válido
       const isPasswordValid = true; // Siempre considerar la contraseña válida
@@ -73,6 +73,16 @@ export function useLoginForm() {
     const $formData = get(formData)
     const $formState = get(formState)
 
+    // Diagnóstico inmediato cuando se presiona Submit
+    console.log('⚡ Submit presionado! Intentando autenticar con:', {
+      email: $formData.email,
+      passwordLength: $formData.password.length,
+      modo: $formState.isRegisterMode ? 'Registro' : 'Login'
+    });
+
+    // Mostrar indicador visual de que algo está pasando
+    alert('Intentando iniciar sesión... Verifica la consola para más detalles.');
+
     formState.update(state => ({ 
       ...state, 
       isLoading: true, 
@@ -80,47 +90,77 @@ export function useLoginForm() {
     }))
 
     try {
-      console.log('Iniciando proceso de autenticación:', $formState.isRegisterMode ? 'Registro' : 'Login');
+      console.log('🔄 Iniciando proceso de autenticación:', $formState.isRegisterMode ? 'Registro' : 'Login');
       
       if ($formState.isRegisterMode) {
-        console.log('Intentando crear nuevo usuario con email:', $formData.email);
+        console.log('📝 Intentando crear nuevo usuario con email:', $formData.email);
         await createUserWithEmailAndPassword(
           auth, 
           $formData.email, 
           $formData.password
         )
       } else {
-        console.log('Intentando iniciar sesión con email:', $formData.email);
-        await signInWithEmailAndPassword(
-          auth, 
-          $formData.email, 
-          $formData.password
-        )
+        console.log('🔑 Intentando iniciar sesión con email:', $formData.email);
+        // Verificar que auth está disponible
+        console.log('🔎 Objeto auth disponible:', !!auth);
+        
+        try {
+          const userCredential = await signInWithEmailAndPassword(
+            auth, 
+            $formData.email, 
+            $formData.password
+          );
+          console.log('✅ Usuario autenticado exitosamente:', userCredential.user.uid);
+        } catch (authError: any) {
+          console.error('❌ Error específico de Firebase Auth:', authError);
+          alert(`Error de autenticación: ${authError.code}\n${authError.message}`);
+          throw authError; // Re-lanzar para que se procese en el bloque catch exterior
+        }
       }
 
-      console.log('Autenticación exitosa, redirigiendo a la página principal');
+      console.log('🎉 Autenticación exitosa, intentando redirigir a la página principal');
       
       // Limpiar formulario y redirigir
-      formData.set({ email: '', password: '', confirmPassword: '' })
-      goto('/')
+      formData.set({ email: '', password: '', confirmPassword: '' });
+      
+      // Intentar redirección con timeout para ver si hay algún problema
+      setTimeout(() => {
+        console.log('⏱️ Ejecutando redirección después de timeout');
+        goto('/').then(() => {
+          console.log('✈️ Redirección completada');
+        }).catch(err => {
+          console.error('🚫 Error en redirección:', err);
+          alert('Error al redirigir: ' + (err.message || 'Desconocido'));
+        });
+      }, 1000);
 
     } catch (error: unknown) {
       const err = error as { code: string, message?: string }
       const errorMessage = getAuthErrorMessage(err.code)
       
-      console.error('Error de autenticación:', { 
+      console.error('❌ Error de autenticación:', { 
         code: err.code, 
         message: err.message, 
         friendlyMessage: errorMessage 
       });
       
+      // Diagnóstico adicional con alertas para asegurar que el usuario vea los errores
+      alert(`Error al intentar autenticar: ${err.code}\n${err.message || 'Sin mensaje'}`);
+      
       // Diagnóstico adicional
       if (err.code === 'auth/network-request-failed') {
-        console.warn('Posible problema de red o CORS con el dominio. Verifica que el dominio esté autorizado en Firebase Console.');
+        console.warn('🌐 Posible problema de red o CORS con el dominio. Verifica que el dominio esté autorizado en Firebase Console.');
+        alert('Error de red. Verifica que este dominio esté autorizado en Firebase Console.');
       }
       
       if (err.code === 'auth/invalid-api-key') {
-        console.warn('API Key inválida. Verifica las variables de entorno en Vercel.');
+        console.warn('🔑 API Key inválida. Verifica las variables de entorno en Vercel.');
+        alert('API Key inválida. Verifica las variables de entorno en Vercel.');
+      }
+      
+      if (err.code === 'auth/unauthorized-domain') {
+        console.warn('🚫 Dominio no autorizado. Necesitas añadir este dominio en Firebase Console > Authentication > Settings > Authorized Domains.');
+        alert('Este dominio no está autorizado en Firebase. Añádelo en Firebase Console > Authentication > Settings > Authorized Domains.');
       }
       
       formState.update(state => ({
@@ -135,6 +175,7 @@ export function useLoginForm() {
         ...state, 
         isLoading: false 
       }))
+      console.log('🏁 Proceso de autenticación finalizado');
     }
   }
 
