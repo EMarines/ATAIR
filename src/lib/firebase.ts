@@ -68,13 +68,13 @@ try {
 
     // Verificar y mostrar el estado de las variables de entorno (sin mostrar valores reales)
     console.log('Estado de variables Firebase:', {
-        apiKey: !!import.meta.env.VITE_FIREBASE_API_KEY ? 'Configurada' : 'Falta',
-        authDomain: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ? 'Configurada' : 'Falta',
-        projectId: !!import.meta.env.VITE_FIREBASE_PROJECT_ID ? 'Configurada' : 'Falta',
-        databaseURL: !!import.meta.env.VITE_FIREBASE_DATA_BASE_URL ? 'Configurada' : 'Falta',
-        storageBucket: !!import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ? 'Configurada' : 'Falta',
-        messagingSenderId: !!import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? 'Configurada' : 'Falta',
-        appId: !!import.meta.env.VITE_FIREBASE_APP_ID ? 'Configurada' : 'Falta'
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? 'Configurada' : 'Falta',
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ? 'Configurada' : 'Falta',
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ? 'Configurada' : 'Falta',
+        databaseURL: import.meta.env.VITE_FIREBASE_DATA_BASE_URL ? 'Configurada' : 'Falta',
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ? 'Configurada' : 'Falta',
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? 'Configurada' : 'Falta',
+        appId: import.meta.env.VITE_FIREBASE_APP_ID ? 'Configurada' : 'Falta'
     });
 
     // Inicializar Firebase
@@ -91,7 +91,7 @@ try {
                 
                 // Configurar listener para renovación de token con manejo de errores mejorado
                 onIdTokenChanged(auth, async (user) => {
-                    console.log("Estado de autenticación cambiado:", !!user ? "Usuario autenticado" : "Usuario no autenticado");
+                    console.log("Estado de autenticación cambiado:", user ? "Usuario autenticado" : "Usuario no autenticado");
                     if (user) {
                         try {
                             // Verificar si ya tenemos un token reciente antes de solicitar uno nuevo
