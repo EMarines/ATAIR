@@ -3,7 +3,7 @@
   import { auth } from '$lib/firebase';
   import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
   import { goto } from '$app/navigation';
-  import { writable } from 'svelte/store';
+  import { writable, get } from 'svelte/store';
   
   // Creamos stores locales para el formulario
   const email = writable('');
@@ -14,22 +14,32 @@
   
   // Función de login directa y simplificada
   async function handleSubmit() {
-    console.log("object",$email, $password);
+    // Obtenemos los valores actuales de los stores
+    const emailValue = get(email);
+    const passwordValue = get(password);
+    
+    console.log("Formulario enviado:", { email: emailValue, password: passwordValue });
+    
     try {
       alert("Intentando autenticar...");
       $isLoading = true;
       $error = null;
-      $isRegisterMode = true
       
+      // Línea 21: Mostramos explícitamente el valor de isRegisterMode
+      console.log("Valor de isRegisterMode:", $isRegisterMode);
+      
+      // Comprobamos el modo actual
       if ($isRegisterMode) {
-        console.log("estas en la  funcion", $email, $password);
+        console.log("Modo registro con:", emailValue, passwordValue);
         
         // Modo registro
-        await createUserWithEmailAndPassword(auth, $email, $password);
+        await createUserWithEmailAndPassword(auth, emailValue, passwordValue);
         alert("Registro exitoso, redirigiendo...");
       } else {
+        console.log("Modo login con:", emailValue, passwordValue);
+        
         // Modo login
-        await signInWithEmailAndPassword(auth, $email, $password);
+        await signInWithEmailAndPassword(auth, emailValue, passwordValue);
         alert("Login exitoso, redirigiendo...");
       }
       
@@ -37,6 +47,7 @@
       goto('/');
       
     } catch (err: any) {
+      console.error("Error de autenticación:", err.code, err.message);
       // Manejo de errores simplificado
       alert(`Error: ${err.code}\n${err.message}`);
       $error = { message: getErrorMessage(err.code) };
