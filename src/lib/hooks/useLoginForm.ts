@@ -8,6 +8,14 @@ import {
 import { goto } from '$app/navigation'
 import { browser } from '$app/environment'
 
+// Interface para el estado de validación (diagnóstico)
+interface ValidationStatus {
+  emailValid: boolean;
+  passwordValid: boolean;
+  passwordsMatch: boolean;
+  formComplete: boolean;
+}
+
 export function useLoginForm() {
   const formData = writable<LoginFormData>({
     email: '',
@@ -21,34 +29,43 @@ export function useLoginForm() {
     isRegisterMode: false
   })
 
-  // Validación del formulario con diagnóstico detallado
-  const isValid = derived(
+  // Crear un store dedicado para el estado de validación
+  const validationStatus = derived(
     [formData, formState],
-    ([formData, formState]) => {
+    ([formData, formState]): ValidationStatus => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       const isEmailValid = emailRegex.test(formData.email)
       const isPasswordValid = formData.password.length >= 6
+      const passwordsMatch = formData.password === formData.confirmPassword
+      
+      return {
+        emailValid: isEmailValid,
+        passwordValid: isPasswordValid,
+        passwordsMatch: passwordsMatch,
+        formComplete: formData.email !== '' && formData.password !== ''
+      };
+    }
+  );
+
+  // Validación del formulario con diagnóstico detallado
+  const isValid = derived(
+    validationStatus,
+    ($validationStatus) => {
+      const { emailValid, passwordValid, passwordsMatch } = $validationStatus;
       
       // Diagnóstico detallado de la validación
-      if (browser && (formData.email || formData.password)) {
-        console.log('Estado de validación del formulario:', {
-          email: formData.email ? formData.email.substring(0, 3) + '...' : '',
-          emailLength: formData.email.length,
-          emailValid: isEmailValid,
-          passwordLength: formData.password.length,
-          passwordValid: isPasswordValid,
-          isRegisterMode: formState.isRegisterMode,
-          passwordsMatch: formState.isRegisterMode ? formData.password === formData.confirmPassword : 'N/A'
-        });
+      if (browser) {
+        console.log('Estado de validación del formulario:', $validationStatus);
       }
 
-      if (!isEmailValid || !isPasswordValid) return false
+      if (!emailValid || !passwordValid) return false;
       
-      if (formState.isRegisterMode) {
-        return formData.password === formData.confirmPassword
+      const $formState = get(formState);
+      if ($formState.isRegisterMode) {
+        return passwordsMatch;
       }
 
-      return true
+      return true;
     }
   )
 
@@ -139,7 +156,8 @@ export function useLoginForm() {
     formState,
     isValid,
     handleSubmit,
-    toggleMode
+    toggleMode,
+    validationStatus // Exponemos el estado de validación para diagnóstico
   }
 }
 

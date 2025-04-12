@@ -8,7 +8,8 @@
     formState, 
     isValid, 
     handleSubmit, 
-    toggleMode 
+    toggleMode,
+    validationStatus // Añadido para diagnosticar el problema del botón
   } = useLoginForm()
 
   let hostName = "";
@@ -19,10 +20,20 @@
       hostName = window.location.hostname;
       isLoading = false;
       
-      // Verificación simple de las variables de entorno en el cliente
-      console.log("Diagnóstico de entorno:", {
-        isProduction: hostName.includes('vercel.app'),
-        varsLoaded: !!import.meta.env.VITE_FIREBASE_API_KEY
+      // Diagnosticar problema del botón deshabilitado
+      console.log('Diagnóstico completo del formulario de login:', {
+        formData: {
+          email: $formData.email || '(vacío)',
+          passwordLength: ($formData.password || '').length,
+          confirmPasswordLength: ($formData.confirmPassword || '').length
+        },
+        formState: {
+          isLoading: $formState.isLoading,
+          isRegisterMode: $formState.isRegisterMode,
+          hasError: !!$formState.error
+        },
+        isValid: $isValid,
+        validationDetails: $validationStatus || '(no disponible)'
       });
     }
   });
@@ -37,6 +48,27 @@
         <p class="note">Si estás en Vercel, verifica que este dominio esté autorizado en Firebase Console</p>
       </div>
     {/if}
+    
+    <!-- Añadiendo más información de diagnóstico visible -->
+    <div class="validation-status">
+      <p><strong>Estado de Validación:</strong></p>
+      <ul>
+        <li>Email válido: <span class={$validationStatus?.emailValid ? 'valid' : 'invalid'}>
+          {$validationStatus?.emailValid ? '✓' : '✗'}</span>
+          {#if !$validationStatus?.emailValid}<span class="note">(Debe ser un email válido)</span>{/if}
+        </li>
+        <li>Contraseña válida: <span class={$validationStatus?.passwordValid ? 'valid' : 'invalid'}>
+          {$validationStatus?.passwordValid ? '✓' : '✗'}</span>
+          {#if !$validationStatus?.passwordValid}<span class="note">(Debe tener al menos 6 caracteres)</span>{/if}
+        </li>
+        {#if $formState.isRegisterMode}
+          <li>Contraseñas coinciden: <span class={$validationStatus?.passwordsMatch ? 'valid' : 'invalid'}>
+            {$validationStatus?.passwordsMatch ? '✓' : '✗'}</span>
+          </li>
+        {/if}
+      </ul>
+      <p><strong>Botón Submit {$isValid ? 'habilitado' : 'deshabilitado'}</strong></p>
+    </div>
     
     <form on:submit|preventDefault={handleSubmit}>
       <h1>{$formState.isRegisterMode ? "Registrarse" : "Login"}</h1>
@@ -163,15 +195,40 @@
   }
   
   .diagnostic {
-    background-color: #f0f8ff;
+    background-color: #1a1a1a;
     padding: 10px;
     border-radius: 5px;
     margin-bottom: 15px;
-    color: #333;
+    color: #fff;
   }
   
   .note {
     font-size: 0.8rem;
-    color: #666;
+    color: #aaa;
+    margin-left: 8px;
+  }
+  
+  .validation-status {
+    background-color: #2a2a2a;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    color: #fff;
+    font-size: 14px;
+  }
+  
+  .validation-status ul {
+    padding-left: 20px;
+    margin: 8px 0;
+  }
+  
+  .valid {
+    color: #4caf50;
+    font-weight: bold;
+  }
+  
+  .invalid {
+    color: #ff5252;
+    font-weight: bold;
   }
 </style>
