@@ -1,69 +1,123 @@
 <script lang="ts">
-  import { useLoginForm } from '$lib/hooks/useLoginForm'
+  // Importamos lo necesario directamente aquí
+  import { auth } from '$lib/firebase';
+  import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+  import { goto } from '$app/navigation';
+  import { writable } from 'svelte/store';
   
-  const { 
-    formData, 
-    formState, 
-    isValid, 
-    handleSubmit, 
-    toggleMode
-  } = useLoginForm()
+  // Creamos stores locales para el formulario
+  const email = writable('');
+  const password = writable('');
+  const isLoading = writable(false);
+  const error = writable(null);
+  const isRegisterMode = writable(false);
+  
+  // Función de login directa y simplificada
+  async function handleSubmit() {
+    try {
+      alert("Intentando autenticar...");
+      $isLoading = true;
+      $error = null;
+      
+      if ($isRegisterMode) {
+        // Modo registro
+        await createUserWithEmailAndPassword(auth, $email, $password);
+        alert("Registro exitoso, redirigiendo...");
+      } else {
+        // Modo login
+        await signInWithEmailAndPassword(auth, $email, $password);
+        alert("Login exitoso, redirigiendo...");
+      }
+      
+      // Redirección tras éxito
+      goto('/');
+      
+    } catch (err: any) {
+      // Manejo de errores simplificado
+      alert(`Error: ${err.code}\n${err.message}`);
+      $error = { message: getErrorMessage(err.code) };
+    } finally {
+      $isLoading = false;
+    }
+  }
+  
+  // Función para cambiar entre login y registro
+  function toggleMode() {
+    $isRegisterMode = !$isRegisterMode;
+    $error = null;
+  }
+  
+  // Función auxiliar para traducir mensajes de error
+  function getErrorMessage(code: string): string {
+    const errorMessages: {[key: string]: string} = {
+      'auth/email-already-in-use': 'Este email ya está registrado',
+      'auth/invalid-email': 'Email inválido',
+      'auth/user-disabled': 'Esta cuenta ha sido deshabilitada',
+      'auth/user-not-found': 'Usuario no encontrado',
+      'auth/wrong-password': 'Contraseña incorrecta',
+      'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
+      'auth/network-request-failed': 'Error de red. Verifica tu conexión',
+      'auth/unauthorized-domain': 'Este dominio no está autorizado para operaciones de Firebase'
+    };
+    
+    return errorMessages[code] || `Error desconocido (${code})`;
+  }
 </script>
 
 <div class="container">
   <div class="authContainer">  
     <form on:submit|preventDefault={handleSubmit}>
-      <h1>{$formState.isRegisterMode ? "Registrarse" : "Login"}</h1>
+      <h1>{$isRegisterMode ? "Registrarse" : "Login"}</h1>
       
-      {#if $formState.error}
-        <p class="error">{$formState.error.message}</p>        
+      {#if $error}
+        <p class="error">{$error.message}</p>        
       {/if}
 
       <label>
-        <p class={$formData.email ? 'above' : 'center'}>Email</p>
+        <p class={$email ? 'above' : 'center'}>Email</p>
         <input 
-          bind:value={$formData.email} 
+          bind:value={$email} 
           type="email" 
           placeholder="email"
-          disabled={$formState.isLoading}
+          disabled={$isLoading}
           autocomplete="email"
         >
       </label>
 
       <label>
-        <p class={$formData.password ? 'above' : 'center'}>Password</p>
+        <p class={$password ? 'above' : 'center'}>Password</p>
         <input  
-          bind:value={$formData.password} 
+          bind:value={$password} 
           type="password" 
           placeholder="Password"
-          disabled={$formState.isLoading}
+          disabled={$isLoading}
           autocomplete="current-password"
         >
       </label>
 
-      {#if $formState.isRegisterMode}
-        <label>
-          <p class={$formData.confirmPassword ? 'above' : 'center'}>Confirmar Password</p>
-          <input  
-            bind:value={$formData.confirmPassword} 
-            type="password" 
-            placeholder="Confirmar Password"
-            disabled={$formState.isLoading}
-            autocomplete="new-password"
-          >
-        </label>
-      {/if}
-
       <button 
         type="submit" 
-        disabled={$formState.isLoading}
+        disabled={$isLoading}
       >
-        {$formState.isLoading ? 'Procesando...' : 'Submit'}
+        {$isLoading ? 'Procesando...' : 'Submit'}
+      </button>
+      
+      <!-- Botón de prueba directo -->
+      <button 
+        type="button" 
+        class="test-button"
+        on:click={() => {
+          $email = 'matchhome@hotmail.com';
+          $password = '12VEntAS12';
+          handleSubmit();
+        }}
+      >
+        Prueba Directa
       </button>
     </form>
 
     <div class="options">
-      {#if $formState.isRegisterMode}
+      {#if $isRegisterMode}
         <div>
           <p>¿Tienes Cuenta?</p>
           <button on:click={toggleMode}>Login</button>
@@ -124,6 +178,11 @@
   button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  
+  .test-button {
+    background: #ff3e00;
+    margin-top: 0.5rem;
   }
 
   .options {
