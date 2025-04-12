@@ -18,8 +18,11 @@
       alert("Intentando autenticar...");
       $isLoading = true;
       $error = null;
+      $isRegisterMode = true
       
       if ($isRegisterMode) {
+        console.log("estas en la  funcion", $email, $password);
+        
         // Modo registro
         await createUserWithEmailAndPassword(auth, $email, $password);
         alert("Registro exitoso, redirigiendo...");
