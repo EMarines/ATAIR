@@ -2,19 +2,22 @@
   import { useLoginForm } from '$lib/hooks/useLoginForm'
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import { goto } from '$app/navigation'; // Añadida importación para la redirección
-
+  import { goto } from '$app/navigation';
+  import { auth } from '$lib/firebase'; // Importar directamente para evitar importaciones dinámicas
+  import { signInWithEmailAndPassword } from 'firebase/auth'; // Importar directamente
+  
   const { 
     formData, 
     formState, 
     isValid, 
     handleSubmit, 
     toggleMode,
-    validationStatus // Añadido para diagnosticar el problema del botón
+    validationStatus
   } = useLoginForm()
 
   let hostName = "";
   let isLoading = true;
+  let debugMessage = ""; // Para mostrar mensajes de diagnóstico en la interfaz
   
   onMount(() => {
     if (browser) {
@@ -42,22 +45,32 @@
   // Función para intentar login directamente, sin validación del cliente
   async function forceTryLogin() {
     try {
+      if (!$formData.email || !$formData.password) {
+        debugMessage = "Error: Debes ingresar email y contraseña";
+        alert(debugMessage);
+        return;
+      }
+      
+      debugMessage = "Intentando iniciar sesión...";
       console.log('Forzando intento de login con:', $formData.email, 'y contraseña de longitud', $formData.password?.length || 0);
       
-      const { signInWithEmailAndPassword } = await import('firebase/auth');
-      const { auth } = await import('$lib/firebase');
-      
-      await signInWithEmailAndPassword(
+      // Directamente usar Firebase sin importaciones dinámicas
+      const userCredential = await signInWithEmailAndPassword(
         auth, 
         $formData.email, 
         $formData.password
       );
       
-      console.log('Autenticación forzada exitosa, redirigiendo a la página principal');
-      goto('/');
+      debugMessage = "Autenticación exitosa. Redirigiendo...";
+      console.log('Usuario autenticado:', userCredential.user.uid);
+      
+      // Esperar un poco antes de redirigir para que se vea el mensaje
+      setTimeout(() => goto('/'), 1000);
+      
     } catch (error: any) {
-      console.error('Error en autenticación forzada:', error.code, error.message);
-      alert(`Error en autenticación: ${error.code}\n${error.message}`);
+      console.error('Error en autenticación forzada:', error);
+      debugMessage = `Error: ${error.code || 'desconocido'} - ${error.message || 'No hay detalles'}`;
+      alert(debugMessage);
     }
   }
 </script>
@@ -149,6 +162,9 @@
         Diagnóstico: Forzar intento de login
       </button>
       <p class="note">Este botón intenta iniciar sesión directamente, sin validación del cliente</p>
+      {#if debugMessage}
+        <p class="debug-message">{debugMessage}</p>
+      {/if}
     </div>
 
     <div class="options">
@@ -275,5 +291,14 @@
     background-color: #ff3e00;
     padding: 8px 16px;
     width: 100%;
+  }
+  
+  .debug-message {
+    margin-top: 10px;
+    padding: 8px;
+    background-color: #333;
+    border-radius: 4px;
+    font-family: monospace;
+    color: #fff;
   }
 </style>
