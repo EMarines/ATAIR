@@ -1,5 +1,7 @@
 <script lang="ts">
   import { useLoginForm } from '$lib/hooks/useLoginForm'
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
 
   const { 
     formData, 
@@ -8,10 +10,34 @@
     handleSubmit, 
     toggleMode 
   } = useLoginForm()
+
+  let hostName = "";
+  let isLoading = true;
+  
+  onMount(() => {
+    if (browser) {
+      hostName = window.location.hostname;
+      isLoading = false;
+      
+      // Verificación simple de las variables de entorno en el cliente
+      console.log("Diagnóstico de entorno:", {
+        isProduction: hostName.includes('vercel.app'),
+        varsLoaded: !!import.meta.env.VITE_FIREBASE_API_KEY
+      });
+    }
+  });
 </script>
 
 <div class="container">
   <div class="authContainer">  
+    <!-- Añadiendo información de diagnóstico -->
+    {#if hostName}
+      <div class="diagnostic">
+        <p><strong>Dominio actual:</strong> {hostName}</p>
+        <p class="note">Si estás en Vercel, verifica que este dominio esté autorizado en Firebase Console</p>
+      </div>
+    {/if}
+    
     <form on:submit|preventDefault={handleSubmit}>
       <h1>{$formState.isRegisterMode ? "Registrarse" : "Login"}</h1>
       
@@ -134,5 +160,18 @@
   .error {
     color: red;
     text-align: center;
+  }
+  
+  .diagnostic {
+    background-color: #f0f8ff;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    color: #333;
+  }
+  
+  .note {
+    font-size: 0.8rem;
+    color: #666;
   }
 </style>
