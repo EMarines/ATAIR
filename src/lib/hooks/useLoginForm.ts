@@ -70,6 +70,7 @@ export function useLoginForm() {
   )
 
   const handleSubmit = async () => {
+    console.log("Estas en handleSubmit de use login");
     const $formData = get(formData)
     const $formState = get(formState)
 
@@ -83,6 +84,9 @@ export function useLoginForm() {
     // Mostrar indicador visual de que algo está pasando
     alert('Intentando iniciar sesión... Verifica la consola para más detalles.');
 
+    // Alerta simple de diagnóstico
+    alert('Intentando iniciar sesión...');
+
     formState.update(state => ({ 
       ...state, 
       isLoading: true, 
@@ -94,6 +98,7 @@ export function useLoginForm() {
       
       if ($formState.isRegisterMode) {
         console.log('📝 Intentando crear nuevo usuario con email:', $formData.email);
+        alert('Modo: Registro');
         await createUserWithEmailAndPassword(
           auth, 
           $formData.email, 
@@ -119,6 +124,7 @@ export function useLoginForm() {
       }
 
       console.log('🎉 Autenticación exitosa, intentando redirigir a la página principal');
+      alert('¡Autenticación exitosa! Redirigiendo...');
       
       // Limpiar formulario y redirigir
       formData.set({ email: '', password: '', confirmPassword: '' });
@@ -146,6 +152,9 @@ export function useLoginForm() {
       
       // Diagnóstico adicional con alertas para asegurar que el usuario vea los errores
       alert(`Error al intentar autenticar: ${err.code}\n${err.message || 'Sin mensaje'}`);
+      
+      // Alerta con información de error
+      alert(`Error: ${err.code}\n${err.message}`);
       
       // Diagnóstico adicional
       if (err.code === 'auth/network-request-failed') {
