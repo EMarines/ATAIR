@@ -4,6 +4,11 @@
   import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
   import { goto } from '$app/navigation';
   import { writable, get } from 'svelte/store';
+  import { onMount } from 'svelte';
+  
+  // Variables para depuración
+  let isSubmitClicked = false;
+  let testButtonClicked = false;
   
   // Creamos stores locales para el formulario
   const email = writable('');
@@ -12,43 +17,81 @@
   const error = writable(null);
   const isRegisterMode = writable(false);
   
-  // Función de login directa y simplificada
-  async function handleSubmit() {
+  onMount(() => {
+    console.log("Componente montado - Auth disponible:", !!auth);
+  });
+  
+  // Funciones de prueba separadas
+  function handleNormalSubmit(event) {
+    event.preventDefault(); // Aseguramos prevenir el comportamiento por defecto
+    isSubmitClicked = true;
+    console.log("Submit normal presionado");
+    doAuthentication();
+    return false; // Para asegurarnos que no haga submit
+  }
+  
+  function handleTestButtonClick() {
+    testButtonClicked = true;
+    console.log("Botón de prueba presionado");
+    $email = 'matchhome@hotmail.com';
+    $password = '12VEntAS12';
+    doAuthentication();
+  }
+  
+  // Función principal de autenticación
+  async function doAuthentication() {
     // Obtenemos los valores actuales de los stores
     const emailValue = get(email);
     const passwordValue = get(password);
     
-    console.log("Formulario enviado:", { email: emailValue, password: passwordValue });
+    console.log("AUTENTICACIÓN INICIADA:", { 
+      email: emailValue, 
+      password: passwordValue.substring(0, 3) + '***',
+      isRegisterMode: $isRegisterMode,
+      buttonClicked: isSubmitClicked ? "Submit" : "Prueba Directa"
+    });
+    
+    // Verificación básica
+    if (!emailValue || !passwordValue) {
+      alert("Por favor ingresa email y contraseña");
+      return;
+    }
     
     try {
-      alert("Intentando autenticar...");
       $isLoading = true;
       $error = null;
       
-      // Línea 21: Mostramos explícitamente el valor de isRegisterMode
-      console.log("Valor de isRegisterMode:", $isRegisterMode);
+      console.log(`Intentando ${$isRegisterMode ? 'REGISTRO' : 'LOGIN'} con Firebase...`);
       
-      // Comprobamos el modo actual
-      if ($isRegisterMode) {
-        console.log("Modo registro con:", emailValue, passwordValue);
-        
-        // Modo registro
-        await createUserWithEmailAndPassword(auth, emailValue, passwordValue);
-        alert("Registro exitoso, redirigiendo...");
-      } else {
-        console.log("Modo login con:", emailValue, passwordValue);
-        
-        // Modo login
-        await signInWithEmailAndPassword(auth, emailValue, passwordValue);
-        alert("Login exitoso, redirigiendo...");
+      // Verificamos el objeto auth
+      if (!auth) {
+        throw new Error("Objeto de autenticación no disponible");
       }
       
-      // Redirección tras éxito
-      goto('/');
+      let userCredential;
+      
+      if ($isRegisterMode) {
+        userCredential = await createUserWithEmailAndPassword(auth, emailValue, passwordValue);
+      } else {
+        userCredential = await signInWithEmailAndPassword(auth, emailValue, passwordValue);
+      }
+      
+      console.log("Autenticación exitosa:", userCredential.user.uid);
+      
+      // Pequeña pausa antes de redirigir para asegurarnos que todo se actualiza
+      setTimeout(async () => {
+        try {
+          console.log("Intentando redireccionar...");
+          await goto('/');
+        } catch (navErr) {
+          console.error("Error en redirección:", navErr);
+          // Intento alternativo de redirección
+          window.location.href = '/';
+        }
+      }, 500);
       
     } catch (err: any) {
-      console.error("Error de autenticación:", err.code, err.message);
-      // Manejo de errores simplificado
+      console.error("ERROR DE AUTENTICACIÓN:", err.code, err.message);
       alert(`Error: ${err.code}\n${err.message}`);
       $error = { message: getErrorMessage(err.code) };
     } finally {
@@ -81,7 +124,7 @@
 
 <div class="container">
   <div class="authContainer">  
-    <form on:submit|preventDefault={handleSubmit}>
+    <form on:submit={handleNormalSubmit}>
       <h1>{$isRegisterMode ? "Registrarse" : "Login"}</h1>
       
       {#if $error}
@@ -121,11 +164,8 @@
       <button 
         type="button" 
         class="test-button"
-        on:click={() => {
-          $email = 'matchhome@hotmail.com';
-          $password = '12VEntAS12';
-          handleSubmit();
-        }}
+        on:click={handleTestButtonClick}
+        disabled={$isLoading}
       >
         Prueba Directa
       </button>
