@@ -1,4 +1,4 @@
-import { writable, derived, get } from 'svelte/store'
+import { writable, get } from 'svelte/store'
 import type { LoginFormData, FormState } from '../types/auth.types'
 import { auth } from '../firebase'
 import { 
@@ -6,7 +6,7 @@ import {
   createUserWithEmailAndPassword
 } from 'firebase/auth'
 import { goto } from '$app/navigation'
-import { browser } from '$app/environment'
+// import { browser } from '$app/environment'
 
 export function useLoginForm() {
   const formData = writable<LoginFormData>({
@@ -25,37 +25,64 @@ export function useLoginForm() {
   const isValid = writable(true);
 
   const handleSubmit = async () => {
+    console.log("Estas en la funcion de useLoginForm", get(formData), get(formState));
     const $formData = get(formData)
     const $formState = get(formState)
+    console.log("Estas en la funcion de useLoginForm 2", $formData, $formState);
+
+    // Verificar que auth está correctamente inicializado
+    console.log("Estado de auth:", auth ? "Disponible" : "No disponible", auth);
 
     formState.update(state => ({ 
       ...state, 
       isLoading: true, 
       error: null 
     }))
+    console.log("Estado actualizado a isLoading=true");
 
     try {
+      console.log("Entrando al bloque try");
+      
       if ($formState.isRegisterMode) {
+        console.log("Intentando registro con:", $formData.email);
         await createUserWithEmailAndPassword(
           auth, 
           $formData.email, 
           $formData.password
         )
+        console.log("Registro exitoso");
       } else {
-        await signInWithEmailAndPassword(
-          auth, 
-          $formData.email, 
-          $formData.password
-        )
+        console.log("Intentando login con:", $formData.email);
+        try {
+          const userCredential = await signInWithEmailAndPassword(
+            auth, 
+            $formData.email, 
+            $formData.password
+          );
+          console.log("Login exitoso, usuario:", userCredential.user.uid);
+        } catch (loginError: any) {
+          console.error("Error específico de login:", loginError.code, loginError.message);
+          throw loginError; // Re-lanzar para que sea manejado por el catch exterior
+        }
       }
       
+      console.log("Autenticación exitosa, preparando redirección");
       // Limpiar formulario y redirigir
       formData.set({ email: '', password: '', confirmPassword: '' })
-      goto('/')
+      
+      try {
+        console.log("Iniciando redirección a '/'");
+        await goto('/');
+        console.log("Redirección completada");
+      } catch (navError: any) {
+        console.error("Error en la redirección:", navError);
+      }
 
     } catch (error: unknown) {
       const err = error as { code: string, message?: string }
       const errorMessage = getAuthErrorMessage(err.code)
+      
+      console.error("Error capturado:", err.code, err.message, errorMessage);
       
       formState.update(state => ({
         ...state,
@@ -64,11 +91,13 @@ export function useLoginForm() {
           message: errorMessage
         }
       }))
+      console.log("Estado actualizado con error:", err.code);
     } finally {
       formState.update(state => ({ 
         ...state, 
         isLoading: false 
       }))
+      console.log("Proceso finalizado, isLoading=false");
     }
   }
 
