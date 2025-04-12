@@ -4,6 +4,9 @@
   import { goto } from '$app/navigation';
   const { userStore, isAuthenticated } = useUser()
   import { Hero, What } from '$components'
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
+  import Footer from '$lib/components/Footer.svelte';
 
   interface Action {
     id: string;
@@ -93,6 +96,26 @@
         console.log(`Acción ${actionId} aún no implementada`);
     }
   }
+
+  // Diagnóstico temporal para variables de entorno
+  let envDiagnostic = {
+    apiKeyConfigured: false,
+    authDomainConfigured: false,
+    projectIdConfigured: false
+  };
+
+  onMount(() => {
+    if (browser) {
+      console.log("Diagnóstico de ambiente en producción");
+      // Verificar variables críticas sin mostrar su valor real
+      envDiagnostic = {
+        apiKeyConfigured: !!import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomainConfigured: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectIdConfigured: !!import.meta.env.VITE_FIREBASE_PROJECT_ID
+      };
+      console.log("Estado de variables críticas:", envDiagnostic);
+    }
+  });
 </script>
 
 <Hero />
@@ -115,6 +138,16 @@
     </div>
   </div>
 </div>
+
+<!-- Temporary diagnostic info -->
+{#if browser}
+  <div style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 9999;">
+    <p><strong>Diagnóstico:</strong></p>
+    <p>API Key: {envDiagnostic.apiKeyConfigured ? '✓' : '✗'}</p>
+    <p>Auth Domain: {envDiagnostic.authDomainConfigured ? '✓' : '✗'}</p>
+    <p>Project ID: {envDiagnostic.projectIdConfigured ? '✓' : '✗'}</p>
+  </div>
+{/if}
 
 <style>
   .iconChoises {
