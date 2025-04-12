@@ -3,9 +3,9 @@ import type { LoginFormData, FormState } from '../types/auth.types'
 import { auth } from '../firebase'
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, // Usando type para importar solo el tipo, no la implementación
-  // FirebaseError is imported from firebase/app
+  createUserWithEmailAndPassword
 } from 'firebase/auth'
+import { FirebaseError } from 'firebase/app' // Importación correcta de FirebaseError
 import { goto } from '$app/navigation'
 
 export function useLoginForm() {
@@ -18,7 +18,7 @@ export function useLoginForm() {
   const formState = writable<FormState>({
     isLoading: false,
     error: null,
-    isRegisterMode: true    // lo cambié a true de false
+    isRegisterMode: false    //******************* */
   })
 
   // El botón estará siempre habilitado
@@ -73,7 +73,7 @@ export function useLoginForm() {
       console.log("Redirigiendo a página principal");
       await goto('/');
 
-    } catch (error) {
+    } catch (error: unknown) {
       // Tipando correctamente el error
       const err = error as FirebaseError;
       console.error("Error de autenticación:", err);
