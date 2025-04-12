@@ -1,111 +1,17 @@
 <script lang="ts">
   import { useLoginForm } from '$lib/hooks/useLoginForm'
-  import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
-  import { goto } from '$app/navigation';
-  import { auth } from '$lib/firebase'; // Importar directamente para evitar importaciones dinámicas
-  import { signInWithEmailAndPassword } from 'firebase/auth'; // Importar directamente
   
   const { 
     formData, 
     formState, 
     isValid, 
     handleSubmit, 
-    toggleMode,
-    validationStatus
+    toggleMode
   } = useLoginForm()
-
-  let hostName = "";
-  let isLoading = true;
-  let debugMessage = ""; // Para mostrar mensajes de diagnóstico en la interfaz
-  
-  onMount(() => {
-    if (browser) {
-      hostName = window.location.hostname;
-      isLoading = false;
-      
-      // Diagnosticar problema del botón deshabilitado
-      console.log('Diagnóstico completo del formulario de login:', {
-        formData: {
-          email: $formData.email || '(vacío)',
-          passwordLength: ($formData.password || '').length,
-          confirmPasswordLength: ($formData.confirmPassword || '').length
-        },
-        formState: {
-          isLoading: $formState.isLoading,
-          isRegisterMode: $formState.isRegisterMode,
-          hasError: !!$formState.error
-        },
-        isValid: $isValid,
-        validationDetails: $validationStatus || '(no disponible)'
-      });
-    }
-  });
-
-  // Función para intentar login directamente, sin validación del cliente
-  async function forceTryLogin() {
-    try {
-      if (!$formData.email || !$formData.password) {
-        debugMessage = "Error: Debes ingresar email y contraseña";
-        alert(debugMessage);
-        return;
-      }
-      
-      debugMessage = "Intentando iniciar sesión...";
-      console.log('Forzando intento de login con:', $formData.email, 'y contraseña de longitud', $formData.password?.length || 0);
-      
-      // Directamente usar Firebase sin importaciones dinámicas
-      const userCredential = await signInWithEmailAndPassword(
-        auth, 
-        $formData.email, 
-        $formData.password
-      );
-      
-      debugMessage = "Autenticación exitosa. Redirigiendo...";
-      console.log('Usuario autenticado:', userCredential.user.uid);
-      
-      // Esperar un poco antes de redirigir para que se vea el mensaje
-      setTimeout(() => goto('/'), 1000);
-      
-    } catch (error: any) {
-      console.error('Error en autenticación forzada:', error);
-      debugMessage = `Error: ${error.code || 'desconocido'} - ${error.message || 'No hay detalles'}`;
-      alert(debugMessage);
-    }
-  }
 </script>
 
 <div class="container">
   <div class="authContainer">  
-    <!-- Añadiendo información de diagnóstico -->
-    {#if hostName}
-      <div class="diagnostic">
-        <p><strong>Dominio actual:</strong> {hostName}</p>
-        <p class="note">Si estás en Vercel, verifica que este dominio esté autorizado en Firebase Console</p>
-      </div>
-    {/if}
-    
-    <!-- Añadiendo más información de diagnóstico visible -->
-    <div class="validation-status">
-      <p><strong>Estado de Validación:</strong></p>
-      <ul>
-        <li>Email válido: <span class={$validationStatus?.emailValid ? 'valid' : 'invalid'}>
-          {$validationStatus?.emailValid ? '✓' : '✗'}</span>
-          {#if !$validationStatus?.emailValid}<span class="note">(Debe ser un email válido)</span>{/if}
-        </li>
-        <li>Contraseña válida: <span class={$validationStatus?.passwordValid ? 'valid' : 'invalid'}>
-          {$validationStatus?.passwordValid ? '✓' : '✗'}</span>
-          {#if !$validationStatus?.passwordValid}<span class="note">(Debe tener al menos 6 caracteres)</span>{/if}
-        </li>
-        {#if $formState.isRegisterMode}
-          <li>Contraseñas coinciden: <span class={$validationStatus?.passwordsMatch ? 'valid' : 'invalid'}>
-            {$validationStatus?.passwordsMatch ? '✓' : '✗'}</span>
-          </li>
-        {/if}
-      </ul>
-      <p><strong>Botón Submit {$isValid ? 'habilitado' : 'deshabilitado'}</strong></p>
-    </div>
-    
     <form on:submit|preventDefault={handleSubmit}>
       <h1>{$formState.isRegisterMode ? "Registrarse" : "Login"}</h1>
       
@@ -150,22 +56,11 @@
 
       <button 
         type="submit" 
-        disabled={!$isValid || $formState.isLoading}
+        disabled={$formState.isLoading}
       >
         {$formState.isLoading ? 'Procesando...' : 'Submit'}
       </button>
     </form>
-
-    <!-- Botón de diagnóstico para forzar inicio de sesión -->
-    <div class="debug-actions">
-      <button class="debug-button" on:click={forceTryLogin}>
-        Diagnóstico: Forzar intento de login
-      </button>
-      <p class="note">Este botón intenta iniciar sesión directamente, sin validación del cliente</p>
-      {#if debugMessage}
-        <p class="debug-message">{debugMessage}</p>
-      {/if}
-    </div>
 
     <div class="options">
       {#if $formState.isRegisterMode}
@@ -239,66 +134,5 @@
   .error {
     color: red;
     text-align: center;
-  }
-  
-  .diagnostic {
-    background-color: #1a1a1a;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    color: #fff;
-  }
-  
-  .note {
-    font-size: 0.8rem;
-    color: #aaa;
-    margin-left: 8px;
-  }
-  
-  .validation-status {
-    background-color: #2a2a2a;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    color: #fff;
-    font-size: 14px;
-  }
-  
-  .validation-status ul {
-    padding-left: 20px;
-    margin: 8px 0;
-  }
-  
-  .valid {
-    color: #4caf50;
-    font-weight: bold;
-  }
-  
-  .invalid {
-    color: #ff5252;
-    font-weight: bold;
-  }
-
-  .debug-actions {
-    margin-top: 1rem;
-    padding: 10px;
-    border: 1px dashed #555;
-    border-radius: 5px;
-    background-color: rgba(0, 0, 0, 0.2);
-  }
-  
-  .debug-button {
-    background-color: #ff3e00;
-    padding: 8px 16px;
-    width: 100%;
-  }
-  
-  .debug-message {
-    margin-top: 10px;
-    padding: 8px;
-    background-color: #333;
-    border-radius: 4px;
-    font-family: monospace;
-    color: #fff;
   }
 </style>
