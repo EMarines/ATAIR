@@ -2,6 +2,7 @@
   import { useLoginForm } from '$lib/hooks/useLoginForm'
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
+  import { goto } from '$app/navigation'; // Añadida importación para la redirección
 
   const { 
     formData, 
@@ -37,6 +38,28 @@
       });
     }
   });
+
+  // Función para intentar login directamente, sin validación del cliente
+  async function forceTryLogin() {
+    try {
+      console.log('Forzando intento de login con:', $formData.email, 'y contraseña de longitud', $formData.password?.length || 0);
+      
+      const { signInWithEmailAndPassword } = await import('firebase/auth');
+      const { auth } = await import('$lib/firebase');
+      
+      await signInWithEmailAndPassword(
+        auth, 
+        $formData.email, 
+        $formData.password
+      );
+      
+      console.log('Autenticación forzada exitosa, redirigiendo a la página principal');
+      goto('/');
+    } catch (error: any) {
+      console.error('Error en autenticación forzada:', error.code, error.message);
+      alert(`Error en autenticación: ${error.code}\n${error.message}`);
+    }
+  }
 </script>
 
 <div class="container">
@@ -119,6 +142,14 @@
         {$formState.isLoading ? 'Procesando...' : 'Submit'}
       </button>
     </form>
+
+    <!-- Botón de diagnóstico para forzar inicio de sesión -->
+    <div class="debug-actions">
+      <button class="debug-button" on:click={forceTryLogin}>
+        Diagnóstico: Forzar intento de login
+      </button>
+      <p class="note">Este botón intenta iniciar sesión directamente, sin validación del cliente</p>
+    </div>
 
     <div class="options">
       {#if $formState.isRegisterMode}
@@ -230,5 +261,19 @@
   .invalid {
     color: #ff5252;
     font-weight: bold;
+  }
+
+  .debug-actions {
+    margin-top: 1rem;
+    padding: 10px;
+    border: 1px dashed #555;
+    border-radius: 5px;
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+  
+  .debug-button {
+    background-color: #ff3e00;
+    padding: 8px 16px;
+    width: 100%;
   }
 </style>
