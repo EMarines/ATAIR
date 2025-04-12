@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diagnóstico Firebase Auth</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .loading {
+            background-color: #d9edf7;
+            color: #31708f;
+        }
+        .domain-info {
+            background-color: #fcf8e3;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Diagnóstico de Firebase Authentication</h1>
+    
+    <div class="domain-info">
+        <strong>Dominio actual:</strong> <span id="current-domain"></span>
+        <p>Verifica que este dominio esté en la lista de dominios autorizados en Firebase Console.</p>
+    </div>
+    
+    <div class="container">
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input id="email" type="email" placeholder="Email" value="matchhome@hotmail.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input id="password" type="password" placeholder="Password" value="12VEntAS12">
+        </div>
+        
+        <button id="loginButton">Iniciar sesión</button>
+        
+        <div id="result"></div>
+    </div>
+    
+    <script>
+        // Muestra el dominio actual
+        document.getElementById('current-domain').textContent = window.location.hostname || "localhost (archivo local)";
+        
+        // Configura Firebase con las credenciales de tu proyecto
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGi3ndUC1b4SFNstliSSVryu7_ymXEkZc",
+            authDomain: "match-home-7d1f9.firebaseapp.com",
+            projectId: "match-home-7d1f9",
+            databaseURL: "https://match-home-7d1f9-default-rtdb.firebaseio.com",
+            storageBucket: "match-home-7d1f9.appspot.com",
+            messagingSenderId: "747751099607",
+            appId: "1:747751099607:web:2d6f6cbfb83be042dfb492"
+        };
+        
+        // Inicializa Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Referencia a elementos
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginButton = document.getElementById('loginButton');
+        const resultDiv = document.getElementById('result');
+        
+        // Función de login
+        loginButton.addEventListener('click', function() {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            
+            resultDiv.className = 'loading';
+            resultDiv.innerText = "Intentando iniciar sesión...";
+            
+            firebase.auth().signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = "<strong>¡Inicio de sesión exitoso!</strong><br>" +
+                                         "Usuario ID: " + userCredential.user.uid + "<br>" +
+                                         "Email: " + userCredential.user.email;
+                })
+                .catch((error) => {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = "<strong>Error:</strong> " + error.code + "<br>" +
+                                         "<strong>Mensaje:</strong> " + error.message;
+                    
+                    if (error.code === 'auth/unauthorized-domain') {
+                        resultDiv.innerHTML += "<br><br><strong>Solución:</strong> Añade este dominio (" + 
+                                              (window.location.hostname || "localhost") + 
+                                              ") a la lista de dominios autorizados en Firebase Console > Authentication > Settings > Authorized Domains.";
+                    }
+                });
+        });
+    </script>
+</body>
+</html>

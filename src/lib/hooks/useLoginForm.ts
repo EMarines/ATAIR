@@ -3,10 +3,10 @@ import type { LoginFormData, FormState } from '../types/auth.types'
 import { auth } from '../firebase'
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword, // Usando type para importar solo el tipo, no la implementación
+  // FirebaseError is imported from firebase/app
 } from 'firebase/auth'
 import { goto } from '$app/navigation'
-// import { browser } from '$app/environment'
 
 export function useLoginForm() {
   const formData = writable<LoginFormData>({
@@ -18,71 +18,67 @@ export function useLoginForm() {
   const formState = writable<FormState>({
     isLoading: false,
     error: null,
-    isRegisterMode: false
+    isRegisterMode: true    // lo cambié a true de false
   })
 
   // El botón estará siempre habilitado
   const isValid = writable(true);
 
   const handleSubmit = async () => {
-    console.log("Estas en la funcion de useLoginForm", get(formData), get(formState));
+    console.log("Submit iniciado - Verificando modo actual");
     const $formData = get(formData)
     const $formState = get(formState)
-    console.log("Estas en la funcion de useLoginForm 2", $formData, $formState);
-
-    // Verificar que auth está correctamente inicializado
-    console.log("Estado de auth:", auth ? "Disponible" : "No disponible", auth);
-
+    console.log("Submit iniciado - Verificando modo actual2", $formState);
+    
+    // Log para verificar el estado antes de proceder
+    console.log("Estado del formulario:", { 
+      email: $formData.email,
+      isRegisterMode: $formState.isRegisterMode,
+      confirmPassword: $formData.confirmPassword || 'no establecido'
+    });
+    
     formState.update(state => ({ 
       ...state, 
       isLoading: true, 
       error: null 
     }))
-    console.log("Estado actualizado a isLoading=true");
 
-    try {
-      console.log("Entrando al bloque try");
+    try {      
+      // Forzamos la verificación de modo de registro basándonos también en confirmPassword
+      const isRegistering = $formState.isRegisterMode || !!$formData.confirmPassword;
+      console.log("¿Está registrando?", isRegistering);
       
-      if ($formState.isRegisterMode) {
-        console.log("Intentando registro con:", $formData.email);
+      if (isRegistering) {
+        // Modo registro
+        console.log("Ejecutando registro con:", $formData.email);
         await createUserWithEmailAndPassword(
           auth, 
           $formData.email, 
           $formData.password
-        )
+        );
         console.log("Registro exitoso");
       } else {
-        console.log("Intentando login con:", $formData.email);
-        try {
-          const userCredential = await signInWithEmailAndPassword(
-            auth, 
-            $formData.email, 
-            $formData.password
-          );
-          console.log("Login exitoso, usuario:", userCredential.user.uid);
-        } catch (loginError: any) {
-          console.error("Error específico de login:", loginError.code, loginError.message);
-          throw loginError; // Re-lanzar para que sea manejado por el catch exterior
-        }
+        // Modo login
+        console.log("Ejecutando login con:", $formData.email);
+        await signInWithEmailAndPassword(
+          auth, 
+          $formData.email, 
+          $formData.password
+        );
+        console.log("Login exitoso");
       }
       
-      console.log("Autenticación exitosa, preparando redirección");
-      // Limpiar formulario y redirigir
+      // Si llegamos aquí, la autenticación fue exitosa
       formData.set({ email: '', password: '', confirmPassword: '' })
-      
-      try {
-        console.log("Iniciando redirección a '/'");
-        await goto('/');
-        console.log("Redirección completada");
-      } catch (navError: any) {
-        console.error("Error en la redirección:", navError);
-      }
+      console.log("Redirigiendo a página principal");
+      await goto('/');
 
-    } catch (error: unknown) {
-      const err = error as { code: string, message?: string }
-      const errorMessage = getAuthErrorMessage(err.code)
+    } catch (error) {
+      // Tipando correctamente el error
+      const err = error as FirebaseError;
+      console.error("Error de autenticación:", err);
       
-      console.error("Error capturado:", err.code, err.message, errorMessage);
+      const errorMessage = getAuthErrorMessage(err.code);
       
       formState.update(state => ({
         ...state,
@@ -90,14 +86,12 @@ export function useLoginForm() {
           code: err.code,
           message: errorMessage
         }
-      }))
-      console.log("Estado actualizado con error:", err.code);
+      }));
     } finally {
       formState.update(state => ({ 
         ...state, 
         isLoading: false 
       }))
-      console.log("Proceso finalizado, isLoading=false");
     }
   }
 
