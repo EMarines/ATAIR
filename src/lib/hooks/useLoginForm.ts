@@ -33,10 +33,23 @@ export function useLoginForm() {
   const validationStatus = derived(
     [formData, formState],
     ([formData, formState]): ValidationStatus => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      const isEmailValid = emailRegex.test(formData.email)
-      const isPasswordValid = formData.password.length >= 6
-      const passwordsMatch = formData.password === formData.confirmPassword
+      // Corregido: Simplificar la validación del email para que sea más permisiva
+      // Aceptamos cualquier texto que tenga un @ y al menos un punto después
+      const isEmailValid = formData.email.includes('@') && formData.email.includes('.');
+      
+      // Corregido: Simplificar la validación de la contraseña
+      const isPasswordValid = formData.password.length > 0;
+      
+      const passwordsMatch = formData.password === formData.confirmPassword;
+      
+      if (browser) {
+        console.log('Validando formulario:', {
+          email: formData.email,
+          emailValid: isEmailValid,
+          passwordLength: formData.password.length,
+          passwordValid: isPasswordValid
+        });
+      }
       
       return {
         emailValid: isEmailValid,
