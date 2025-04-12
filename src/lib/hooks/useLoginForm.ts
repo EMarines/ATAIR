@@ -3,10 +3,10 @@ import type { LoginFormData, FormState } from '../types/auth.types'
 import { auth } from '../firebase'
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  AuthErrorCodes  // Añadido para diagnóstico
+  createUserWithEmailAndPassword
 } from 'firebase/auth'
 import { goto } from '$app/navigation'
+import { browser } from '$app/environment'
 
 export function useLoginForm() {
   const formData = writable<LoginFormData>({
@@ -21,13 +21,26 @@ export function useLoginForm() {
     isRegisterMode: false
   })
 
-  // Validación del formulario
+  // Validación del formulario con diagnóstico detallado
   const isValid = derived(
     [formData, formState],
     ([formData, formState]) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       const isEmailValid = emailRegex.test(formData.email)
       const isPasswordValid = formData.password.length >= 6
+      
+      // Diagnóstico detallado de la validación
+      if (browser && (formData.email || formData.password)) {
+        console.log('Estado de validación del formulario:', {
+          email: formData.email ? formData.email.substring(0, 3) + '...' : '',
+          emailLength: formData.email.length,
+          emailValid: isEmailValid,
+          passwordLength: formData.password.length,
+          passwordValid: isPasswordValid,
+          isRegisterMode: formState.isRegisterMode,
+          passwordsMatch: formState.isRegisterMode ? formData.password === formData.confirmPassword : 'N/A'
+        });
+      }
 
       if (!isEmailValid || !isPasswordValid) return false
       
