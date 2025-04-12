@@ -21,12 +21,10 @@ export function useLoginForm() {
     isRegisterMode: false
   })
 
-  // Eliminamos la interfaz ValidationStatus y las validaciones complejas
   // El botón estará siempre habilitado
   const isValid = writable(true);
 
   const handleSubmit = async () => {
-    console.log("Procesando formulario de login");
     const $formData = get(formData)
     const $formState = get(formState)
 
@@ -38,22 +36,18 @@ export function useLoginForm() {
 
     try {
       if ($formState.isRegisterMode) {
-        console.log('Creando nuevo usuario:', $formData.email);
         await createUserWithEmailAndPassword(
           auth, 
           $formData.email, 
           $formData.password
         )
       } else {
-        console.log('Iniciando sesión:', $formData.email);
         await signInWithEmailAndPassword(
           auth, 
           $formData.email, 
           $formData.password
         )
       }
-
-      console.log('Autenticación exitosa');
       
       // Limpiar formulario y redirigir
       formData.set({ email: '', password: '', confirmPassword: '' })
@@ -62,11 +56,6 @@ export function useLoginForm() {
     } catch (error: unknown) {
       const err = error as { code: string, message?: string }
       const errorMessage = getAuthErrorMessage(err.code)
-      
-      console.error('Error de autenticación:', { 
-        code: err.code, 
-        message: err.message
-      });
       
       formState.update(state => ({
         ...state,
