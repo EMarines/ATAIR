@@ -12,7 +12,35 @@
 		<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 		
 		<!-- Font Awesome -->
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />	
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+		
+		<!-- Script para detectar y aplicar preferencia de modo oscuro -->
+		<script>
+			// Función para detectar y aplicar el modo oscuro
+			(function() {
+				// Verificar si hay una preferencia guardada en localStorage
+				const savedTheme = localStorage.getItem('theme');
+				
+				// Si hay preferencia guardada, usarla
+				if (savedTheme) {
+					document.documentElement.setAttribute('data-theme', savedTheme);
+				} 
+				// Si no hay preferencia guardada, detectar preferencia del sistema
+				else {
+					// Verifica si el usuario prefiere modo oscuro
+					const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+					
+					// Aplicar modo oscuro si el usuario lo prefiere
+					if (prefersDarkMode) {
+						document.documentElement.setAttribute('data-theme', 'dark');
+						localStorage.setItem('theme', 'dark');
+					} else {
+						document.documentElement.setAttribute('data-theme', 'light');
+						localStorage.setItem('theme', 'light');
+					}
+				}
+			})();
+		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
