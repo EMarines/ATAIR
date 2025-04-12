@@ -14,6 +14,7 @@
   
   // Función de login directa y simplificada
   async function handleSubmit() {
+    console.log("object",$email, $password);
     try {
       alert("Intentando autenticar...");
       $isLoading = true;
