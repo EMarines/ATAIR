@@ -1,8 +1,14 @@
 import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getFirestore, type Firestore } from 'firebase/firestore';
+import { 
+  getAuth, 
+  setPersistence, 
+  browserLocalPersistence, 
+  signInWithEmailAndPassword,
+  type Auth
+} from 'firebase/auth';
 
 // Store para controlar qué base de datos usamos
 const createDbToggleStore = () => {
@@ -29,6 +35,15 @@ const createDbToggleStore = () => {
 };
 
 export const useTestDb = createDbToggleStore();
+
+// Exportamos un store para el estado de inicialización
+export const firebaseInitialized = writable(false);
+export const firebaseError = writable<Error | null>(null);
+
+// Variables para las instancias
+let app: FirebaseApp;
+let db: Firestore;
+let auth: Auth;
 
 // Función para determinar qué configuración de Firebase usar
 function getFirebaseConfig() {
@@ -61,6 +76,8 @@ function getFirebaseConfig() {
     }
   } catch (error) {
     console.error("Error al cargar configuración de Firebase:", error);
+    firebaseError.set(error as Error);
+    
     // Configuración de fallback
     return {
       apiKey: "",
@@ -74,46 +91,111 @@ function getFirebaseConfig() {
   }
 }
 
-// Configuración de Firebase basada en la selección
-const firebaseConfig = getFirebaseConfig();
-
-// Inicializar Firebase con manejo de errores
-let app;
-let db;
-let auth;
-
-try {
-  // Inicializar Firebase
-  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Función de inicialización explícita
+export async function initializeFirebase() {
+  if (!browser) {
+    console.log("Saltando inicialización de Firebase en el servidor");
+    return { app: null, db: null, auth: null };
+  }
   
-  // Inicializar Firestore
-  db = getFirestore(app);
-  
-  // Inicializar Auth
-  auth = getAuth(app);
-  
-  // Configurar persistencia para mejorar la experiencia del usuario
-  if (browser) {
-    setPersistence(auth, browserLocalPersistence)
-      .catch((error) => {
-        console.error("Error al configurar la persistencia:", error);
-      });
-      
-    // Mostrar información sobre qué base de datos estamos usando
+  try {
+    console.log("Inicializando Firebase...");
+    
+    // Obtener configuración
+    const firebaseConfig = getFirebaseConfig();
+    console.log("Configuración obtenida:", 
+      Object.keys(firebaseConfig).map(k => `${k}: ${firebaseConfig[k] ? 'configurado' : 'vacío'}`).join(', ')
+    );
+    
+    // Inicializar app
+    if (!getApps().length) {
+      console.log("Creando nueva app de Firebase");
+      app = initializeApp(firebaseConfig);
+    } else {
+      console.log("Usando app de Firebase existente");
+      app = getApp();
+    }
+    
+    // Inicializar servicios
+    console.log("Inicializando Firestore");
+    db = getFirestore(app);
+    
+    console.log("Inicializando Auth");
+    auth = getAuth(app);
+    
+    // Configurar persistencia
+    console.log("Configurando persistencia de autenticación");
+    await setPersistence(auth, browserLocalPersistence);
+    
+    // Mostrar información
     const dbName = localStorage.getItem('useTestDb') === 'true' ? 
       'Curso Svelte (Gratuita)' : 
       'Match Home (Producción)';
     console.log(`Firebase inicializado usando base de datos: ${dbName}`);
+    
+    // Marcar como inicializado
+    firebaseInitialized.set(true);
+    firebaseError.set(null);
+    
+    return { app, db, auth };
+  } catch (error) {
+    console.error("Error crítico al inicializar Firebase:", error);
+    firebaseError.set(error as Error);
+    firebaseInitialized.set(false);
+    
+    // Crear versiones mock para evitar errores
+    if (!app) app = {} as FirebaseApp;
+    if (!db) db = {
+      collection: () => ({ get: async () => ({ docs: [] }) })
+    } as any;
+    if (!auth) auth = { currentUser: null } as any;
+    
+    return { app, db, auth };
   }
-} catch (error) {
-  console.error("Error al inicializar Firebase:", error);
-  
-  // Crear versiones mock para evitar errores en caso de fallo
-  if (!app) app = {};
-  if (!db) db = {
-    collection: () => ({ get: async () => ({ docs: [] }) })
-  };
-  if (!auth) auth = { currentUser: null };
+}
+
+// Función de ayuda para la autenticación con manejo explícito de errores
+export async function loginWithEmailPassword(email: string, password: string) {
+  try {
+    // Asegurarse de que Firebase esté inicializado
+    if (!auth) {
+      const { auth: newAuth } = await initializeFirebase();
+      if (!newAuth) {
+        throw new Error("No se pudo inicializar Firebase Auth");
+      }
+      auth = newAuth;
+    }
+    
+    console.log(`Intentando login con email: ${email.substring(0, 3)}...`);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    console.log("Login exitoso:", userCredential.user.uid);
+    return { success: true, user: userCredential.user, error: null };
+  } catch (error) {
+    console.error("Error en login:", error);
+    return { 
+      success: false, 
+      user: null, 
+      error: error,
+      code: error.code,
+      message: error.message
+    };
+  }
+}
+
+// Inicializar si estamos en el navegador
+if (browser) {
+  console.log("Inicializando Firebase automáticamente en el navegador");
+  initializeFirebase()
+    .then(({ app: a, db: d, auth: au }) => {
+      app = a;
+      db = d;
+      auth = au;
+    })
+    .catch(err => {
+      console.error("Error en inicialización automática:", err);
+    });
+} else {
+  console.log("Firebase no se inicializará en el servidor");
 }
 
 export { app, db, auth };

@@ -1,17 +1,12 @@
 <script lang="ts">
   // Importaciones
-  import { auth } from '$lib/firebase';
-  import { signInWithEmailAndPassword, createUserWithEmailAndPassword, browserLocalPersistence, setPersistence, getAuth, initializeAuth } from 'firebase/auth';
+  import { loginWithEmailPassword, firebaseInitialized, firebaseError, initializeFirebase } from '$lib/firebase/firebase';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import { writable, get } from 'svelte/store';
-  import { onMount, afterUpdate } from 'svelte';
-  import { app } from '$lib/firebase/firebase';
+  import { onMount } from 'svelte';
   
   // Variables para depuración
-  let isSubmitClicked = false;
-  let testButtonClicked = false;
-  let firebaseInitialized = false;
   let diagnosticMessages = [];
   let errorMessages = [];
   
@@ -39,42 +34,16 @@
     errorMessages = [...errorMessages, message];
   }
   
-  onMount(() => {
+  onMount(async () => {
     addDiagnostic("Componente montado");
-    addDiagnostic("Auth disponible: " + (!!auth));
-    addDiagnostic("App disponible: " + (!!app));
-    addDiagnostic("Ejecutándose en navegador: " + browser);
     
+    // Inicializamos Firebase explícitamente
     try {
-      addDiagnostic("Intentando configurar persistencia de autenticación");
-      const authInstance = auth || getAuth(app);
-      if (authInstance) {
-        setPersistence(authInstance, browserLocalPersistence)
-          .then(() => {
-            addDiagnostic("Persistencia configurada correctamente");
-            firebaseInitialized = true;
-          })
-          .catch((error) => {
-            addError("Error al configurar persistencia: " + error.message);
-          });
-      } else {
-        addError("No se pudo obtener una instancia de auth");
-      }
+      addDiagnostic("Inicializando Firebase explícitamente");
+      const { app, auth } = await initializeFirebase();
+      addDiagnostic("Firebase inicializado: " + (!!app && !!auth));
     } catch (e) {
-      addError("Error al intentar configurar Firebase: " + e.message);
-    }
-    
-    // Configurar listener directo del DOM
-    if (formElement) {
-      addDiagnostic("Configurando listener directo del DOM para el formulario");
-      formElement.addEventListener('submit', function(e) {
-        addDiagnostic("Evento submit capturado directamente por el DOM");
-        e.preventDefault();
-        handleFormSubmit(e);
-        return false;
-      });
-    } else {
-      addError("No se pudo acceder al elemento del formulario");
+      addError("Error al inicializar Firebase: " + e.message);
     }
     
     // Configuramos valores predeterminados para pruebas
@@ -85,52 +54,7 @@
     }
   });
   
-  afterUpdate(() => {
-    // Verificar si tenemos referencias a los elementos del DOM después de la actualización
-    if (!formElement) {
-      addError("Formulario no disponible después de update");
-    }
-  });
-  
-  // Manejadores de formulario
-  function handleFormSubmit(event) {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    
-    addDiagnostic("Formulario enviado mediante manejador");
-    isSubmitClicked = true;
-    
-    // Usar valores directamente de los inputs del DOM como respaldo
-    const emailValue = emailInput ? emailInput.value : get(email);
-    const passwordValue = passwordInput ? passwordInput.value : get(password);
-    
-    addDiagnostic(`Intentando autenticar con: ${emailValue.substring(0, 3)}...`);
-    
-    doAuthentication(emailValue, passwordValue);
-    return false;
-  }
-  
-  function handleTestButtonClick() {
-    testButtonClicked = true;
-    addDiagnostic("Botón de prueba presionado");
-    
-    // Establecemos valores directamente
-    const testEmail = 'matchhome@hotmail.com';
-    const testPassword = '12VEntAS12';
-    
-    if (emailInput) emailInput.value = testEmail;
-    if (passwordInput) passwordInput.value = testPassword;
-    
-    $email = testEmail;
-    $password = testPassword;
-    
-    addDiagnostic(`Intentando autenticar con credenciales de prueba`);
-    doAuthentication(testEmail, testPassword);
-  }
-  
-  // Función alternativa de autenticación que intenta diferentes métodos
+  // Función simplificada de autenticación que usa nuestro nuevo helper
   async function doAuthentication(emailValue, passwordValue) {
     addDiagnostic("AUTENTICACIÓN INICIADA");
     
@@ -146,69 +70,31 @@
       $error = null;
       
       addDiagnostic(`Modo: ${$isRegisterMode ? 'REGISTRO' : 'LOGIN'}`);
+      addDiagnostic(`Intentando login con: ${emailValue.substring(0, 3)}...`);
       
-      // Intentar diferentes métodos de autenticación
-      let success = false;
-      let errorMsg = null;
+      // Usar nuestra nueva función de login
+      const result = await loginWithEmailPassword(emailValue, passwordValue);
       
-      // Método 1: Usando la instancia de auth existente
-      if (auth && !success) {
-        addDiagnostic("Intentando método 1: Auth preconfigurado");
-        try {
-          const userCredential = $isRegisterMode 
-            ? await createUserWithEmailAndPassword(auth, emailValue, passwordValue)
-            : await signInWithEmailAndPassword(auth, emailValue, passwordValue);
-          
-          addDiagnostic(`Autenticación exitosa con método 1, UID: ${userCredential.user.uid}`);
-          success = true;
-        } catch (err) {
-          errorMsg = err;
-          addError(`Método 1 falló: ${err.code} - ${err.message}`);
-        }
-      }
-      
-      // Método 2: Obteniendo una nueva instancia de auth
-      if (!success && app) {
-        addDiagnostic("Intentando método 2: Nueva instancia de auth");
-        try {
-          const newAuth = getAuth(app);
-          const userCredential = $isRegisterMode 
-            ? await createUserWithEmailAndPassword(newAuth, emailValue, passwordValue)
-            : await signInWithEmailAndPassword(newAuth, emailValue, passwordValue);
-          
-          addDiagnostic(`Autenticación exitosa con método 2, UID: ${userCredential.user.uid}`);
-          success = true;
-        } catch (err) {
-          errorMsg = err;
-          addError(`Método 2 falló: ${err.code} - ${err.message}`);
-        }
-      }
-      
-      // Si tuvimos éxito, redirigir
-      if (success) {
-        addDiagnostic("Autenticación exitosa, preparando redirección");
+      if (result.success) {
+        addDiagnostic(`Autenticación exitosa, UID: ${result.user.uid}`);
         
-        // Intentar diferentes métodos de redirección
+        // Redirigir al usuario
+        addDiagnostic("Redirigiendo a página principal");
         setTimeout(async () => {
           try {
-            addDiagnostic("Intentando redirección con goto");
             await goto('/');
           } catch (navErr) {
             addError(`Redirección con goto falló: ${navErr}`);
-            
-            addDiagnostic("Intentando redirección con window.location");
             window.location.href = '/';
           }
         }, 1000);
-      } else if (errorMsg) {
-        // Si fallamos, mostrar error
-        alert(`Error: ${errorMsg.code}\n${errorMsg.message}`);
-        $error = { message: getErrorMessage(errorMsg.code) };
       } else {
-        // Si no hay conexión con Firebase
-        addError("No se pudo conectar con Firebase");
-        alert("No se pudo conectar con el servicio de autenticación. Verifica tu conexión a internet.");
-        $error = { message: "No se pudo conectar con el servicio de autenticación" };
+        // Manejar errores
+        addError(`Error de autenticación: ${result.code}`);
+        alert(`Error: ${result.code}\n${result.message}`);
+        $error = { 
+          message: getErrorMessage(result.code) || `Error: ${result.message}` 
+        };
       }
     } catch (err) {
       addError(`Error general: ${err.message}`);
@@ -244,7 +130,7 @@
 
 <div class="container">
   <div class="authContainer">  
-    <form bind:this={formElement} on:submit|preventDefault={handleFormSubmit} action="javascript:void(0);">
+    <form bind:this={formElement} on:submit|preventDefault={() => false} action="javascript:void(0);">
       <h1>{$isRegisterMode ? "Registrarse" : "Login"}</h1>
       
       {#if $error}
@@ -275,18 +161,18 @@
         >
       </label>
 
-      <!-- Reemplazando los botones por versiones simplificadas -->
+      <!-- Botón de login directo simplificado -->
       <button 
         type="button" 
         disabled={$isLoading}
         on:click={() => {
-          addDiagnostic("Botón de submit clickeado manualmente");
-          const emailValue = get(email) || (emailInput ? emailInput.value : '');
-          const passwordValue = get(password) || (passwordInput ? passwordInput.value : '');
+          addDiagnostic("Botón de login clickeado");
+          const emailValue = $email || (emailInput ? emailInput.value : '');
+          const passwordValue = $password || (passwordInput ? passwordInput.value : '');
           doAuthentication(emailValue, passwordValue);
         }}
       >
-        {$isLoading ? 'Procesando...' : 'Submit (Directo)'}
+        {$isLoading ? 'Procesando...' : 'Iniciar Sesión'}
       </button>
       
       <!-- Botón de prueba directo simplificado -->
@@ -295,7 +181,7 @@
         class="test-button"
         disabled={$isLoading}
         on:click={() => {
-          addDiagnostic("Botón de prueba directo clickeado");
+          addDiagnostic("Botón de prueba clickeado");
           const testEmail = 'matchhome@hotmail.com';
           const testPassword = '12VEntAS12';
           
@@ -309,7 +195,7 @@
           doAuthentication(testEmail, testPassword);
         }}
       >
-        Prueba Directa
+        Login Automático
       </button>
 
       <!-- Sección de diagnóstico siempre visible -->
@@ -319,8 +205,8 @@
         <div class="diagnostic-section">
           <h4>Estado:</h4>
           <ul>
-            <li>Auth disponible: {!!auth}</li>
-            <li>Firebase app: {!!app}</li>
+            <li>Firebase inicializado: {$firebaseInitialized}</li>
+            <li>Error de Firebase: {$firebaseError ? $firebaseError.message : 'ninguno'}</li>
             <li>En navegador: {browser}</li>
             <li>Formulario cargado: {!!formElement}</li>
           </ul>
