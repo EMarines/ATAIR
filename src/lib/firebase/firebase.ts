@@ -17,7 +17,7 @@ const createDbToggleStore = () => {
     localStorage.getItem('useTestDb') === 'true' : 
     false;
   
-  const { subscribe, set, update } = writable<boolean>(initialValue);
+  const { subscribe, update } = writable<boolean>(initialValue);
   
   return {
     subscribe,
@@ -147,8 +147,8 @@ export async function initializeFirebase() {
     if (!app) app = {} as FirebaseApp;
     if (!db) db = {
       collection: () => ({ get: async () => ({ docs: [] }) })
-    } as any;
-    if (!auth) auth = { currentUser: null } as any;
+    } as unknown as Firestore;
+    if (!auth) auth = { currentUser: null } as unknown as Auth;
     
     return { app, db, auth };
   }
