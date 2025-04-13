@@ -278,7 +278,7 @@
       <button 
         type="submit" 
         disabled={$isLoading}
-        onclick="event.preventDefault(); return false;"
+        on:click|preventDefault|stopPropagation={() => {}}
       >
         {$isLoading ? 'Procesando...' : 'Submit'}
       </button>
@@ -293,34 +293,38 @@
         Prueba Directa
       </button>
 
-      <!-- Sección de diagnóstico visible en desarrollo -->
-      {#if diagnosticMessages.length > 0 || errorMessages.length > 0}
-        <div class="diagnostic-panel">
-          <h3>Información de diagnóstico</h3>
-          
-          {#if diagnosticMessages.length > 0}
-            <div class="diagnostic-section">
-              <h4>Mensajes:</h4>
-              <ul>
-                {#each diagnosticMessages as msg}
-                  <li>{msg}</li>
-                {/each}
-              </ul>
-            </div>
-          {/if}
-          
-          {#if errorMessages.length > 0}
-            <div class="error-section">
-              <h4>Errores:</h4>
-              <ul>
-                {#each errorMessages as err}
-                  <li>{err}</li>
-                {/each}
-              </ul>
-            </div>
-          {/if}
+      <!-- Sección de diagnóstico siempre visible -->
+      <div class="diagnostic-panel">
+        <h3>Información de diagnóstico</h3>
+        
+        <div class="diagnostic-section">
+          <h4>Estado:</h4>
+          <ul>
+            <li>Auth disponible: {!!auth}</li>
+            <li>Firebase app: {!!app}</li>
+            <li>En navegador: {browser}</li>
+            <li>Formulario cargado: {!!formElement}</li>
+          </ul>
         </div>
-      {/if}
+        
+        <div class="diagnostic-section">
+          <h4>Mensajes ({diagnosticMessages.length}):</h4>
+          <ul>
+            {#each diagnosticMessages as msg}
+              <li>{msg}</li>
+            {/each}
+          </ul>
+        </div>
+        
+        <div class="error-section">
+          <h4>Errores ({errorMessages.length}):</h4>
+          <ul>
+            {#each errorMessages as err}
+              <li>{err}</li>
+            {/each}
+          </ul>
+        </div>
+      </div>
     </form>
 
     <div class="options">
