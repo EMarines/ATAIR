@@ -38,7 +38,37 @@ export const load = async () => {
                 // Actualiza los stores con los datos iniciales
                 contactsStore.set(contactsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact)));
                 binnaclesStore.set(binnaclesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Binnacle)));
-                propertiesStore.set(propertiesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property)));
+                
+                // Corregido: Convertimos los datos de Firestore a Property con una conversión segura
+                propertiesStore.set(propertiesSnap.docs.map(doc => {
+                    const data = doc.data();
+                    // Verificamos que los datos tengan la estructura mínima necesaria
+                    return {
+                        id: doc.id,
+                        agent: data.agent || '',
+                        bathrooms: Number(data.bathrooms || 0),
+                        bedrooms: Number(data.bedrooms || 0),
+                        construction_size: Number(data.construction_size || 0),
+                        created_at: data.created_at || Date.now(),
+                        description: data.description || '',
+                        half_bathrooms: Number(data.half_bathrooms || 0),
+                        location: data.location || { name: '' },
+                        lot_size: Number(data.lot_size || 0),
+                        parking_spaces: Number(data.parking_spaces || 0),
+                        price: Number(data.price || 0),
+                        property_status: data.property_status || '',
+                        property_type: data.property_type || '',
+                        public_id: data.public_id || doc.id,
+                        public_url: data.public_url || '',
+                        selecTO: data.selecTO || '',
+                        selecTP: data.selecTP || '',
+                        tags: data.tags || [],
+                        title: data.title || '',
+                        title_image_thumb: data.title_image_thumb || '',
+                        updated_at: data.updated_at || ''
+                    } as Property;
+                }));
+                
                 todoStore.set(todosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Todo)));
 
                 // Configura los listeners para actualizaciones en tiempo real
@@ -51,7 +81,34 @@ export const load = async () => {
                 });
 
                 onSnapshot(collection(db, 'properties'), (snapshot) => {
-                    propertiesStore.set(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property)));
+                    // Corregido: Usamos la misma función de conversión para los updates
+                    propertiesStore.set(snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return {
+                            id: doc.id,
+                            agent: data.agent || '',
+                            bathrooms: Number(data.bathrooms || 0),
+                            bedrooms: Number(data.bedrooms || 0),
+                            construction_size: Number(data.construction_size || 0),
+                            created_at: data.created_at || Date.now(),
+                            description: data.description || '',
+                            half_bathrooms: Number(data.half_bathrooms || 0),
+                            location: data.location || { name: '' },
+                            lot_size: Number(data.lot_size || 0),
+                            parking_spaces: Number(data.parking_spaces || 0),
+                            price: Number(data.price || 0),
+                            property_status: data.property_status || '',
+                            property_type: data.property_type || '',
+                            public_id: data.public_id || doc.id,
+                            public_url: data.public_url || '',
+                            selecTO: data.selecTO || '',
+                            selecTP: data.selecTP || '',
+                            tags: data.tags || [],
+                            title: data.title || '',
+                            title_image_thumb: data.title_image_thumb || '',
+                            updated_at: data.updated_at || ''
+                        } as Property;
+                    }));
                 });
 
                 onSnapshot(collection(db, 'todos'), (snapshot) => {
