@@ -3,6 +3,7 @@
   import { auth } from '$lib/firebase';
   import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
   import { goto } from '$app/navigation';
+  import { browser } from '$app/environment';
   import { writable, get } from 'svelte/store';
   import { onMount } from 'svelte';
   
@@ -17,34 +18,60 @@
   const error = writable(null);
   const isRegisterMode = writable(false);
   
+  // Referencias a elementos del DOM
+  let formElement;
+  let emailInput;
+  let passwordInput;
+  
   onMount(() => {
     console.log("Componente montado - Auth disponible:", !!auth);
+    console.log("¿Ejecutándose en navegador?", browser);
+    
+    // Si tenemos referencias a los elementos del DOM, podemos configurar eventos directamente
+    if (formElement) {
+      formElement.addEventListener('submit', function(e) {
+        console.log("Evento submit capturado directamente");
+        e.preventDefault();
+        handleFormSubmit(e);
+        return false;
+      });
+    }
   });
   
-  // Funciones de prueba separadas
-  function handleNormalSubmit(event) {
-    event.preventDefault(); // Aseguramos prevenir el comportamiento por defecto
+  // Manejadores de formulario separados
+  function handleFormSubmit(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    console.log("Formulario enviado mediante manejador directo");
     isSubmitClicked = true;
-    console.log("Submit normal presionado");
-    doAuthentication();
-    return false; // Para asegurarnos que no haga submit
+    
+    // Usar valores directamente de los inputs del DOM como respaldo
+    const emailValue = emailInput ? emailInput.value : get(email);
+    const passwordValue = passwordInput ? passwordInput.value : get(password);
+    
+    doAuthentication(emailValue, passwordValue);
+    return false;
   }
   
   function handleTestButtonClick() {
     testButtonClicked = true;
     console.log("Botón de prueba presionado");
+    
+    // Aquí establecemos directamente los valores en los inputs para asegurar que funcionan
+    if (emailInput) emailInput.value = 'matchhome@hotmail.com';
+    if (passwordInput) passwordInput.value = '12VEntAS12';
+    
     $email = 'matchhome@hotmail.com';
     $password = '12VEntAS12';
-    doAuthentication();
+    
+    doAuthentication('matchhome@hotmail.com', '12VEntAS12');
   }
   
   // Función principal de autenticación
-  async function doAuthentication() {
-    // Obtenemos los valores actuales de los stores
-    const emailValue = get(email);
-    const passwordValue = get(password);
-    let userCredential;
-    userCredential = await signInWithEmailAndPassword(auth, emailValue, passwordValue);
+  async function doAuthentication(emailValue, passwordValue) {
     console.log("AUTENTICACIÓN INICIADA:", { 
       email: emailValue, 
       password: passwordValue.substring(0, 3) + '***',
@@ -69,28 +96,18 @@
         throw new Error("Objeto de autenticación no disponible");
       }
       
-      
+      let userCredential;
       
       if ($isRegisterMode) {
         userCredential = await createUserWithEmailAndPassword(auth, emailValue, passwordValue);
       } else {
-        console.log("ya entraste");
-        // userCredential = await signInWithEmailAndPassword(auth, emailValue, passwordValue);
+        userCredential = await signInWithEmailAndPassword(auth, emailValue, passwordValue);
       }
       
       console.log("Autenticación exitosa:", userCredential.user.uid);
       
-      // Pequeña pausa antes de redirigir para asegurarnos que todo se actualiza
-      setTimeout(async () => {
-        try {
-          console.log("Intentando redireccionar...");
-          await goto('/');
-        } catch (navErr) {
-          console.error("Error en redirección:", navErr);
-          // Intento alternativo de redirección
-          window.location.href = '/';
-        }
-      }, 500);
+      // Método alternativo de redirección directa para evitar problemas con goto
+      window.location.href = '/';
       
     } catch (err: any) {
       console.error("ERROR DE AUTENTICACIÓN:", err.code, err.message);
@@ -126,7 +143,7 @@
 
 <div class="container">
   <div class="authContainer">  
-    <form on:submit={handleNormalSubmit}>
+    <form bind:this={formElement} on:submit|preventDefault={handleFormSubmit} action="javascript:void(0);">
       <h1>{$isRegisterMode ? "Registrarse" : "Login"}</h1>
       
       {#if $error}
@@ -136,6 +153,7 @@
       <label>
         <p class={$email ? 'above' : 'center'}>Email</p>
         <input 
+          bind:this={emailInput}
           bind:value={$email} 
           type="email" 
           placeholder="email"
@@ -146,7 +164,8 @@
 
       <label>
         <p class={$password ? 'above' : 'center'}>Password</p>
-        <input  
+        <input
+          bind:this={passwordInput}
           bind:value={$password} 
           type="password" 
           placeholder="Password"
@@ -158,6 +177,7 @@
       <button 
         type="submit" 
         disabled={$isLoading}
+        onclick="event.preventDefault(); return false;"
       >
         {$isLoading ? 'Procesando...' : 'Submit'}
       </button>
