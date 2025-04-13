@@ -43,7 +43,8 @@
     // Obtenemos los valores actuales de los stores
     const emailValue = get(email);
     const passwordValue = get(password);
-    
+    let userCredential;
+    userCredential = await signInWithEmailAndPassword(auth, emailValue, passwordValue);
     console.log("AUTENTICACIÓN INICIADA:", { 
       email: emailValue, 
       password: passwordValue.substring(0, 3) + '***',
@@ -68,12 +69,13 @@
         throw new Error("Objeto de autenticación no disponible");
       }
       
-      let userCredential;
+      
       
       if ($isRegisterMode) {
         userCredential = await createUserWithEmailAndPassword(auth, emailValue, passwordValue);
       } else {
-        userCredential = await signInWithEmailAndPassword(auth, emailValue, passwordValue);
+        console.log("ya entraste");
+        // userCredential = await signInWithEmailAndPassword(auth, emailValue, passwordValue);
       }
       
       console.log("Autenticación exitosa:", userCredential.user.uid);
