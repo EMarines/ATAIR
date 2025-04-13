@@ -275,20 +275,39 @@
         >
       </label>
 
+      <!-- Reemplazando los botones por versiones simplificadas -->
       <button 
-        type="submit" 
+        type="button" 
         disabled={$isLoading}
-        on:click|preventDefault|stopPropagation={() => {}}
+        on:click={() => {
+          addDiagnostic("Botón de submit clickeado manualmente");
+          const emailValue = get(email) || (emailInput ? emailInput.value : '');
+          const passwordValue = get(password) || (passwordInput ? passwordInput.value : '');
+          doAuthentication(emailValue, passwordValue);
+        }}
       >
-        {$isLoading ? 'Procesando...' : 'Submit'}
+        {$isLoading ? 'Procesando...' : 'Submit (Directo)'}
       </button>
       
-      <!-- Botón de prueba directo -->
+      <!-- Botón de prueba directo simplificado -->
       <button 
         type="button" 
         class="test-button"
-        on:click={handleTestButtonClick}
         disabled={$isLoading}
+        on:click={() => {
+          addDiagnostic("Botón de prueba directo clickeado");
+          const testEmail = 'matchhome@hotmail.com';
+          const testPassword = '12VEntAS12';
+          
+          // Establecer valores manualmente
+          $email = testEmail;
+          $password = testPassword;
+          if (emailInput) emailInput.value = testEmail;
+          if (passwordInput) passwordInput.value = testPassword;
+          
+          // Intentar autenticar
+          doAuthentication(testEmail, testPassword);
+        }}
       >
         Prueba Directa
       </button>
