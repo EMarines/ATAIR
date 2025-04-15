@@ -140,14 +140,14 @@
 </div>
 
 <!-- Temporary diagnostic info -->
-{#if browser}
+<!-- {#if browser}
   <div style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 9999;">
     <p><strong>Diagnóstico:</strong></p>
     <p>API Key: {envDiagnostic.apiKeyConfigured ? '✓' : '✗'}</p>
     <p>Auth Domain: {envDiagnostic.authDomainConfigured ? '✓' : '✗'}</p>
     <p>Project ID: {envDiagnostic.projectIdConfigured ? '✓' : '✗'}</p>
   </div>
-{/if}
+{/if} -->
 
 <style>
   .iconChoises {

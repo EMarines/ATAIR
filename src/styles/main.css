@@ -75,6 +75,8 @@ body{
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 20px;
+    position: relative;
+    z-index: 5;
 }
 
 /* Estilos para el footer */
@@ -83,6 +85,11 @@ body{
     margin: 0 auto;
     padding: 20px;
     text-align: center;
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    margin-top: 20px;
+    clear: both;
 }
 
 .app {

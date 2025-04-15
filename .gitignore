@@ -35,3 +35,5 @@ debug-tokens.html
 # diagnostico-google.html
 diagnostico-simple.html
 firebase-debug.log
+
+.vercel

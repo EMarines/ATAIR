@@ -7,10 +7,11 @@
     import Sun from "./icons/sun.svelte";
     import { writable } from 'svelte/store';
     import { browser } from '$app/environment';
-    import { useTestDb } from '$lib/firebase/firebase';  // Asegúrate que esta importación es correcta
+    import { useTestDb } from '$lib/firebase/firebase';
 
     let currentTheme = "";
-    let nav__links = "wide"
+    let nav__links = "wide";
+    let menuOpen = false;
 
     const { isAuthenticated } = useAuth()
     const { logout, loading: logoutLoading } = useLogout()
@@ -23,6 +24,8 @@
             document.documentElement.dataset.theme == "dark";
         if (!hasUserSetDarkModeManually) {
             setTheme(userPrefersDarkMode ? "dark" : "light");
+        } else {
+            currentTheme = document.documentElement.dataset.theme;
         }
     });
 
@@ -35,11 +38,22 @@
     $: routeId = $page.route.id;
     $: url = $page.url.href
 
-    function showHide() {
-        if (nav__links === "small") {
-            nav__links = "wide"
+    function toggleMenu() {
+        menuOpen = !menuOpen;
+        nav__links = menuOpen ? "small" : "wide";
+
+        // Evitar scroll cuando el menú está abierto
+        if (menuOpen) {
+            document.body.style.overflow = 'hidden';
         } else {
-            nav__links = "small"
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // Cerrar menú al hacer clic en un enlace
+    function handleLinkClick() {
+        if (menuOpen) {
+            toggleMenu();
         }
     }
 
@@ -53,59 +67,75 @@
       <h1>MatchHome</h1>  
       <button 
         class="nav__target" 
-        on:click={showHide}
+        on:click={toggleMenu}
         aria-label="Abrir menú de navegación"
+        aria-expanded={menuOpen}
       >
-        <i class="fa-solid fa-bars nav__icon"></i>
+        <img 
+          src="/menu.svg" 
+          alt="Menú" 
+          class="menu-icon" 
+          class:hidden={menuOpen}
+        />
+        <!-- <span class="hamburger" class:open={menuOpen}>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </span> -->
       </button>
 
+    {#if menuOpen}
+      <div class="menu-overlay" on:click={toggleMenu} aria-hidden="true"></div>
+    {/if}
+    
     <ul 
       class={nav__links} 
       id="menu" 
-      on:click={showHide} 
-      on:keypress={showHide}
       role="menu"
     >
-      <li role="menuitem"><a href="/">Home</a></li>
+      <li role="menuitem"><a href="/" on:click={handleLinkClick}>Home</a></li>
       {#if $isAuthenticated}
-        <li role="menuitem"><a href="/contacts" class="nav__link">Contacto</a></li>
-        <li role="menuitem"><a href="/properties" class="nav__link">Propiedades</a></li>
-        <li role="menuitem"><a href="/agenda" class="nav__link">Agenda</a></li>
-        <li role="menuitem"><a href="/tramites">Trámites</a></li>
-        <li role="menuitem"><a href="/actions">Acciones</a></li>
+        <li role="menuitem"><a href="/contacts" class="nav__link" on:click={handleLinkClick}>Contacto</a></li>
+        <li role="menuitem"><a href="/properties" class="nav__link" on:click={handleLinkClick}>Propiedades</a></li>
+        <li role="menuitem"><a href="/agenda" class="nav__link" on:click={handleLinkClick}>Agenda</a></li>
+        <li role="menuitem"><a href="/tramites" on:click={handleLinkClick}>Trámites</a></li>
+        <li role="menuitem"><a href="/actions" on:click={handleLinkClick}>Acciones</a></li>
         <li role="menuitem">
           <a 
             href="/" 
             class="nav__link" 
-            on:click={logout}
+            on:click={(e) => {
+              handleLinkClick();
+              logout();
+            }}
             class:disabled={$logoutLoading}
           >
             {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
           </a>
         </li>
       {:else}
-        <li role="menuitem"><a href="/login" class="nav__link">Login</a></li>
+        <li role="menuitem"><a href="/login" class="nav__link" on:click={handleLinkClick}>Login</a></li>
       {/if}
-      <li class="relative" role="menuitem">
+      <li class="theme-toggle" role="menuitem">
         {#if currentTheme == "light"}
           <a 
             class="moon" 
             href={"#"} 
-            on:click={() => setTheme("dark")}
+            on:click|preventDefault={() => setTheme("dark")}
             aria-label="Cambiar a modo oscuro"
-            tabindex="-1"
           >
             <Moon />
+            <span class="theme-text">Modo oscuro</span>
           </a>
         {:else}
           <a 
             class="sun" 
             href={"#"} 
-            on:click={() => setTheme("light")}
+            on:click|preventDefault={() => setTheme("light")}
             aria-label="Cambiar a modo claro"
-            tabindex="-1"
           >
             <Sun />
+            <span class="theme-text">Modo claro</span>
           </a>
         {/if}
       </li>
@@ -128,15 +158,14 @@
         width: 100%;
         z-index: 1000;
         background: var(--surface-1);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        /* align-items: center; */
     }
 
     .container {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 1rem;
+        justify-content: space-between;       
     }
 
     ul {
@@ -157,6 +186,7 @@
         margin: 0;
         font-size: 1.3em;
         font-weight: 600;
+        color: var(--text-1);
     }
 
     a {
@@ -176,6 +206,79 @@
         border: none;
         cursor: pointer;
         color: var(--text-1);
+    }
+
+    .theme-toggle {
+        display: flex;
+        align-items: center;
+    }
+
+    .theme-text {
+        display: none;
+    }
+
+    /* .hamburger {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 24px;
+        height: 18px;
+        position: relative;
+    } */
+
+    /* .hamburger-line {
+        display: block;
+        width: 100%;
+        height: 2px;
+        background-color: var(--text-1);
+        transition: transform 0.3s, opacity 0.3s;
+    } */
+    
+    /* Hamburger transform to X when open */
+    /* .hamburger.open .hamburger-line:nth-child(1) {
+        transform: translateY(8px) rotate(45deg);
+    }
+    
+    .hamburger.open .hamburger-line:nth-child(2) {
+        opacity: 0;
+    }
+    
+    .hamburger.open .hamburger-line:nth-child(3) {
+        transform: translateY(-8px) rotate(-45deg);
+    } */
+
+    .menu-overlay {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 999;
+        display: none;
+    }
+
+    .db-toggle {
+        display: flex;
+        align-items: center;
+    }
+
+    .toggle-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: transparent;
+        border: 1px solid var(--text-2);
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        color: var(--text-1);
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .toggle-btn:hover {
+        background: var(--surface-2);
     }
 
     /* Tablet */
@@ -202,6 +305,7 @@
 
         .nav__target {
             display: block;
+            z-index: 1001;
         }
 
         .wide {
@@ -221,7 +325,14 @@
             gap: 1.5rem;
             overflow-y: auto;
             z-index: 1000;
-            height: calc(100vh - 60px); /* Altura total menos la altura del nav */
+            height: calc(100vh - 60px);
+            transform: translateX(0);
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
         }
 
         ul {
@@ -231,72 +342,63 @@
         li {
             width: 100%;
             padding: 0.5rem 0;
+            border-bottom: 1px solid var(--surface-2);
+        }
+
+        li:last-child {
+            border-bottom: none;
         }
 
         .nav__link {
             display: block;
             width: 100%;
             padding: 0.5rem 0;
+            font-size: 1.1rem;
+        }
+
+        .theme-toggle {
+            margin-top: 1rem;
+        }
+
+        .theme-text {
+            display: inline;
+            margin-left: 0.5rem;
+        }
+
+        .menu-overlay {
+            display: block;
+        }
+        
+        .db-toggle {
+            display: none;
+        }
+        
+        .db-toggle-mobile {
+            display: flex;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        
+        .toggle-btn-mobile {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: transparent;
+            border: 1px solid var(--text-2);
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            color: var(--text-1);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .toggle-btn-mobile:hover {
+            background: var(--surface-2);
         }
     }
 
-    /* Animaciones */
-    .small {
-        animation: slideIn 0.3s ease-out;
-    }
-
-    @keyframes slideIn {
-        from {
-            transform: translateX(-100%);
-        }
-        to {
-            transform: translateX(0);
-        }
-    }
-
-    /* Accesibilidad */
-    .nav__target,
-    a {
-        outline: 2px solid var(--brand);
-        outline-offset: 2px;
-    }
-
-    /* Estado deshabilitado */
-    .disabled {
-        opacity: 0.5;
-        pointer-events: none;
-    }
-
-    /* Estilos para el botón de toggle de base de datos */
-    .db-toggle {
-        margin-left: 15px;
-        display: flex;
-        align-items: center;
-    }
-  
-    .toggle-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background: none;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 4px 8px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-  
-    .toggle-btn:hover {
-        background-color: #f0f0f0;
-    }
-  
-    .db-icon {
-        font-size: 16px;
-        margin-bottom: 2px;
-    }
-  
-    .db-label {
-        font-size: 10px;
-        color: #555;
-    }
+ 
 </style>

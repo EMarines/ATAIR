@@ -1,7 +1,7 @@
 <script lang="ts">
   import "../styles/main.css";
-  import { onDestroy, onMount } from 'svelte';
-  import { browser } from '$app/environment';
+  // import { onDestroy, onMount } from 'svelte';
+  // import { browser } from '$app/environment';
   import { db } from '$lib/firebase';
   import { collection, onSnapshot } from 'firebase/firestore';
   import type { QuerySnapshot, DocumentData } from 'firebase/firestore';
@@ -9,8 +9,8 @@
   import type { Contact, Binnacle, Property } from '$lib/types';
   import Navbar from '$lib/components/Navbar.svelte';
   import Footer from '$lib/components/Footer.svelte';
-  import { useAuth } from '$lib/hooks/useAuth';
-  import { goto } from '$app/navigation';
+  // import { useAuth } from '$lib/hooks/useAuth';
+  // import { goto } from '$app/navigation';
   // Eliminada referencia a testModeStore
   import NotificationContainer from '$lib/components/NotificationContainer.svelte';
   // import { initSyncListeners } from '$lib/services/syncService';
@@ -138,6 +138,7 @@
   // });
 </script>
 
+<div class="app-container">
   <NotificationContainer />
   
   <header>
@@ -145,35 +146,24 @@
   </header>
   
   <main>
-    <div class="app">
       <slot />
-    </div>
   </main>
 
-  <div class="footer-container">
-    <Footer />
-  </div>
-<!-- </div> -->
+  <Footer />
+</div>
 
 <style>
+  .app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
 
   main {
     flex: 1;
     position: relative;
     z-index: 2;
-    margin-bottom: 4rem; /* Añadir margen inferior para que el contenido no quede oculto detrás del footer */
   }
   
-  .footer-container {
-    margin-top: auto;
-    padding: 1rem;
-    background: rgb(56, 56, 56);
-    text-align: center;
-    position: fixed; /* Cambiar a fixed para que sea fijo */
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1;
-  }
-
+  /* Removed the footer-container div as it's not needed */
 </style>
