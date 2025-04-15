@@ -2,7 +2,7 @@ import type { LayoutServerLoad } from './$types';
 // import { fetchAllProperties } from '$lib/functions/fetchAllPrperties';
 import { getContacts, getBinnacles, getTodos, getProperties } from '$lib/firebase/db';
 
-export const load: LayoutServerLoad = async ({ fetch, locals, cookies, url }) => {
+export const load: LayoutServerLoad = async ({ locals, cookies }) => {
     try {
         console.log('Obteniendo datos de Firebase');
         const [contactsFB, binnaclesFB, todosFB, propertiesFB] = await Promise.all([

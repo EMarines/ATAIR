@@ -120,7 +120,7 @@
 
 <Hero />
 
-<div class="iconChoises">
+<!-- <div class="iconChoises"> -->
   <div class="container">
     <h2 class="title">Panel de Control</h2>
     
@@ -137,7 +137,7 @@
       {/each}
     </div>
   </div>
-</div>
+<!-- </div> -->
 
 <!-- Temporary diagnostic info -->
 <!-- {#if browser}

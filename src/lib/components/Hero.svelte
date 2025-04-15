@@ -8,9 +8,9 @@
             <div class="logo">
                 <img src={logo} alt="Match Home">
             </div>
-            <div>
+            <div class="marca">
                 <h2>Match Home</h2>
-                <h5>¡Tu Patrimonio En Buenas Manos!</h5>
+                <h5 class="slogan">¡Tu Patrimnio En Buenas Manos!</h5>
             </div>
 
         </div>
@@ -44,10 +44,23 @@
         padding: 10px;
     }
 
+    .marca {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
     .logo {
         display: flex;
         align-items: center;
         justify-content: right;
+        font-size: 1.5rem;
+    }
+
+    .slogan {
+        font-family: Bradley Hand ITC;
+        font-size: 1.9rem;
     }
 
     .cabezal {

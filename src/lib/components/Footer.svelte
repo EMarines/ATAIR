@@ -72,11 +72,7 @@
         font-size: 0.9rem;
     } */
 
-    .slogan {
-        font-family: Mistral;
-        font-size: 3.5rem;
-        font-weight: lighter;
-    }
+  
 
     @media (max-width: 768px) {
         .footer__content {
