@@ -1,4 +1,5 @@
-<script>
+<script lang="ts">
+    import "../../styles/main.css"
     import logo from '../images/logo.png'
 </script>
 
@@ -19,9 +20,10 @@
 
 <style>
     .hero{
-        padding: 0.5em 0;
+        margin: 0 0.5em;
         background-color: var(--primary-color);
-        /* color: white; */
+        border-radius: 3px;
+        font-weight: 600;
     }
 
     h2{
@@ -30,10 +32,10 @@
         margin: 0;
     }
 
-    h5 {
+    /* h5 {
         font-size: 1.5em;
         font-weight: 150;
-    }
+    } */
 
     img{
       width: 180px;  
@@ -57,17 +59,15 @@
         justify-content: right;
         font-size: 1.5rem;
     }
-
-    .slogan {
-        font-family: Bradley Hand ITC;
-        font-size: 1.9rem;
-    }
-
+    
     .cabezal {
         justify-content: space-between;
     }
 
     @media (max-width: 800px){
+        .hero {
+            margin: 0 .3em;
+        }
         .header {
             display: felx;
             flex-direction: column;
