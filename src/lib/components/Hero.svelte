@@ -32,13 +32,10 @@
         margin: 0;
     }
 
-    /* h5 {
-        font-size: 1.5em;
-        font-weight: 150;
-    } */
 
-    img{
-      width: 180px;  
+    img {
+        width: 180px;  
+        filter: drop-shadow(1px 1px 1.5px rgba(200, 200, 200, 0.5));
     }
 
     .header {

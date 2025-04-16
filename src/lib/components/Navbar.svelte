@@ -35,8 +35,8 @@
         currentTheme = theme;
     };
 
-    $: routeId = $page.route.id;
-    $: url = $page.url.href
+    // $: routeId = $page.route.id;
+    // $: url = $page.url.href
 
     function toggleMenu() {
         menuOpen = !menuOpen;
@@ -57,7 +57,7 @@
         }
     }
 
-    $: dbLabel = $useTestDb ? 'Curso Svelte' : 'Match Home';
+    // $: dbLabel = $useTestDb ? 'Curso Svelte' : 'Match Home';
     $: dbIcon = $useTestDb ? '🔄' : '🔥';
 </script>
 
@@ -144,7 +144,7 @@
     <div class="db-toggle">
       <button on:click={() => useTestDb.toggle()} class="toggle-btn">
         <span class="db-icon">{dbIcon}</span>
-        <span class="db-label">{dbLabel}</span>
+        <!-- <span class="db-label">{dbLabel}</span> -->
       </button>
     </div>
   </div>

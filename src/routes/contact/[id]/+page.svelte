@@ -349,15 +349,20 @@
     <!-- Contact Data -->
     <div class="container">
       {#if $systStatus === "editContact"}
-        <AddContact 
-          existingContact={contact}
-          on:cancel={() => $systStatus = ""} 
-          on:success={() => {
-            $systStatus = "";
-            // Recargar la página para ver los cambios
-            window.location.reload();
-          }}
-        />
+      <AddContact 
+      existingContact={contact}
+      on:cancel={() => $systStatus = ""} 
+      on:success={(event) => {
+        $systStatus = "";
+        // Actualiza el contacto con los datos recién editados
+        contact = event.detail.contact;
+        // También actualiza el store de contactos si es necesario
+        const updatedContacts = $contactsStore.map(c => 
+          c.id === contact.id ? contact : c
+        );
+        contactsStore.set(updatedContacts);
+      }}
+    />
       {:else}
         <div class="mainContainer">
 
@@ -366,45 +371,17 @@
             <!-- Heaer -->
             <div class="data__container">            
                 <div class="left__title">
-                  <h1 class="name">{contact.name} {contact.lastname}</h1>
+                  <h1 class="name" title="{contact.name} {contact.lastname}">{contact.name} {contact.lastname}</h1>
                 </div>
-                <div class="rigth__title">
-                  <div class="icon__title">
-
-                    <i on:click={()=>{editContact()}} 
-                       on:keydown={()=>{}} 
-                       class="fa-regular fa-pen-to-square"
-                       role="button"
-                       tabindex="0"
-                       aria-label="Edit Contact"></i>
-                    
-                    <i on:click={() => deleContact(contact.id)} 
-                       on:keydown={()=>{}} 
-                       class="fa-regular fa-trash-can"
-                       role="button"
-                       tabindex="0"
-                       aria-label="Delete Contact"></i>
-                  </div>
-                    <span>Alta el: {formatDate(contact.createdAt)}</span>  
+                <div class="rigth__title">                 
+                    <span>Alta el: {formatDate(contact.createdAt)}</span> 
+                    <span>{contact.contactStage}</span> 
                 </div>
-            </div>
-
-          <!-- Contact, notes and features-->
-          <div>
-
-            <div class="sub__title">
-              {#if contact.budget}
-                  <span>Presupuesto $ {toComaSep(Number(contact.budget))}.</span>
-                {:else}
-                  <span>Rango: {contact.rangeProp}</span>
-              {/if}
-              <span>{contact.contactStage}</span>
             </div>
 
             <div class="notes">
               {#if contact.comContact}
-                <h3>Notas:</h3>
-                <span>{contact.notes}</span>              
+                <span>Notas: {contact.comContact}</span>
               {/if}
             </div>  
 
@@ -417,11 +394,24 @@
                 <span>Email: {contact.email}</span>              
               {/if}
             </div>
+
+            <!-- Contact, notes and features-->
+          <!-- <div> -->
+
+            <div class="cont__pref">              
+              <span>Notas: {contact.notes}</span>              
+            </div>
+
+            
   
-            <div class="cont__requires">          
-             
-              
+            <!-- <div class="cont__requires">           -->
               <div class="features__search">
+                {#if contact.budget}
+                    <span>Presupuesto $ {toComaSep(Number(contact.budget))}.</span>
+                  {:else}
+                    <span>Rango: {contact.rangeProp}</span>
+                {/if}
+              
                 {#if contact.numBeds}
                   <span>{contact.numBeds} <i class="fa-solid fa-bed to__show"></i></span>              
                 {/if}
@@ -446,9 +436,9 @@
 
               </div> 
 
-            </div>
+            <!-- </div> -->
 
-          </div>
+          <!-- </div> -->
           
           <!-- Buttons schedule, props, prop y return -->
           <div class="btn__actions">
@@ -472,13 +462,12 @@
                 
             <!-- Botonies enviar WA o guardar nota para bitácora -->              
             <div class="textAreaCont">
-              <div class="textarea-wrapper">
-                <textarea 
+
+              <textarea 
                   on:change={textAreaComm} 
-                  class="texArea" 
                   bind:value={commInpuyBinnacle} 
-                  placeholder="Ingresa un comentario o selecciona una propiedad para compartir"></textarea>
-                {#if commInpuyBinnacle && commInpuyBinnacle.includes('atair.com.mx/property/')}
+                  placeholder="Envia una nota por WhatsApp o guarda un nota"></textarea>
+                <!-- {#if commInpuyBinnacle && commInpuyBinnacle.includes('atair.com.mx/property/')} -->
                   <button 
                     class="copy-button" 
                     on:click={() => {
@@ -489,15 +478,33 @@
                   >
                     <i class="fa-regular fa-copy"></i>
                   </button>
-                {/if}
-              </div>
-              <div class="waSave">
-                {#if !!commInpuyBinnacle || $systStatus === "addContact" || $systStatus === "msgGratitude" || layOut === "sendProp" }
-                  <button class="btn__common" on:click={selMsgWA}><i class="fa-brands fa-square-whatsapp"></i>WhatsApp</button>
-                  <button class="btn__common" on:click={saveNote}><i class="fa-solid fa-floppy-disk"></i>Guardar Info</button>
-                {/if}
-              </div>
+                <!-- {/if} -->
+
+                <div class="waSave">
+                  {#if !!commInpuyBinnacle || $systStatus === "addContact" || $systStatus === "msgGratitude" || layOut === "sendProp" }
+                    <button class="btn__common" on:click={selMsgWA}><i class="fa-brands fa-square-whatsapp"></i>WhatsApp</button>
+                    <button class="btn__common" on:click={saveNote}><i class="fa-solid fa-floppy-disk"></i>Guardar Info</button>
+                  {/if}
+                </div>
+
             </div>
+
+              <div class="icon__title">
+                <i on:click={()=>{editContact()}} 
+                   on:keydown={()=>{}} 
+                   class="fa-regular fa-pen-to-square"
+                   role="button"
+                   tabindex="0"
+                   aria-label="Edit Contact"></i>
+                
+                <i on:click={() => deleContact(contact.id)} 
+                   on:keydown={()=>{}} 
+                   class="fa-regular fa-trash-can"
+                   role="button"
+                   tabindex="0"
+                   aria-label="Delete Contact"></i>
+              </div>
+            
                   
           </div>
 
@@ -522,12 +529,12 @@
         </div>
       {/if}
 
-    </div>
+    <!-- </div> -->
 
-  <!-- Tarjeta para propiedad -->
+    <!-- Tarjeta para propiedad -->
     {#if layOut === "sendProps" || layOut === "sendProp"} 
 
-      <div class="container">
+      <!-- <div class="container"> -->
 
         <div class="title__props">
           <h2 class="title sub">{propToRender.length} Propiedades encontradas</h2>
@@ -542,20 +549,6 @@
             </div>          
           {/if}
           
-          <!-- <div class="propRegister">
-            {#each propsStatus as list}
-                <label>
-                    <input type="radio" 
-                        bind:group={propInterested} 
-                        value={list} 
-                        on:change={() => handleListToRender(list)}
-                    >
-                    {list}
-                </label>
-            {/each}
-          </div> -->
-          
-        
         <div class="card__container">          
           {#each propToRender as property}
             <div class="select__props">
@@ -571,12 +564,11 @@
           {/each}
         </div>
         
-      </div>
-  
+        
     {/if}
+  </div>
 
 <style>
-  /* General */
     .mainContainer {
       display: flex;
       flex-direction: row;
@@ -585,36 +577,38 @@
       gap: 15px;
       flex: 1;
     }
-  
-    .leftContainer {
+
+    .mainContainer {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: stretch; /* Cambia de center a stretch */
+      gap: 15px;
+      flex: 1;
+    }
+
+    .leftContainer, .rigthContainer {
       display: flex;
       flex-direction: column;
-      width: 60%;
-      height: 500px;
       margin-top: 10px;
       border: 1px solid rgb(56, 56, 56);
       border-radius: 8px;
       box-shadow: 1px 2px rgba(255,255,255, 0.5);
       background: rgb(56, 56, 56);
+    }
+
+    .leftContainer {
+      width: 60%;
       padding: 0 15px 0 15px;
     }
-    
+
     .rigthContainer {
-      display: flex;
-      flex-direction: column;
       font-size: .8rem;
       font-weight: 300;
       line-height: 2rem;
-      height: 500px;
       width: 40%;
-      margin-top: 10px;
-      border: 1px solid rgb(56, 56, 56);
-      border-radius: 8px;
-      box-shadow: 1px 2px rgba(255,255,255, 0.5);
-      background: rgb(56, 56, 56);
       padding: 5px;
-      overflow-y: scroll;
-      border-radius: 8px;
+      overflow-y: auto; /* Cambia de scroll a auto */
       gap: 10px;
     }
 
@@ -624,9 +618,10 @@
       justify-content: center;
     }
 
-    .sub__title {
+    .cont__pref {
       display: flex;
       justify-content: space-evenly;
+      align-items: center;
       padding: 10px 0 0 0;
     }
 
@@ -636,31 +631,57 @@
       justify-content: center;
       align-items: center;
       width: 100%;
-      height: 60px;
+      /* height: 60px; */
       padding: 25px 0 20px 0;
       /* background: green; */
     }
 
-    .left__title{
-        display: flex;
-        width: 70%;
-        height: 60px;
-        justify-content: center;
-        /* background-color: bisque; */
-      }
+    .left__title {
+      display: flex;
+      width: 70%;
+      height: 60px;
+      justify-content: center;
+      /* Añadir estas propiedades para truncar el texto */
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Estilo para el nombre que se truncará */
+    .left__title .name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    /* Tooltip que aparece al hacer hover */
+    .left__title .name:hover::after {
+      content: attr(title);
+      position: absolute;
+      left: 0;
+      top: 100%;
+      z-index: 100;
+      background-color: var(--surface-2);
+      color: var(--text-1);
+      padding: 8px;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      white-space: normal;
+      max-width: 300px;
+      font-size: 0.9rem;
+    }
 
       .rigth__title {
         display: flex;
         width: 30%;
         height: 60px;
-        flex-direction: column;
         justify-content: space-between;
       }
 
       .icon__title {
         display: flex;
-        flex-direction: row;
         justify-content: space-evenly;
+        width: atuto;
       }
 
     .buttonSend {
@@ -756,10 +777,8 @@
     
     .cont__contact {
       display: flex;
-      padding: 15px;
-      /* height:550px; */
       justify-content: center;
-      gap: 15px;
+      gap: 10px;
     }
 
     .title__props {
@@ -767,13 +786,13 @@
       justify-content: center;
     }
     
-    .cont__requires {
+    /* .cont__requires {
       display: flex;
       flex-direction: column;
       padding: 0 0 0 15px;
       align-items: center;
       gap: 15px;
-    }
+    } */
 
     .waSave {
       display: flex;
@@ -852,12 +871,22 @@
         width: 100%;
         height: auto;
       }
+      
       .leftContainer {
           width: 100%;
         }
     }
 
-    @media (max-width:400px){
+    @media (max-width:500px){
+
+      /* .leftContainer {
+        flex-direction: row;
+      } */
+       
+
+      .data__container {
+        flex-direction: column;
+      }
       
       textarea{
         width: 100%;
@@ -888,14 +917,40 @@
         position: absolute;
         top: 5px; left: 5px;
       }
+
+      .left__title {
+        display: felx;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        font-weight: bold;
+        height: auto;
+        margin-bottom: 10px;
+        overflow: visible; /* Cambiar de 'hidden' a 'visible' */
+      }
+      
+      .left__title .name {
+        font-size: 2rem;
+        max-width: 100%;
+        padding: 0 10px;
+        white-space: normal; /* Cambiar de 'nowrap' a 'normal' */
+        overflow: visible; /* Cambiar de 'hidden' a 'visible' */
+        text-overflow: clip; /* Quitar ellipsis */
+        word-wrap: break-word; /* Permitir que las palabras se rompan */
+      }
+      
+      .rigth__title {
+        width: 100%; /* Cambia de 30% a 100% */
+        justify-content: space-around; /* Mejor distribución en móvil */
+      }
          
     }
 
       
-    .textarea-wrapper {
+    /* .textarea-wrapper {
       position: relative;
       width: 100%;
-    }
+    } */
   
     .copy-button {
       position: absolute;

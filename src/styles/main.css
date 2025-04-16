@@ -158,6 +158,7 @@ h1.name {
   font-family: Nothing You Could Do;
   font-size: 2.5rem;
   color: #6b21a8;
+  text-shadow: 1px 1px 3px rgba(200, 200, 200, 0.5);
 }
 
 .izq {
