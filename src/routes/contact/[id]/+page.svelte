@@ -595,6 +595,7 @@
       border-radius: 8px;
       box-shadow: 1px 2px rgba(255,255,255, 0.5);
       background: rgb(56, 56, 56);
+
     }
 
     .leftContainer {
@@ -609,6 +610,7 @@
       width: 40%;
       padding: 5px;
       overflow-y: auto; /* Cambia de scroll a auto */
+      overflow-x: none;
       gap: 10px;
     }
 
@@ -878,11 +880,6 @@
     }
 
     @media (max-width:500px){
-
-      /* .leftContainer {
-        flex-direction: row;
-      } */
-       
 
       .data__container {
         flex-direction: column;

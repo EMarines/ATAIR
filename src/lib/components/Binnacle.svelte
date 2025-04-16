@@ -69,9 +69,7 @@
                     <div class="in__binnacle">
                         <tr>
                             <div class="date__binnacle">
-                                <td>
-                                    {formatDate(item.date)} 
-                                </td>
+                              
 
                                 <td class="icon__binnacle">
                                     {#if item.action === "WhatsApp enviado: "}
@@ -91,6 +89,9 @@
                                 </td>
                             </div>
                             <td>
+                                {formatDate(item.date)} 
+                            </td>
+                            <td class="comment-cell">
                                 {item.comment}
                             </td>
                         </tr>
@@ -101,23 +102,23 @@
             </div>
         </div>
     {:else}
+
+        <h1>No hay notas </h1>
         
     <div>
         <div class="schedule">
             <div class="binnacleHome">
-                <!-- <h1 class="title">Bitácora</h1> -->
                 {#each toRenBinn as item, i}
-                <div class="int-binnacle">
-                    {#if i < 20}
-                        <div class="date-binnacle">
-                            {formatDate(item.date)} 
-                            {item.action}                 
-                            {item.comment}
-                            <!-- a: 
-                            {item.to} -->
-                        </div>
-                    {/if}                          
-                </div>
+                    <div class="int-binnacle">
+                        {#if i < 20}
+                            <div class="date-binnacle">
+                                {item.action}                 
+                                {formatDate(item.date)} 
+                                {item.comment}
+
+                            </div>
+                        {/if}                          
+                    </div>
                 {/each}
                 
             </div>
@@ -127,6 +128,13 @@
 
 
 <style>
+
+    .binnacleHome {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
     .date__binnacle {
         display: flex;
         flex-direction: row;
@@ -157,4 +165,5 @@
     align-items: center;
     /* border: 1px solid rgb(42, 41, 41, .3) */
    }
+
 </style>

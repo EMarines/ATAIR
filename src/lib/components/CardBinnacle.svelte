@@ -7,11 +7,8 @@
 </script>
 
 <div class="binnacle_row">
-    <div class="date__binnacle">
-      <div class="cell">
-        {formatDate(binn.date)}
-      </div>
-      <div class="cell icon__binnacle">
+      
+      <div class="cell__icon">
         {#if binn.action === "WhatsApp enviado: "}
           <i class="fa-brands fa-square-whatsapp"></i>
         {:else if binn.action === "Se editó a: "}
@@ -26,43 +23,39 @@
           {binn.action}
         {/if}
       </div>
-      <div class="cell comment">
+      <div class="cell__date">
+        {formatDate(binn.date)}
+      </div>
+      <div class="cell__comment">
         {binn.comment}
       </div>
-    </div>
 </div>
 
 <style>
+
+    
     .binnacle_row {
       display: flex;
-      flex-direction: row; /* Alinea las bitácoras en línea */
-      align-items: stretch; /* Asegura que todos los contenedores tengan la misma altura */
-      width: 100%; /* Asegura que ocupe todo el ancho disponible */
+      flex-direction: row; 
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    .cell__icon {
+      width: 10%;
+    }   
+  
+    .cell__date {
+      width: 20%;
+      align-items: center; 
     }
   
-    .date__binnacle {
+    .cell__comment {
       display: flex;
-      flex-direction: row; /* Alinea los elementos en una fila horizontal */
-      align-items: center; /* Centra los elementos verticalmente */
-      font-size: 1.3em;
-      gap: 4px; /* Reduce el espacio entre la fecha y el ícono */
-      flex: 0 0 auto; /* Mantiene un ancho fijo */
-      padding: 4px; /* Reduce el padding */
-      height: 100%; /* Asegura que tenga la misma altura que el contenedor padre */
-    }
-  
-    .cell {
-      font-size: 0.8em;
-      font-weight: 300;
-      padding: 4px; /* Reduce el padding */
-      align-items: center; /* Centra el contenido verticalmente */
-      height: 100%; /* Asegura que tenga la misma altura que el contenedor padre */
-    }
-  
-    .cell.comment {
-      flex: 1; /* Ocupa el resto del espacio disponible */
-      display: flex;
-      align-items: center; /* Centra el contenido verticalmente */
+      align-items: center;
+      width: 70%;
+      max-width: 100%;
     }
   
     i {
