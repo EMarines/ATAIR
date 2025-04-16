@@ -43,18 +43,18 @@
     }
 
     .cell__icon {
-      width: 10%;
+      width: 15%;
     }   
   
     .cell__date {
-      width: 20%;
+      width: 25%;
       align-items: center; 
     }
   
     .cell__comment {
       display: flex;
       align-items: center;
-      width: 70%;
+      width: 60%;
       max-width: 100%;
     }
   

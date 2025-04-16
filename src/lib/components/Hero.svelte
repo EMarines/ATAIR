@@ -35,7 +35,7 @@
 
     img {
         width: 180px;  
-        filter: drop-shadow(1px 1px 1.5px rgba(200, 200, 200, 0.5));
+        filter: drop-shadow(1px 1px 1.5px rgba(0, 0, 0, 0.25));
     }
 
     .header {
