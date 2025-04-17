@@ -281,6 +281,17 @@
         background: var(--surface-2);
     }
 
+    /* Aumentar tamaño de iconos */
+    :global(.moon svg),
+    :global(.sun svg) {
+        width: 2em;
+        height: 2em;
+    }
+
+    .db-icon {
+        font-size: 2em;
+    }
+
     /* Tablet */
     @media (max-width: 800px) {
         .container {

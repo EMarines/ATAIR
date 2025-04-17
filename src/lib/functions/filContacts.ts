@@ -12,6 +12,7 @@ const dateTo = new Date().getTime();
       console.log(contacts, property);
       
       // busqueda de Hoy hasta 1/ene/23
+        
         let conInt = contacts.filter((cont) => cont.createdAt <=  dateTo && cont.createdAt >= 1672596060000 || cont.contactStage === "Etapa4");   
         // console.log(conInt);
 
@@ -53,13 +54,13 @@ const dateTo = new Date().getTime();
           if (cont.budget) {
             const minBudget = Number(cont.budget) * 0.7;
             const maxBudget = Number(cont.budget) * 1.1;
-            const propertyAmount = Number(property.operations[0].amount);
+            const propertyAmount = Number(property.price);
 
             // Si el precio de la propiedad está dentro del rango del presupuesto
             if (minBudget <= propertyAmount && maxBudget >= propertyAmount) {
               acc.push(cont);
             }
-          } else if (cont.rangeProp === mosRange(property.operations[0].amount)) {
+          } else if (cont.rangeProp === mosRange(property.price)) {
             // Si coincide exactamente con el rango
             acc.push(cont);
           }
@@ -70,11 +71,12 @@ const dateTo = new Date().getTime();
       } catch (error) {
         console.log('Error al filtrar por presupuesto:', error);
       }
-      // console.log(conInt);
+      console.log(conInt);
 
       // Filtra por Ubicación
       try {
         const ubicPropTag = tagToUbicacion(property.tags);
+        console.log(ubicPropTag);
         // Solo filtramos si la propiedad tiene ubicación
         if (ubicPropTag) {
             const filteredContacts = conInt.filter(cont => {
@@ -95,7 +97,8 @@ const dateTo = new Date().getTime();
     } catch (error) {
         console.log('Error al filtrar por ubicación:', error);
     }
-    // console.log(conInt);
+
+    console.log(conInt);
 
       // Filtra por Etiquetas
       try {
@@ -121,7 +124,7 @@ const dateTo = new Date().getTime();
         console.log('Error al filtrar por etiquetas:', error);
       }
 
-      // console.log(conInt);
+      console.log(conInt);
 
 
       return conInt;

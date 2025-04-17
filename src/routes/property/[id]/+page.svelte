@@ -17,7 +17,7 @@
   let property = data.property as Property;
   let mensaje = '';
   let show__contacts = false;
-  let contInterested = '';
+  let contInterested = 'Por_Enviar';
 	let contInterest: Contact[] = [];
   let contToRender: Contact[] = [];
 	let contInitial = [];
@@ -39,9 +39,11 @@
     contCheck = [];
     showBtn = true;
     contInterest = filtPropContInte(currProperty, contacts);
+
     if(contInterested === "Posobles_Interesados"){
       msgToShow = "Contactos Les Puede Interesar Esta Propiedad"
       contToRender = contInterest
+
     } else if(contInterested === "Por_Enviar"){
       let toSend: Contact[] = [];
       msgToShow = "Pendiente Para Enviar Esta Propieadad"
@@ -50,6 +52,7 @@
       const contsT = res.map(doc => doc.to)
       toSend = contInterest.filter(doc => !contsT.includes(doc.id))               
       contToRender = toSend
+
     } else if(contInterested === "Ya_Se_Envió"){
       let sent: Contact[] = [];
       msgToShow = "Ya se les envió esta propiedad"
@@ -146,6 +149,7 @@
     listToRender()
 		show__contacts = !show__contacts
 		$systStatus = "sendPropToContacts"
+		// filtContPropInte($property)
   };
 
   const actCancel = () => {
@@ -368,17 +372,18 @@
 
 				<div class="cards__container">
 					{#each contToRender as cont}
-					<div class="card__container">
-						<input 
-							type="checkbox" 
+						<div class="select__conts">					
+							<input type="checkbox" 
 							value={cont}
+							name={cont.id}
+							class="form__contCheck"
 							bind:group={contCheck}
 							on:change={handleCheckboxChange}
-						>
-						<CardContact {cont}/>         
-					</div>
-					{/each}        
-				</div>  
+							/>
+								<CardContact {cont}/>         
+						</div>  
+					{/each}
+				</div>        
 			{/if}
 
 		</div>
@@ -428,6 +433,17 @@
 		gap: 20px;
 		padding: 15px;
 		border-radius: 8px;
+	}
+
+	.select__conts {
+		position: relative;
+	}
+
+	.form__contCheck {
+		position: absolute;
+		top: 10px;
+		left: 10px;
+		z-index: 20;
 	}
 
 	img {
@@ -547,10 +563,13 @@
 	.cards__container {
 		display: flex;
 		flex-direction: row;
-		justify-content: center;
+		width: 100%;
+		max-width: 1200px;
+		padding: 10px;
 		flex-wrap: wrap;
-		padding-bottom: 20px;
-		gap: 8px;
+		align-items: center;
+		justify-content: center;
+		gap: 15px;
 	}
 
 	.btn__send {
@@ -587,18 +606,15 @@
 		cursor: pointer;
 	}
 
-	.card__container { 
-      display: flex; 
-      flex-direction: column; 
-      width: 350px;
-      /* height: auto;    */
-      justify-content: center;
-      align-items: center;  
-      /* color: grey; */
-      border: 1px solid grey;
-      border-radius: 5px;
-      padding: 8px;
-    }
+	/* .card__container {  */
+      /* display: flex;  */
+      /* flex-direction: column;  */
+      /* width: 350px; */
+      /* justify-content: center;
+      align-items: center;   */
+      /* border: 1px solid grey; */
+      /* border-radius: 5px; */
+    /* } */
 
 	@media (max-width: 800px) {
 		.prop__ima__info {

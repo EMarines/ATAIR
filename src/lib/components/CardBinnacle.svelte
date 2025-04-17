@@ -1,13 +1,10 @@
 <script>
 // @ts-nocheck
-
     import { formatDate } from "$lib/functions/dateFunctions";
-
     export let binn = {};
 </script>
 
-<div class="binnacle_row">
-      
+<div class="binnacle__row">
       <div class="cell__icon">
         {#if binn.action === "WhatsApp enviado: "}
           <i class="fa-brands fa-square-whatsapp"></i>
@@ -24,42 +21,57 @@
         {/if}
       </div>
       <div class="cell__date">
-        {formatDate(binn.date)}
+        <div>{formatDate(binn.date)}</div>
       </div>
-      <div class="cell__comment">
+      <div class="cell__comment" title="{binn.comment}">
         {binn.comment}
       </div>
 </div>
 
 <style>
-
-    
-    .binnacle_row {
-      display: flex;
-      flex-direction: row; 
+    .binnacle__row {
+      display: grid;
+      grid-template-columns: 10% 15% 75%;
+      align-items: start;
+      grid-row-gap: 0;
       width: 100%;
       max-width: 100%;
       overflow-x: hidden;
+      padding-bottom: 15px;
+      margin-left: 8px;
     }
 
     .cell__icon {
-      width: 15%;
+      /* width: 10%; */
+      align-self: flex-start;
     }   
   
     .cell__date {
-      width: 25%;
-      align-items: center; 
-    }
-  
-    .cell__comment {
       display: flex;
-      align-items: center;
-      width: 60%;
-      max-width: 100%;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-self: start;
+      padding-top: 0;
+    }
+    
+    .cell__date div {
+      margin-top: 0;
+      line-height: 1;
+    }
+    
+    .cell__comment {
+      /* width: 75%; */
+      align-self: flex-start;
+      line-height: 1.3; /* Espacio reducido entre líneas */
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2; /* Limita a 2 líneas */
+      line-clamp: 2; /* Standard property for compatibility */
+      -webkit-box-orient: vertical;
     }
   
     i {
-      font-size: 1.5rem;
+      font-size: 1.65rem;
       align-items: center;
     }
-  </style>
+</style>

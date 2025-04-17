@@ -1,18 +1,21 @@
+
+
 export function tagToUbicacion(input: string | string[]) {
-    const direcciones = [
+    const ubicaciones = [
         'norte', 'noreste', 'noroeste', 'oeste', 'este',
         'centronorte', 'centrosur', 'sureste', 'suroeste'
     ];
 
-    // Convertir el input a un array de palabras
-    const palabras = Array.isArray(input)
-        ? input.map(palabra => palabra.toLowerCase().trim())
+    // Convertir el input a un array de zonas
+    const zonas = Array.isArray(input)
+        ? input.map(zona => zona.toLowerCase().trim())
         : input.toLowerCase().trim().split(/\s+/);
 
-    // Buscar la primera coincidencia en direcciones
-    for (const palabra of palabras) {
-        if (direcciones.includes(palabra)) {
-            return palabra;
+    // Buscar la primera coincidencia en ubicaciones
+    for (const zona of zonas) {
+        if (ubicaciones.includes(zona)) {
+            console.log(zona);
+            return zona;
         }
     }
 

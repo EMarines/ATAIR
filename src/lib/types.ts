@@ -128,7 +128,7 @@ export interface Property {
   created_at: number,
   description: string,
   half_bathrooms: number,
-  location: string | { name: string },
+  location: string | { name: string },  //Colonia
   lot_size: number,
   parking_spaces: number,
   price: number,

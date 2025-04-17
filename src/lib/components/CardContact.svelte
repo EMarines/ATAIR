@@ -3,6 +3,7 @@
   import { formatDate } from '$lib/functions/dateFunctions'
   import type { Contact } from '$lib/types';
   import { onMount } from 'svelte';
+	import { contact } from '$lib/stores/dataStore';
 
   export let cont: Contact;
   
@@ -36,25 +37,28 @@
 
 {#if isValidContact}
 <div class="card">
-  <div class="card__info">
+  <!-- <div class="card__info"> -->
     <div class="card__infoHead">
-      <span class="card__Title">{cont.name} {cont.lastname}</span>
-      <span class="date">{formatDate(cont.createdAt)}</span>
+      <span class="date">Alta: {formatDate(cont.createdAt)}</span>
     </div>
+
+    <span class="card__Title">{cont.name} {cont.lastname}</span>
+
     <div class="info__cont">      
       {#if cont.telephon}
-        <span> <i class="fa-solid fa-mobile-screen-button"></i>{toTele(cont.telephon)}</span>
+        <span> <i class="fa-solid fa-mobile-screen-button"></i> {toTele(cont.telephon)}</span>
       {/if}
       {#if cont.email }
-        <span> <i class="fa-regular fa-envelope"></i> {cont.email} </span>
+        <span title="{cont.email}"> <i class="fa-regular fa-envelope"></i></span>
       {/if}
-    </div>
-    <div class="info__features">
       {#if cont.budget}
         <span><i class="fa-solid fa-money-check-dollar"></i> $ {toComaSep(Number(cont.budget))}.</span>
       {:else}
-        <span> <i class="fa-solid fa-money-check-dollar"></i> {cont.rangeProp}</span>
+        <span> <i class="fa-solid fa-money-check-dollar"></i> Pres: {cont.rangeProp}</span>
       {/if}
+      
+    </div>
+
       <div class="info__tags">
         {#if cont.tagsProperty}
           <span><i class="fa-solid fa-tags to__showR"></i> {cont.tagsProperty.toString().replaceAll(",", ", ")}</span>
@@ -64,8 +68,6 @@
         {/if}
       </div>
     </div>
-  </div>
-</div>
 {:else}
   <div class="card card--invalid">
     <div class="card__info">
@@ -80,11 +82,6 @@
 {/if}
 
 <style>
-  /* .card-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-  } */
 
   .card {
     display: flex;
@@ -93,8 +90,9 @@
     background: rgb(56, 56, 56);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    padding: 1rem;
-    gap: 0.5rem;
+    padding: .5em;
+    margin: 0;
+    gap: 0.8rem;
     transition: transform 0.2s, box-shadow 0.2s;
     height: 100%;
     box-sizing: border-box;
@@ -111,25 +109,33 @@
     border: 1px solid #aa5555;
   }
 
-  .card__info {
+  .card__infoHead {
     display: flex;
-    flex-direction: column;
-    position: relative;
     width: 100%;
-    height: 100%;
-    font-weight: 400;
-    justify-content: space-between;
+    font-size: .8rem;
+    justify-content: left;
+    /* padding: .5em; */
   }
 
   .card__Title {
+    display: flex;
+    font-size: 1.3em;
+    width: 100%;
+    justify-content: center;
+    font-weight: 600;
     text-transform: capitalize;
   }
 
-  .card__infoHead {
+  .info__cont {
     display: flex;
-    flex-direction: row;
-    width: 100%;
-    height: 30%;
-    justify-content: space-around;
+    justify-content: space-evenly;
+    font-size: .9em;
+  }
+
+  .info__tags {
+    display: flex;
+    flex-direction: column;
+    font-size: .8em;
+
   }
 </style>

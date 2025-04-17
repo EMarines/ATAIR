@@ -381,7 +381,7 @@
 
             <div class="notes">
               {#if contact.comContact}
-                <span>Notas: {contact.comContact}</span>
+                <span title="{contact.comContact}">Notas: {contact.comContact}</span>
               {/if}
             </div>  
 
@@ -427,10 +427,10 @@
 
                   <div>
                     {#if contact.locaProperty}
-                      <span> <i class="fa-sharp fa-regular fa-compass to__showR"></i> {contact.locaProperty.toString().replaceAll(",", ", ")} </span>              
+                      <span title="{contact.locaProperty.toString().replaceAll(",", ", ")}" > <i class="fa-sharp fa-regular fa-compass to__showR"></i> {contact.locaProperty.toString().replaceAll(",", ", ")} </span>              
                     {/if}
                     {#if contact.tagsProperty}
-                      <span><i class="fa-solid fa-tags to__showR"></i> {contact.tagsProperty.toString().replaceAll("_", " ").replaceAll(",", ", ")} </span>              
+                      <span title ="{contact.tagsProperty.toString().replaceAll("_", " ").replaceAll(",", ", ")}"><i class="fa-solid fa-tags to__showR"></i> {contact.tagsProperty.toString().replaceAll("_", " ").replaceAll(",", ", ")} </span>              
                     {/if}
                   </div>
 
@@ -788,30 +788,16 @@
       justify-content: center;
     }
     
-    /* .cont__requires {
-      display: flex;
-      flex-direction: column;
-      padding: 0 0 0 15px;
-      align-items: center;
-      gap: 15px;
-    } */
-
     .waSave {
       display: flex;
       justify-content: space-evenly;
     }
 
-      /* .schedule{
-        display: flex;
-        align-items: left;
-        justify-content: left;
-      } */
       .binnacleHome {
         display: flex;
         flex-direction: column;
+        overflow-x: hidden;
       }
-
-    
 
       i {
         font-size: 1.8rem;
@@ -831,8 +817,6 @@
       .fa-square-whatsapp {
         color: rgb(2, 255, 2);
       }
-
-    
 
       .fa-pen-to-square, .fa-trash-can {
         display: flex;
@@ -942,13 +926,7 @@
       }
          
     }
-
-      
-    /* .textarea-wrapper {
-      position: relative;
-      width: 100%;
-    } */
-  
+    
     .copy-button {
       position: absolute;
       top: 10px;

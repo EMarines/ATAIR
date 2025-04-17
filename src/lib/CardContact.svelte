@@ -1,161 +1,161 @@
 <script>
 
-  import { toComaSep, toTele } from '$lib/functions/format'
-  import { formatDate } from '$lib/functions/dateFunctions.js'
-  import { property as propertyStore } from '$lib/stores/dataStore';
-  import { onMount } from 'svelte';
+//   import { toComaSep, toTele } from '$lib/functions/format'
+//   import { formatDate } from '$lib/functions/dateFunctions.js'
+//   import { property as propertyStore } from '$lib/stores/dataStore';
+//   import { onMount } from 'svelte';
 
-  export let cont = {}; 
+//   export let cont = {}; 
   
-  // Asignar Etapa 1 si no tiene valor
-  if (cont.contactStage === undefined || cont.contactStage === null || cont.contactStage === 0) {
-    cont.contactStage = 1;
-  }
+//   // Asignar Etapa 1 si no tiene valor
+//   if (cont.contactStage === undefined || cont.contactStage === null || cont.contactStage === 0) {
+//     cont.contactStage = 1;
+//   }
   
-  // Console log para depurar
-  console.log('Contacto recibido en CardContact:', cont);
-  console.log('Etapa del contacto (después de asignar):', cont.contactStage);
+//   // Console log para depurar
+//   console.log('Contacto recibido en CardContact:', cont);
+//   console.log('Etapa del contacto (después de asignar):', cont.contactStage);
 
-  // Normalizar el valor de la etapa a un número
-  const normalizeStage = (stage) => {
-    if (stage === undefined || stage === null) return 0;
-    if (typeof stage === 'number') return stage;
-    if (typeof stage === 'string') {
-      // Si es "Etapa1", "Etapa2", etc.
-      if (stage.startsWith('Etapa')) {
-        return parseInt(stage.replace('Etapa', '')) || 0;
-      }
-      // Si es "1", "2", etc.
-      return parseInt(stage) || 0;
-    }
-    return 0;
-  };
+//   // Normalizar el valor de la etapa a un número
+//   const normalizeStage = (stage) => {
+//     if (stage === undefined || stage === null) return 0;
+//     if (typeof stage === 'number') return stage;
+//     if (typeof stage === 'string') {
+//       // Si es "Etapa1", "Etapa2", etc.
+//       if (stage.startsWith('Etapa')) {
+//         return parseInt(stage.replace('Etapa', '')) || 0;
+//       }
+//       // Si es "1", "2", etc.
+//       return parseInt(stage) || 0;
+//     }
+//     return 0;
+//   };
 
-  // Obtener la etapa normalizada
-  const stageNumber = normalizeStage(cont.contactStage);
+//   // Obtener la etapa normalizada
+//   const stageNumber = normalizeStage(cont.contactStage);
   
-  // Función para obtener el texto de la etapa
-  const getStageText = () => {
-    return `E${stageNumber}`;
-  };
+//   // Función para obtener el texto de la etapa
+//   const getStageText = () => {
+//     return `E${stageNumber}`;
+//   };
 
-  // Función para obtener el color de la etapa directamente
-  const getStageColor = () => {
-    switch(stageNumber) {
-      case 1: return '#ff4444';
-      case 2: return '#ff8844';
-      case 3: return '#ffcc44';
-      case 4: return '#44cc44';
-      case 5: return '#8844cc';
-      default: return '#666';
-    }
-  };
+//   // Función para obtener el color de la etapa directamente
+//   const getStageColor = () => {
+//     switch(stageNumber) {
+//       case 1: return '#ff4444';
+//       case 2: return '#ff8844';
+//       case 3: return '#ffcc44';
+//       case 4: return '#44cc44';
+//       case 5: return '#8844cc';
+//       default: return '#666';
+//     }
+//   };
   
-  // Variable para almacenar la propiedad asociada
-  let propertyInfo = null;
+//   // Variable para almacenar la propiedad asociada
+//   let propertyInfo = null;
   
-  // Función para obtener información formateada de la propiedad
-  const formatPropertyInfo = (property) => {
-    if (!property) return null;
+//   // Función para obtener información formateada de la propiedad
+//   const formatPropertyInfo = (property) => {
+//     if (!property) return null;
     
-    return {
-      title: property.title || 'Propiedad sin título',
-      price: property.operations?.[0]?.formated_amount || '',
-      type: property.property_type || '',
-      location: typeof property.location === 'string' 
-        ? property.location 
-        : property.location?.name || '',
-      image: property.title_image_thumb || ''
-    };
-  };
+//     return {
+//       title: property.title || 'Propiedad sin título',
+//       price: property.operations?.[0]?.formated_amount || '',
+//       type: property.property_type || '',
+//       location: typeof property.location === 'string' 
+//         ? property.location 
+//         : property.location?.name || '',
+//       image: property.title_image_thumb || ''
+//     };
+//   };
   
-  // Obtener la propiedad del store cuando se monta el componente
-  onMount(() => {
-    // Suscribirse al store para obtener la propiedad
-    const unsubscribe = propertyStore.subscribe(property => {
-      if (property) {
-        console.log("Propiedad encontrada en el store:", property);
-        propertyInfo = formatPropertyInfo(property);
-      }
-    });
+//   // Obtener la propiedad del store cuando se monta el componente
+//   onMount(() => {
+//     // Suscribirse al store para obtener la propiedad
+//     const unsubscribe = propertyStore.subscribe(property => {
+//       if (property) {
+//         console.log("Propiedad encontrada en el store:", property);
+//         propertyInfo = formatPropertyInfo(property);
+//       }
+//     });
     
-    // Limpiar la suscripción cuando se desmonta el componente
-    return unsubscribe;
-  });
-</script>
+//     // Limpiar la suscripción cuando se desmonta el componente
+//     return unsubscribe;
+//   });
+// </script>
 
 
-  <div class="card__info">
-    <!-- Círculo de etapa con estilo inline para mayor visibilidad -->
-    <div class="stage-circle" style="background-color: {getStageColor()}; position: absolute; top: 0.5rem; right: 0.5rem; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem; font-weight: 700; z-index: 999; box-shadow: 0 3px 6px rgba(0,0,0,0.4); border: 2px solid white;">
-      {getStageText()}
-    </div>
-    <div class="card__infoHead">
-      <span class="card__Title">{cont.name} {cont.lastname}</span>
-      <span class="date">{formatDate(cont.createdAt)}</span>
-    </div>
-    <div class="info__cont">      
-      {#if cont.telephon}
-        <span> <i class="fa-solid fa-mobile-screen-button"></i> {toTele(cont.telephon)}</span>
-      {/if}
-      {#if cont.email }
-        <span> <i class="fa-regular fa-envelope"></i> {cont.email} </span>
-      {/if}
-      {#if cont.publicUrl}
-        <span class="public-url-info"> 
-          <i class="fa-brands fa-whatsapp"></i> 
-          <a href={cont.publicUrl} target="_blank" rel="noopener noreferrer" title="Ver propiedad">
-            Ver propiedad
-          </a>
-        </span>
-      {/if}
-    </div>
-    <div class="info__features">
-      {#if cont.budget}
-        <span><i class="fa-solid fa-money-check-dollar"></i> $ {toComaSep(Number(cont.budget))}.</span>
-      {:else}
-        <span> <i class="fa-solid fa-money-check-dollar"></i> {cont.rangeProp}</span>
-      {/if}
-      <div class="info__tags">
-        {#if cont.tagsProperty}
-          <span><i class="fa-solid fa-tags to__showR"></i> {cont.tagsProperty.toString().replaceAll(",", ", ")}</span>
-        {/if}
-        {#if cont.locaProperty}
-          <span><i class="fa-sharp fa-regular fa-compass to__showR"></i> {cont.locaProperty.toString().replaceAll(",", ", ")}</span>
-        {/if}
-      </div>
-    </div>
+//   <div class="card__info">
+//     <!-- Círculo de etapa con estilo inline para mayor visibilidad -->
+//     <div class="stage-circle" style="background-color: {getStageColor()}; position: absolute; top: 0.5rem; right: 0.5rem; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem; font-weight: 700; z-index: 999; box-shadow: 0 3px 6px rgba(0,0,0,0.4); border: 2px solid white;">
+//       {getStageText()}
+//     </div>
+//     <div class="card__infoHead">
+//       <span class="card__Title">{cont.name} {cont.lastname}</span>
+//       <span class="date">{formatDate(cont.createdAt)}</span>
+//     </div>
+//     <div class="info__cont">      
+//       {#if cont.telephon}
+//         <span> <i class="fa-solid fa-mobile-screen-button"></i> {toTele(cont.telephon)}</span>
+//       {/if}
+//       {#if cont.email }
+//         <span> <i class="fa-regular fa-envelope"></i> {cont.email} </span>
+//       {/if}
+//       {#if cont.publicUrl}
+//         <span class="public-url-info"> 
+//           <i class="fa-brands fa-whatsapp"></i> 
+//           <a href={cont.publicUrl} target="_blank" rel="noopener noreferrer" title="Ver propiedad">
+//             Ver propiedad
+//           </a>
+//         </span>
+//       {/if}
+//     </div>
+//     <div class="info__features">
+//       {#if cont.budget}
+//         <span><i class="fa-solid fa-money-check-dollar"></i> $ {toComaSep(Number(cont.budget))}.</span>
+//       {:else}
+//         <span> <i class="fa-solid fa-money-check-dollar"></i> {cont.rangeProp}</span>
+//       {/if}
+//       <div class="info__tags">
+//         {#if cont.tagsProperty}
+//           <span><i class="fa-solid fa-tags to__showR"></i> {cont.tagsProperty.toString().replaceAll(",", ", ")}</span>
+//         {/if}
+//         {#if cont.locaProperty}
+//           <span><i class="fa-sharp fa-regular fa-compass to__showR"></i> {cont.locaProperty.toString().replaceAll(",", ", ")}</span>
+//         {/if}
+//       </div>
+//     </div>
     
-    <!-- Mostrar información de la propiedad si está disponible -->
-    {#if propertyInfo}
-      <div class="property-preview">
-        <div class="property-header">
-          <h3>Propiedad asociada</h3>
-        </div>
-        <div class="property-content">
-          {#if propertyInfo.image}
-            <div class="property-image">
-              <img src={propertyInfo.image} alt={propertyInfo.title} />
-            </div>
-          {/if}
-          <div class="property-details">
-            <h4>{propertyInfo.title}</h4>
-            {#if propertyInfo.price}
-              <p class="property-price">{propertyInfo.price}</p>
-            {/if}
-            <p class="property-type-location">
-              {#if propertyInfo.type}<span>{propertyInfo.type}</span>{/if}
-              {#if propertyInfo.location}<span>{propertyInfo.location}</span>{/if}
-            </p>
-          </div>
-        </div>
-      </div>
-    {/if}
+//     <!-- Mostrar información de la propiedad si está disponible -->
+//     {#if propertyInfo}
+//       <div class="property-preview">
+//         <div class="property-header">
+//           <h3>Propiedad asociada</h3>
+//         </div>
+//         <div class="property-content">
+//           {#if propertyInfo.image}
+//             <div class="property-image">
+//               <img src={propertyInfo.image} alt={propertyInfo.title} />
+//             </div>
+//           {/if}
+//           <div class="property-details">
+//             <h4>{propertyInfo.title}</h4>
+//             {#if propertyInfo.price}
+//               <p class="property-price">{propertyInfo.price}</p>
+//             {/if}
+//             <p class="property-type-location">
+//               {#if propertyInfo.type}<span>{propertyInfo.type}</span>{/if}
+//               {#if propertyInfo.location}<span>{propertyInfo.location}</span>{/if}
+//             </p>
+//           </div>
+//         </div>
+//       </div>
+//     {/if}
 
-  </div>
+//   </div>
  
 
-<style>
+<!-- <style>
   .card__info {
     display: flex;
     flex-direction: column;
@@ -358,4 +358,4 @@
     content: "•";
     margin-left: 0.5rem;
   }
-</style>
+</style> -->
