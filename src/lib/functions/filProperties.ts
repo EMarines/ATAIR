@@ -42,7 +42,7 @@ import { propertiesStore } from '$lib/stores/dataStore';
                 proInt = proInt.filter((prop) =>
                     prop.price >= lowRange && prop.price <= upRange
                 );
-            } else if (contact.rangeProp) {
+            } else if (contact.rangeProp.toLowerCase) {
                 proInt = proInt.filter((prop) =>
                     mosRange(Number(prop.price)) === contact.rangeProp
                 );
@@ -50,7 +50,6 @@ import { propertiesStore } from '$lib/stores/dataStore';
         } else {
             console.log("El contacto no tiene presupuesto ni rango definido. No se aplica filtro por presupuesto o rango.");
         }
-
         
         if (contact.locaProperty && Array.isArray(contact.locaProperty) && contact.locaProperty.length > 0) {
             proInt = proInt.filter(prop => {
@@ -59,7 +58,6 @@ import { propertiesStore } from '$lib/stores/dataStore';
             });
         }
 
-        
         if(contact.tagsProperty && Array.isArray(contact.tagsProperty) && contact.tagsProperty.length > 0) {
             proInt = proInt.filter(prop => {
                 const features = tagToFeatures(prop.tags);
@@ -74,5 +72,8 @@ import { propertiesStore } from '$lib/stores/dataStore';
         return [];
     }
 }
+
+        
+
 
    

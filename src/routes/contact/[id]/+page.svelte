@@ -85,7 +85,6 @@
 
    // Delete contact
    async function deleContact(contactId: string) {
-    console.log("contactId", contactId)
     if (!contactId || contactId.trim() === '') {
         console.error("No se puede eliminar: ID de contacto no disponible o vacío");
         alert("Error: No se puede eliminar el contacto porque el ID no es válido");
@@ -112,10 +111,9 @@
 
     // Muestra las propiedades que le podrían intesar
     function filtProp() {
-      console.log('estas en la funcion', contact);
       // contacto = $contact
       propToRender = filtContPropInte(contact) 
-      console.log(propToRender, "Propidaes a buscar");
+      console.log(propToRender);
       showProp = true;
       layOut = "sendProps"
     };
@@ -158,7 +156,6 @@
       if (!property) {
         // Prioridad 1: Usar la URL del contacto si existe
         if (contact.publicUrl) {
-          // console.log("Usando URL pública del contacto:", contact.publicUrl);
           commInpuyBinnacle = contact.publicUrl;
           return;
         }
@@ -167,12 +164,9 @@
         let foundProperty = false;
         const unsubscribe = propertyStore.subscribe(selectedProperty => {
           if (selectedProperty) {
-            console.log("Propiedad encontrada en el store:", selectedProperty);
-            
             // Si la propiedad tiene public_url, usarla directamente
             if (selectedProperty && selectedProperty.public_url) {
               commInpuyBinnacle = selectedProperty.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
-              console.log("URL pública cargada directamente desde propertyStore.public_url:", commInpuyBinnacle);
               foundProperty = true;
             } 
             // // Si no tiene public_url pero tiene public_id, generar la URL
@@ -227,7 +221,6 @@
       // Envía por WA las propiedades seleccionadas
       } else if($systStatus === "sendProps"){
           faltanProp = propCheck.length - (sig + 1)
-          console.log("propCheck", propCheck[sig], sig)
           let msg = propCheck[sig] && propCheck[sig].public_url ? 
             propCheck[sig].public_url : 
             "No hay URL pública disponible para esta propiedad";
@@ -312,25 +305,21 @@
     // Prioridad 1: Usar la URL del contacto si existe
     if (property && property.public_url && $systStatus === "addContact") {
       commInpuyBinnacle = property.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
-      console.log("URL pública cargada desde el contacto:", commInpuyBinnacle);
       return;
     }
     
     // Prioridad 2: Usar la propiedad del store
     const unsubscribe = propertyStore.subscribe(selectedProperty => {
       if (selectedProperty) {
-        console.log("Propiedad encontrada en el store:", selectedProperty);
         
         // Si la propiedad tiene public_url, usarla directamente
         if (selectedProperty && selectedProperty.public_url && $systStatus === "addContact") {
           commInpuyBinnacle = selectedProperty.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
-          console.log("URL pública cargada directamente desde propertyStore.public_url:", commInpuyBinnacle);
         } 
         // Si no tiene public_url pero tiene public_id, generar la URL
         // else if (selectedProperty.public_id) {
         //   const publicUrl = `https://atair.com.mx/property/${selectedProperty.public_id}`;
         //   commInpuyBinnacle = publicUrl;
-        //   console.log("URL pública generada desde propertyStore.public_id:", publicUrl);
         // }
       }
     });
@@ -468,7 +457,7 @@
                   bind:value={commInpuyBinnacle} 
                   placeholder="Envia una nota por WhatsApp o guarda un nota"></textarea>
                 <!-- {#if commInpuyBinnacle && commInpuyBinnacle.includes('atair.com.mx/property/')} -->
-                  <button 
+                  <!-- <button 
                     class="copy-button" 
                     on:click={() => {
                       navigator.clipboard.writeText(commInpuyBinnacle);
@@ -477,7 +466,7 @@
                     title="Copiar al portapapeles"
                   >
                     <i class="fa-regular fa-copy"></i>
-                  </button>
+                  </button> -->
                 <!-- {/if} -->
 
                 <div class="waSave">
@@ -926,7 +915,7 @@
       }
          
     }
-    
+/*     
     .copy-button {
       position: absolute;
       top: 10px;
@@ -947,5 +936,5 @@
     .copy-button:hover {
       background: #8b5cf6;
       transform: scale(1.05);
-    }
+    } */
 </style>

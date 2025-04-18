@@ -3,10 +3,9 @@
   import { formatDate } from '$lib/functions/dateFunctions'
   import type { Contact } from '$lib/types';
   import { onMount } from 'svelte';
-	import { contact } from '$lib/stores/dataStore';
+	import { contactsStore } from '$lib/stores/dataStore';
 
   export let cont: Contact;
-  
   // Validación del contacto
   let isValidContact = false;
   

@@ -61,22 +61,22 @@ export function setRange(rng: string) {
  */
     export function mosRange(price: number){
       if(price <= 1000000){
-        rng = "PRM";                 // PRM
+        rng = "prm";                 // PRM
       }
       else if (price <= 2500000) {
-        rng = "SGN"            // SGN
+        rng = "sgn"            // SGN
       }
       else if (price <= 5000000) {
-        rng = "TRC"            // TRC
+        rng = "trc"            // TRC
       }
       else if (price <= 8000000) {
-        rng = "CRT"            // CRT
+        rng = "crt"            // CRT
       }
       else if (price <= 12000000) {   // QNT
-        rng = "QNT"  
+        rng = "qnt"  
       }
         else if (price > 12000000) {
-        rng = "SXT"            // SXT
+        rng = "sxt"            // SXT
       } 
       if(rng === undefined){
         rng = ""

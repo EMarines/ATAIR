@@ -17,11 +17,11 @@
     imgSrc = '/placeholder-property.png';
   }
 
-  // Función para formatear la ubicación
+  // Función para formatear la ubicación y limitar su longitud
   const formatLocation = (location: string | { name: string } | undefined | null) => {
     if (!location) return 'Sin dirección';
     const locationStr = typeof location === 'string' ? location : location.name;
-    return locationStr
+    let formattedLocation = locationStr
         .replace("Chihuahua, Chihuahua", "")
         .replaceAll(",", "")
         .replace("I, ", "")
@@ -30,11 +30,19 @@
         .replace("IV", "")
         .replace(" V ", "")
         .replaceAll(" Y ", "")
+        .replace("Fraccionamiento", "")
+        .replace("Residencial", "")
+        .replace("Etapa", "")
         .trim();
+    
+    // Limitar la longitud absoluta para evitar desbordamiento
+    return formattedLocation.length > 25 ? formattedLocation.substring(0, 22) + '...' : formattedLocation;
   };
 
-
-
+  // Formatear características con longitud controlada
+  const formatFeature = (value: number, unit: string) => {
+    return `${toComaSep(value)} ${unit}`;
+  };
 </script>
 
 <div class="card__container">
@@ -53,6 +61,7 @@
         src={imgSrc} 
         alt="Imagen de propiedad"
         on:error={handleImageError}
+        loading="lazy"
       >
       {#if imgError}
         <div class="img-error-overlay">Sin imagen</div>
@@ -62,24 +71,26 @@
     <div class="info__cont">
 
       <div class="card__info">
-        <span class="capitalize">
-          {formatLocation(property?.location)}
-        </span>
-        <span>$ {toComaSep(Number(property.price || 0))}</span>
+        <div class="location-container">
+          <span class="capitalize">
+            {formatLocation(property?.location)}
+          </span>
+        </div>
+        <span class="price">$ {toComaSep(Number(property.price || 0))}</span>
       </div>
 
       <div class="card__features">
         {#if property?.property_type?.toLowerCase() === "casa" ||
          property?.property_type?.toLowerCase() === "departamento"}
-          <span>Recámaras {property?.bedrooms || 0}</span>
-          <span>Baños {Number(property?.bathrooms || 0)}</span> 
+          <span class="feature-span">Recámaras {property?.bedrooms || 0}</span>
+          <span class="feature-span">Baños {Number(property?.bathrooms || 0)}</span> 
         {:else if property?.property_type?.toLowerCase() === "terreno" ||
          property?.property_type?.toLowerCase() === "local comercial"}  
-          <span>{toComaSep(Number(property?.construction_size || 0))} m²</span>
+          <span class="feature-span">{toComaSep(Number(property?.construction_size || 0))} m²</span>
         {:else if property?.property_type?.toLowerCase() === "edificio" ||
          property?.property_type?.toLowerCase().startsWith("bodega")}
-          <span>{toComaSep(Number(property?.construction_size || 0))} m²</span>
-          <span>{toComaSep(Number(property?.lot_size || 0))} m²</span>
+          <span class="feature-span">{toComaSep(Number(property?.construction_size || 0))} m²</span>
+          <span class="feature-span">{toComaSep(Number(property?.lot_size || 0))} m²</span>
         {/if}
       </div>
 
@@ -89,139 +100,243 @@
 </div>
 
 <style>
+  .card__container {
+    position: relative;
+    width: 300px; /* Ancho fijo no negociable */
+    height: 250px; /* Altura fija no negociable */
+    margin: 0 auto;
+    z-index: 10;
+    box-sizing: border-box;
+    flex: 0 0 300px; /* Fuerza dimensiones exactas */
+    min-width: 300px; /* Ancho mínimo no negociable */
+    max-width: 300px; /* Ancho máximo no negociable */
+    overflow: hidden; /* Crucial: fuerza que nada salga del contenedor */
+  }
+
+  .property-selector {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 1001;
+    margin: 0;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    accent-color: #6b21a8;
+  }
+
+  .card__prop { 
+    position: relative;
+    display: flex; 
+    flex-direction: column;   
+    width: 100%;
+    height: 100%;     
+    background: rgb(56, 56, 56);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    z-index: 10;
+    justify-content: space-between;
+    padding: 8px;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+
+  .card__prop:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    background: rgb(76, 76, 76);
+    z-index: 1000;
+  }
+
+  .img__cont {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    overflow: hidden;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }    
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    margin: 0;
+    display: block;
+  }
+  
+  .img-error-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 1rem;
+    border-radius: 8px;
+  }
+  
+  .info__cont {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    justify-content: space-between;
+    min-height: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  .card__info {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+    font-weight: 300;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* Contenedor específico para la ubicación */
+  .location-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    height: 1.2em; /* Altura fija para el texto */
+    line-height: 1.2em;
+    margin-bottom: 4px;
+  }
+
+  /* Estilo específico para el texto de la ubicación */
+  .capitalize {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    width: 100%;
+    font-size: 0.9rem;
+  }
+
+  .price {
+    font-weight: 500;
+    font-size: 0.95rem;
+    display: block;
+    white-space: nowrap;
+    height: 1.2em;
+    line-height: 1.2em;
+  }
+ 
+  .card__features {
+    display: flex;
+    flex-direction: row;
+    padding: 4px;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    height: 1.8em; /* Altura fija para características */
+  }
+
+  /* Clase específica para los spans de características */
+  .feature-span {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45%;
+    font-size: 0.8em;
+    height: 1.2em;
+    line-height: 1.2em;
+  }
+
+  /* Sistema responsive con múltiples breakpoints */
+  @media (max-width: 768px) {
     .card__container {
-      position: relative;
+      width: 280px;
+      height: 230px;
+      max-width: 280px;
+      min-width: 280px;
+      flex: 0 0 280px;
+    }
+    
+    .img__cont {
+      height: 130px;
+    }
+  }
+
+  @media (max-width: 500px) {
+    .card__container {
       width: 100%;
-      height: 100%;
-      z-index: 10;
+      max-width: 320px;
+      min-width: auto; /* Permitir ajuste automático dentro del max-width */
+      flex: 0 0 auto;
+      height: 220px;
+      margin: 0 auto 15px;
+    }
+    
+    .feature-span {
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .card__container {
+      height: 200px;
+      margin: 0 auto 10px;
     }
 
-    .property-selector {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      z-index: 1001;
-      margin: 0;
-      cursor: pointer;
-      width: 20px;
-      height: 20px;
-      accent-color: #6b21a8;
-    }
-
-    .card__prop { 
-      position: relative;
-      display: flex; 
-      flex-direction: column;   
-      width: 100%;
-      height: 250px;     
-      background: rgb(56, 56, 56);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      overflow: visible; /* Cambiado de hidden a visible para permitir que el contenido se expanda */
-      transition: all 0.3s ease;
-      z-index: 10;
-      max-width: 300px;
-      justify-content: center;
-      padding: 8px;
-      gap: 4px;
-      margin: 0 auto;
-      cursor: pointer;
-    }
-
-    .card__prop:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-      background: rgb(76, 76, 76);
-      z-index: 1000; /* Aumentar z-index al hacer hover */
+    .card__prop {
+      padding: 6px;
     }
 
     .img__cont {
-      position: relative;
-      display: flex;
-      width: 100%;
-      height: 50%;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
-    }    
-    
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 8px;
-      margin: 0;
-      aspect-ratio: 16/9;
+      height: 120px;
     }
-    
-    .img-error-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: rgba(0, 0, 0, 0.7);
-      color: white;
-      font-size: 1rem;
-      border-radius: 8px;
-    }
-    
-    .info__cont{
-      width: 100%;
-      /* height: 50%; */
-      /* align-items: baseline;s */
-    }
-    
+
     .card__info {
-      display: flex;
-      flex-direction: column;
-      font-size: 0.9rem;
-      font-weight: 300;
-      align-items: center;
-      justify-content: center;
+      font-size: 0.8rem;
+      padding: 2px 0;
     }
-   
+
+    .capitalize {
+      font-size: 0.8rem;
+    }
+
+    .price {
+      font-size: 0.85rem;
+    }
+
     .card__features {
-      display: flex;
-      flex-direction: row;
-      font-size: 0.8em;
-      padding: 4px;
-      gap: 8px;
-      justify-content: center;
+      padding: 2px;
+      gap: 5px;
+      height: 1.6em;
+    }
+  }
+
+  /* Para dispositivos muy pequeños */
+  @media (max-width: 350px) {
+    .card__container {
+      height: 180px;
+      min-height: 180px;
     }
 
-    @media(max-width: 400px) {
-      .card__prop {
-        max-width: 100%;
-        height: 200px;
-      }
-
-      .img__cont {
-        height: 60%;
-      }
-
-      .info__cont {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-        padding: 15px 10px;
-        color: white;
-      }
-
-      span {
-        color: white;
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-      }
+    .img__cont {
+      height: 100px;
     }
-
-    /* Asegurar que el input quede por encima */
-    :global(input) {
-      position: relative;
-      z-index: 2;
-    }
+  }
 </style>

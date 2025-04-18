@@ -14,7 +14,7 @@ const dateTo = new Date().getTime();
       // busqueda de Hoy hasta 1/ene/23
         
         let conInt = contacts.filter((cont) => cont.createdAt <=  dateTo && cont.createdAt >= 1672596060000 || cont.contactStage === "Etapa4");   
-        // console.log(conInt);
+        console.log(conInt);
 
         // Tipo de contacto    
         conInt = conInt.filter((cont) => cont.typeContact === "Comprador"  || cont.contactType === "Comprador");        
@@ -29,7 +29,7 @@ const dateTo = new Date().getTime();
               !cont.numBeds || (cont.numBeds && Number(cont.numBeds) <= property.bedrooms)
           );
         };
-        // console.log(conInt);
+        console.log(conInt);
 
         
       // Numero de baños
