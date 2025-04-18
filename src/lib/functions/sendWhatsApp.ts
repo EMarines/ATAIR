@@ -5,12 +5,6 @@ let whatsappWindow: Window | null = null;
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
   typeof navigator !== 'undefined' ? navigator.userAgent : ''
 );
-const isAndroid = /Android/i.test(
-  typeof navigator !== 'undefined' ? navigator.userAgent : ''
-);
-const isIOS = /iPhone|iPad|iPod/i.test(
-  typeof navigator !== 'undefined' ? navigator.userAgent : ''
-);
 
 /**
  * Envía un mensaje de WhatsApp y devuelve referencia a la ventana
