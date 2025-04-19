@@ -1,8 +1,12 @@
 // Variable para almacenar referencia a la ventana abierta
 let whatsappWindow: Window | null = null;
 
-// Detectar si estamos en un dispositivo móvil
+// Detectores de plataforma
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+  typeof navigator !== 'undefined' ? navigator.userAgent : ''
+);
+
+const isAndroid = /Android/i.test(
   typeof navigator !== 'undefined' ? navigator.userAgent : ''
 );
 
@@ -28,20 +32,39 @@ export function sendWhatsApp(tel: string, msg: string, useBusiness: boolean = tr
   // Codificar mensaje para URL
   const encodedMsg = encodeURIComponent(msg);
   
-  // Determinar la URL según el tipo de WhatsApp deseado y la plataforma
-  let whatsappUrl: string;
+  // CASO ESPECIAL: Android con WhatsApp Business
+  if (isAndroid && useBusiness) {
+    try {
+      // Intent específico para WhatsApp Business en Android
+      // Este esquema de URL intenta forzar la apertura en WhatsApp Business
+      const businessUrl = `whatsapp://send?phone=52${tel}&text=${encodedMsg}&app_absent=0`;
+      window.location.href = businessUrl;
+      
+      // Como alternativa, intentar con un tiempo de espera y luego probar con el esquema universal
+      setTimeout(() => {
+        const waUrl = `https://wa.me/52${tel}?text=${encodedMsg}`;
+        window.location.href = waUrl;
+      }, 300);
+      
+      return { close: () => console.log("Redireccionado a WhatsApp Business") };
+    } catch (error) {
+      console.error("Error al intentar abrir WhatsApp Business:", error);
+      // Si falla, continuamos con el método estándar
+    }
+  }
   
-  // Estrategia específica para dispositivos móviles - MÉTODO ACTUALIZADO Y SEGURO
+  // Estrategia específica para dispositivos móviles
   if (isMobile) {
-    // Usar wa.me que es más compatible con ambas versiones de WhatsApp
-    whatsappUrl = `https://wa.me/52${tel}?text=${encodedMsg}`;
+    // Usar wa.me que es compatible con ambas versiones de WhatsApp
+    const whatsappUrl = `https://wa.me/52${tel}?text=${encodedMsg}`;
     
-    // En dispositivos móviles, redireccionar directamente (más confiable)
+    // En dispositivos móviles, redireccionar directamente
     window.location.href = whatsappUrl;
     return { close: () => console.log("Redireccionado a app nativa") };
   }
   
   // Para navegadores de escritorio:
+  let whatsappUrl: string;
   if (useBusiness) {
     // URL que favorece WhatsApp Business
     whatsappUrl = `https://wa.me/52${tel}?text=${encodedMsg}`;

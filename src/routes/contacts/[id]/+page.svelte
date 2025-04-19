@@ -3,6 +3,7 @@
     import { firebase } from '$lib/stores/firebaseStores';
     import AddContact from '$lib/components/AddContact.svelte';
     import { onMount } from 'svelte';
+    import { fade } from 'svelte/transition';
 
     let contact: any = null;
     let loading = true;
@@ -62,7 +63,7 @@
             </div>
         {:else}
             <div class="contact-form">
-                <AddContact {contact} />
+                <AddContact existingContact={contact} />
                 <button on:click={editContact}>Editar Contacto</button>
             </div>
         {/if}
