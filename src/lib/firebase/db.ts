@@ -1,16 +1,16 @@
 import { db } from './firebase';
-import {collection, getDocs, doc, getDoc} from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 
-// Tipos
-export interface Contact {
-    id: string;
-    // ... otros campos
-}
+// // Tipos
+// export interface Contact {
+//     id: string;
+//     // ... otros campos
+// }
 
-export interface Property {
-    id: string;
-    // ... otros campos
-}
+// export interface Property {
+//     id: string;
+//     // ... otros campos
+// }
 
 // Funciones de base de datos
 export const getContacts = async () => {
