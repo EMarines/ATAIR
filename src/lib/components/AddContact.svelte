@@ -2,7 +2,7 @@
     import { createEventDispatcher } from 'svelte';
     import { goto } from '$app/navigation';
     import { systStatus, propertiesStore, property as propertyStore, contactsStore } from '$lib/stores/dataStore';
-    import { Search, Tags, Ubication, InputText, InputOptions, InputEmail, InputDate, CardProperty, Button } from '$components';
+    import { Search, Tags, Ubication, InputText, InputOptions, InputEmail, InputNumber, CardProperty, Button } from '$components';
     import { typeContacts, modeContact, typeProperties, modePays, oneToFive, oneToFour, oneToThree, contStage, range } from '$lib/parameters';
     import type { Property, Contact, AddContactEvents } from '$lib/types';
     import { ranPrice } from '$lib/functions/rangeValue';
@@ -150,7 +150,9 @@
                 comContact: contact.comContact || '',
                 contactStage: contact.contactStage || 'Etapa1',
                 isActive: contact.isActive !== undefined ? contact.isActive : true,
-                budget: contact.budget || 0,
+                budget: typeof contact.budget === 'string' ? 
+                    (contact.budget === '' ? 0 : Number(contact.budget)) : 
+                    (contact.budget || 0),
                 selecTP: contact.selecTP || '',
                 rangeProp: contact.rangeProp || '',
                 numBaths: contact.numBaths || 0,
@@ -283,15 +285,16 @@
             // contact.rangeProp = '';
         }
     }
+
     function handlePropertySelection(property: string) {
-    if (selectedProperties.includes(property)) {
-      // Si la propiedad ya está seleccionada, la eliminamos
-      selectedProperties = selectedProperties.filter(p => p !== property);
-    } else {
-      // Si la propiedad no está seleccionada, la agregamos
-      selectedProperties = [...selectedProperties, property];
+        if (selectedProperties.includes(property)) {
+            // Si la propiedad ya está seleccionada, la eliminamos
+            selectedProperties = selectedProperties.filter(p => p !== property);
+        } else {
+            // Si la propiedad no está seleccionada, la agregamos
+            selectedProperties = [...selectedProperties, property];
+        }
     }
-  }
   
     async function onCancel() {
         if (isDirty) {
@@ -532,11 +535,21 @@
                         <InputText 
                             identifier="budget" 
                             name="Presupuesto" 
-                            value={contact.budget ? String(contact.budget) : ''}
+                            value={contact.budget !== undefined && contact.budget !== null ? String(contact.budget) : ''}
                             on:blur={(e) => {
-                                // Convertir a número si es posible, o dejar como string si no
-                                const value = e.detail.value;
-                                contact.budget = value ? (isNaN(Number(value)) ? value : Number(value)) : '';
+                                console.log("Budget blur event:", e.detail);
+                                const inputValue = e.detail.value;
+                                
+                                // Eliminar caracteres no numéricos excepto puntos y comas
+                                const cleanValue = inputValue.replace(/[^\d.,]/g, '')
+                                    .replace(/,/g, '.'); // Reemplazar comas por puntos
+                                
+                                // Convertir a número si es válido, o usar 0
+                                const numValue = cleanValue ? parseFloat(cleanValue) : 0;
+                                
+                                // Actualizar el valor en el objeto contact
+                                contact.budget = numValue;
+                                console.log("Asignado a contact.budget:", numValue, "tipo:", typeof numValue);
                             }}
                         />
                         <InputOptions 

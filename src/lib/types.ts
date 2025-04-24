@@ -124,6 +124,7 @@ export interface Property {
   agent: string,
   bathrooms: number,
   bedrooms: number,
+  budget: number,
   construction_size: number,
   created_at: number,
   description: string,

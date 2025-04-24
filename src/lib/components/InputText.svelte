@@ -1,12 +1,37 @@
 <script lang="ts">
-	 export let identifier: string;
-	 export let name: string;  
-	 export let value: string;
+	import { createEventDispatcher } from 'svelte';
+	
+	export let identifier: string;
+	export let name: string;  
+	export let value: string;
+	
+	const dispatch = createEventDispatcher<{
+		blur: { value: string },
+		input: { value: string }
+	}>();
+	
+	function handleBlur(e: Event) {
+		const target = e.target as HTMLInputElement;
+		dispatch('blur', { value: target.value });
+	}
+	
+	function handleInput(e: Event) {
+		const target = e.target as HTMLInputElement;
+		dispatch('input', { value: target.value });
+	}
 </script>
 
     <label class="label__title" for={identifier} >
       <p class={value  ? ' above' : ' center'}>{name}</p>
-      <input id={identifier} class="in__sel capitalize" type="text" bind:value placeholder={name} />
+      <input 
+        id={identifier} 
+        class="in__sel capitalize" 
+        type="text" 
+        bind:value 
+        placeholder={name}
+        on:blur={handleBlur}
+        on:input={handleInput} 
+      />
     </label>
 
     <style>

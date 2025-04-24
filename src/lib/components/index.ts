@@ -16,6 +16,7 @@ export { default as InputEmail } from './InputEmail.svelte';
 export { default as InputDate } from './InputDate.svelte';
 export { default as Search } from './Search.svelte';
 export { default as InputText } from './InputText.svelte';
+export { default as InputNumber } from './InputNumber.svelte';
 export { default as AddContact } from './AddContact.svelte';
 export { default as InputOptionsMultiple } from './InputOptionsMultiple.svelte';
 
