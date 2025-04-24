@@ -45,7 +45,7 @@ export function sendWhatsApp(fullTel: string, msg: string) {
   const whatsappUrl = `https://wa.me/${fullTel}?text=${encodedMsg}`;
 
   // 6. Definir características para la ventana popup
-  const windowFeatures = 'popup=yes,width=800,height=700,noopener,noreferrer,scrollbars=yes,resizable=yes'; // Ajusta tamaño si quieres
+  const windowFeatures = 'popup=yes,width=300,height=500,noopener,noreferrer,scrollbars=yes,resizable=yes'; // Ajusta tamaño si quieres
   const windowName = 'whatsappPopup';
 
   // 7. Intentar abrir la ventana popup
