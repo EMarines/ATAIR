@@ -245,16 +245,27 @@ export interface Binnacle {
 
 export interface Todo {
   id: string;
-  stage: string;
-  endTask: string | number;
-  createdAt: number;
-  notes: string;
-  isCompleted: boolean;
   task: string;
-  timeTask: string;
+  endTask: number; // Timestamp combinado (siempre existe, usa 00:00 si no hay hora)
+  timeString?: string; // HH:MM - SOLO si el usuario la especificó
+  notes?: string;
+  isCompleted: boolean;
+  createdAt: number;
   type?: string;
   user?: string;
 }
+
+// interface TodoFormState {
+//   id?: string;
+//   task?: string;
+//   endTask?: string; // YYYY-MM-DD string for input binding
+//   timeTask?: string; // HH:MM string for input binding (puede ser '')
+//   notes?: string;
+//   isCompleted?: boolean;
+//   createdAt?: number;
+//   type?: string;
+//   user?: string;
+// }
 
 export type ContactOption = "Posobles_Interesados" | "Por_Enviar" | "Ya_Se_Envió";
 

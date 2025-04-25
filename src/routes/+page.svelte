@@ -20,7 +20,7 @@
       id: 'properties',
       icon: 'fa-solid fa-house',
       title: 'Propiedades',
-      description: 'Ver todas las propiedades'
+      description: 'Ver propiedades'
     },
     {
       id: 'contacts',
@@ -55,7 +55,7 @@
     {
       id: 'about',
       icon: 'fa-solid fa-circle-info',
-      title: 'Acerca de',
+      title: 'Acerca de nosotros',
       description: 'Información sobre ATAIR'
     },
     {

@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { firebase } from '$lib/stores/firebaseStores';
-  // import { deleteDoc, doc } from 'firebase/firestore';
+  import {db, auth} from '$lib/firebase'; // Import the default export
   import { goto } from '$app/navigation';
   import type { Contact, Binnacle, Property } from '$lib/types';
   import { contactsStore, propertiesStore, systStatus, binnaclesStore, property as propertyStore } from '$lib/stores/dataStore';
   import { onMount, onDestroy } from 'svelte';
   import { AddToShedule, CardBinnacle, CardProperty, Search } from '$components';
   import AddContact from '$lib/components/AddContact.svelte';
-  import { formatDate, toComaSep, toTele, infoToBinnacle, filtContPropInte, sendWhatsApp, sortBinnacle } from '$lib/functions';
+
+  import { formatDate, toComaSep, toTele, infoToBinnacle, findPropertiesForContact, sendWhatsApp, sortBinnacle } from '$lib/functions';
+
 
   export let data;
 
@@ -95,7 +96,7 @@
         try {
             
             // Eliminar de Firebase
-            const result = await firebase.delete("contacts", contactId);
+            const result = await db.delete("contacts", contactId);
             if (result?.success) {
                 goto("/contacts");
             } else {
@@ -109,14 +110,15 @@
     }
   }
 
-    // Muestra las propiedades que le podrían intesar
-    function filtProp() {
+        // Muestra las propiedades que le podrían intesar
+        function filtProp() {
       // contacto = $contact
-      propToRender = filtContPropInte(contact) 
+      propToRender = findPropertiesForContact(contact) // <-- CORREGIDO AQUÍ
       console.log(propToRender);
       showProp = true;
       layOut = "sendProps"
     };
+
 
     // Mostrar Schedule
     function addSchedule(){

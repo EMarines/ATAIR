@@ -1,7 +1,7 @@
 export { formatDate } from './dateFunctions';
 export { toComaSep, toTele } from './format';
 export { infoToBinnacle } from './binnSaver';
-export { filtContPropInte } from './filProperties';
+export { findPropertiesForContact } from './filProperties';
 export { sortBinnacle } from './sort';
 export { mosRange } from './rangeValue';
 export { convertOperationEbFb } from './converterEb-Fb';

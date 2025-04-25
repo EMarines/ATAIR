@@ -17,7 +17,6 @@ export function setRange(rng: string) {
         lowRange = 5000001; upRange=8000000           // CRT
     }
     else if (rng === "qnt") {                       // QNT
-        console.log("si")
         lowRange = 8000001; upRange=12000000
          
     }
