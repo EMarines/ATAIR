@@ -10,7 +10,7 @@
                 <img src={logo} alt="Match Home">
             </div>
             <div class="marca">
-                <h2>Match Home</h2>
+                <h1 class="title">Match Home</h1>
                 <h5 class="slogan">¡Tu Patrimnio En Buenas Manos!</h5>
             </div>
 
@@ -30,6 +30,9 @@
         font-size: 3.5em;
         font-weight: 400;
         margin: 0;
+    }
+    .title {
+        color: antiquewhite;
     }
 
 
@@ -78,4 +81,14 @@
             font-size: 1.2rem;
         }
     }
+
+    @media (max-width: 500px) { /* Corregido: max-width: */
+        .title {
+            display: none; /* Añadido: Oculta el elemento */
+        }
+        img{
+            padding-bottom: 10px;
+        }
+    }
+
 </style>

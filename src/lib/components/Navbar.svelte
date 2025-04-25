@@ -1,4 +1,5 @@
 <script lang="ts">
+    import "../../styles/main.css"
     import { useAuth } from '../hooks/useAuth'
     import { useLogout } from '../hooks/useLogout'
     import { page } from '$app/stores';
@@ -64,7 +65,7 @@
 
 <nav>
   <div class="container">
-      <h1>MatchHome</h1>  
+      <h1 class="title">MatchHome</h1>  
       <button 
         class="nav__target" 
         on:click={toggleMenu}
@@ -182,11 +183,9 @@
         gap: 1.5rem;
     }
 
-    h1 {
-        margin: 0;
-        font-size: 1.3em;
-        font-weight: 600;
-        color: var(--text-1);
+    .title {
+        color: antiquewhite;
+        font-size: 1.5em;
     }
 
     a {
