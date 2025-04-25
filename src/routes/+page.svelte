@@ -55,7 +55,7 @@
     {
       id: 'about',
       icon: 'fa-solid fa-circle-info',
-      title: 'Acerca de nosotros',
+      title: 'Acerca de MH',
       description: 'Información sobre ATAIR'
     },
     {

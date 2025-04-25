@@ -26,11 +26,6 @@
         font-weight: 600;
     }
 
-    h2{
-        font-size: 3.5em;
-        font-weight: 400;
-        margin: 0;
-    }
     .title {
         color: antiquewhite;
     }
@@ -74,7 +69,7 @@
             align-items: center;
             justify-content: center;
         }
-        h2 {
+        .title {
             font-size: 2.5rem;
         }
         h5 {
