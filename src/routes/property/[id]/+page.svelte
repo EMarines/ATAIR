@@ -4,15 +4,15 @@
   import { toComaSep } from '$lib/functions/format';
   import type { Property, Contact, ContactOption, Binnacle } from '$lib/types';
 	import { goto } from '$app/navigation';
-	import { filtContPropInte } from '$lib/functions/filProperties';
-	import { filtPropContInte } from '$lib/functions/filContacts'
+	// import { filtContPropInte } from '$lib/functions/filProperties';
+	import { findContactsForProperty } from '$lib/functions/filContacts'
 	import {  contactsStore, binnaclesStore, systStatus } from '$lib/stores/dataStore';
 	import { deleteDoc, doc, addDoc, collection } from 'firebase/firestore';
 	import { db } from '$lib/firebase';
 	import { diaTarde } from '$lib/functions/dateFunctions';
 	import { capitalize } from '$lib/functions/capitalize';
 	import { sendWhatsApp } from '$lib/functions/sendWhatsApp';
-   
+	// findPropertiesForContact
   export let data;
   let property = data.property as Property;
   let mensaje = '';
@@ -38,7 +38,7 @@
   const listToRender = () => {
     contCheck = [];
     showBtn = true;
-    contInterest = filtPropContInte(currProperty, contacts);
+    contInterest = findContactsForProperty(currProperty, contacts);
 
     if(contInterested === "Posobles_Interesados"){
       msgToShow = "Contactos Les Puede Interesar Esta Propiedad"
