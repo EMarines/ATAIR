@@ -23,11 +23,12 @@ export function findContactsForProperty(property: Property, contacts: Contact[])
     // y el contacto tiene 'typeContact' o 'contactType'
     // Necesitamos mapear la operación de la propiedad (ej. 'sale') a un tipo de contacto (ej. 'Comprador')
     let targetContactType = '';
-    if (property.operation_type?.toLowerCase() === 'sale') {
+    if (property.selecTO?.toLowerCase() === 'sale') {
         targetContactType = 'comprador';
-    } else if (property.operation_type?.toLowerCase() === 'rental') {
+    } else if (property.selecTO?.toLowerCase() === 'rental') {
         targetContactType = 'arrendador'; // Ajustar si el término es diferente
     }
+
     // else if (property.operation_type?.toLowerCase() === '...') { ... } // Añadir otros mapeos si existen
 
     if (targetContactType) {

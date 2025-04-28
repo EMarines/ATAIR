@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import { firebase } from '$lib/stores/firebaseStores';
-    import AddContact from '$lib/components/AddContact.svelte';
+    import {AddContact} from '$components';
     import { onMount } from 'svelte';
     import { fade } from 'svelte/transition';
 

@@ -3,10 +3,9 @@
   import { contactsStore, propertiesStore } from '$lib/stores/dataStore'
   import { goto } from '$app/navigation';
   const { userStore, isAuthenticated } = useUser()
-  import { Hero, What } from '$components'
+  import { Hero, Footer } from '$components'
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import Footer from '$lib/components/Footer.svelte';
 
   interface Action {
     id: string;

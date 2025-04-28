@@ -4,7 +4,7 @@
   import type { Contact, Binnacle, Property } from '$lib/types';
   import { contactsStore, propertiesStore, systStatus, binnaclesStore, property as propertyStore } from '$lib/stores/dataStore';
   import { onMount, onDestroy } from 'svelte';
-  import { AddToShedule, CardBinnacle, CardProperty, Search } from '$components';
+  import { AddToSchedule, CardBinnacle, CardProperty, Search } from '$components';
   import AddContact from '$lib/components/AddContact.svelte';
 
   import { formatDate, toComaSep, toTele, infoToBinnacle, findPropertiesForContact, sendWhatsApp, sortBinnacle } from '$lib/functions';
@@ -448,7 +448,7 @@
             {/if} 
 
             {#if isActivated}
-              <AddToShedule {contact} on:closeIt = {close} />
+              <AddToSchedule {contact} on:closeIt = {close} />
             {/if}
                 
             <!-- Botonies enviar WA o guardar nota para bitácora -->              

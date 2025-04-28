@@ -8,7 +8,7 @@ export { default as Button } from './Button.svelte';
 export { default as CardProperty } from './CardProperty.svelte';
 export { default as CardContact } from './CardContact.svelte';
 export { default as CardBinnacle } from './CardBinnacle.svelte';
-export { default as AddToShedule } from './AddToSchedule.svelte';
+export { default as AddToSchedule } from './AddToSchedule.svelte';
 export { default as Tags } from './Tags.svelte';
 export { default as Ubication } from './Ubication.svelte';
 export { default as InputOptions } from './InputOptions.svelte';

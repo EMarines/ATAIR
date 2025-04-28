@@ -1,7 +1,6 @@
 <script lang="ts">
   import { contactsStore, propertiesStore, systStatus, contact } from '$lib/stores/dataStore';
-  import { Search, CardContact, Button } from '$components';
-  import AddContact from '$lib/components/AddContact.svelte';
+  import { Search, CardContact, Button, AddContact } from '$components';
   import type { Contact } from '$lib/types';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';

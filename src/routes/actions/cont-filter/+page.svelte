@@ -1,8 +1,6 @@
 <script lang="ts">
     import { contactsStore, propertiesStore, systStatus, contact } from '$lib/stores/dataStore';    
-    import { InputOptions, InputOptionsMultiple } from '$components';
-    import InputNumber from '$lib/components/InputNumber.svelte';
-    import { Button } from '$components';
+    import { InputOptions, InputOptionsMultiple, InputNumber, Button } from '$components';
     import type { Contact } from '$lib/types';
     type ExtendedContact = Contact & { tags?: string[] };
     
