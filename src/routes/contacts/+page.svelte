@@ -4,8 +4,8 @@
   import type { Contact } from '$lib/types';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { get } from 'svelte/store';
-  import { firebase } from '$lib/stores/firebaseStores';
+  // import { get } from 'svelte/store';
+  // import { firebase } from '$lib/stores/firebaseStores';
 
   let searchTerm = "";
   $systStatus = "";

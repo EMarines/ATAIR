@@ -142,7 +142,9 @@
   </div>
 </div>
 
+<!-- Estilos (sin cambios) -->
 <style>
+  /* ... tus estilos ... */
   .container {
     height: 100vh;
     display: flex;
@@ -154,36 +156,72 @@
     width: 100%;
     max-width: 400px;
     padding: 2rem;
+    /* Añade un fondo o borde para verlo mejor si es necesario */
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 8px;
   }
 
   form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1rem; /* Espacio entre elementos del form */
   }
 
   label {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    position: relative; /* Para posicionar el <p> */
+    margin-bottom: 0.5rem; /* Espacio extra debajo de cada label */
+  }
+
+  label p {
+    position: absolute;
+    top: -0.7em; /* Ajusta para que quede encima del borde */
+    left: 0.5rem; /* Un poco de padding izquierdo */
+    background-color: #1a1a1a; /* Fondo para que tape el borde del input (ajusta a tu color de fondo) */
+    padding: 0 0.3rem;
+    font-size: 0.8em;
+    color: #aaa; /* Color del texto del label */
+    transition: all 0.2s ease; /* Transición suave */
+    pointer-events: none; /* Para que no interfiera con el click al input */
+  }
+  
+  /* Style <p> inside focused <label> */
+  label:focus-within p {
+     color: lightblue; /* Cambia color al estar activo */
   }
 
   input {
-    padding: 0.5rem;
+    padding: 0.8rem 0.5rem 0.4rem 0.5rem; /* Más padding arriba para dejar espacio al label */
     border: 1px solid #ccc;
     border-radius: 4px;
     background: transparent;
     color: white;
+    font-size: 1em; /* Tamaño de fuente base */
+  }
+  
+  /* Ocultar placeholder nativo si usamos el label flotante */
+  input::placeholder {
+    color: transparent; 
   }
 
+
   button {
-    padding: 0.5rem;
+    padding: 0.7rem; /* Un poco más de padding */
     background: blue;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease; /* Transición al hacer hover */
   }
+  
+  button:hover:not(:disabled) {
+     background-color: darkblue; /* Color al pasar el ratón */
+  }
+
 
   button:disabled {
     opacity: 0.5;
@@ -191,12 +229,44 @@
   }
 
   .options {
-    margin-top: 1rem;
+    margin-top: 1.5rem; /* Más espacio arriba */
     text-align: center;
   }
+  
+  .options div {
+      display: flex; /* Para alinear texto y botón */
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem; /* Espacio entre el texto y el botón */
+  }
+
+  .options p {
+      margin: 0; /* Quitar margen por defecto del párrafo */
+      color: #ccc; /* Color más suave para el texto */
+  }
+  
+  .options button {
+      background: none; /* Sin fondo */
+      border: none;
+      color: lightblue; /* Color tipo enlace */
+      padding: 0.2rem 0.5rem; /* Menos padding */
+      cursor: pointer;
+      font-size: 0.9em; /* Un poco más pequeño */
+      text-decoration: underline; /* Subrayado para parecer enlace */
+  }
+  
+  .options button:hover:not(:disabled) {
+      color: cyan; /* Cambio de color al pasar el ratón */
+      background: none; /* Asegurar que no cambie el fondo */
+  }
+
 
   .error {
-    color: red;
+    color: #ff4d4d; /* Rojo más visible */
+    background-color: #4d0000; /* Fondo oscuro para el error */
+    padding: 0.5rem;
+    border-radius: 4px;
     text-align: center;
+    margin-bottom: 1rem; /* Espacio debajo del error */
   }
 </style>

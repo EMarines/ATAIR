@@ -1,5 +1,6 @@
 <script lang="ts">
   import {db, auth} from '$lib/firebase'; // Import the default export
+  import { doc, deleteDoc } from 'firebase/firestore';
   import { goto } from '$app/navigation';
   import type { Contact, Binnacle, Property } from '$lib/types';
   import { contactsStore, propertiesStore, systStatus, binnaclesStore, property as propertyStore } from '$lib/stores/dataStore';
@@ -94,15 +95,12 @@
 
     if (confirm("¿Deseas eliminar definitivamente al contacto?")) {
         try {
-            
-            // Eliminar de Firebase
-            const result = await db.delete("contacts", contactId);
-            if (result?.success) {
-                goto("/contacts");
-            } else {
-                console.error("Error al eliminar el contacto:", result?.error);
-                alert("Error al eliminar el contacto: " + (result?.error || "Error desconocido"));
-            }
+            // Crear referencia al documento
+            const contactRef = doc(db, "contacts", contactId);
+            // Eliminar de Firebase usando deleteDoc
+            await deleteDoc(contactRef);
+            // Si deleteDoc no lanza error, la eliminación fue exitosa
+            goto("/contacts");
         } catch (error) {
             console.error("Error al eliminar el contacto:", error);
             alert("Error al eliminar el contacto: " + error);

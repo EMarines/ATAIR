@@ -102,14 +102,11 @@
 <style>
   .card__container {
     position: relative;
-    width: 300px; /* Ancho fijo no negociable */
-    height: 250px; /* Altura fija no negociable */
-    margin: 0 auto;
+    width: 100%; /* Cambio de ancho fijo a 100% para adaptarse al contenedor */
+    height: 250px;
+    margin: 0;
     z-index: 10;
     box-sizing: border-box;
-    flex: 0 0 300px; /* Fuerza dimensiones exactas */
-    min-width: 300px; /* Ancho mínimo no negociable */
-    max-width: 300px; /* Ancho máximo no negociable */
     overflow: hidden; /* Crucial: fuerza que nada salga del contenedor */
   }
 
@@ -267,11 +264,7 @@
   /* Sistema responsive con múltiples breakpoints */
   @media (max-width: 768px) {
     .card__container {
-      width: 280px;
       height: 230px;
-      max-width: 280px;
-      min-width: 280px;
-      flex: 0 0 280px;
     }
     
     .img__cont {
@@ -282,11 +275,7 @@
   @media (max-width: 500px) {
     .card__container {
       width: 100%;
-      max-width: 320px;
-      min-width: auto; /* Permitir ajuste automático dentro del max-width */
-      flex: 0 0 auto;
       height: 220px;
-      margin: 0 auto 15px;
     }
     
     .feature-span {

@@ -54,8 +54,7 @@
 
     <div class="card__container">
       {#each properties as prop}
-        <div 
-          class="card__prop"
+        <div class="card__prop"
           on:click={() => seleProperty(prop)} 
           on:keydown={() => seleProperty(prop)}
           role="button"
@@ -101,9 +100,9 @@
 .card__container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
   width: 100%;
-  padding: 1rem;
+  gap: 1rem;
+  box-sizing: border-box;
 }
 
 .card__prop {
@@ -112,6 +111,8 @@
   /* border-radius: 5px; */
   transition: background-color 0.2s ease;
   cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .card__prop :global(> *) {
@@ -120,6 +121,7 @@
   width: 100%;
   height: 100%;
   transition: background-color 0.2s ease;
+  box-sizing: border-box;
 }
 
 .card__prop:hover :global(> *) {

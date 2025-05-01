@@ -154,12 +154,14 @@
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    overflow-x: hidden; /* Prevenir scroll horizontal */
   }
 
   main {
     flex: 1;
     position: relative;
     z-index: 2;
+    width: 100%; /* Asegurar que main ocupe exactamente el ancho disponible */
   }
   
   /* Removed the footer-container div as it's not needed */
