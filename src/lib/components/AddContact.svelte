@@ -692,7 +692,7 @@
         flex-wrap: wrap;
         justify-content: space-between;
     }
-    
+  
     :global(.inp__lat > div) {
         flex: 1;
         min-width: 150px;
@@ -726,20 +726,19 @@
     }
   
     .search-results {
-        position: absolute;
-        top: 100%;
-        left: 0;
         width: 100%;
         background: #1f1f1f;
         border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 4px;
+        border-radius: 0 0 4px 4px; /* Opcional: ajustar si se ve raro sin el input arriba */
         box-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 8px 16px rgba(0,0,0,0.5);
         z-index: 100;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
         padding: 1rem;
-        margin-bottom: 2rem;
+        max-height: 850px; /* Limita la altura máxima en pantallas grandes */
+        overflow-y: auto; /* Añade scroll vertical si es necesario */
+        margin-top: 5px; /* Opcional: añade un pequeño espacio tras la barra de búsqueda */
     }
   
     .no-results {
@@ -784,7 +783,7 @@
         width: 33.33%;
         vertical-align: top;
     }
-    
+  
     :global(.property-table .in__sel) {
         width: 100%;
         font-size: 0.8rem;
@@ -801,16 +800,22 @@
             display: block;
             width: 100%;
         }
-        
+  
         .property-table td {
             display: block;
             width: 100%;
             margin-bottom: 10px;
         }
-        
+  
         .inp__lat {
             flex-direction: column;
             gap: 15px;
         }
+  
+        /* Ajuste para pantallas angostas */
+        .search-results {
+            max-height: 80vh; /* Limitar altura en pantallas pequeñas usando viewport height */
+        }
     }
   </style>
+  
