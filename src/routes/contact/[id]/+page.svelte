@@ -166,7 +166,7 @@
           if (selectedProperty) {
             // Si la propiedad tiene public_url, usarla directamente
             if (selectedProperty && selectedProperty.public_url) {
-              commInpuyBinnacle = selectedProperty.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
+              commInpuyBinnacle = selectedProperty.public_url;
               foundProperty = true;
             } 
             // // Si no tiene public_url pero tiene public_id, generar la URL
@@ -304,7 +304,7 @@
     // Cargar la URL pública en el textarea
     // Prioridad 1: Usar la URL del contacto si existe
     if (property && property.public_url && $systStatus === "addContact") {
-      commInpuyBinnacle = property.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
+      commInpuyBinnacle = property.public_url;
       return;
     }
     
@@ -314,7 +314,7 @@
         
         // Si la propiedad tiene public_url, usarla directamente
         if (selectedProperty && selectedProperty.public_url && $systStatus === "addContact") {
-          commInpuyBinnacle = selectedProperty.public_url.replace("easybroker.com/mx/listings", "matchhome.net/property");
+          commInpuyBinnacle = selectedProperty.public_url;
         } 
         // Si no tiene public_url pero tiene public_id, generar la URL
         // else if (selectedProperty.public_id) {

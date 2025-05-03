@@ -1,75 +1,101 @@
 <script lang="ts">
   // Importaciones
-  import { loginWithEmailPassword, initializeFirebase } from '$lib/firebase/firebase';
+  import { loginWithEmailPassword, registerWithEmailPassword, initializeFirebase } from '$lib/firebase/firebase'; // <-- Importa la función de registro
   import { goto } from '$app/navigation';
   import { writable, get } from 'svelte/store';
   import { onMount } from 'svelte';
-  
+
   // Creamos stores locales para el formulario
   const email = writable('');
   const password = writable('');
   const isLoading = writable(false);
   const error = writable(null);
   const isRegisterMode = writable(false);
-  
+
+  // Función para resetear los campos del formulario
+  function resetForm() {
+    email.set('');
+    password.set('');
+  }
+
   onMount(async () => {
     // Inicializamos Firebase explícitamente
     try {
       const { app, auth } = await initializeFirebase();
       console.log("Firebase inicializado correctamente");
+      // Asegurarse de que los campos estén vacíos al cargar la página
+      resetForm();
     } catch (e) {
       console.error("Error al inicializar Firebase:", e.message);
     }
   });
-  
-  // Función simplificada de autenticación que usa nuestro nuevo helper
-  async function doAuthentication(emailValue, passwordValue) {
+
+  // Función para manejar tanto el login como el registro
+  async function handleAuth(emailValue, passwordValue) {
     // Verificación básica
     if (!emailValue || !passwordValue) {
       $error = { message: "Por favor ingresa email y contraseña" };
       return;
     }
-    
+
     try {
       $isLoading = true;
       $error = null;
-      
-      // Usar nuestra función de login
-      const result = await loginWithEmailPassword(emailValue, passwordValue);
-      
-      if (result.success) {
-        console.log("Autenticación exitosa");
-        
-        // Redirigir al usuario
-        setTimeout(async () => {
-          try {
-            await goto('/');
-          } catch (navErr) {
-            console.error("Error en redirección:", navErr);
-            window.location.href = '/';
-          }
-        }, 500);
+
+      let result;
+      if ($isRegisterMode) {
+        // --- Lógica de Registro ---
+        result = await registerWithEmailPassword(emailValue, passwordValue);
+        if (result.success) {
+          console.log("Registro exitoso");
+          // Podrías redirigir o mostrar un mensaje de éxito antes de redirigir
+          // Por ahora, redirigimos igual que en el login
+          setTimeout(async () => {
+            try { await goto('/'); } catch (navErr) { console.error("Error en redirección:", navErr); window.location.href = '/'; }
+          }, 500);
+        } else {
+          // Asegúrate de que getErrorMessage esté definida y maneje los códigos de error
+          $error = { message: getErrorMessage(result.code) || `Error de registro: ${result.message}` };
+          // Limpiar los campos después de un intento fallido
+          resetForm();
+        }
       } else {
-        // Manejar errores
-        $error = { 
-          message: getErrorMessage(result.code) || `Error: ${result.message}` 
-        };
+        // --- Lógica de Login ---
+        result = await loginWithEmailPassword(emailValue, passwordValue);
+        if (result.success) {
+          console.log("Autenticación exitosa");
+          // Redirigir al usuario
+          setTimeout(async () => {
+            try { await goto('/'); } catch (navErr) { console.error("Error en redirección:", navErr); window.location.href = '/'; }
+          }, 500);
+        } else {
+          // Asegúrate de que getErrorMessage esté definida y maneje los códigos de error
+          $error = { message: getErrorMessage(result.code) || `Error de login: ${result.message}` };
+          // Limpiar los campos después de un intento fallido
+          resetForm();
+        }
       }
+
     } catch (err) {
       console.error("Error general:", err.message);
-      $error = { message: `Error general: ${err.message}` };
+      // Asegúrate de que el mensaje de error sea útil
+      $error = { message: `Error inesperado: ${err.message}` };
+      // Limpiar los campos después de un error general
+      resetForm();
     } finally {
       $isLoading = false;
     }
   }
-  
+
   // Función para cambiar entre login y registro
   function toggleMode() {
     $isRegisterMode = !$isRegisterMode;
-    $error = null;
+    $error = null; // Limpia errores al cambiar de modo
+    // Limpiar los campos al cambiar de modo
+    resetForm();
   }
-  
-  // Función auxiliar para traducir mensajes de error
+
+  // Función auxiliar para traducir mensajes de error de Firebase
   function getErrorMessage(code: string): string {
     const errorMessages: {[key: string]: string} = {
       'auth/email-already-in-use': 'Este email ya está registrado',
@@ -80,26 +106,27 @@
       'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
       'auth/network-request-failed': 'Error de red. Verifica tu conexión',
       'auth/unauthorized-domain': 'Este dominio no está autorizado para operaciones de Firebase'
+      // Puedes añadir más códigos de error aquí si es necesario
     };
-    
+
     return errorMessages[code] || `Error desconocido (${code})`;
   }
 </script>
 
 <div class="container">
-  <div class="authContainer">  
-    <form on:submit|preventDefault={() => doAuthentication($email, $password)}>
+  <div class="authContainer">
+    <form on:submit|preventDefault={() => handleAuth($email, $password)}> 
       <h1>{$isRegisterMode ? "Registrarse" : "Login"}</h1>
-      
+
       {#if $error}
-        <p class="error">{$error.message}</p>        
+        <p class="error">{$error.message}</p>
       {/if}
 
       <label>
         <p class={$email ? 'above' : 'center'}>Email</p>
-        <input 
-          bind:value={$email} 
-          type="email" 
+        <input
+          bind:value={$email}
+          type="email"
           placeholder="email"
           disabled={$isLoading}
           autocomplete="email"
@@ -109,33 +136,32 @@
       <label>
         <p class={$password ? 'above' : 'center'}>Password</p>
         <input
-          bind:value={$password} 
-          type="password" 
+          bind:value={$password}
+          type="password"
           placeholder="Password"
           disabled={$isLoading}
-          autocomplete="current-password"
+          autocomplete={$isRegisterMode ? "new-password" : "current-password"} 
         >
       </label>
 
-      <!-- Botón de login -->
-      <button 
-        type="submit" 
+      <!-- Botón de envío -->
+      <button
+        type="submit"
         disabled={$isLoading}
       >
-        {$isLoading ? 'Procesando...' : 'Iniciar Sesión'}
-      </button>
+        {$isLoading ? 'Procesando...' : ($isRegisterMode ? 'Registrarse' : 'Iniciar Sesión')} 
     </form>
 
     <div class="options">
       {#if $isRegisterMode}
         <div>
           <p>¿Tienes Cuenta?</p>
-          <button on:click={toggleMode}>Login</button>
+          <button on:click={toggleMode} disabled={$isLoading}>Login</button>
         </div>
       {:else}
         <div>
           <p>¿No Tienes Cuenta?</p>
-          <button on:click={toggleMode}>Registrate</button>
+          <button on:click={toggleMode} disabled={$isLoading}>Registrate</button>
         </div>
       {/if}
     </div>
@@ -179,14 +205,14 @@
     position: absolute;
     top: -0.7em; /* Ajusta para que quede encima del borde */
     left: 0.5rem; /* Un poco de padding izquierdo */
-    background-color: #1a1a1a; /* Fondo para que tape el borde del input (ajusta a tu color de fondo) */
+    background-color: #222; /* Fondo para que tape el borde del input (ajusta a tu color de fondo) */
     padding: 0 0.3rem;
     font-size: 0.8em;
     color: #aaa; /* Color del texto del label */
     transition: all 0.2s ease; /* Transición suave */
     pointer-events: none; /* Para que no interfiera con el click al input */
   }
-  
+
   /* Style <p> inside focused <label> */
   label:focus-within p {
      color: lightblue; /* Cambia color al estar activo */
@@ -200,10 +226,10 @@
     color: white;
     font-size: 1em; /* Tamaño de fuente base */
   }
-  
+
   /* Ocultar placeholder nativo si usamos el label flotante */
   input::placeholder {
-    color: transparent; 
+    color: transparent;
   }
 
 
@@ -217,7 +243,7 @@
     font-size: 1em;
     transition: background-color 0.2s ease; /* Transición al hacer hover */
   }
-  
+
   button:hover:not(:disabled) {
      background-color: darkblue; /* Color al pasar el ratón */
   }
@@ -232,7 +258,7 @@
     margin-top: 1.5rem; /* Más espacio arriba */
     text-align: center;
   }
-  
+
   .options div {
       display: flex; /* Para alinear texto y botón */
       justify-content: center;
@@ -244,7 +270,7 @@
       margin: 0; /* Quitar margen por defecto del párrafo */
       color: #ccc; /* Color más suave para el texto */
   }
-  
+
   .options button {
       background: none; /* Sin fondo */
       border: none;
@@ -254,7 +280,7 @@
       font-size: 0.9em; /* Un poco más pequeño */
       text-decoration: underline; /* Subrayado para parecer enlace */
   }
-  
+
   .options button:hover:not(:disabled) {
       color: cyan; /* Cambio de color al pasar el ratón */
       background: none; /* Asegurar que no cambie el fondo */
