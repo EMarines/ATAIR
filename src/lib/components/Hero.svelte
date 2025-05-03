@@ -1,17 +1,20 @@
 <script lang="ts">
     import "../../styles/main.css"
     import logo from '../images/logo.png'
+    import { empresa } from '$lib/types';
+
+
 </script>
 
 <div class="hero">
     <div class="container">
         <div class="header cabezal">
             <div class="logo">
-                <img src={logo} alt="Match Home">
+                <img src={logo} alt="{empresa.companyName}">
             </div>
             <div class="marca">
-                <h1 class="title">Match Home</h1>
-                <h5 class="slogan">¡Tu Patrimnio En Buenas Manos!</h5>
+                <h1 class="title">{empresa.companyName}</h1>
+                <h5 class="slogan">{empresa.slogan}</h5>
             </div>
 
         </div>

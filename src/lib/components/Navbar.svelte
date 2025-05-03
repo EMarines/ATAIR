@@ -2,13 +2,14 @@
     import "../../styles/main.css"
     import { useAuth } from '../hooks/useAuth'
     import { useLogout } from '../hooks/useLogout'
-    import { page } from '$app/stores';
     import { onMount } from 'svelte';
     import Moon from "./icons/moon.svelte";
     import Sun from "./icons/sun.svelte";
-    import { writable } from 'svelte/store';
-    import { browser } from '$app/environment';
     import { useTestDb } from '$lib/firebase/firebase';
+    import { empresa } from '$lib/types';
+    import { writable } from 'svelte/store'
+    import { browser } from '$app/environment';
+    import { page } from '$app/stores';
 
     let currentTheme = "";
     let nav__links = "wide";
@@ -58,14 +59,14 @@
         }
     }
 
-    // $: dbLabel = $useTestDb ? 'Curso Svelte' : 'Match Home';
     $: dbIcon = $useTestDb ? '🔄' : '🔥';
+
 </script>
 
 
 <nav>
   <div class="container">
-      <h1 class="title">MatchHome</h1>  
+      <h1 class="title">{empresa.companyName}</h1>  
       <button 
         class="nav__target" 
         on:click={toggleMenu}

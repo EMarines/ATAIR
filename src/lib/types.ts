@@ -255,17 +255,6 @@ export interface Todo {
   user?: string;
 }
 
-// interface TodoFormState {
-//   id?: string;
-//   task?: string;
-//   endTask?: string; // YYYY-MM-DD string for input binding
-//   timeTask?: string; // HH:MM string for input binding (puede ser '')
-//   notes?: string;
-//   isCompleted?: boolean;
-//   createdAt?: number;
-//   type?: string;
-//   user?: string;
-// }
 
 export type ContactOption = "Posobles_Interesados" | "Por_Enviar" | "Ya_Se_Envió";
 
@@ -293,95 +282,58 @@ export interface AddContactEvents {
   cancel: void;
 }
 
-// {
-//   "public_id": "EB-XXX123",
-//   "title": "Beautiful property in Condesa",
-//   "images": [
-//     {
-//       "url": "https://www.easybroker.com/assets/product/logo-be4da843987ccd1c05e26f8703f1787847471b36d08bdb1ec8a91ce4007b0e98.svg",
-//       "title": "Fitted kitchen with granite countertops"
-//     }
-//   ],
-//   "description": "This property is very well-lit in a lovely neighborhood overlooking a park.",
-//   "bedrooms": 0,
-//   "bathrooms": 0,
-//   "half_bathrooms": 0,
-//   "parking_spaces": 0,
-//   "lot_size": 0,
-//   "construction_size": 0,
-//   "lot_length": 0,
-//   "lot_width": 0,
-//   "covered_space": 0,
-//   "floors": 0,
-//   "floor": 0,
-//   "age": 2020,
-//   "internal_id": "custom-id-001",
-//   "expenses": "$100 USD",
-//   "property_type": "Apartment",
-//   "agent": {
-//     "id": 1234,
-//     "name": "John Smith",
-//     "full_name": "John Smith Doe",
-//     "mobile_phone": "5555550000",
-//     "profile_image_url": "https://www.easybroker.com/assets/product/logo-be4da843987ccd1c05e26f8703f1787847471b36d08bdb1ec8a91ce4007b0e98.svg",
-//     "email": "john@smith.com"
-//   },
-//   "created_at": "2025-04-03T18:34:02.497Z",
-//   "updated_at": "2025-04-03T18:34:02.497Z",
-//   "published_at": "2025-04-03T18:34:02.497Z",
-//   "features": [
-//     {
-//       "name": "Pets allowed",
-//       "category": "General"
-//     }
-//   ],
-//   "public_url": "https://www.easybroker.com/mx/inmueble/john-smith-amazing-house",
-//   "collaboration_notes": "25% per referral",
-//   "property_files": [
-//     "https://www.easybroker.com/assets/product/logo-be4da843987ccd1c05e26f8703f1787847471b36d08bdb1ec8a91ce4007b0e98.svg"
-//   ],
-//   "videos": [
-//     "https://www.youtube.com/watch?v=zVRu7AktR48"
-//   ],
-//   "virtual_tour": "https://my.matterport.com/show/?m=yHsh2roFXnp",
-//   "exclusive": false,
-//   "shared_commission_percentage": 50,
-//   "private_description": "Selling this property is our top priority and we are willing to offer a discount.",
-//   "location": {
-//     "name": "Condesa, Cuauhtemoc, Ciudad de México",
-//     "latitude": 20.676145,
-//     "longitude": -103.368962,
-//     "street": "Av. México",
-//     "postal_code": "06700",
-//     "show_exact_location": true,
-//     "exterior_number": "21A",
-//     "interior_number": "304"
-//   },
-//   "tags": [
-//     "premium",
-//     "exclusive"
-//   ],
-//   "show_prices": true,
-//   "share_commission": true,
-//   "operations": [
-//     {
-//       "type": "sale",
-//       "amount": 500000,
-//       "formated_amount": "US$ 500,000",
-//       "currency": "USD",
-//       "unit": "total",
-//       "commission": {
-//         "type": "amount",
-//         "value": 10000,
-//         "currency": "USD"
-//       }
-//     },
-//     {
-//       "type": "temporary_rental",
-//       "amount": 500,
-//       "formated_amount": "US$ 500",
-//       "currency": "USD",
-//       "period": "monthly"
-//     }
-//   ]
-// }
+export interface ConfiguracionEmpresa {
+  companyName: string;
+  logoUrl: string;
+  faviconUrl: string;
+  slogan: string;
+  agentName: string;
+  companyUrl: string;
+  phoneNumber: string;
+  whatsapp: string;
+  email: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+  socialMedia: {
+    facebook: string;
+    instagram: string;
+    linkedin: string;
+  };
+}
+
+// Exportar directamente el objeto de configuración
+export const empresa: ConfiguracionEmpresa = {
+  "companyName": "Match Home",
+  "logoUrl": "/logos/matchhome-logo.png",
+  "faviconUrl": "/favicon-matchhome.png",
+  "slogan": "¡Tu Patrimonio en Buenas Manos!",
+  "agentName": "Enrique Marines",
+  "companyUrl": "https://www.matchhome.net/",
+  "phoneNumber": "(614) 540 4003",
+  "whatsapp": "(614) 540 4003",
+  "email": "matchhome@hotmail.com",
+  "address": {
+    "street": "Ave. Francisco Villa # 5700",
+    "city": "Chihuahua",
+    "state": "Chih.",
+    "zipCode": "61203",
+    "country": "México"
+  },
+  "socialMedia": {
+    "facebook": "https://www.facebook.com/matchhomemx",
+    "instagram": "https://www.instagram.com/matchhomemx",
+    "linkedin": "https://www.linkedin.com/company/match-home"
+  }
+};
+
+// También puedes exportar partes individuales si lo necesitas
+// export const contacto = {
+//   email: empresa.email,
+//   telefono: empresa.phoneNumber,
+//   whatsapp: empresa.whatsapp
+// };

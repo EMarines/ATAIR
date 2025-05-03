@@ -1,4 +1,5 @@
-<script>
+<script lang='ts'>
+    import { empresa } from '$lib/types'
     const year = new Date().getFullYear();
 </script>
 
@@ -8,10 +9,10 @@
             <div class="footer__section">
                 <h3>Contacto</h3>
                 <p>Ave. Francisco Villa # 5700</p>
-                <p>Email: matchhome@hotmail.com</p>
-                <p>Tel: (614) 540-4003</p>
+                <p>{empresa.email}</p>
+                <p>Tel: {empresa.phoneNumber}</p>
             </div>
-            <p class="slogan">Tu patrimonio en buenas manos</p>
+            <p class="slogan">{empresa.slogan}</p>
             <div class="footer__section">
                 <h3>Sistema ATAIR</h3>
                 <p>Sistema de gestión inmobiliaria</p>

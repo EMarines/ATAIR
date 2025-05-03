@@ -7,9 +7,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { AddToSchedule, CardBinnacle, CardProperty, Search } from '$components';
   import AddContact from '$lib/components/AddContact.svelte';
-
   import { formatDate, toComaSep, toTele, infoToBinnacle, findPropertiesForContact, sendWhatsApp, sortBinnacle } from '$lib/functions';
-
+  import { empresa } from '$lib/types'
 
   export let data;
 
@@ -202,7 +201,7 @@
           binnacle = {"date": Date.now(), "comment": (property.public_id), "to": contact.id, "action": "Propiedad enviada: "}
           infoToBinnacle(binnacle)
           $systStatus = "msgGratitude";
-          commInpuyBinnacle = "Gracias por contactarnos. Enrique Marines, asesor de ventas en Match Home, tel. 614 540 4003, email matchhome@hotmail.com ✔ Visita matchhome.net ✔ ¡Seguro encuentras algo de interés!";
+          commInpuyBinnacle = `Gracias por contactarnos. Enrique Marines, asesor de ventas en ${empresa.companyName}}, tel. ${empresa.phoneNumber}}, email ${empresa.email}.} ✔ Visita matchhome.net ✔ ¡Seguro encuentras algo de interés!`;
       // Envia mensaje de agradecimiento después de enviar la propiedad en alta de contacto
       } else if($systStatus === "msgGratitude") {
         // Envía en mensaje de agradecimiento
@@ -915,26 +914,5 @@
       }
          
     }
-/*     
-    .copy-button {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #6b21a8;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-  
-    .copy-button:hover {
-      background: #8b5cf6;
-      transform: scale(1.05);
-    } */
+
 </style>
