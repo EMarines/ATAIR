@@ -6,6 +6,7 @@
     import { typeContacts, modeContact, typeProperties, modePays, oneToFive, oneToFour, oneToThree, contStage, range } from '$lib/parameters';
     import type { Property, Contact, AddContactEvents } from '$lib/types';
     import { ranPrice } from '$lib/functions/rangeValue';
+    import { convertOperationEbFb } from '$lib/functions/converterEb-Fb';
     import { onMount, onDestroy } from 'svelte';
     import { get } from 'svelte/store';
     // Importar las funciones necesarias para sincronizar con Google
@@ -50,7 +51,7 @@
     let contact: Contact = existingContact ? { ...existingContact } : {
         budget: 0,
         comContact: '',
-        contactStage: 'Etapa1',
+        contactStage: 'Etapa 1',
         createdAt: Date.now(),
         email: '',
         halfBathroom: 0,
@@ -146,13 +147,13 @@
                 lastname: contact.lastname || '',
                 email: contact.email || '',
                 telephon: contact.telephon || '',
-                selecMC: contact.selecMC || '',
+                selecMC: contact.selecMC || 'Lona en Propiedad',
                 comContact: contact.comContact || '',
-                contactStage: contact.contactStage || 'Etapa1',
+                contactStage: contact.contactStage || 'Etapa 1',
                 isActive: contact.isActive !== undefined ? contact.isActive : true,
                 budget: typeof contact.budget === 'string' ? 
-                    (contact.budget === '' ? 0 : Number(contact.budget)) : 
-                    (contact.budget || 0),
+                    (contact.budget === '' ? '' : Number(contact.budget)) : 
+                    (contact.budget || ''),
                 selecTP: contact.selecTP || '',
                 rangeProp: contact.rangeProp || '',
                 numBaths: contact.numBaths || 0,
@@ -162,14 +163,16 @@
                 locaProperty: Array.isArray(contact.locaProperty) ? contact.locaProperty : [],
                 tagsProperty: Array.isArray(contact.tagsProperty) ? contact.tagsProperty : [],
                 modePay: contact.modePay || '',
-                typeContact: contact.typeContact || '',
+                typeContact: convertOperationEbFb($propertyStore.selecTO) || '',
                 // Propiedades opcionales - usar cadenas vacías para campos de texto
                 color: contact.color || '',
                 contactType: contact.contactType || '',
                 contMode: contact.contMode || '',
                 notes: contact.notes || '',
                 propCont: contact.propCont || '',
-                selecTO: contact.selecTO || '',
+                // selecTO: contact.selecTO || '',
+                selecTO: convertOperationEbFb($propertyStore.selecTO) || '',
+
                 sendedProperties: Array.isArray(contact.sendedProperties) ? contact.sendedProperties : [],
                 title: contact.title || '',
                 typeOperation: contact.typeOperation || '',
@@ -462,6 +465,7 @@
                                             contact.rangeProp = property.price 
                                                 ? ranPrice(property.price)
                                                 : '';
+                                            // contact.selecTO = convertOperationEbFb(property.selecTO) || '';
                                             
                                             // Guardar la propiedad seleccionada en el store
                                             propertyStore.set(property);

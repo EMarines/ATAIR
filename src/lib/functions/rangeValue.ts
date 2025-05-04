@@ -3,24 +3,24 @@ export let upRange: number = 0;
 let rng: string = "";
 
 export function setRange(rng: string) {
-    if(rng === "prm"){
+    if(rng === "PRM"){
         lowRange = 0; upRange = 1000000                 // PRM
     }
-    else if (rng === "sgn") {
+    else if (rng === "SGN") {
         lowRange = 1000001; upRange=2500000           // SGN
     }
     
-    else if (rng === "trc") {
+    else if (rng === "TRC") {
         lowRange = 2500001; upRange=5000000           // TRC
     }
-    else if (rng === "crt") {
+    else if (rng === "CRT") {
         lowRange = 5000001; upRange=8000000           // CRT
     }
-    else if (rng === "qnt") {                       // QNT
+    else if (rng === "QNT") {                       // QNT
         lowRange = 8000001; upRange=12000000
          
     }
-        else if (rng === "sxt") {
+        else if (rng === "SXT") {
         lowRange = 12000000; upRange=1500000000       // SXT
     } 
 };
@@ -29,27 +29,27 @@ export function setRange(rng: string) {
     export function ranPrice(price: number) {
         if(price <= 1000000){
             lowRange = 0; upRange = 1000000   
-            return "prm"               // PRM
+            return "PRM"               // PRM
         }
         else if (price <= 2500000) {
             lowRange = 1000001; upRange = 2500000 
-            return "sgn"               // SGN
+            return "SGN"               // SGN
         }
         else if (price <= 5000000) {
             lowRange = 2500001; upRange = 5000000 
-            return "trc"               // TRC
+            return "TRC"               // TRC
         }
         else if (price <= 8000000) {
             lowRange = 5000001; upRange = 8000000 
-            return "crt"               // CRT
+            return "CRT"               // CRT
         }
         else if (price <= 12000000) {                       // QNT
             lowRange = 8000001; upRange = 12000000
-            return "qnt"
+            return "QNT"
         }
         else if (price > 12000000) {
             lowRange = 12000000; upRange = 1500000000       // SXT
-            return "sxt"
+            return "SXT"
         } 
         return rng
     }
@@ -60,22 +60,22 @@ export function setRange(rng: string) {
  */
     export function mosRange(price: number){
       if(price <= 1000000){
-        rng = "prm";                 // PRM
+        rng = "PRM";                 // PRM
       }
       else if (price <= 2500000) {
-        rng = "sgn"            // SGN
+        rng = "SGN"            // SGN
       }
       else if (price <= 5000000) {
-        rng = "trc"            // TRC
+        rng = "TRC"            // TRC
       }
       else if (price <= 8000000) {
-        rng = "crt"            // CRT
+        rng = "CRT"            // CRT
       }
       else if (price <= 12000000) {   // QNT
-        rng = "qnt"  
+        rng = "QNT"  
       }
         else if (price > 12000000) {
-        rng = "sxt"            // SXT
+        rng = "SCT"            // SXT
       } 
       if(rng === undefined){
         rng = ""
