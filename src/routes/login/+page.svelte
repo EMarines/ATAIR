@@ -47,7 +47,7 @@
         // --- Lógica de Registro ---
         result = await registerWithEmailPassword(emailValue, passwordValue);
         if (result.success) {
-          console.log("Registro exitoso");
+          console.log(result, "Registro exitoso");
           // Podrías redirigir o mostrar un mensaje de éxito antes de redirigir
           // Por ahora, redirigimos igual que en el login
           setTimeout(async () => {
@@ -63,7 +63,7 @@
         // --- Lógica de Login ---
         result = await loginWithEmailPassword(emailValue, passwordValue);
         if (result.success) {
-          console.log("Autenticación exitosa");
+          console.log(result, "Autenticación exitosa");
           // Redirigir al usuario
           setTimeout(async () => {
             try { await goto('/'); } catch (navErr) { console.error("Error en redirección:", navErr); window.location.href = '/'; }
@@ -90,8 +90,7 @@
   // Función para cambiar entre login y registro
   function toggleMode() {
     $isRegisterMode = !$isRegisterMode;
-    $error = null; // Limpia errores al cambiar de modo
-    // Limpiar los campos al cambiar de modo
+    $error = null; 
     resetForm();
   }
 

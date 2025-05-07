@@ -9,8 +9,6 @@
     import { convertOperationEbFb } from '$lib/functions/converterEb-Fb';
     import { onMount, onDestroy } from 'svelte';
     import { get } from 'svelte/store';
-    // Importar las funciones necesarias para sincronizar con Google
-    // import { syncContact, getAccessToken } from '$lib/services/googleService';
   
     const dispatch = createEventDispatcher<AddContactEvents>();
   
@@ -163,7 +161,7 @@
                 locaProperty: Array.isArray(contact.locaProperty) ? contact.locaProperty : [],
                 tagsProperty: Array.isArray(contact.tagsProperty) ? contact.tagsProperty : [],
                 modePay: contact.modePay || '',
-                typeContact: convertOperationEbFb($propertyStore.selecTO) || '',
+                typeContact: contact.typeContact || '',
                 // Propiedades opcionales - usar cadenas vacías para campos de texto
                 color: contact.color || '',
                 contactType: contact.contactType || '',
@@ -171,13 +169,15 @@
                 notes: contact.notes || '',
                 propCont: contact.propCont || '',
                 // selecTO: contact.selecTO || '',
-                selecTO: convertOperationEbFb($propertyStore.selecTO) || '',
+                // selecTO: convertOperationEbFb($propertyStore.selecTO) || '',
 
                 sendedProperties: Array.isArray(contact.sendedProperties) ? contact.sendedProperties : [],
                 title: contact.title || '',
                 typeOperation: contact.typeOperation || '',
                 typeProperty: contact.typeProperty || ''
             };
+            console.log(cleanContactData.typeContact)
+
             
             // Añadir propiedades opcionales de tipo number solo si tienen un valor
             if (contact.lastContact) {
@@ -283,6 +283,7 @@
             errorMessage = `Error: ${errorMsg}`;
         } finally {
             isSubmitting = false;
+            $systStatus = '';
             // contact.propCont = '';
             // contact.selecTP = '';
             // contact.rangeProp = '';
@@ -462,6 +463,7 @@
                                         onSelect={() => {
                                             contact.propCont = property.public_id;
                                             contact.selecTP = property.property_type || '';
+                                            contact.typeContact = convertOperationEbFb(property.selecTO) || '',
                                             contact.rangeProp = property.price 
                                                 ? ranPrice(property.price)
                                                 : '';

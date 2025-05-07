@@ -100,26 +100,26 @@
       }
 
       // Verificar que el contacto tenga un ID válido
-      if (!cont.id || typeof cont.id !== 'string' || cont.id.trim() === '') {
-        console.error('Error: ID de contacto faltante o inválido', cont);
+    if (!cont.id || typeof cont.id !== 'string' || cont.id.trim() === '') {
+      console.error('Error: ID de contacto faltante o inválido', cont);
+      
+      // Si el contacto tiene un nombre, podemos intentar encontrarlo por nombre en el store
+      if (cont.name) {
+        console.log('Intentando recuperar el contacto por nombre:', cont.name);
         
-        // Si el contacto tiene un nombre, podemos intentar encontrarlo por nombre en el store
-        if (cont.name) {
-          console.log('Intentando recuperar el contacto por nombre:', cont.name);
-          
-          // Buscar el contacto en el store por nombre y otros datos
-          const matchingContact = $contactsStore.find(c => 
-            c.id && c.id.trim() !== '' && 
-            c.name === cont.name && 
-            c.telephon === cont.telephon
-          );
-          
-          if (matchingContact && matchingContact.id) {
-            console.log('Contacto recuperado con ID:', matchingContact.id);
-            goto(`/contact/${matchingContact.id}`);
-            return;
-          }
+        // Buscar el contacto en el store por nombre y otros datos
+        const matchingContact = $contactsStore.find(c => 
+          c.id && c.id.trim() !== '' && 
+          c.name === cont.name && 
+          c.telephon === cont.telephon
+        );
+        
+        if (matchingContact && matchingContact.id) {
+          console.log('Contacto recuperado con ID:', matchingContact.id);
+          goto(`/contact/${matchingContact.id}`);
+          return;
         }
+      }
         
         // Si no se pudo recuperar, mostrar mensaje y no navegar
         alert('No se puede acceder a este contacto porque tiene un ID inválido. Por favor, cree un nuevo contacto.');

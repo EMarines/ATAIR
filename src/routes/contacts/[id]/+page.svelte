@@ -35,7 +35,7 @@
     function editContact() {
         console.log('Estado antes de editar:', systStatus);
         console.log('Contacto a editar:', contact);
-        systStatus = "editContact";
+        systStatus = "";
         console.log('Estado después de editar:', systStatus);
     }
 </script>
