@@ -1,6 +1,6 @@
 <script lang="ts">
     import "../../styles/main.css"
-    import logo from '../images/logo.png'
+    // import logo from '../images/logo.png'
     import { empresa } from '$lib/types';
 
 
@@ -10,7 +10,7 @@
     <div class="container">
         <div class="header cabezal">
             <div class="logo">
-                <img src={logo} alt="{empresa.companyName}">
+                <img src=/logo-slogan.png alt="{empresa.companyName}">
             </div>
             <div class="marca">
                 <h1 class="title">{empresa.companyName}</h1>
