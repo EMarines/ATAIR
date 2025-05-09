@@ -41,6 +41,8 @@
   $: binnacles = $binnaclesStore;
   $: property = $propertyStore;
 
+  console.log($propertyStore, "Propiedad")
+
   
   // Verificar que el contacto tenga un ID válido
   let contactData = data.contact as Contact;
@@ -663,7 +665,7 @@
 
       .rigth__title {
         display: flex;
-        width: 30%;
+        width: 35%;
         height: 60px;
         justify-content: space-between;
       }

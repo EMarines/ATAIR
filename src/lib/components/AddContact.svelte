@@ -127,7 +127,7 @@
     }
   
     async function handleSubmit() {
-        console.log($propertyStore, contact, "handleSubmit");
+        // console.log($propertyStore, contact, "handleSubmit");
         try {
             isSubmitting = true;
            
@@ -176,7 +176,7 @@
                 typeOperation: contact.typeOperation || '',
                 typeProperty: contact.typeProperty || ''
             };
-            console.log(cleanContactData.typeContact)
+            // console.log(cleanContactData.typeContact)
 
             
             // Añadir propiedades opcionales de tipo number solo si tienen un valor
@@ -192,7 +192,7 @@
             if (!cleanContactData.id || cleanContactData.id.trim() === '') {
                 // Generar un ID único si no existe
                 cleanContactData.id = generateUUID();
-                console.log('Generando nuevo ID para el contacto:', cleanContactData.id);
+                // console.log('Generando nuevo ID para el contacto:', cleanContactData.id);
             }
   
             // Validación final del ID
@@ -206,7 +206,7 @@
                 cleanContactData.createdAt = Date.now();
             }
   
-            console.log('Guardando contacto con ID:', cleanContactData.id);
+            // console.log('Guardando contacto con ID:', cleanContactData.id);
             
             // Guardar el contacto en Firebase
             let result;
@@ -247,18 +247,18 @@
                 // Actualizar el store con la nueva lista
                 contactsStore.set([...currentContacts]);
                 
-                console.log('Contacto añadido/actualizado manualmente en el store:', cleanContactData);
+                // console.log('Contacto añadido/actualizado manualmente en el store:', cleanContactData);
             }
   
             // Emitir evento de éxito
             dispatch('success', { contact: cleanContactData });
             
             // Registrar el contacto guardado para depuración
-            console.log('Contacto guardado exitosamente:', cleanContactData);
+            // console.log('Contacto guardado exitosamente:', cleanContactData);
             
             // Verificar nuevamente que el ID sea válido antes de redirigir
             if (cleanContactData.id && cleanContactData.id.trim() !== '') {
-                console.log('ID válido para redirección:', cleanContactData.id);
+                // console.log('ID válido para redirección:', cleanContactData.id);
                 
                 // Establecer el estado del sistema para activar la sección de comentarios en la página de detalles
                 $systStatus = "addContact";
@@ -283,7 +283,7 @@
             errorMessage = `Error: ${errorMsg}`;
         } finally {
             isSubmitting = false;
-            $systStatus = '';
+            // $systStatus = '';
             // contact.propCont = '';
             // contact.selecTP = '';
             // contact.rangeProp = '';
