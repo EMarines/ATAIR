@@ -61,22 +61,6 @@ try {
         appId: import.meta.env.VITE_FIREBASE_APP_ID
     };
 
-    // Log importante para verificación de dominios autorizados en Firebase
-    console.log('IMPORTANTE: Verifica que el dominio actual esté autorizado en Firebase Authentication');
-    console.log('Dominio actual:', typeof window !== 'undefined' ? window.location.hostname : 'No disponible (SSR)');
-    console.log('authDomain configurado:', firebaseConfig.authDomain);
-
-    // Verificar y mostrar el estado de las variables de entorno (sin mostrar valores reales)
-    console.log('Estado de variables Firebase:', {
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? 'Configurada' : 'Falta',
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ? 'Configurada' : 'Falta',
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ? 'Configurada' : 'Falta',
-        databaseURL: import.meta.env.VITE_FIREBASE_DATA_BASE_URL ? 'Configurada' : 'Falta',
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ? 'Configurada' : 'Falta',
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? 'Configurada' : 'Falta',
-        appId: import.meta.env.VITE_FIREBASE_APP_ID ? 'Configurada' : 'Falta'
-    });
-
     // Inicializar Firebase
     firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(firebaseApp);
@@ -84,14 +68,11 @@ try {
 
     // Configurar persistencia solo en el navegador
     if (browser) {
-        console.log('Configurando persistencia en el navegador');
         setPersistence(auth, browserLocalPersistence)
             .then(() => {
-                console.log("Persistencia configurada correctamente");
                 
                 // Configurar listener para renovación de token con manejo de errores mejorado
                 onIdTokenChanged(auth, async (user) => {
-                    console.log("Estado de autenticación cambiado:", user ? "Usuario autenticado" : "Usuario no autenticado");
                     if (user) {
                         try {
                             // Verificar si ya tenemos un token reciente antes de solicitar uno nuevo
@@ -104,7 +85,6 @@ try {
                                 sessionStorage.setItem('firebase-token', token);
                                 localStorage.setItem('user-logged-in', 'true');
                                 localStorage.setItem('last-token-refresh', now.toString());
-                                console.log('Token actualizado en Firebase.ts');
                             }
                         } catch (tokenError) {
                             console.error("Error al actualizar token:", tokenError);

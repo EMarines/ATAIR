@@ -105,14 +105,12 @@
 
   onMount(() => {
     if (browser) {
-      console.log("Diagnóstico de ambiente en producción");
       // Verificar variables críticas sin mostrar su valor real
       envDiagnostic = {
         apiKeyConfigured: !!import.meta.env.VITE_FIREBASE_API_KEY,
         authDomainConfigured: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
         projectIdConfigured: !!import.meta.env.VITE_FIREBASE_PROJECT_ID
       };
-      console.log("Estado de variables críticas:", envDiagnostic);
     }
   });
 </script>

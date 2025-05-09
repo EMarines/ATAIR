@@ -113,6 +113,7 @@ export const operTypes = [
     "Etapa 3",
     "Etapa 4",
     "Etapa 5",
+    "NA",
     "",
   ];
 

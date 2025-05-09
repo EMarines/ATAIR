@@ -58,11 +58,8 @@ class FirebaseEnvironmentService {
     
     private initializeFirebaseApps() {
         try {
-            console.log("Inicializando entornos Firebase...");
-            
             // Si ya se inicializó, no hacerlo de nuevo para evitar errores
             if (this.isInitialized) {
-                console.log("Firebase ya fue inicializado, omitiendo inicialización duplicada");
                 return;
             }
             
@@ -121,14 +118,12 @@ class FirebaseEnvironmentService {
             // Marcar como inicializado
             this.isInitialized = true;
             
-            console.log("Ambos entornos de Firebase inicializados correctamente");
         } catch (error) {
             console.error("Error al inicializar entornos de Firebase:", error);
         }
     }
     
     useProductionEnvironment() {
-        console.log("Cambiando a entorno Match Home (producción)");
         this.instancesStore.set({
             app: this.mainApp,
             auth: this.mainAuth,
@@ -137,7 +132,6 @@ class FirebaseEnvironmentService {
     }
     
     useTestEnvironment() {
-        console.log("Cambiando a entorno Curso Svelte (gratuito)");
         this.instancesStore.set({
             app: this.testApp,
             auth: this.testAuth,
@@ -214,7 +208,6 @@ export async function waitForFirestore(maxAttempts = 10, delay = 200): Promise<F
       return instances.db;
     }
     
-    console.log(`Esperando a Firestore... (intento ${attempts + 1}/${maxAttempts})`);
     await new Promise(resolve => setTimeout(resolve, delay));
     attempts++;
   }

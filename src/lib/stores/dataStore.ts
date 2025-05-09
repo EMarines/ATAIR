@@ -87,8 +87,6 @@ function createContactsStore() {
                         } as Contact;
                     });
                 
-                console.log(`Cargados ${validContacts.length} contactos válidos desde Firebase mediante loadContacts`);
-                
                 // Actualizar el store
                 set(validContacts);
                 return validContacts;
@@ -117,8 +115,6 @@ function createContactsStore() {
                 if (contactData.id && contactData.id.trim() !== '') {
                     // Si ya tiene un ID válido, usarlo
                     contactToAdd = { ...contactData };
-                    console.log('Añadiendo contacto a Firebase con ID existente:', contactToAdd.id);
-                    
                     // Usar el método addWithId para guardar el contacto con su ID específico
                     // Asegurarse de que el ID sea una cadena válida
                     const contactId = String(contactToAdd.id);
@@ -126,7 +122,6 @@ function createContactsStore() {
                 } else {
                     // Si no tiene ID, dejar que Firebase genere uno nuevo
                     contactToAdd = { ...contactData, id: '' };
-                    console.log('Añadiendo contacto a Firebase para generar nuevo ID:', contactToAdd);
                     
                     // Añadir el contacto a Firebase
                     result = await firebase.add('contacts', contactToAdd);
@@ -152,7 +147,6 @@ function createContactsStore() {
                         }
                     });
                     
-                    console.log('Contacto añadido exitosamente con ID:', result.id);
                     return { success: true, id: result.id };
                 }
                 
@@ -176,8 +170,6 @@ function createContactsStore() {
                 // Asegurarse de que el ID sea una cadena de texto válida
                 const contactId = String(contactToUpdate.id);
                 
-                console.log('Actualizando contacto en Firebase con ID:', contactId);
-                
                 try {
                     // Intentar actualizar en Firebase
                     const result = await firebase.update('contacts', contactId, contactToUpdate);
@@ -199,13 +191,11 @@ function createContactsStore() {
                             return updatedContacts;
                         });
                         
-                        console.log('Contacto actualizado exitosamente');
                         return { success: true };
                     }
                     
                     // Si el error es que el documento no existe, intentar crearlo
                     if (result.error && result.error.toString().includes('No document to update')) {
-                        console.log('El documento no existe, intentando crearlo...');
                         
                         try {
                             // Crear el documento con el ID específico usando add con el ID específico
@@ -229,7 +219,6 @@ function createContactsStore() {
                                     return updatedContacts;
                                 });
                                 
-                                console.log('Contacto creado exitosamente con ID específico');
                                 return { success: true };
                             }
                             
