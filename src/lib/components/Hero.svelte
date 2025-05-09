@@ -1,16 +1,18 @@
 <script lang="ts">
     import "../../styles/main.css"
-    import logo from '../images/logo.png'
     import { empresa } from '$lib/types';
-
-
+    
+    // Eliminar la importación de logo-slogan.png
+    // Solo necesitamos base para construir la ruta a static
+    import { base } from '$app/paths';
 </script>
 
 <div class="hero">
     <div class="container">
         <div class="header cabezal">
             <div class="logo">
-                <img src={logo} alt="{empresa.companyName}">
+                <!-- Solo usar la ruta con base que apunta a static -->
+                <img src="{base}/logo-slogan.png" alt="{empresa.companyName}">
             </div>
             <div class="marca">
                 <h1 class="title">{empresa.companyName}</h1>

@@ -12,7 +12,6 @@
   // import Footer from '$lib/components/Footer.svelte';
   // import { initSyncListeners } from '$lib/services/syncService';
 
-  // const { isAuthenticated, checkAuth } = useAuth();
   const unsubscribes: (() => void)[] = [];
 
   // Función para obtener la instancia de Firestore

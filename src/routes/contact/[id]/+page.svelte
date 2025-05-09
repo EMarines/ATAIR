@@ -41,7 +41,6 @@
   $: binnacles = $binnaclesStore;
   $: property = $propertyStore;
 
-  
   // Verificar que el contacto tenga un ID válido
   let contactData = data.contact as Contact;
   let contact: Contact;
@@ -110,8 +109,7 @@
         // Muestra las propiedades que le podrían intesar
         function filtProp() {
       // contacto = $contact
-      propToRender = findPropertiesForContact(contact) // <-- CORREGIDO AQUÍ
-      console.log(propToRender);
+      propToRender = findPropertiesForContact(contact)
       showProp = true;
       layOut = "sendProps"
     };
@@ -663,7 +661,7 @@
 
       .rigth__title {
         display: flex;
-        width: 30%;
+        width: 35%;
         height: 60px;
         justify-content: space-between;
       }
