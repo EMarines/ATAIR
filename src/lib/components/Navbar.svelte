@@ -7,9 +7,9 @@
     import Sun from "./icons/sun.svelte";
     import { useTestDb } from '$lib/firebase/firebase';
     import { empresa } from '$lib/types';
-    import { writable } from 'svelte/store'
-    import { browser } from '$app/environment';
-    import { page } from '$app/stores';
+    // import { writable } from 'svelte/store'
+    // import { browser } from '$app/environment';
+    // import { page } from '$app/stores';
 
     let currentTheme = "";
     let nav__links = "wide";
@@ -102,6 +102,7 @@
         <li role="menuitem"><a href="/agenda" class="nav__link" on:click={handleLinkClick}>Agenda</a></li>
         <li role="menuitem"><a href="/tramites" on:click={handleLinkClick}>Trámites</a></li>
         <li role="menuitem"><a href="/actions" on:click={handleLinkClick}>Acciones</a></li>
+        <li role="menuitem"><a href="/filtros" on:click={handleLinkClick}>Filtros</a></li>
         <li role="menuitem">
           <a 
             href="/" 

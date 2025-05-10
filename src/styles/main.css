@@ -103,6 +103,7 @@ h1.title {
   font-size: 2.5em;
   font-weight: 350;
   color: #6b21a8;
+  text-align: center;
 }
 h1 , h2{
   text-transform: capitalize;
@@ -113,17 +114,21 @@ h2.title {
   font-weight: 250;
   color: #6b21a8;
   margin: 0 auto;
+  text-align: center
 }
 
 h3.title {
   font-size: 1.5em;
   font-weight: 200;
   color: #6b21a8;
+  text-align: center;
+
 }
 h4.title {
   font-size: 1.3em;
   font-weight: 200;
   color: #6b21a8;
+  text-align: center;  
 }
 h1.name {
   font-size: 2.2em;

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { useUser } from '$lib/hooks/useUser'
-  import { contactsStore, propertiesStore } from '$lib/stores/dataStore'
+  // import { useUser } from '$lib/hooks/useUser'
+  // import { contactsStore, propertiesStore } from '$lib/stores/dataStore'
   import { goto } from '$app/navigation';
-  const { userStore, isAuthenticated } = useUser()
+  // const { userStore, isAuthenticated } = useUser()
   import { Hero, Footer } from '$components'
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
@@ -46,10 +46,10 @@
       description: 'Acciones del sistema'
     },
     {
-      id: 'profile',
+      id: 'filters',
       icon: 'fa-solid fa-user',
-      title: 'Perfil',
-      description: 'Ver perfil de usuario'
+      title: 'Filtro',
+      description: 'Propiedades-contactos'
     },
     {
       id: 'about',
@@ -82,8 +82,8 @@
       case 'actions':
         goto('/actions');
         break;
-      case 'profile':
-        goto('/profile');
+      case 'filters':
+        goto('/filtros');
         break;
       case 'about':
         goto('/about');
@@ -134,17 +134,6 @@
       {/each}
     </div>
   </div>
-<!-- </div> -->
-
-<!-- Temporary diagnostic info -->
-<!-- {#if browser}
-  <div style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 9999;">
-    <p><strong>Diagnóstico:</strong></p>
-    <p>API Key: {envDiagnostic.apiKeyConfigured ? '✓' : '✗'}</p>
-    <p>Auth Domain: {envDiagnostic.authDomainConfigured ? '✓' : '✗'}</p>
-    <p>Project ID: {envDiagnostic.projectIdConfigured ? '✓' : '✗'}</p>
-  </div>
-{/if} -->
 
 <style>
   .iconChoises {
@@ -160,9 +149,7 @@
 
   .title {
     text-align: center;
-    /* color: #6b21a8; */
     margin-bottom: 1.5rem;
-    /* font-family: 'Poppins', sans-serif; */
   }
 
   .actions-grid {

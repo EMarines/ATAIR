@@ -5,15 +5,17 @@ import { createEventDispatcher } from 'svelte';
 export let identificador: string; 
 export let name: string;	
 export let choices: string[] = [];  
-export let value: string = '';
+export let value: string = ''; // Esta es la prop que 'bind:value' en el padre usa
 
 const dispatch = createEventDispatcher();
 
 function handleChange(event: Event) {
     const target = event.target as HTMLSelectElement;
-    dispatch('change', target.value);
+    value = target.value; // ACTUALIZAR la prop 'value' del componente
+    dispatch('change', value); // Despachar el evento con el nuevo valor
+                               // Svelte usa este evento para actualizar la variable en bind:value del padre
 }
-	
+    
 </script>
 <div class="cont">
 
@@ -24,12 +26,16 @@ function handleChange(event: Event) {
     <select 
         class="in__sel" 
         id={identificador} 
-        value={value} 
-        on:change={handleChange}
+        value={value}
+        on:change={handleChange} 
     >
-      <option disabled selected value="">{name}</option>
+  
+      <option value="">{name}</option> 
+      
       {#each choices as choice}
-        <option value={choice}>{choice}</option>
+        {#if choice !== ""}
+          <option value={choice}>{choice}</option>
+        {/if}
       {/each}
     </select>	
 

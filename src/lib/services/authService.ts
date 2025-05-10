@@ -30,7 +30,7 @@ class AuthService {
                         if (this.internalAuthInstance.currentUser) {
                             this.verifyToken().then(isActive => {
                                 if (isActive && !this.tokenRefreshTimer) {
-                                    this.scheduleTokenRefresh(30 * 60 * 1000);
+                                    this.scheduleTokenRefresh(30 * 60  * 1000);
                                 }
                             });
                         }

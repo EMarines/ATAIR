@@ -106,10 +106,12 @@
     }
   }
 
-        // Muestra las propiedades que le podrían intesar
-        function filtProp() {
+    // Muestra las propiedades que le podrían intesar
+    function filtProp() {
       // contacto = $contact
+      console.log("Estas en filtProp")
       propToRender = findPropertiesForContact(contact)
+      console.log(propToRender, "Propiedades");
       showProp = true;
       layOut = "sendProps"
     };
@@ -200,58 +202,57 @@
           infoToBinnacle(binnacle)
           $systStatus = "msgGratitude";
           commInpuyBinnacle = `Gracias por contactarnos. Enrique Marines, asesor de ventas en ${empresa.companyName}}, tel. ${empresa.phoneNumber}}, email ${empresa.email}.} ✔ Visita matchhome.net ✔ ¡Seguro encuentras algo de interés!`;
-      // Envia mensaje de agradecimiento después de enviar la propiedad en alta de contacto
-      } else if($systStatus === "msgGratitude") {
-        // Envía en mensaje de agradecimiento
-           let binnacle = {"date": Date.now(), "comment": property.public_id, "to": contact.telephon, "action": "Propiedad enviada: "}
-          infoToBinnacle(binnacle)
-          msg = commInpuyBinnacle;
-          sendWhatsApp(tel, msg)
-          $systStatus = "";
-      // Envía por WA lo que está en TextArea y guarda la bitácora
-      } else if($systStatus === "sendComm"){
-          msg = commInpuyBinnacle;
-          sendWhatsApp(tel, msg)
-          $systStatus = "sendWA"
-          let binnacle: Binnacle = {"date": Date.now(), "comment": commInpuyBinnacle, "to": contact.id, "action": "WhatsApp enviado: "}
-          infoToBinnacle(binnacle)
-      // Envía por WA las propiedades seleccionadas
-      } else if($systStatus === "sendProps"){
-          faltanProp = propCheck.length - (sig + 1)
-          let msg = propCheck[sig] && propCheck[sig].public_url ? 
-            propCheck[sig].public_url : 
-            "No hay URL pública disponible para esta propiedad";
-          sendWhatsApp(tel, msg)
-          let binnacle = {
-            "date": Date.now(), 
-            "comment": propCheck[sig] && propCheck[sig].public_id ? propCheck[sig].public_id : "Sin ID público", 
-            "to": contact.id, 
-            "action": "Propiedad enviada: "
-          }
-          infoToBinnacle(binnacle)
-          if ( propCheck.length === sig + 1 ) {
-            setTimeout ( function(){
-              $systStatus = "";
-              propCheck = [];
-              showProp = false;
-              sig = 0;
-              faltanProp = 0;
-              return
-            }, 2500);
-          };
-          sig ++    
-        };
-        // Borra la información del envío
-        if($systStatus !== "msgGratitude") {
-          if($systStatus !== "sendProps") {
-            msg = "";
-            propCheck = [];
-            commInpuyBinnacle = "";
-            searchTerm = "";
+        // Envia mensaje de agradecimiento después de enviar la propiedad en alta de contacto
+        } else if($systStatus === "msgGratitude") {
+          // Envía en mensaje de agradecimiento
+            let binnacle = {"date": Date.now(), "comment": property.public_id, "to": contact.telephon, "action": "Propiedad enviada: "}
+            infoToBinnacle(binnacle)
+            msg = commInpuyBinnacle;
+            sendWhatsApp(tel, msg)
             $systStatus = "";
-            contBinn();
-          }          
-        }
+        // Envía por WA lo que está en TextArea y guarda la bitácora
+        } else if($systStatus === "sendComm"){
+            msg = commInpuyBinnacle;
+            sendWhatsApp(tel, msg)
+            $systStatus = "sendWA"
+            let binnacle: Binnacle = {"date": Date.now(), "comment": commInpuyBinnacle, "to": contact.id, "action": "WhatsApp enviado: "}
+            infoToBinnacle(binnacle)
+        } else if($systStatus === "sendProps"){
+            faltanProp = propCheck.length - (sig + 1)
+            let msg = propCheck[sig] && propCheck[sig].public_url ? 
+              propCheck[sig].public_url : 
+              "No hay URL pública disponible para esta propiedad";
+            sendWhatsApp(tel, msg)
+            let binnacle = {
+              "date": Date.now(), 
+              "comment": propCheck[sig] && propCheck[sig].public_id ? propCheck[sig].public_id : "Sin ID público", 
+              "to": contact.id, 
+              "action": "Propiedad enviada: "
+            }
+            infoToBinnacle(binnacle)
+            if ( propCheck.length === sig + 1 ) {
+              setTimeout ( function(){
+                $systStatus = "";
+                propCheck = [];
+                showProp = false;
+                sig = 0;
+                faltanProp = 0;
+                return
+              }, 2500);
+            };
+            sig ++    
+          };
+          // Borra la información del envío
+          if($systStatus !== "msgGratitude") {
+            if($systStatus !== "sendProps") {
+              msg = "";
+              propCheck = [];
+              commInpuyBinnacle = "";
+              searchTerm = "";
+              $systStatus = "";
+              contBinn();
+            }          
+          }
     };
       
      // Busca la bitácora del contacto

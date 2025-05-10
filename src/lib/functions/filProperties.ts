@@ -8,14 +8,18 @@ import { propertiesStore } from '$lib/stores/dataStore';
 export function findPropertiesForContact(contact: Contact): Property[] { // Renombrar función para claridad
     try {
         let propertiesToFilter: Property[] = get(propertiesStore); // Usar nombre más descriptivo
+        console.log(propertiesToFilter);
 
         // Filtrar por Tipo de Propiedad (case-insensitive)
-        if (contact.selecTP) {
+        if (contact.selecTP || contact.selecTP === '') {
             const contactTypeLower = contact.selecTP.toLowerCase();
             propertiesToFilter = propertiesToFilter.filter((item) =>
                 item.property_type.toLowerCase() === contactTypeLower
             );
         }
+
+        console.log(propertiesToFilter);
+
 
         // Filtrar por Tipo de Operación (sale/rental) (case-insensitive)
         // Asumiendo que 'selecTO' en Property también existe y debe coincidir con 'selecTO' del Contacto
@@ -37,6 +41,9 @@ export function findPropertiesForContact(contact: Contact): Property[] { // Reno
             propertiesToFilter = propertiesToFilter.filter((item) => Number(item.parking_spaces) >= Number(contact.numParks));
         }
 
+        console.log(propertiesToFilter);
+
+
         // Filtrar por presupuesto (rango 70%-110%) o rango predefinido
         if (contact.budget && Number(contact.budget) > 0) { // Priorizar presupuesto si existe y es mayor a 0
             const lowRange = Number(contact.budget) * 0.7;
@@ -50,8 +57,9 @@ export function findPropertiesForContact(contact: Contact): Property[] { // Reno
                 mosRange(Number(prop.price)) === contactRangeLower
             );
         }
-        // No es necesario el 'else' para log, si no hay filtro, simplemente no se aplica.
+        console.log(propertiesToFilter);
 
+        // No es necesario el 'else' para log, si no hay filtro, simplemente no se aplica.
         // --- Filtro por Ubicación (Mejorado) ---
         const contactLocationsLower = (contact.locaProperty ?? []) // Asegurar array y convertir a minúsculas
             .map(loc => loc?.toLowerCase())

@@ -80,7 +80,6 @@ export const operTypes = [
     "Terreno industrial",	
     "Rancho",
     "Casa de Campo",
-    ""
   ];
 
   export const modePays = [
