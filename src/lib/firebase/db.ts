@@ -1,4 +1,4 @@
-import { db } from './firebase';
+import { db } from './init';
 import { collection, getDocs } from 'firebase/firestore';
 
 // // Tipos

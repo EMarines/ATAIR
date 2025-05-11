@@ -1,49 +1,36 @@
 <script lang="ts">
   // Importaciones
-  import { loginWithEmailPassword, registerWithEmailPassword, initializeFirebase } from '$lib/firebase/firebase'; // <-- Importa la función de registro
+  import { loginWithEmailPassword, registerWithEmailPassword } from '$lib/firebase/firebase'; // <-- Importa la función de registro
+  import { auth } from '$lib/firebase/init';
   import { goto } from '$app/navigation';
-  import { writable, get } from 'svelte/store';
-  import { onMount } from 'svelte';
 
-  // Creamos stores locales para el formulario
-  const email = writable('');
-  const password = writable('');
-  const isLoading = writable(false);
-  const error = writable(null);
-  const isRegisterMode = writable(false);
+  // Creamos variables locales para el formulario
+  let email = '';
+  let password = '';
+  let isLoading = false;
+  let error = null;
+  let isRegisterMode = false;
 
   // Función para resetear los campos del formulario
   function resetForm() {
-    email.set('');
-    password.set('');
+    email = '';
+    password = '';
   }
-
-  onMount(async () => {
-    // Inicializamos Firebase explícitamente
-    try {
-      const { app, auth } = await initializeFirebase();
-      console.log("Firebase inicializado correctamente");
-      // Asegurarse de que los campos estén vacíos al cargar la página
-      resetForm();
-    } catch (e) {
-      console.error("Error al inicializar Firebase:", e.message);
-    }
-  });
 
   // Función para manejar tanto el login como el registro
   async function handleAuth(emailValue, passwordValue) {
     // Verificación básica
     if (!emailValue || !passwordValue) {
-      $error = { message: "Por favor ingresa email y contraseña" };
+      error = { message: "Por favor ingresa email y contraseña" };
       return;
     }
 
     try {
-      $isLoading = true;
-      $error = null;
+      isLoading = true;
+      error = null;
 
       let result;
-      if ($isRegisterMode) {
+      if (isRegisterMode) {
         // --- Lógica de Registro ---
         result = await registerWithEmailPassword(emailValue, passwordValue);
         if (result.success) {
@@ -55,7 +42,7 @@
           }, 500);
         } else {
           // Asegúrate de que getErrorMessage esté definida y maneje los códigos de error
-          $error = { message: getErrorMessage(result.code) || `Error de registro: ${result.message}` };
+          error = { message: getErrorMessage(result.code) || `Error de registro: ${result.message}` };
           // Limpiar los campos después de un intento fallido
           resetForm();
         }
@@ -70,7 +57,7 @@
           }, 500);
         } else {
           // Asegúrate de que getErrorMessage esté definida y maneje los códigos de error
-          $error = { message: getErrorMessage(result.code) || `Error de login: ${result.message}` };
+          error = { message: getErrorMessage(result.code) || `Error de login: ${result.message}` };
           // Limpiar los campos después de un intento fallido
           resetForm();
         }
@@ -79,18 +66,18 @@
     } catch (err) {
       console.error("Error general:", err.message);
       // Asegúrate de que el mensaje de error sea útil
-      $error = { message: `Error inesperado: ${err.message}` };
+      error = { message: `Error inesperado: ${err.message}` };
       // Limpiar los campos después de un error general
       resetForm();
     } finally {
-      $isLoading = false;
+      isLoading = false;
     }
   }
 
   // Función para cambiar entre login y registro
   function toggleMode() {
-    $isRegisterMode = !$isRegisterMode;
-    $error = null; 
+    isRegisterMode = !isRegisterMode;
+    error = null; 
     resetForm();
   }
 
@@ -114,53 +101,53 @@
 
 <div class="container">
   <div class="authContainer">
-    <form on:submit|preventDefault={() => handleAuth($email, $password)}> 
-      <h1>{$isRegisterMode ? "Registrarse" : "Login"}</h1>
+    <form on:submit|preventDefault={() => handleAuth(email, password)}> 
+      <h1>{isRegisterMode ? "Registrarse" : "Login"}</h1>
 
-      {#if $error}
-        <p class="error">{$error.message}</p>
+      {#if error}
+        <p class="error">{error.message}</p>
       {/if}
 
       <label>
-        <p class={$email ? 'above' : 'center'}>Email</p>
+        <p class={email ? 'above' : 'center'}>Email</p>
         <input
-          bind:value={$email}
+          bind:value={email}
           type="email"
           placeholder="email"
-          disabled={$isLoading}
+          disabled={isLoading}
           autocomplete="email"
         >
       </label>
 
       <label>
-        <p class={$password ? 'above' : 'center'}>Password</p>
+        <p class={password ? 'above' : 'center'}>Password</p>
         <input
-          bind:value={$password}
+          bind:value={password}
           type="password"
           placeholder="Password"
-          disabled={$isLoading}
-          autocomplete={$isRegisterMode ? "new-password" : "current-password"} 
+          disabled={isLoading}
+          autocomplete={isRegisterMode ? "new-password" : "current-password"} 
         >
       </label>
 
       <!-- Botón de envío -->
       <button
         type="submit"
-        disabled={$isLoading}
+        disabled={isLoading}
       >
-        {$isLoading ? 'Procesando...' : ($isRegisterMode ? 'Registrarse' : 'Iniciar Sesión')} 
+        {isLoading ? 'Procesando...' : (isRegisterMode ? 'Registrarse' : 'Iniciar Sesión')} 
     </form>
 
     <div class="options">
-      {#if $isRegisterMode}
+      {#if isRegisterMode}
         <div>
           <p>¿Tienes Cuenta?</p>
-          <button on:click={toggleMode} disabled={$isLoading}>Login</button>
+          <button on:click={toggleMode} disabled={isLoading}>Login</button>
         </div>
       {:else}
         <div>
           <p>¿No Tienes Cuenta?</p>
-          <button on:click={toggleMode} disabled={$isLoading}>Registrate</button>
+          <button on:click={toggleMode} disabled={isLoading}>Registrate</button>
         </div>
       {/if}
     </div>

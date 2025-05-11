@@ -1,6 +1,4 @@
 import type { LayoutServerLoad } from './$types';
-// Corregido: nombre de archivo en el comentario (typo en fetchAllPrperties)
-// import { fetchAllProperties } from '$lib/functions/fetchAllProperties';
 import { getContacts, getBinnacles, getTodos, getProperties } from '$lib/firebase/db';
 
 export const load: LayoutServerLoad = async ({ locals, cookies }) => {

@@ -95,28 +95,28 @@
         erroresFormulario[field] = '';  
         switch(field) {
             case 'name':
-                if (!value?.trim()) {
+                if (!value || !value.trim()) {
                     erroresFormulario.name = 'El nombre es requerido';
                 } else if (value.length < 2) {
                     erroresFormulario.name = 'El nombre es muy corto';
                 }
                 break;
             case 'telephon':
-                if (!value?.trim()) {
+                if (!value || !value.trim()) {
                     erroresFormulario.telephon = 'El teléfono es requerido';
                 } else if (!PHONE_REGEX.test(value)) {
                     erroresFormulario.telephon = 'Formato de teléfono inválido';
                 }
                 break;
             case 'email':
-                if (!value?.trim()) {
+                if (!value || !value.trim()) {
                     erroresFormulario.email = 'El email es requerido';
                 } else if (!EMAIL_REGEX.test(value)) {
                     erroresFormulario.email = 'Email inválido';
                 }
                 break;
             case 'lastname':
-                if (!value?.trim()) {
+                if (!value || !value.trim()) {
                     erroresFormulario.lastname = 'El apellido es requerido';
                 } else if (value.length < 2) {
                     erroresFormulario.lastname = 'El apellido es muy corto';
@@ -341,10 +341,10 @@
         }
     }
   
-    // Agregar esta función
-    const autofocus = (node: HTMLElement) => {
-        node.focus();
-    };
+    // // Agregar esta función
+    // const autofocus = (node: HTMLElement) => {
+    //     node.focus();
+    // };
   
     // Función reactiva que no hace nada con el footer
     $: {
@@ -372,7 +372,7 @@
                         identifier="name"
                         name="Nombre *" 
                         bind:value={contact.name}
-                        on:input={() => handleBlur('name')}
+                        on:blur={() => handleBlur('name')} 
                     />
                     {#if camposModificados.name && erroresFormulario.name}
                         <span class="field-error">{erroresFormulario.name}</span>
@@ -384,7 +384,7 @@
                         identifier="lastname" 
                         name="Apellido" 
                         bind:value={contact.lastname}
-                        on:blur={() => handleBlur('lastname')}
+                        on:blur={() => handleBlur('lastname')} 
                     />
                     {#if camposModificados.lastname && erroresFormulario.lastname}
                         <span class="field-error">{erroresFormulario.lastname}</span>
@@ -503,40 +503,32 @@
   
             {#if showAdditionalFields}
                 <div class="additional-fields">
-                    <table class="property-table">
-                        <tbody>
-                            <tr>
-                                <td>
-                                    <InputOptions 
-                                        identificador="selecTP" 
-                                        name="Tipo de Propiedad" 
-                                        choices={typeProperties} 
-                                        value={contact.selecTP ? String(contact.selecTP) : ''}
-                                        on:change={(e) => contact.selecTP = e.detail}
-                                    />
-                                </td>
-                                <td>
-                                    <InputOptions 
-                                        identificador="modePay" 
-                                        name="Modo de Pago" 
-                                        choices={modePays} 
-                                        value={contact.modePay ? String(contact.modePay) : ''}
-                                        on:change={(e) => contact.modePay = e.detail}
-                                    />
-                                </td>
-                                <td>
-                                    <InputOptions 
-                                        identificador="contactStage" 
-                                        name="Etapa" 
-                                        choices={contStage} 
-                                        value={contact.contactStage ? String(contact.contactStage) : ''}
-                                        on:change={(e) => contact.contactStage = e.detail}
-                                    />
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-  
+
+                    <div class="inp__lat">
+                        <InputOptions 
+                            identificador="selecTP" 
+                            name="Tipo de Propiedad" 
+                            choices={typeProperties} 
+                            value={contact.selecTP ? String(contact.selecTP) : ''}
+                            on:change={(e) => contact.selecTP = e.detail}
+                        />
+                    
+                        <InputOptions 
+                            identificador="modePay" 
+                            name="Modo de Pago" 
+                            choices={modePays} 
+                            value={contact.modePay ? String(contact.modePay) : ''}
+                            on:change={(e) => contact.modePay = e.detail}
+                        />
+                    
+                        <InputOptions 
+                            identificador="contactStage" 
+                            name="Etapa" 
+                            choices={contStage} 
+                            value={contact.contactStage ? String(contact.contactStage) : ''}
+                            on:change={(e) => contact.contactStage = e.detail}
+                        />
+                    </div>            
                     <div class="inp__lat">
                         <InputText 
                             identifier="budget" 
@@ -777,7 +769,7 @@
         z-index: 100;
     }
   
-    .property-table {
+    /* .property-table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 10px 0;
@@ -788,7 +780,7 @@
         border: none;
         width: 33.33%;
         vertical-align: top;
-    }
+    } */
   
     :global(.property-table .in__sel) {
         width: 100%;
@@ -802,7 +794,7 @@
     }
   
     @media (max-width: 600px) {
-        .property-table, .property-table tbody, .property-table tr {
+        /* .property-table, .property-table tbody, .property-table tr {
             display: block;
             width: 100%;
         }
@@ -811,7 +803,7 @@
             display: block;
             width: 100%;
             margin-bottom: 10px;
-        }
+        } */
   
         .inp__lat {
             flex-direction: column;
@@ -824,4 +816,3 @@
         }
     }
   </style>
-  
