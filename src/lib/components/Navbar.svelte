@@ -6,7 +6,7 @@
     import Moon from "./icons/moon.svelte";
     import Sun from "./icons/sun.svelte";
     import { useTestDb } from '$lib/firebase/firebase';
-    import { empresa } from '$lib/types';
+    import { empresa } from '$lib/config/empresa';
     // import { writable } from 'svelte/store'
     // import { browser } from '$app/environment';
     // import { page } from '$app/stores';

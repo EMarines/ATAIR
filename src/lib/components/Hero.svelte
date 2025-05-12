@@ -1,6 +1,6 @@
 <script lang="ts">
     import "../../styles/main.css"
-    import { empresa } from '$lib/types';
+    import { empresa } from '$lib/config/empresa';
     
     // Eliminar la importación de logo-slogan.png
     // Solo necesitamos base para construir la ruta a static

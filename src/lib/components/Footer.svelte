@@ -1,5 +1,5 @@
 <script lang='ts'>
-    import { empresa } from '$lib/types'
+    import { empresa } from '$lib/config/empresa'
     const year = new Date().getFullYear();
 </script>
 
