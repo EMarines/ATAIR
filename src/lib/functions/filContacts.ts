@@ -35,7 +35,7 @@ export function findContactsForProperty(property: Property, contacts: Contact[])
         interestedContacts = interestedContacts.filter((cont) =>
             cont.typeContact?.toLowerCase() === targetContactType || cont.contactType?.toLowerCase() === targetContactType
         );
-        // console.log(`Tras filtro tipo (${targetContactType}):`, interestedContacts.length);
+        console.log(`Tras filtro tipo (${targetContactType}):`, interestedContacts);
     }
 
 
@@ -60,47 +60,68 @@ export function findContactsForProperty(property: Property, contacts: Contact[])
             !cont.numParks || (Number(cont.numParks) <= property.parking_spaces)
         );
     }
-    // console.log("Tras filtro habs/baños/parks:", interestedContacts.length);
+    console.log("Tras filtro habs/baños/parks:", interestedContacts);
 
 
     // Presupuesto del contacto vs Precio de la propiedad
     const propertyPrice = Number(property.price);
     if (propertyPrice > 0) {
         interestedContacts = interestedContacts.filter(cont => {
+            // Si el contacto no tiene presupuesto ni rango, lo incluimos
+            if (!cont.budget && !cont.rangeProp) {
+                return true;
+            }
+            
+            // Comprobación con presupuesto si existe
             if (cont.budget && Number(cont.budget) > 0) {
                 const minBudget = Number(cont.budget) * 0.7;
                 const maxBudget = Number(cont.budget) * 1.1;
                 return propertyPrice >= minBudget && propertyPrice <= maxBudget;
-            } else if (cont.rangeProp) {
-                // Compara el rango del contacto con el rango calculado para el precio de la propiedad
+            } 
+            
+            // Comprobación con rango si existe
+            if (cont.rangeProp) {
                 return mosRange(propertyPrice) === cont.rangeProp.toLowerCase();
             }
-            return false; // Si el contacto no tiene ni budget ni rangeProp, no coincide por precio. O true si deben incluirse? Decide el requisito.
-                          // Dejémoslo en false: si filtramos por precio, el contacto debe tener alguna preferencia.
+            
+            return true; // Por si acaso hay algún otro caso
         });
         // console.log("Tras filtro presupuesto/rango:", interestedContacts.length);
     }
 
 
     // --- Filtro por Ubicación (Mejorado) ---
-    const propertyLocation = tagToUbicacion(property.tags); // Ya devuelve lowercase o null
+const propertyLocation = tagToUbicacion(property.tags); // Ya devuelve lowercase o null
 
-    if (propertyLocation) { // Solo filtrar si la propiedad TIENE ubicación
-        interestedContacts = interestedContacts.filter(cont => {
-            const contactLocationsLower = (cont.locaProperty ?? [])
-                .map(loc => loc?.toLowerCase())
-                .filter(Boolean) as string[];
-
-            // Si el contacto NO tiene preferencias de ubicación, SÍ coincide (puede estar interesado)
-            if (contactLocationsLower.length === 0) {
-                return true;
-            }
-            // Si tiene preferencias, AL MENOS UNA debe coincidir con la de la propiedad (`some`)
-            return contactLocationsLower.includes(propertyLocation);
-            // Lógica original: return contactLocationsLower.some(location => location === propertyLocation); // Funciona igual que includes aquí
-        });
-        // console.log(`Tras filtro ubicación (${propertyLocation}):`, interestedContacts.length);
-    }
+if (propertyLocation) { // Solo filtrar si la propiedad TIENE ubicación
+    interestedContacts = interestedContacts.filter(cont => {
+        // Verificar si el contacto tiene array de ubicaciones
+        if (!cont.locaProperty || !Array.isArray(cont.locaProperty)) {
+            return true; // Si no tiene el array, incluirlo (equivalente a preferencia vacía)
+        }
+        
+        // Si el array está vacío, también incluirlo
+        if (cont.locaProperty.length === 0) {
+            return true;
+        }
+        
+        // Si llegamos aquí, el contacto tiene preferencias de ubicación
+        // Convertir a minúsculas y filtrar valores nulos
+        const contactLocationsLower = cont.locaProperty
+            .filter(loc => loc) // Eliminar null, undefined, ""
+            .map(loc => loc.toLowerCase());
+        
+        // Si después de filtrar quedó vacío, incluirlo
+        if (contactLocationsLower.length === 0) {
+            return true;
+        }
+        
+        // Verificar si al menos una ubicación preferida coincide con la propiedad
+        return contactLocationsLower.includes(propertyLocation);
+    });
+    
+    console.log(`Tras filtro ubicación (${propertyLocation}):`, interestedContacts);
+}
     // Si la propiedad no tiene ubicación, no se aplica este filtro.
 
 

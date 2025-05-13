@@ -149,7 +149,7 @@
     listToRender()
 		show__contacts = !show__contacts
 		$systStatus = "sendPropToContacts"
-		// filtContPropInte($property)
+		console.log("$propertyStore, $contactsStore", $systStatus);
   };
 
   const actCancel = () => {
@@ -278,7 +278,7 @@
 				<!-- {#if $systStatus !== "sendPropToContacts"}  -->
         <Button 
             element="button" 
-            variant="outline" 
+            variant="solid" 
             icon="fa-brands fa-whatsapp whatsapp-icon" 
             on:click={() => sendWA(contToSend)}
         >
@@ -286,7 +286,7 @@
         </Button>
         <Button 
             element="button" 
-            variant="outline" 
+            variant="solid" 
             icon="fa-solid fa-solid fa-users-viewfinder" 
             on:click={findCustomers}
         >
@@ -294,7 +294,7 @@
         </Button>
         <Button 
             element="button" 
-            variant="outline" 
+            variant="solid" 
             icon="fa-solid fa-arrow-left" 
             on:click={actCancel}
         >
@@ -302,7 +302,7 @@
         </Button>
         <Button 
             element="button" 
-            variant="outline" 
+            variant="solid" 
             icon="fa-solid fa-arrow-up-right-from-square" 
             on:click={followLink}
         >
@@ -312,7 +312,7 @@
 				<!-- {:else}  -->
 					<Button 
 						element="button" 
-						variant="outline" 
+						variant="solid" 
 						icon="fa-solid fa-xmark" 
 						on:click={cancel}
 					>
