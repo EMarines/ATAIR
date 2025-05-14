@@ -3,6 +3,7 @@ export let upRange: number = 0;
 let rng: string = "";
 
 export function setRange(rng: string) {
+  console.log(rng);
     if(rng === "PRM"){
         lowRange = 0; upRange = 1000000                 // PRM
     }
