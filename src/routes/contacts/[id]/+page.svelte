@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
     import { page } from '$app/stores';
     import { firebase } from '$lib/stores/firebaseStores';
     import {AddContact} from '$components';
@@ -105,4 +105,4 @@
         box-shadow: 0 0 20px rgba(0,0,0,0.5);
         z-index: 1000;
     }
-</style>
+</style> -->

@@ -1,6 +1,6 @@
 // c:\Users\Propietario\OneDrive\AB GrupoUrbania\OneDrive\Escritorio\Web Projects\ATAIR\src\lib\functions\filProperties.ts
 import { get } from 'svelte/store';
-import { mosRange, ranPrice } from './rangeValue';
+import { ranPrice } from './rangeValue';
 import { tagToUbicacion, tagToFeatures } from './tagConverters';
 import type { Contact, Property } from '$lib/types';
 import { propertiesStore } from '$lib/stores/dataStore';

@@ -33,7 +33,9 @@
   let propInterested = "Por Enviar";
   let sig = 0;
   let msg = "";
-  // let property: Property;
+  // Nuevas variables para manejar las propiedades enviadas y por enviar
+  let alreadySentProperties: Property[] = [];
+  let recommendedProperties: Property[] = [];
 
   $: tel = contact?.telephon;
   $: faltanProp = propCheck.length;
@@ -108,14 +110,32 @@
 
     // Muestra las propiedades que le podrían intesar
     function filtProp() {
-      // contacto = $contact
-      console.log("Estas en filtProp")
-      propToRender = findPropertiesForContact(contact)
-      console.log(propToRender, "Propiedades");
+      console.log("Estas en filtProp");
+      // Obtener todas las propiedades recomendadas para este contacto
+      propToRender = findPropertiesForContact(contact);
+      
+      // Obtener IDs de propiedades ya enviadas desde la bitácora
+      const sentPropertyIds = sortedBinn
+        .filter(item => item.action?.includes("Propiedad enviada"))
+        .map(item => item.comment?.trim())
+        .filter(Boolean);
+      
+      // Filtrar las propiedades que ya fueron enviadas
+      alreadySentProperties = properties.filter(prop => 
+        sentPropertyIds.includes(prop.public_id)
+      );
+      
+      // Filtrar propiedades recomendadas quitando las ya enviadas
+      recommendedProperties = propToRender.filter(prop => 
+        !sentPropertyIds.includes(prop.public_id)
+      );
+      
+      console.log("Propiedades recomendadas:", recommendedProperties.length);
+      console.log("Propiedades ya enviadas:", alreadySentProperties.length);
+      
       showProp = true;
-      layOut = "sendProps"
-    };
-
+      layOut = "sendProps";
+    }
 
     // Mostrar Schedule
     function addSchedule(){
@@ -168,12 +188,6 @@
               commInpuyBinnacle = selectedProperty.public_url;
               foundProperty = true;
             } 
-            // // Si no tiene public_url pero tiene public_id, generar la URL
-            // else if (selectedProperty.public_id) {
-            //   const public_url = "https://matchhome.net";
-            //   commInpuyBinnacle = public_url;
-            //   foundProperty = true;
-            // }
           }
         });
         
@@ -183,13 +197,6 @@
         if (foundProperty) {
           return;
         }
-        
-        // // Si no hay ninguna propiedad disponible
-        // if($systStatus === "sendProps"){
-        //   console.error("Error: No hay una propiedad seleccionada para compartir");
-        //   alert("No hay una propiedad seleccionada para compartir");
-        //   return;
-        // }
       }
       
       // Envía la propiedad seleccionada del listado (propCheck) Alta de Contacto
@@ -223,24 +230,44 @@
               propCheck[sig].public_url : 
               "No hay URL pública disponible para esta propiedad";
             sendWhatsApp(tel, msg)
+            
+            const sentPropertyId = propCheck[sig] && propCheck[sig].public_id ? propCheck[sig].public_id : "Sin ID público";
+            
             let binnacle = {
               "date": Date.now(), 
-              "comment": propCheck[sig] && propCheck[sig].public_id ? propCheck[sig].public_id : "Sin ID público", 
+              "comment": sentPropertyId, 
               "to": contact.id, 
               "action": "Propiedad enviada: "
             }
             infoToBinnacle(binnacle)
-            if ( propCheck.length === sig + 1 ) {
-              setTimeout ( function(){
+            
+            // Actualizar las listas de propiedades
+            if (propCheck[sig] && propCheck[sig].public_id) {
+              // Mover la propiedad de recommendedProperties a alreadySentProperties
+              const sentProperty = propCheck[sig];
+              // Agregar a propiedades enviadas si no está ya
+              if (!alreadySentProperties.some(prop => prop.public_id === sentProperty.public_id)) {
+                alreadySentProperties = [...alreadySentProperties, sentProperty];
+              }
+              // Quitar de propiedades recomendadas
+              recommendedProperties = recommendedProperties.filter(
+                prop => prop.public_id !== sentProperty.public_id
+              );
+            }
+            
+            if (propCheck.length === sig + 1) {
+              setTimeout(function() {
                 $systStatus = "";
                 propCheck = [];
                 showProp = false;
                 sig = 0;
                 faltanProp = 0;
-                return
+                // Actualizar propToRender para mantener consistencia
+                propToRender = [...recommendedProperties, ...alreadySentProperties];
+                return;
               }, 2500);
             };
-            sig ++    
+            sig++;
           };
           // Borra la información del envío
           if($systStatus !== "msgGratitude") {
@@ -250,11 +277,30 @@
               commInpuyBinnacle = "";
               searchTerm = "";
               $systStatus = "";
+              // Actualizar la bitácora para reflejar los cambios
               contBinn();
+              
+              // Actualizar las listas de propiedades si estamos en la vista de propiedades
+              if (layOut === "sendProps" || layOut === "sendProp") {
+                // Obtener IDs de propiedades ya enviadas desde la bitácora actualizada
+                const sentPropertyIds = sortedBinn
+                  .filter(item => item.action?.includes("Propiedad enviada"))
+                  .map(item => item.comment?.trim())
+                  .filter(Boolean);
+                
+                // Actualizar las listas basadas en la bitácora actualizada
+                alreadySentProperties = properties.filter(prop => 
+                  sentPropertyIds.includes(prop.public_id)
+                );
+                
+                recommendedProperties = propToRender.filter(prop => 
+                  !sentPropertyIds.includes(prop.public_id)
+                );
+              }
             }          
           }
     };
-      
+
      // Busca la bitácora del contacto
      function contBinn() {
         if (!$binnaclesStore) return [];        
@@ -520,38 +566,53 @@
 
     <!-- Tarjeta para propiedad -->
     {#if layOut === "sendProps" || layOut === "sendProp"} 
-
-      <!-- <div class="container"> -->
-
-        <div class="title__props">
-          <h2 class="title sub">{propToRender.length} Propiedades encontradas</h2>
-        </div>
-
-          {#if $systStatus === "sendProps"}
-            <div class="buttonSend">
-              <button class="buttSendProps" on:click={selMsgWA}>
-                <i class="fa-brands fa-square-whatsapp"></i>
-                {$systStatus !== "sendProps" ? "Enviar propiedades seleccionadas" : `Total para enviar ${propCheck.length}. faltan ${faltanProp}`}
-              </button>
-            </div>          
-          {/if}
-          
-        <div class="card__container">          
-          {#each propToRender as property}
-            <div class="select__props">
-              <input type="checkbox" 
-                value={property} 
-                name={property.public_id} 
-                class="form__propCheck" 
-                bind:group={propCheck} 
-                on:click={sendPropF}
-              />	
-              <CardProperty {property} />
+      <div class="property-section-container">
+        <div class="properties-columns">
+          <div class="properties-column">
+            <div class="title__props">
+              <h2 class="title sub">Propiedades Recomendadas ({recommendedProperties.length})</h2>
             </div>
-          {/each}
+
+            {#if $systStatus === "sendProps"}
+              <div class="buttonSend">
+                <button class="buttSendProps" on:click={selMsgWA}>
+                  <i class="fa-brands fa-square-whatsapp"></i>
+                  {$systStatus !== "sendProps" ? "Enviar propiedades seleccionadas" : `Total para enviar ${propCheck.length}. faltan ${faltanProp}`}
+                </button>
+              </div>          
+            {/if}
+            
+            <div class="card__container">          
+              {#each recommendedProperties as property}
+                <div class="select__props">
+                  <input type="checkbox" 
+                    value={property} 
+                    name={property.public_id} 
+                    class="form__propCheck" 
+                    bind:group={propCheck} 
+                    on:click={sendPropF}
+                  />	
+                  <CardProperty {property} />
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <div class="properties-column">
+            <div class="title__props">
+              <h2 class="title sub">Propiedades ya enviadas ({alreadySentProperties.length})</h2>
+            </div>
+            
+            <div class="card__container">          
+              {#each alreadySentProperties as property}
+                <div class="select__props">
+                  <CardProperty {property} />
+                </div>
+              {/each}
+            </div>
+          </div>
         </div>
-        
-        
+      </div>
     {/if}
   </div>
 
@@ -707,6 +768,51 @@
       justify-content: center;
       gap: 15px;
     }
+    
+    .select__props {
+      position: relative;
+      width: calc(50% - 15px); /* Make cards take up 50% of container minus gap */
+      max-width: 300px; /* Set maximum width for larger screens */
+    }
+
+    /* For smaller screens in the properties view */
+    @media (max-width: 768px) {
+      .select__props {
+        width: calc(100% - 15px); /* Full width on small screens */
+      }
+    }
+
+    .form__propCheck {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 20;
+    }
+
+    .property-section-container {
+      margin-top: 25px;
+      padding-top: 20px;
+      border-top: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .properties-columns {
+      display: flex;
+      width: 100%;
+      gap: 20px;
+    }
+    
+    .properties-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid rgb(56, 56, 56);
+      border-radius: 8px;
+      background-color: rgba(56, 56, 56, 0.1);
+      overflow-y: auto; /* Enable scrolling for columns with many properties */
+      max-height: 80vh; /* Limit the height to prevent excessive scrolling */
+    }
 
     .btn__actions {
       display: flex;
@@ -834,6 +940,33 @@
         z-index: 20;
       }
 
+      .properties-columns {
+        display: flex;
+        width: 100%;
+        gap: 20px;
+      }
+      
+      .properties-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 10px;
+        border: 1px solid rgb(56, 56, 56);
+        border-radius: 8px;
+        background-color: rgba(56, 56, 56, 0.1);
+      }
+      
+      @media (max-width: 1000px) {
+        .properties-columns {
+          flex-direction: column;
+        }
+        
+        .properties-column {
+          width: 100%;
+          margin-bottom: 20px;
+        }
+      }
 
       @media (max-width:1200px){
       .mainContainer{
