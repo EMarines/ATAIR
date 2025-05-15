@@ -45,6 +45,7 @@
   };
 </script>
 
+<!-- Estructura simplificada - Eliminado div redundante "card-property" -->
 <div class="card__container">
   {#if selectable}
     <input 
@@ -55,7 +56,6 @@
     />
   {/if}
   <div class="card__prop">
-  
     <div class="img__cont">
       <img 
         src={imgSrc} 
@@ -69,7 +69,6 @@
     </div>
 
     <div class="info__cont">
-
       <div class="card__info">
         <div class="location-container">
           <span class="capitalize">
@@ -81,34 +80,45 @@
 
       <div class="card__features">
         {#if property?.property_type?.toLowerCase() === "casa" ||
-         property?.property_type?.toLowerCase() === "departamento"}
+        property?.property_type?.toLowerCase() === "departamento"}
           <span class="feature-span">Recámaras {property?.bedrooms || 0}</span>
           <span class="feature-span">Baños {Number(property?.bathrooms || 0)}</span> 
         {:else if property?.property_type?.toLowerCase() === "terreno" ||
-         property?.property_type?.toLowerCase() === "local comercial"}  
+        property?.property_type?.toLowerCase() === "local comercial"}  
           <span class="feature-span">{toComaSep(Number(property?.construction_size || 0))} m²</span>
         {:else if property?.property_type?.toLowerCase() === "edificio" ||
-         property?.property_type?.toLowerCase().startsWith("bodega")}
+        property?.property_type?.toLowerCase().startsWith("bodega")}
           <span class="feature-span">{toComaSep(Number(property?.construction_size || 0))} m²</span>
           <span class="feature-span">{toComaSep(Number(property?.lot_size || 0))} m²</span>
         {/if}
       </div>
-
     </div>
-    
   </div> 
 </div>
 
 <style>
+  /* Consolidados todos los estilos del div card-property en card__container */
   .card__container {
     position: relative;
-    width: 100%; /* Cambio de ancho fijo a 100% para adaptarse al contenedor */
-    height: 250px;
+    width: 100%;
+    height: 100%;
     margin: 0;
+    padding: 0;
     z-index: 10;
     box-sizing: border-box;
-    overflow: hidden; /* Crucial: fuerza que nada salga del contenedor */
+    overflow: hidden;
   }
+
+  /* Otros estilos del componente... */
+  
+  /* Ajustar contenedores internos para evitar espaciado extra */
+  .card__container :global(*) {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Ajustar cualquier padding/margin interno específico según sea necesario */
 
   .property-selector {
     position: absolute;
@@ -200,7 +210,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 4px 0;
+    /* padding: 4px 0; */
     width: 100%;
     max-width: 100%;
     overflow: hidden;
@@ -264,7 +274,7 @@
   /* Sistema responsive con múltiples breakpoints */
   @media (max-width: 768px) {
     .card__container {
-      height: 230px;
+      height: 100%;
     }
     
     .img__cont {
@@ -285,7 +295,7 @@
 
   @media (max-width: 400px) {
     .card__container {
-      height: 200px;
+      height: 100%;
       margin: 0 auto 10px;
     }
 
@@ -320,8 +330,8 @@
   /* Para dispositivos muy pequeños */
   @media (max-width: 350px) {
     .card__container {
-      height: 180px;
-      min-height: 180px;
+      height: 100%;
+      min-height: 100%;
     }
 
     .img__cont {

@@ -150,17 +150,37 @@
   // Search property by name
   function searProp() {
     showProp = true;
-    faltanProp = propCheck.length
-    if(searchTerm.length > 0 ) {
+    faltanProp = propCheck.length;
+    if(searchTerm.length > 0) {
       $systStatus = "sendProp";
-      layOut = "sendProp";
-
-      return propToRender = properties.filter((propety) => {
-        // const locationStr = typeof propety.location === 'string' ? propety.location : propety.location;
-        let contInfo = ( propety.public_id + " " + propety.title + " " + propety.location ).toLowerCase();
-        return contInfo.includes(searchTerm.toLowerCase());
-      });  
-    };
+      layOut = "sendProps"; // Cambiar a sendProps para usar el mismo layout de dos columnas
+      
+      // Obtener IDs de propiedades ya enviadas desde la bitácora
+      const sentPropertyIds = sortedBinn
+        .filter(item => item.action?.includes("Propiedad enviada"))
+        .map(item => item.comment?.trim())
+        .filter(Boolean);
+      
+      // Filtrar las propiedades que ya fueron enviadas
+      alreadySentProperties = properties.filter(prop => 
+        sentPropertyIds.includes(prop.public_id)
+      );
+      
+      // Filtrar propiedades según término de búsqueda
+      recommendedProperties = properties.filter((propety) => {
+        // Buscar según el término de búsqueda
+        let contInfo = (propety.public_id + " " + propety.title + " " + propety.location).toLowerCase();
+        // No incluir propiedades que ya fueron enviadas
+        return contInfo.includes(searchTerm.toLowerCase()) && 
+               !sentPropertyIds.includes(propety.public_id);
+      });
+      
+      console.log("Propiedades encontradas en búsqueda:", recommendedProperties.length);
+      console.log("Propiedades ya enviadas:", alreadySentProperties.length);
+      
+      propToRender = [...recommendedProperties, ...alreadySentProperties];
+      return propToRender;
+    }
   }
 
   // Cambia el systStatus as escojer una propiedad o varias propiedades
@@ -570,32 +590,41 @@
         <div class="properties-columns">
           <div class="properties-column">
             <div class="title__props">
-              <h2 class="title sub">Propiedades Recomendadas ({recommendedProperties.length})</h2>
+              <h2 class="title sub">
+                {$systStatus === "sendProp" ? "Resultados de búsqueda" : "Propiedades Recomendadas"} 
+                ({recommendedProperties.length})
+              </h2>
             </div>
 
-            {#if $systStatus === "sendProps"}
-              <div class="buttonSend">
-                <button class="buttSendProps" on:click={selMsgWA}>
-                  <i class="fa-brands fa-square-whatsapp"></i>
-                  {$systStatus !== "sendProps" ? "Enviar propiedades seleccionadas" : `Total para enviar ${propCheck.length}. faltan ${faltanProp}`}
-                </button>
-              </div>          
+            {#if recommendedProperties.length === 0}
+              <div class="no-results">
+                <p>No se encontraron propiedades {$systStatus === "sendProp" ? "con ese criterio de búsqueda" : "para recomendar"}.</p>
+              </div>
+            {:else}
+              {#if $systStatus === "sendProps" || $systStatus === "sendProp"}
+                <div class="buttonSend">
+                  <button class="buttSendProps" on:click={selMsgWA}>
+                    <i class="fa-brands fa-square-whatsapp"></i>
+                    {`Total para enviar ${propCheck.length}. faltan ${faltanProp}`}
+                  </button>
+                </div>          
+              {/if}
+              
+              <div class="cards__container">          
+                {#each recommendedProperties as property}
+                  <div class="select__prop">
+                    <input type="checkbox" 
+                      value={property} 
+                      name={property.public_id} 
+                      class="form__propCheck" 
+                      bind:group={propCheck} 
+                      on:click={sendPropF}
+                    />	
+                    <CardProperty {property} />
+                  </div>
+                {/each}
+              </div>
             {/if}
-            
-            <div class="card__container">          
-              {#each recommendedProperties as property}
-                <div class="select__props">
-                  <input type="checkbox" 
-                    value={property} 
-                    name={property.public_id} 
-                    class="form__propCheck" 
-                    bind:group={propCheck} 
-                    on:click={sendPropF}
-                  />	
-                  <CardProperty {property} />
-                </div>
-              {/each}
-            </div>
           </div>
 
           <div class="properties-column">
@@ -603,13 +632,19 @@
               <h2 class="title sub">Propiedades ya enviadas ({alreadySentProperties.length})</h2>
             </div>
             
-            <div class="card__container">          
-              {#each alreadySentProperties as property}
-                <div class="select__props">
-                  <CardProperty {property} />
-                </div>
-              {/each}
-            </div>
+            {#if alreadySentProperties.length === 0}
+              <div class="no-results">
+                <p>Aún no se han enviado propiedades a este contacto.</p>
+              </div>
+            {:else}
+              <div class="cards__container">          
+                {#each alreadySentProperties as property}
+                  <div class="select__prop">
+                    <CardProperty {property} />
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -757,42 +792,118 @@
     }
 
 
-    .card__container {
+    .cards__container {
       display: flex;
       flex-direction: row;
       width: 100%;
-      max-width: 1200px;
-      padding: 10px;
+      padding: 0;
+      margin: 0;
       flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 15px;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 6px; /* Espacio mínimo entre tarjetas */
     }
     
-    .select__props {
+    .select__prop {
       position: relative;
-      width: calc(50% - 15px); /* Make cards take up 50% of container minus gap */
-      max-width: 300px; /* Set maximum width for larger screens */
+      width: 130px; /* Ajustado para mejor fit */
+      height: 165px; /* Altura reducida para eliminar espacio vertical */
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* Cambiado a hidden para evitar desbordamiento */
     }
-
-    /* For smaller screens in the properties view */
-    @media (max-width: 768px) {
-      .select__props {
-        width: calc(100% - 15px); /* Full width on small screens */
-      }
+    
+    /* Aplicar estilo directo al componente CardProperty */
+    .select__prop :global(.card__container) {
+      transform: scale(0.52); /* Escala ajustada */
+      transform-origin: top left;
+      margin: 0;
+      padding: 0;
+      height: 250px; 
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    
+    /* Añadir gradiente para mejorar visibilidad del texto */
+    .select__prop :global(.img__cont::before) {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(transparent 40%, rgba(0,0,0,0.7) 90%);
+      z-index: 5; /* Ajustado para estar sobre la imagen pero bajo el texto */
+      pointer-events: none;
+    }
+    
+    /* Asegurarse que los textos aparezcan sobre el gradiente */
+    .select__prop :global(.card__info), 
+    .select__prop :global(.card__features) {
+      position: relative;
+      z-index: 6;
+    }
+    
+    .select__prop :global(.capitalize), 
+    .select__prop :global(.price),
+    .select__prop :global(.feature-span) {
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+      font-weight: bold;
     }
 
     .form__propCheck {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 20;
+      top: 5px;
+      left: 5px;
+      z-index: 25;
+    }
+
+    /* Para pantallas medianas */
+    @media (max-width: 992px) {
+      .cards__container {
+        justify-content: space-around;
+      }
+      
+      .select__prop {
+        width: 125px;
+        height: 160px;
+      }
+    }
+    
+    /* Para pantallas pequeñas */
+    @media (max-width: 768px) {
+      .cards__container {
+        justify-content: center;
+        gap: 5px;
+      }
+      
+      .select__prop {
+        width: 120px;
+        height: 155px;
+      }
+    }
+    
+    /* Para pantallas muy pequeñas */
+    @media (max-width: 480px) {
+      .select__prop {
+        width: 100%; /* Ocupar todo el ancho en móviles pequeños */
+        max-width: 250px; /* Con un límite máximo */
+      }
     }
 
     .property-section-container {
       margin-top: 25px;
       padding-top: 20px;
       border-top: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .no-results {
+      padding: 20px;
+      text-align: center;
+      font-size: 1.1rem;
+      color: #ffcccc;
     }
 
     .properties-columns {
@@ -929,7 +1040,7 @@
         color: rgb(153, 153, 0);
       }
 
-      .select__props{
+      .select__prop{
         position: relative;
       }
 
