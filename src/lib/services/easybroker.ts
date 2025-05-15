@@ -150,36 +150,34 @@ export class EasyBrokerService {
         return changes;
     }
 
-    async syncChanges(propertiesToUpload: Property[]) {
-        const batch = writeBatch(db);
-        let addedCount = 0;
-        let updatedCount = 0;
-        
-        for (const property of propertiesToUpload) {
-            try {
-                const docRef = doc(db, 'properties', property.public_id);
-                const docSnap = await getDoc(docRef);
-                
-                batch.set(docRef, property, { merge: true });
-                if (docSnap.exists()) {
-                    updatedCount++;
-                } else {
-                    addedCount++;
-                }
-            } catch (error) {
-                console.error(`Error procesando propiedad ${property.public_id}:`, error);
-            }
-        }
-
+    /**
+     * Sincroniza los cambios en las propiedades con Firebase
+     * @param propertiesToUpload - Propiedades nuevas o modificadas para subir
+     * @param propertiesToDelete - IDs de propiedades a eliminar
+     */
+    async syncChanges(propertiesToUpload: Property[], propertiesToDelete: string[] = []): Promise<void> {
         try {
+            // Procesar las propiedades a crear/actualizar
+            const batch = writeBatch(db);
+            
+            // Crear o actualizar propiedades
+            for (const property of propertiesToUpload) {
+                const propertyRef = doc(db, "properties", property.public_id);
+                batch.set(propertyRef, property);
+            }
+            
+            // Eliminar propiedades
+            for (const propertyId of propertiesToDelete) {
+                const propertyRef = doc(db, "properties", propertyId);
+                batch.delete(propertyRef);
+            }
+            
+            // Commit el batch
             await batch.commit();
-            console.log(`Sincronización completada:
-                - ${addedCount} propiedades nuevas
-                - ${updatedCount} propiedades actualizadas`);
-            return true;
+            console.log(`Sincronizadas ${propertiesToUpload.length} propiedades creadas/actualizadas y ${propertiesToDelete.length} propiedades eliminadas`);
         } catch (error) {
-            console.error('Error al sincronizar propiedades:', error);
+            console.error("Error al sincronizar propiedades:", error);
             throw error;
         }
     }
-} 
+}

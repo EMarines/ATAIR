@@ -3,6 +3,8 @@
     import { propertiesStore } from '$lib/stores/dataStore';
     import type { Property } from '$lib/types';
     import { Button } from '$components';
+    import { doc, writeBatch, deleteDoc } from 'firebase/firestore';
+    import { db } from '$lib/firebase';
     // import { syncProperties } from '$lib/services/easybroker';  
 
     interface Changes {
@@ -47,15 +49,38 @@
         isSyncing = true;
         error = null;        
         try {
+            // Preparar propiedades nuevas y modificadas para subir
             const propertiesToUpload = await easyBroker.preparePropertiesToUpload({
                 new: changes?.new.map(p => p.public_id) || [],
                 modified: changes?.modified.map(p => p.public_id) || []
-            });            
-            await easyBroker.syncChanges(propertiesToUpload);            
+            });
+            
+            // Obtener los IDs de propiedades a eliminar
+            const propertiesToDelete = changes?.deleted.map(p => p.public_id) || [];
+            
+            // Crear un batch para manejar múltiples operaciones
+            const batch = writeBatch(db);
+            
+            // Eliminar propiedades manualmente si es necesario
+            for (const propertyId of propertiesToDelete) {
+                const propertyRef = doc(db, "properties", propertyId);
+                batch.delete(propertyRef);
+            }
+            
+            // Commit el batch para eliminar las propiedades
+            if (propertiesToDelete.length > 0) {
+                await batch.commit();
+                console.log(`${propertiesToDelete.length} propiedades eliminadas`);
+            }
+            
+            // Continuar con la sincronización de propiedades nuevas y modificadas
+            await easyBroker.syncChanges(propertiesToUpload);
+            
             // Actualizar el store con las propiedades sincronizadas
             propertiesStore.update(props => {
                 // Eliminar propiedades que ya no existen
-                const updatedProps = props.filter(p => !changes?.deleted.find(d => d.public_id === p.public_id));                
+                const updatedProps = props.filter(p => !propertiesToDelete.includes(p.public_id));
+                
                 // Actualizar o agregar nuevas propiedades
                 propertiesToUpload.forEach(newProp => {
                     const index = updatedProps.findIndex(p => p.public_id === newProp.public_id);
@@ -64,13 +89,16 @@
                     } else {
                         updatedProps.push(newProp);
                     }
-                });                
+                });
+                
                 return updatedProps;
-            });            
+            });
+            
             // Recargar datos de EasyBroker y verificar cambios
             const ebProperties = await easyBroker.getProperties();
             ebPropertiesCount = ebProperties.length;
-            changes = easyBroker.compareProperties(ebProperties, $propertiesStore);            
+            changes = easyBroker.compareProperties(ebProperties, $propertiesStore);
+            
         } catch (err) {
             error = err instanceof Error ? err.message : 'Error desconocido durante la sincronización';
         } finally {

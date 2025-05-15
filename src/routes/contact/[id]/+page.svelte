@@ -775,7 +775,6 @@
       padding: 8px;
       justify-content: center;
       align-items: center;
-      background: wheat;
     }
 
     .buttSendProps{
