@@ -335,10 +335,9 @@
 
         <InputNumber 
             name="Presupuesto Máximo"
-            identificador="budget"
+            identifier="budget"
             value={budget}
-            step={100000}
-            min={0}
+           
             on:change={(event) => handleFilterChange(event, 'budget')}
         />
     </div>

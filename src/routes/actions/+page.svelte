@@ -38,6 +38,12 @@
       icon: 'fa-solid fa-gear',
       title: 'Configuración',
       description: 'Ajustes del sistema'
+    },
+    {
+      id: 'send-sellers-report',
+      icon: 'fa-solid fa-house-laptop',
+      title: 'Reoporte a Vendedores',
+      description: 'Enviar reporte a vendedores'
     }
   ];
 
@@ -58,6 +64,9 @@
       case 'configuration':
         goto('/actions/contfiguration');
         break;
+      case 'send-sellers-report':
+        goto('/actions/send-repo');
+        break
       // Aquí agregaremos más casos cuando implementemos las otras acciones
       default:
         console.log(`Acción ${actionId} aún no implementada`);

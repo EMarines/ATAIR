@@ -83,6 +83,7 @@
   // Edit contact
   function editContact(){
     $systStatus = "editContact";
+    layOut = "";
   }
 
    // Delete contact
@@ -125,6 +126,9 @@
         sentPropertyIds.includes(prop.public_id)
       );
       
+      // Ordenar las propiedades enviadas de la más reciente a la más antigua
+      alreadySentProperties = orderSentPropertiesByDate(alreadySentProperties);
+      
       // Filtrar propiedades recomendadas quitando las ya enviadas
       recommendedProperties = propToRender.filter(prop => 
         !sentPropertyIds.includes(prop.public_id)
@@ -165,6 +169,9 @@
       alreadySentProperties = properties.filter(prop => 
         sentPropertyIds.includes(prop.public_id)
       );
+      
+      // Ordenar las propiedades enviadas de la más reciente a la más antigua
+      alreadySentProperties = orderSentPropertiesByDate(alreadySentProperties);
       
       // Filtrar propiedades según término de búsqueda
       recommendedProperties = properties.filter((propety) => {
@@ -267,7 +274,8 @@
               const sentProperty = propCheck[sig];
               // Agregar a propiedades enviadas si no está ya
               if (!alreadySentProperties.some(prop => prop.public_id === sentProperty.public_id)) {
-                alreadySentProperties = [...alreadySentProperties, sentProperty];
+                // Insertar al principio del array (no al final) para que aparezca como la más reciente
+                alreadySentProperties = [sentProperty, ...alreadySentProperties];
               }
               // Quitar de propiedades recomendadas
               recommendedProperties = recommendedProperties.filter(
@@ -312,6 +320,9 @@
                 alreadySentProperties = properties.filter(prop => 
                   sentPropertyIds.includes(prop.public_id)
                 );
+                
+                // Ordenar las propiedades enviadas de la más reciente a la más antigua
+                alreadySentProperties = orderSentPropertiesByDate(alreadySentProperties);
                 
                 recommendedProperties = propToRender.filter(prop => 
                   !sentPropertyIds.includes(prop.public_id)
@@ -397,6 +408,32 @@
     }
   });
 
+  // Nueva función para ordenar propiedades enviadas por fecha de envío
+  function orderSentPropertiesByDate(sentProperties: Property[]): Property[] {
+    if (!sortedBinn || !sentProperties.length) return sentProperties;
+    
+    // Crear un mapa de propiedades con su fecha de envío
+    const propertyDatesMap = new Map<string, number>();
+    
+    // Recorrer la bitácora de más reciente a más antigua para obtener la fecha más reciente
+    sortedBinn.forEach(binnacle => {
+      if (binnacle.action?.includes("Propiedad enviada")) {
+        const propertyId = binnacle.comment?.trim();
+        if (propertyId && !propertyDatesMap.has(propertyId)) {
+          propertyDatesMap.set(propertyId, binnacle.date || 0);
+        }
+      }
+    });
+    
+    // Ordenar propiedades por fecha de envío (de más reciente a más antigua)
+    return [...sentProperties].sort((a, b) => {
+      const dateA = propertyDatesMap.get(a.public_id) || 0;
+      const dateB = propertyDatesMap.get(b.public_id) || 0;
+      return dateB - dateA; // Orden descendente por fecha
+    });
+  }
+
+  console.log("systStatus", $systStatus)
 </script>
 
     <!-- Contact Data -->
@@ -448,16 +485,10 @@
               {/if}
             </div>
 
-            <!-- Contact, notes and features-->
-          <!-- <div> -->
-
             <div class="cont__pref">              
               <span>Notas: {contact.notes}</span>              
             </div>
 
-            
-  
-            <!-- <div class="cont__requires">           -->
               <div class="features__search">
                 {#if contact.budget}
                     <span>Presupuesto $ {toComaSep(Number(contact.budget))}.</span>
@@ -489,10 +520,6 @@
 
               </div> 
 
-            <!-- </div> -->
-
-          <!-- </div> -->
-          
           <!-- Buttons schedule, props, prop y return -->
           <div class="btn__actions">
 
@@ -520,18 +547,6 @@
                   on:change={textAreaComm} 
                   bind:value={commInpuyBinnacle} 
                   placeholder="Envia una nota por WhatsApp o guarda un nota"></textarea>
-                <!-- {#if commInpuyBinnacle && commInpuyBinnacle.includes('atair.com.mx/property/')} -->
-                  <!-- <button 
-                    class="copy-button" 
-                    on:click={() => {
-                      navigator.clipboard.writeText(commInpuyBinnacle);
-                      alert('URL copiada al portapapeles');
-                    }}
-                    title="Copiar al portapapeles"
-                  >
-                    <i class="fa-regular fa-copy"></i>
-                  </button> -->
-                <!-- {/if} -->
 
                 <div class="waSave">
                   {#if !!commInpuyBinnacle || $systStatus === "addContact" || $systStatus === "msgGratitude" || layOut === "sendProp" }
@@ -569,11 +584,11 @@
               <h1 class="title">Bitácora</h1>
               <div>
                 <div class="schedule">
-                  <div class="binnacleHome">
+                  <!-- <div class="binnacleHome"> -->
                     {#each sortedBinn as binn}
                       <CardBinnacle {binn} />
                     {/each}
-                  </div>              
+                  <!-- </div>               -->
                 </div>
               </div>
             </div>
@@ -585,7 +600,7 @@
     <!-- </div> -->
 
     <!-- Tarjeta para propiedad -->
-    {#if layOut === "sendProps" || layOut === "sendProp"} 
+    {#if layOut === "sendProps" || layOut === "sendProp" } 
       <div class="property-section-container">
         <div class="properties-columns">
           <div class="properties-column">
@@ -656,18 +671,10 @@
       display: flex;
       flex-direction: row;
       justify-content: center;
-      align-items: center;
+      align-items: stretch; /* Cambia de center a stretch para estirar los contenedores */
       gap: 15px;
       flex: 1;
-    }
-
-    .mainContainer {
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      align-items: stretch; /* Cambia de center a stretch */
-      gap: 15px;
-      flex: 1;
+      min-height: 70vh; /* Altura mínima para el contenedor principal */
     }
 
     .leftContainer, .rigthContainer {
@@ -678,7 +685,8 @@
       border-radius: 8px;
       box-shadow: 1px 2px rgba(255,255,255, 0.5);
       background: rgb(56, 56, 56);
-
+      height: 60vh; /* Cambiar a auto para permitir que se ajuste al contenido */
+      flex: 1; /* Ambos contenedores crecerán para llenar el espacio disponible */
     }
 
     .leftContainer {
@@ -692,9 +700,26 @@
       line-height: 2rem;
       width: 40%;
       padding: 5px;
-      overflow-y: auto; /* Cambia de scroll a auto */
-      overflow-x: none;
+      display: flex; /* Asegurar que es flex */
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
       gap: 10px;
+    }
+
+  
+    /* Contenedor para el título y contenido de la bitácora */
+    .rigthContainer > div {
+      display: flex;
+      flex-direction: column;
+      flex: 1; /* Ocupar todo el espacio disponible */
+    }
+
+    .schedule {
+      display: flex;
+      flex-direction: column;
+      flex: 1; /* Ocupar todo el espacio disponible */
+      overflow: hidden; /* Evitar desbordamiento */
     }
 
     .title{
@@ -758,6 +783,7 @@
 
       .rigth__title {
         display: flex;
+        font-size: .8em;
         width: 35%;
         height: 60px;
         justify-content: space-between;
@@ -798,97 +824,93 @@
       padding: 0;
       margin: 0;
       flex-wrap: wrap;
-      align-items: flex-start;
-      justify-content: flex-start;
-      gap: 6px; /* Espacio mínimo entre tarjetas */
+      gap: 12px; /* Aumentado para dar más espacio entre tarjetas */
+      justify-content: center;
     }
     
+    /* Contenedor de la tarjeta con posicionamiento relativo */
     .select__prop {
       position: relative;
-      width: 130px; /* Ajustado para mejor fit */
-      height: 165px; /* Altura reducida para eliminar espacio vertical */
-      margin: 0;
+      width: 165px;
+      height: 165px;
+      margin: 0 0 5px 0; /* Añadir margen inferior explícito */
       padding: 0;
-      overflow: hidden; /* Cambiado a hidden para evitar desbordamiento */
+      overflow: visible;
     }
     
-    /* Aplicar estilo directo al componente CardProperty */
+    /* Aplicar solo transformación de escala al componente original */
     .select__prop :global(.card__container) {
-      transform: scale(0.52); /* Escala ajustada */
+      transform: scale(0.75);
       transform-origin: top left;
-      margin: 0;
-      padding: 0;
-      height: 250px; 
       position: absolute;
       top: 0;
       left: 0;
+      width: 220px; 
+      height: 220px;
+      border-radius: 8px;
     }
     
-    /* Añadir gradiente para mejorar visibilidad del texto */
-    .select__prop :global(.img__cont::before) {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(transparent 40%, rgba(0,0,0,0.7) 90%);
-      z-index: 5; /* Ajustado para estar sobre la imagen pero bajo el texto */
-      pointer-events: none;
+    /* Ajustes para evitar problemas con hover y asegurar que el borde se vea */
+    .select__prop :global(.card__prop) {
+      border-radius: 8px; /* Reforzar borde redondeado */
     }
     
-    /* Asegurarse que los textos aparezcan sobre el gradiente */
-    .select__prop :global(.card__info), 
-    .select__prop :global(.card__features) {
-      position: relative;
-      z-index: 6;
+    .select__prop :global(.card__prop:hover) {
+      transform: none !important;
     }
     
-    .select__prop :global(.capitalize), 
-    .select__prop :global(.price),
-    .select__prop :global(.feature-span) {
-      color: white;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-      font-weight: bold;
-    }
-
+    /* Ajuste para el checkbox de selección */
     .form__propCheck {
       position: absolute;
       top: 5px;
       left: 5px;
       z-index: 25;
+      width: 15px; /* Ligeramente más grande para mejor usabilidad */
+      height: 15px;
     }
 
-    /* Para pantallas medianas */
+    /* Ajustes responsive */
     @media (max-width: 992px) {
       .cards__container {
-        justify-content: space-around;
+        gap: 15px; /* Mayor espacio en pantallas medianas */
       }
       
       .select__prop {
-        width: 125px;
-        height: 160px;
+        width: 165px;
+        height: 165px;
+        margin-bottom: 8px; /* Aumentar margen inferior */
       }
     }
     
-    /* Para pantallas pequeñas */
     @media (max-width: 768px) {
       .cards__container {
         justify-content: center;
-        gap: 5px;
+        gap: 12px 15px; /* Espacio horizontal y vertical separado */
       }
       
       .select__prop {
-        width: 120px;
-        height: 155px;
+        width: 150px;
+        height: 150px;
+        margin-bottom: 15px; /* Mayor espacio vertical para evitar solapamiento */
       }
     }
     
-    /* Para pantallas muy pequeñas */
     @media (max-width: 480px) {
+      .cards__container {
+        gap: 10px 15px; /* Espacio horizontal y vertical */
+      }
+      
       .select__prop {
-        width: 100%; /* Ocupar todo el ancho en móviles pequeños */
-        max-width: 250px; /* Con un límite máximo */
+        width: calc(50% - 15px); /* 2 tarjetas por fila con margen lateral */
+        max-width: 150px;
+        min-width: 130px;
+        height: 150px;
+        margin-bottom: 20px; /* Espacio vertical significativo en móviles */
+      }
+      
+      /* Ajustar posición para evitar solapamiento en móviles */
+      .select__prop :global(.card__container) {
+        transform: scale(0.7); /* Escala ligeramente menor en móviles */
       }
     }
 
@@ -996,12 +1018,6 @@
       justify-content: space-evenly;
     }
 
-      .binnacleHome {
-        display: flex;
-        flex-direction: column;
-        overflow-x: hidden;
-      }
-
       i {
         font-size: 1.8rem;
         padding: 5px 15px 5px 0;
@@ -1083,14 +1099,15 @@
         flex-direction: column;
         margin: 0 auto;
       }
-      .rigthContainer{
+
+      .rigthContainer, .leftContainer {
         width: 100%;
-        height: auto;
       }
       
-      .leftContainer {
-          width: 100%;
-        }
+      .rigthContainer {
+        height: auto;
+        min-height: 300px; /* Altura mínima en modo móvil */
+      }
     }
 
     @media (max-width:500px){

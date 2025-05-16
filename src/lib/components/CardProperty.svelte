@@ -97,11 +97,11 @@
 </div>
 
 <style>
-  /* Consolidados todos los estilos del div card-property en card__container */
+  /* Reducir la altura total del contenedor */
   .card__container {
     position: relative;
     width: 100%;
-    height: 100%;
+    height: 220px; /* Reducida de 250px */
     margin: 0;
     padding: 0;
     z-index: 10;
@@ -145,13 +145,13 @@
     transition: all 0.3s ease;
     z-index: 10;
     justify-content: space-between;
-    padding: 8px;
+    padding: 6px 6px 3px 6px; /* Padding reducido en todos los lados */
     cursor: pointer;
     box-sizing: border-box;
   }
 
   .card__prop:hover {
-    transform: translateY(-5px);
+    /* Modificar para evitar cambios de dimensión al hacer hover */
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     background: rgb(76, 76, 76);
     z-index: 1000;
@@ -160,10 +160,10 @@
   .img__cont {
     position: relative;
     width: 100%;
-    height: 140px;
+    height: 120px; /* Reducida de 140px */
     overflow: hidden;
     border-radius: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 2px; /* Reducido de 4px a 2px */
     flex-shrink: 0;
   }    
   
@@ -195,11 +195,12 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
-    justify-content: space-between;
+    flex-grow: 0; /* Evitar crecimiento excesivo */
+    justify-content: flex-start; /* Alinear al inicio */
     min-height: 0;
     max-width: 100%;
     overflow: hidden;
+    gap: 0px; /* Eliminado el espacio entre elementos */
   }
   
   .card__info {
@@ -214,6 +215,7 @@
     width: 100%;
     max-width: 100%;
     overflow: hidden;
+    margin-bottom: 0px; /* Eliminado el margen inferior */
   }
 
   /* Contenedor específico para la ubicación */
@@ -221,9 +223,9 @@
     width: 100%;
     max-width: 100%;
     overflow: hidden;
-    height: 1.2em; /* Altura fija para el texto */
-    line-height: 1.2em;
-    margin-bottom: 4px;
+    height: 1.1em; /* Reducida de 1.2em */
+    line-height: 1.1em; /* Reducida de 1.2em */
+    margin-bottom: 0px; /* Eliminado el margen inferior */
   }
 
   /* Estilo específico para el texto de la ubicación */
@@ -234,29 +236,31 @@
     text-overflow: ellipsis;
     max-width: 100%;
     width: 100%;
-    font-size: 0.9rem;
+    font-size: 0.85rem; /* Reducido ligeramente */
   }
 
   .price {
     font-weight: 500;
-    font-size: 0.95rem;
+    font-size: 0.9rem; /* Reducido de 0.95rem */
     display: block;
     white-space: nowrap;
-    height: 1.2em;
-    line-height: 1.2em;
+    height: 1.1em; /* Reducida de 1.2em */
+    line-height: 1.1em; /* Reducida de 1.2em */
+    margin-bottom: 0px; /* Asegurar que no haya margen */
   }
  
   .card__features {
     display: flex;
     flex-direction: row;
-    padding: 4px;
-    gap: 8px;
+    padding: 0px; /* Eliminado el padding */
+    gap: 6px; /* Reducido de 8px */
     justify-content: center;
     flex-wrap: wrap;
     width: 100%;
     max-width: 100%;
     overflow: hidden;
-    height: 1.8em; /* Altura fija para características */
+    height: 1.2em; /* Reducida de 1.5em */
+    margin-top: 0px; /* Eliminado el margen superior */
   }
 
   /* Clase específica para los spans de características */
@@ -266,26 +270,26 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 45%;
-    font-size: 0.8em;
-    height: 1.2em;
-    line-height: 1.2em;
+    font-size: 0.75em; /* Reducido ligeramente */
+    height: 1em; /* Reducida de 1.2em */
+    line-height: 1em; /* Reducida de 1.2em */
   }
 
-  /* Sistema responsive con múltiples breakpoints */
+  /* Sistema responsive - dimensiones consistentes */
   @media (max-width: 768px) {
     .card__container {
-      height: 100%;
+      height: 220px; /* Mantener altura consistente */
     }
     
     .img__cont {
-      height: 130px;
+      height: 120px; /* Reducida para mantener proporción */
     }
   }
 
   @media (max-width: 500px) {
     .card__container {
       width: 100%;
-      height: 220px;
+      height: 220px; /* Mantener altura consistente */
     }
     
     .feature-span {
@@ -295,16 +299,16 @@
 
   @media (max-width: 400px) {
     .card__container {
-      height: 100%;
-      margin: 0 auto 10px;
+      height: 220px; /* Mantener altura consistente */
+      margin: 0;
     }
 
     .card__prop {
-      padding: 6px;
+      padding: 4px; /* Reducido aún más */
     }
 
     .img__cont {
-      height: 120px;
+      height: 115px; /* Ajustada ligeramente */
     }
 
     .card__info {
@@ -330,8 +334,8 @@
   /* Para dispositivos muy pequeños */
   @media (max-width: 350px) {
     .card__container {
-      height: 100%;
-      min-height: 100%;
+      height: 220px; /* Mantener altura consistente */
+      min-height: 0;
     }
 
     .img__cont {
