@@ -550,8 +550,8 @@
 
                 <div class="waSave">
                   {#if !!commInpuyBinnacle || $systStatus === "addContact" || $systStatus === "msgGratitude" || layOut === "sendProp" }
-                    <button class="btn__common" on:click={selMsgWA}><i class="fa-brands fa-square-whatsapp"></i>WhatsApp</button>
-                    <button class="btn__common" on:click={saveNote}><i class="fa-solid fa-floppy-disk"></i>Guardar Info</button>
+                    <button class="btn__common btn-whatsapp" on:click={selMsgWA}><i class="fa-brands fa-square-whatsapp"></i>WhatsApp</button>
+                    <button class="btn__common btn-save" on:click={saveNote}><i class="fa-solid fa-floppy-disk"></i>Guardar Info</button>
                   {/if}
                 </div>
 
@@ -560,14 +560,14 @@
               <div class="icon__title">
                 <i on:click={()=>{editContact()}} 
                    on:keydown={()=>{}} 
-                   class="fa-regular fa-pen-to-square"
+                   class="fa-regular fa-pen-to-square action-icon"
                    role="button"
                    tabindex="0"
                    aria-label="Edit Contact"></i>
                 
                 <i on:click={() => deleContact(contact.id)} 
                    on:keydown={()=>{}} 
-                   class="fa-regular fa-trash-can"
+                   class="fa-regular fa-trash-can action-icon"
                    role="button"
                    tabindex="0"
                    aria-label="Delete Contact"></i>
@@ -791,8 +791,10 @@
 
       .icon__title {
         display: flex;
-        justify-content: space-evenly;
-        width: atuto;
+        justify-content: center;
+        gap: 20px;
+        width: 100%;
+        margin-top: 5px;
       }
 
     .buttonSend {
@@ -810,6 +812,9 @@
       align-items: center;
       border-radius: 20px;
       background: rgb(57, 255, 47);
+      color: rgb(40, 40, 40);
+      font-weight: 500;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
     .fa-square-whatsapp{
@@ -949,11 +954,9 @@
     .btn__actions {
       display: flex;
       flex-direction: column;
-      /* align-items: center; */
       width: 100%;
-      padding: 20px 0;
-      /* gap: 20px; */
-      /* background: lightskyblue; */
+      padding: 15px 0;
+      gap: 8px;
     }
 
     .icon__actions {
@@ -961,7 +964,9 @@
       flex-direction: row;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: space-evenly;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
     }
 
     .search {
@@ -973,19 +978,18 @@
     .textAreaCont {
       display: flex;
       flex-direction: column;
-      padding: 20px;
+      padding: 10px 20px;
       align-items: center;
       justify-content: center;
       width: 100%;
-      /* background: coral; */
     }
 
     textarea {
       border-radius: 8px;
       width: 60%;
-      height: 100px;
+      height: 80px;
       padding: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     
     .notes {
@@ -1015,44 +1019,86 @@
     
     .waSave {
       display: flex;
-      justify-content: space-evenly;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
       i {
-        font-size: 1.8rem;
-        padding: 5px 15px 5px 0;
+        font-size: 1.5rem;
+        padding: 5px 10px 5px 0;
       }
 
       .to__show {
         font-size: 1rem;
-        padding: 5px 20px 5px 5px;
+        padding: 5px 15px 5px 5px;
       }
 
       .to__showR {
         font-size: 1rem;
-        padding: 5px 5px 5px 20px;
+        padding: 5px 5px 5px 15px;
       }
 
       .fa-square-whatsapp {
-        color: rgb(2, 255, 2);
+        color: white;
       }
 
       .fa-pen-to-square, .fa-trash-can {
         display: flex;
-        align-items:baseline;
+        align-items: center;
+        justify-content: center;
         font-size: 1.2rem;
-
+        cursor: pointer;
+        padding: 8px;
+        margin: 0;
+      }
+      
+      .action-icon {
+        background-color: rgba(255, 247, 238, 0.15);
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: all 0.2s ease;
+        color: rgb(255, 247, 238);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      }
+      
+      .action-icon:hover {
+        background-color: rgba(255, 247, 238, 0.3);
+        transform: scale(1.05);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       }
 
       .btn__common {
-        width: 150px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 6px 12px;
+        min-width: 120px;
+        max-width: 150px;
+        height: 32px;
         background: rgb(255, 247, 238);
-        border-radius: 15px;
+        color: rgb(56, 56, 56);
+        font-weight: 500;
+        border-radius: 12px;
         cursor: pointer;
+        margin: 3px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
       }
 
       .btn__common:hover {
-        color: rgb(153, 153, 0);
+        color: rgb(153, 102, 0);
+        background-color: rgb(255, 255, 255);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       }
 
       .select__prop{
@@ -1126,10 +1172,24 @@
         flex-direction: column;
         width: 100%;
         align-items: center;
-        gap: 5px;
+        gap: 4px;
       }
       .btn__common{
-        width: 90%;
+        width: 85%;
+        height: 32px;
+        min-width: auto;
+        margin: 2px;
+      }
+      
+      /* Estilos especiales para botones WhatsApp y Guardar Info */
+      .btn__common.btn-whatsapp {
+        background-color: #25D366;
+        color: white;
+      }
+      
+      .btn__common.btn-save {
+        background-color: #3b5998;
+        color: white;
       }
    
       .cont__contact{

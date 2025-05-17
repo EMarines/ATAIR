@@ -1,0 +1,86 @@
+/* Button fixes for action area */
+.btn__actions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 20px 0;
+  gap: 10px;
+}
+
+.icon__actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn__common {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 15px;
+  min-width: 120px;
+  max-width: 150px;
+  background: rgb(255, 247, 238);
+  border-radius: 15px;
+  cursor: pointer;
+  margin: 5px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.2s ease;
+}
+
+.btn__common:hover {
+  color: rgb(153, 153, 0);
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.btn__common i {
+  margin-right: 5px;
+  font-size: 1.2rem;
+}
+
+.waSave {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Media queries para adaptación en pantallas pequeñas */
+@media (max-width: 768px) {
+  .icon__actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .btn__common {
+    min-width: 120px;
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 500px) {
+  .waSave {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn__common {
+    width: 90%;
+    max-width: 250px;
+  }
+  
+  i {
+    padding-right: 10px;
+  }
+}

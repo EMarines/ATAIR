@@ -80,11 +80,11 @@
     if (!contact) return false;
     
     // Verificación específica para el contacto problemático
-    if (searchTerm.toLowerCase().includes('aabbcx') || searchTerm.toLowerCase().includes('zzzzz')) {
-      const isMatch = (contact.name?.toLowerCase() === 'aabbcx' || 
-                      contact.lastname?.toLowerCase() === 'zzzzz');
-      return isMatch;
-    }
+    // if (searchTerm.toLowerCase().includes('aabbcx') || searchTerm.toLowerCase().includes('zzzzz')) {
+    //   const isMatch = (contact.name?.toLowerCase() === 'aabbcx' || 
+    //                   contact.lastname?.toLowerCase() === 'zzzzz');
+    //   return isMatch;
+    // }
     
     const searchableText = [
       contact.name || '',

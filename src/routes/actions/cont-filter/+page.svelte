@@ -2,6 +2,7 @@
     import { contactsStore, propertiesStore, systStatus, contact } from '$lib/stores/dataStore';    
     import { InputOptions, InputOptionsMultiple, InputNumber, Button } from '$components';
     import type { Contact } from '$lib/types';
+    
     type ExtendedContact = Contact & { tags?: string[] };
     
     let filteredContacts: ExtendedContact[] = [];
@@ -30,7 +31,19 @@
     const typeContact = {
         operation: {
             name: "Tipo de Operación",
-            choices: ["Comprador", "Arrendador", "Arrendatario", "Inversionista", "Asesor Inmobiliario", "Captación"]
+            choices: [
+    "Comprador",
+    "Vendedor",
+    "Arrendador",
+    "Arrendatario",
+    "Inmobiliario",
+    "Inmobiliario Asociado",
+    "Inversionista",
+    "Constructor",
+    "Desarrollador",
+    "Captación",
+    ""
+  ]
         }
     };
 
