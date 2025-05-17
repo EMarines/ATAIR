@@ -15,7 +15,7 @@
             <p class="slogan">{empresa.slogan}</p>
             <div class="footer__section">
                 <h3>Sistema ATAIR</h3>
-                <p>Sistema de gestión inmobiliaria V(5.5.14)</p>
+                <p>Sistema de gestión inmobiliaria V(5.5.16)</p>
                 <p>&copy; {year} ATAIR. Todos los derechos reservados.</p>
             </div>
         </div>
