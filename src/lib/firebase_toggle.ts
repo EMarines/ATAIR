@@ -32,35 +32,50 @@ const createDbToggleStore = () => {
         }
      },
     toggle: () => {
-        if (!import.meta.env.PROD && browser) {
+        if (browser) {
             update(value => {
                 const newValue = !value;
+                console.log("Cambiando base de datos a:", newValue ? "PRUEBA" : "PRODUCCIÓN");
                 localStorage.setItem('useTestDb', String(newValue));
-                window.location.reload();
+                // Agregar pequeño retraso antes de recargar para asegurar que
+                // localStorage se actualice completamente
+                setTimeout(() => {
+                  window.location.reload();
+                }, 100);
                 return newValue;
             });
-       }
+        } else {
+            console.log("Toggle no disponible en entorno no-browser");
+        }
      }
   };
 };
 export const useTestDb = createDbToggleStore();
 
-// --- Función getFirebaseConfig (con databaseURL eliminado - ¡SI APLICA!) ---
+// --- Función getFirebaseConfig ---
 function getFirebaseConfig() {
+  // En producción, siempre usar la configuración principal
   if (import.meta.env.PROD) {
-    // Configuración Producción (SIN databaseURL si no la usas)
+    console.log("Modo producción: usando base de datos principal (Match Home)");
     return {
       apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
       authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
       projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-      // databaseURL: import.meta.env.VITE_FIREBASE_DATA_BASE_URL, // <-- ELIMINADO SI NO USAS RTDB
+      databaseURL: import.meta.env.VITE_FIREBASE_DATA_BASE_URL,
       storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
       messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
       appId: import.meta.env.VITE_FIREBASE_APP_ID
     };
   }
 
-  const isUsingTestDb = browser ? localStorage.getItem('useTestDb') === 'true' : false;
+  // En desarrollo, verificar explícitamente localStorage para usar la base de datos apropiada
+  let isUsingTestDb = false;
+  
+  if (browser) {
+    // Leer directamente de localStorage con fallback seguro
+    isUsingTestDb = localStorage.getItem('useTestDb') === 'true';
+    console.log("Modo desarrollo: usando base de datos:", isUsingTestDb ? "TEST (Curso Svelte)" : "PRINCIPAL (Match Home)");
+  }
 
   if (isUsingTestDb) {
     // Configuración Test (SIN databaseURL si no la usas)
@@ -99,17 +114,39 @@ const allConfigPresent = requiredKeys.every(key => {
 });
 
 
-let app: ReturnType<typeof initializeApp> | null = null; // Tipado explícito
-let db: ReturnType<typeof getFirestore> | null = null;   // Tipado explícito
-let auth: ReturnType<typeof getAuth> | null = null;     // Tipado explícito
+// Variables para Firebase
+let app: ReturnType<typeof initializeApp> | null = null;
+let db: ReturnType<typeof getFirestore> | null = null;  
+let auth: ReturnType<typeof getAuth> | null = null;     
+
+// Mensaje de diagnóstico
+if (browser) {
+    console.log(`Estado inicial de useTestDb (localStorage): ${localStorage.getItem('useTestDb')}`);
+}
 
 if (allConfigPresent) {
-    try { // Añadir try-catch aquí por si initializeApp falla por otra razón
-        if (!getApps().length) {
-            app = initializeApp(firebaseConfig);
+    try {
+        // Si hay apps existentes, obtener la app por nombre si es test o la principal si no
+        // Esto asegura que inicialicemos correctamente la app según el modo
+        if (getApps().length) {
+            try {
+                const isUsingTestDb = browser && localStorage.getItem('useTestDb') === 'true';
+                console.log(`Inicializando con modo: ${isUsingTestDb ? 'TEST' : 'PRODUCCIÓN'}`);
+                
+                // Intentar obtener app existente con el nombre correcto
+                app = getApp(isUsingTestDb ? 'test-app' : 'default');
+            } catch (error) {
+                // Si falla al obtener app específica, usar la app predeterminada
+                app = getApp();
+                console.log(`Usando app predeterminada: ${app.name}`, error);
+            }
         } else {
-            app = getApp();
+            // No hay apps existentes, inicializar con el nombre correcto
+            const isUsingTestDb = browser && localStorage.getItem('useTestDb') === 'true';
+            app = initializeApp(firebaseConfig, isUsingTestDb ? 'test-app' : undefined);
+            console.log(`Creando nueva app en modo: ${isUsingTestDb ? 'TEST' : 'PRODUCCIÓN'}`);
         }
+        
         db = getFirestore(app);
         auth = getAuth(app);
 

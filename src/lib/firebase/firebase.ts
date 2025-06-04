@@ -1,4 +1,3 @@
-import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
 import { app, db, auth } from './init';
 import {
@@ -6,30 +5,11 @@ import {
   createUserWithEmailAndPassword // <-- Importado para el registro
 } from 'firebase/auth';
 
-// Store para controlar qué base de datos usamos
-const createDbToggleStore = () => {
-  const initialValue = browser ?
-    localStorage.getItem('useTestDb') === 'true' :
-    false;
+// Importamos useTestDb desde firebase_toggle.ts en lugar de definirlo aquí
+import { useTestDb } from '$lib/firebase_toggle';
 
-  const { subscribe, update } = writable<boolean>(initialValue);
-
-  return {
-    subscribe,
-    toggle: () => {
-      update(value => {
-        const newValue = !value;
-        if (browser) {
-          localStorage.setItem('useTestDb', String(newValue));
-          window.location.reload();
-        }
-        return newValue;
-      });
-    }
-  };
-};
-
-export const useTestDb = createDbToggleStore();
+// Re-exportamos para mantener compatibilidad
+export { useTestDb };
 export const firebaseInitialized = writable(false);
 
 // Variables para las instancias

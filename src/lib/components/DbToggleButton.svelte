@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { useTestDb } from '$lib/firebase/firebase';
+  import { useTestDb } from '$lib/firebase_toggle';
   import { browser } from '$app/environment';
   
   // Etiquetas para mostrar qué base de datos estamos usando
