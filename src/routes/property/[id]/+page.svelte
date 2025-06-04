@@ -149,7 +149,7 @@
     listToRender()
 		show__contacts = !show__contacts
 		$systStatus = "sendPropToContacts"
-		console.log("$propertyStore, $contactsStore", $systStatus);
+		// console.log("$propertyStore, $contactsStore", $systStatus);
   };
 
   const actCancel = () => {
@@ -335,7 +335,7 @@
 						{#if contToRender.length === 0}
 							<h1>No hay contactos para enviar</h1>
 						{:else }
-							<h1>A {contInitial.length} {msgToShow}</h1>
+							<h1>A {contToRender.length} {msgToShow}</h1>
 						{/if}					
 
 						<div class="opti__cont">
@@ -363,7 +363,7 @@
 							<input 
 								type="checkbox" 
 								on:change={selectAll}
-								checked={contCheck.length === contToRender.length}
+								checked={contToRender.length > 0 && contCheck.length === contToRender.length}
 							> 
 							Seleccionar todos
 						</label>
