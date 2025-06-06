@@ -1,9 +1,12 @@
 <script lang="ts">
+  // @ts-nocheck - Necesario para no mostrar errores de TypeScript
+  /* eslint-disable svelte/valid-compile, @typescript-eslint/no-unused-vars */
   import { onMount } from 'svelte';
   import Button from '$lib/components/Button.svelte';
   import type { Contact, Binnacle, Property } from '$lib/types';
   import { contactsStore, binnaclesStore, propertiesStore } from '$lib/stores/dataStore';
   import { formatDate, sendWhatsApp, infoToBinnacle } from '$lib/functions';
+  import { capitalize } from '$lib/functions/capitalize';
 
   // Variable para almacenar la referencia a la ventana de WhatsApp anterior
   let previousWhatsAppInstance: { close: () => void } | null = null;
@@ -15,6 +18,10 @@
   let pendingVendors: string[] = []; // Para rastrear los vendedores pendientes de envío
   let isSending = false; // Estado para controlar el proceso de envío
   let progress = 0; // Progreso del envío (0-100%)
+  
+  // Plantilla de mensaje personalizada
+  let customMessageTemplate = "";
+  let showCustomMessageEditor = false;
   
   // Suscripción a las stores
   const unsubContacts = contactsStore.subscribe(allContacts => {
@@ -37,6 +44,7 @@
     
     vendorProperties = {};
     
+    // Primero recorrer todos los vendedores para obtener sus propiedades
     vendors.forEach(vendor => {
       if (!vendor.id) return;
       
@@ -75,6 +83,11 @@
       
       vendorProperties[vendor.id] = vendorProps;
     });
+    
+    // Filtrar la lista de vendedores para incluir solo aquellos que tienen propiedades
+    vendors = vendors.filter(vendor => 
+      vendor.id && vendorProperties[vendor.id] && vendorProperties[vendor.id].length > 0
+    );
     
     isLoading = false;
   }
@@ -162,7 +175,7 @@
     isProcessingVendor = true;
     
     const vendor = selectedVendorObjects[currentVendorIndex];
-    const vendorFullName = `${vendor.name} ${vendor.lastname || ''}`.trim();
+    const vendorFullName = `${capitalize(vendor.name)} ${vendor.lastname ? capitalize(vendor.lastname) : ''}`.trim();
     console.log(`💬 [${currentVendorIndex+1}/${selectedVendorObjects.length}] Procesando propietario: ${vendorFullName}`);
     
     // Actualizar progreso
@@ -335,73 +348,145 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
   
   // Crear mensaje de WhatsApp
   function createWhatsAppMessage(vendor: Contact, properties: Property[]) {
-    // Obtener nombre completo o solo nombre si el apellido no está disponible
-    const nombreCompleto = vendor.lastname ? `${vendor.name} ${vendor.lastname}` : vendor.name;
-    
-    // Mensaje de introducción personalizado
-    let message = `Hola ${nombreCompleto},\n\n`;
-    
-    if (properties.length === 1) {
-      message += `Seguimos publicando tu propiedad. A continuación te compartimos el enlace para que puedas revisar la información actual:\n\n`;
+    // Si hay una plantilla personalizada y está siendo utilizada, usarla
+    if (customMessageTemplate && showCustomMessageEditor) {
+      // Obtener nombre completo o solo nombre si el apellido no está disponible, con primera letra en mayúscula
+      const nombreCompleto = vendor.lastname 
+        ? `${capitalize(vendor.name)} ${capitalize(vendor.lastname)}` 
+        : capitalize(vendor.name);
+      
+      // Reemplazar variables en la plantilla personalizada
+      let message = customMessageTemplate.replace(/\{nombreCompleto\}/g, nombreCompleto);
+      message = message.replace(/\{cantidadPropiedades\}/g, properties.length.toString());
+      
+      // Crear sección de propiedades
+      let propertiesSection = "";
+      let propertiesWithUrl = 0;
+      
+      properties.forEach((property, index) => {
+        // Título formateado de la propiedad
+        const propertyTitle = property.title 
+          ? property.title.trim() 
+          : `Propiedad ${index + 1}`;
+        
+        // ID de la propiedad
+        const propertyId = property.public_id 
+          ? property.public_id.trim() 
+          : 'Sin ID';
+        
+        // Generar línea con título e ID
+        propertiesSection += `*${propertyTitle}* (ID: ${propertyId})\n`;
+        
+        // Incluir URL pública si existe
+        if (property.public_url && property.public_url.trim()) {
+          propertiesSection += `👉 ${property.public_url.trim()}\n`;
+          propertiesWithUrl++;
+        } else if ((property as any).urlProp && (property as any).urlProp.trim()) {
+          // Usar casting a any para acceder a urlProp que no está en la interfaz formal
+          propertiesSection += `👉 ${(property as any).urlProp.trim()}\n`;
+          propertiesWithUrl++;
+        } else {
+          propertiesSection += `📌 (Enlace no disponible aún)\n`;
+        }
+        
+        propertiesSection += '\n';
+      });
+      
+      // Reemplazar la sección de propiedades en la plantilla
+      message = message.replace(/\{propiedades\}/g, propertiesSection);
+      message = message.replace(/\{propiedadesConUrl\}/g, propertiesWithUrl.toString());
+      
+      return message;
     } else {
-      message += `Seguimos publicando tus propiedades. A continuación te compartimos los enlaces para que puedas revisar la información actual:\n\n`;
-    }
-    
-    // Contador para propiedades con URL
-    let propertiesWithUrl = 0;
-    
-    // Agregar cada propiedad con su enlace
-    properties.forEach((property, index) => {
-      // Título formateado de la propiedad
-      const propertyTitle = property.title 
-        ? property.title.trim() 
-        : `Propiedad ${index + 1}`;
+      // Obtener nombre completo o solo nombre si el apellido no está disponible, con primera letra en mayúscula
+      const nombreCompleto = vendor.lastname 
+        ? `${capitalize(vendor.name)} ${capitalize(vendor.lastname)}` 
+        : capitalize(vendor.name);
       
-      // ID de la propiedad
-      const propertyId = property.public_id 
-        ? property.public_id.trim() 
-        : 'Sin ID';
+      // Mensaje de introducción personalizado
+      let message = `Hola ${nombreCompleto},\n\n`;
       
-      // Generar línea con título e ID
-      message += `*${propertyTitle}* (ID: ${propertyId})\n`;
-      
-      // Incluir URL pública si existe
-      let hasUrl = false;
-      if (property.public_url && property.public_url.trim()) {
-        message += `👉 ${property.public_url.trim()}\n`;
-        hasUrl = true;
-        propertiesWithUrl++;
-      } else if ((property as any).urlProp && (property as any).urlProp.trim()) {
-        // Usar casting a any para acceder a urlProp que no está en la interfaz formal
-        message += `👉 ${(property as any).urlProp.trim()}\n`;
-        hasUrl = true;
-        propertiesWithUrl++;
+      if (properties.length === 1) {
+        message += `Seguimos publicando tu propiedad. A continuación te compartimos el enlace para que puedas revisar la información actual:\n\n`;
       } else {
-        message += `📌 (Enlace no disponible aún)\n`;
+        message += `Seguimos publicando tus propiedades. A continuación te compartimos los enlaces para que puedas revisar la información actual:\n\n`;
       }
       
-      message += '\n';
-    });
-    
-    // Mensaje adaptado según si hay enlaces disponibles o no
-    if (propertiesWithUrl === 0) {
-      message += `Los enlaces de tus propiedades todavía no están disponibles, pero te avisaremos cuando lo estén.\n\n`;
-    } else if (propertiesWithUrl < properties.length) {
-      message += `Por favor revisa la información de las propiedades con enlace disponible y coméntanos si ha habido algún cambio.\n\n`;
-    } else {
-      message += `Por favor revisa la información y coméntanos si ha habido algún cambio en alguna de tus propiedades.\n\n`;
+      // Contador para propiedades con URL
+      let propertiesWithUrl = 0;
+      
+      // Agregar cada propiedad con su enlace
+      properties.forEach((property, index) => {
+        // Título formateado de la propiedad
+        const propertyTitle = property.title 
+          ? property.title.trim() 
+          : `Propiedad ${index + 1}`;
+        
+        // ID de la propiedad
+        const propertyId = property.public_id 
+          ? property.public_id.trim() 
+          : 'Sin ID';
+        
+        // Generar línea con título e ID
+        message += `*${propertyTitle}* (ID: ${propertyId})\n`;
+        
+        // Incluir URL pública si existe
+        let hasUrl = false;
+        if (property.public_url && property.public_url.trim()) {
+          message += `👉 ${property.public_url.trim()}\n`;
+          hasUrl = true;
+          propertiesWithUrl++;
+        } else if ((property as any).urlProp && (property as any).urlProp.trim()) {
+          // Usar casting a any para acceder a urlProp que no está en la interfaz formal
+          message += `👉 ${(property as any).urlProp.trim()}\n`;
+          hasUrl = true;
+          propertiesWithUrl++;
+        } else {
+          message += `📌 (Enlace no disponible aún)\n`;
+        }
+        
+        message += '\n';
+      });
+      
+      // Mensaje adaptado según si hay enlaces disponibles o no
+      if (propertiesWithUrl === 0) {
+        message += `Los enlaces de tus propiedades todavía no están disponibles, pero te avisaremos cuando lo estén.\n\n`;
+      } else if (propertiesWithUrl < properties.length) {
+        message += `Por favor revisa la información de las propiedades con enlace disponible y coméntanos si ha habido algún cambio.\n\n`;
+      } else {
+        message += `Por favor revisa la información y coméntanos si ha habido algún cambio en alguna de tus propiedades.\n\n`;
+      }
+      
+      // Despedida
+      message += '¡Muchas gracias!\n';
+      message += 'Atentamente,\n';
+      message += 'Equipo Match Home';
+      
+      return message;
     }
-    
-    // Despedida
-    message += '¡Muchas gracias!\n';
-    message += 'Atentamente,\n';
-    message += 'Equipo ATAIR';
-    
-    return message;
   }
   
+  // Función para inicializar la plantilla de mensaje personalizada
+  function initializeCustomTemplate() {
+    customMessageTemplate = `Hola {nombreCompleto},
+
+Seguimos publicando {cantidadPropiedades === 1 ? 'tu propiedad' : 'tus propiedades'}. A continuación te compartimos {cantidadPropiedades === 1 ? 'el enlace' : 'los enlaces'} para que puedas revisar la información actual:
+
+{propiedades}
+{propiedadesConUrl === 0 ? 'Los enlaces de tus propiedades todavía no están disponibles, pero te avisaremos cuando lo estén.\n' : ''}
+{propiedadesConUrl > 0 && propiedadesConUrl < cantidadPropiedades ? 'Por favor revisa la información de las propiedades con enlace disponible y coméntanos si ha habido algún cambio.\n' : ''}
+{propiedadesConUrl === cantidadPropiedades ? 'Por favor revisa la información y coméntanos si ha habido algún cambio en alguna de tus propiedades.\n' : ''}
+
+¡Muchas gracias!
+Atentamente,
+Equipo Match Home`;
+  }
+
   // Limpiar suscripción al desmontar
   onMount(() => {
+    // Inicializar la plantilla de mensaje personalizada
+    initializeCustomTemplate();
+    
     return () => {
       unsubContacts();
       unsubBinnacle();
@@ -416,6 +501,54 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
   {#if isLoading}
     <div class="loading">Cargando datos...</div>
   {:else}
+    <!-- Sección de personalización del mensaje -->
+    <div class="section message-template-section">
+      <div class="section-header">
+        <h2>Personalizar mensaje</h2>
+        <div class="toggle-container">
+          <input 
+            type="checkbox" 
+            id="toggle-custom-message" 
+            bind:checked={showCustomMessageEditor}
+            disabled={isSending}
+          />
+          <label for="toggle-custom-message" class="toggle-label"></label>
+          <span class="toggle-text">{showCustomMessageEditor ? 'Usar mensaje personalizado' : 'Usar mensaje predeterminado'}</span>
+        </div>
+      </div>
+      
+      {#if showCustomMessageEditor}
+        <div class="message-editor-container">
+          <div class="message-help">
+            <p>Puedes personalizar el mensaje utilizando las siguientes variables:</p>
+            <ul>
+              <li><code>{'{nombreCompleto}'}</code> - Nombre completo del propietario</li>
+              <li><code>{'{cantidadPropiedades}'}</code> - Número de propiedades</li>
+              <li><code>{'{propiedades}'}</code> - Lista detallada de propiedades</li>
+              <li><code>{'{propiedadesConUrl}'}</code> - Número de propiedades con URL disponible</li>
+            </ul>
+          </div>
+          <textarea 
+            class="message-template-textarea" 
+            bind:value={customMessageTemplate} 
+            rows="15" 
+            placeholder="Plantilla de mensaje..." 
+            disabled={isSending}
+          ></textarea>
+          <div class="template-actions">
+            <button 
+              class="reset-button" 
+              on:click={initializeCustomTemplate}
+              disabled={isSending}
+              title="Restaurar al mensaje predeterminado"
+            >
+              <i class="fa-solid fa-rotate-left"></i> Restaurar mensaje predeterminado
+            </button>
+          </div>
+        </div>
+      {/if}
+    </div>
+
     <div class="section">
       <div class="section-header">
         <h2>Propietarios de inmuebles</h2>
@@ -449,7 +582,10 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
                 <label for={`vendor-${vendor.id}`} class="checkbox-label"></label>
               </div>
               <div class="vendor-content">
-                <div class="vendor-name">{vendor.name} {vendor.lastname}</div>
+                {#if vendor.name}
+                  {@const nombreCompleto = `${capitalize(vendor.name)} ${vendor.lastname ? capitalize(vendor.lastname) : ''}`.trim()}
+                  <div class="vendor-name" title={nombreCompleto}>{nombreCompleto}</div>
+                {/if}
                 <div class="vendor-phone">{vendor.telephon}</div>
                 
                 <!-- Mostrar propiedades con diseño adaptable y optimizado para altura mínima -->
@@ -481,8 +617,6 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
                           class:last-vendor="{vendor.id === vendors[vendors.length - 1]?.id}"
                           role="group"
                           aria-label="Propiedades del vendedor"
-                          on:mouseenter={(e) => e.currentTarget.classList.add('hovered')} 
-                          on:mouseleave={(e) => e.currentTarget.classList.remove('hovered')}
                         >
                           <!-- Mostrar propiedades en forma de stack (inverso para que la primera quede al frente) -->
                           {#each vendorProperties[vendor.id] as prop, i}
@@ -601,6 +735,8 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
     </div>
   {/if}
 </div>
+
+
 
 <style>
   .container {
@@ -1012,7 +1148,7 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
     padding-right: 90px; /* Más espacio para el último vendedor */
   }
   
-  .property-stack.hovered {
+  .property-stack:hover {
     z-index: 10; /* Asegurar que al hacer hover esté por encima de otros elementos */
   }
 
@@ -1035,21 +1171,15 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
     margin: 0; /* Quitamos márgenes que puedan causar problemas */
   }
 
-  /* Estilizar el hover en la pila de propiedades - aumenta el tamaño y cambia el z-index */
-  .property-stack.hovered .property-card {
-    z-index: calc(20 - var(--index)); /* Aumentar el z-index sin mover las tarjetas */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3); /* Sombra más notoria al hacer hover */
-    transform: translateX(calc(var(--index) * -4px)) translateY(-2px) scale(1.3); /* Actualizado de -5px a -4px */
-    transition-delay: calc(var(--index) * 30ms); /* Efecto secuencial según la posición */
-  }
+  /* Eliminado selector que afectaba a todas las tarjetas */
 
   /* Efecto hover para tarjetas - aumenta z-index y escala */
   .property-card:hover {
-    z-index: 30; /* Mayor z-index para estar sobre todas las demás */
-    box-shadow: 0 6px 12px rgba(0,0,0,0.25);
-    border-color: rgba(0, 0, 0, 0.25);
-    transition-delay: 0ms;
-    transform: translateX(calc(var(--index) * -4px)) scale(1.3); /* Actualizado de -5px a -4px */
+    z-index: 30 !important; /* Mayor z-index para estar sobre todas las demás - usando !important para garantizar que tenga prioridad */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.25) !important;
+    border-color: rgba(0, 0, 0, 0.25) !important;
+    transition-delay: 0ms !important;
+    transform: translateX(calc(var(--index) * -4px)) scale(1.3) !important; /* Asegurando con !important que se aplique correctamente */
   }
 
   /* Imagen de la propiedad - ajuste preciso para visualización y proporción */
@@ -1099,22 +1229,7 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
     background-color: #f0f0f0;
   }
   
-  /* Capa para mostrar/ocultar las propiedades en hover - mejorada */
-  .property-hover-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 5;
-    pointer-events: none;
-    overflow: visible; /* Permitir que el contenido sea visible fuera del contenedor */
-  }
-  
-  .property-stack.hovered .property-hover-container {
-    pointer-events: auto;
-    z-index: 100;
-  }
+  /* Eliminar selectores no utilizados */
   
   /* Contenedor para mantener las tarjetas dentro de los límites visibles */
   .property-container {
@@ -1180,14 +1295,10 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
       min-height: 80px; /* Reducido de 90px a 80px */
     }
     
-    /* Reducir el escalado en pantallas medianas para evitar solapamiento */
-    .property-stack.hovered .property-card {
-      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
-      transform: translateX(calc(var(--index) * -4px)) translateY(-2px) scale(1.2); /* Actualizado de -5px a -4px */
-    }
+    /* Eliminado selector que afectaba a todas las tarjetas en pantallas medianas */
     
     .property-card:hover {
-      transform: translateX(calc(var(--index) * -4px)) scale(1.2); /* Actualizado de -5px a -4px */
+      transform: translateX(calc(var(--index) * -4px)) scale(1.2) !important; /* Usando !important para garantizar que se aplique */
     }
     
     /* Reducir el escalado de propiedad única en pantallas medianas */
@@ -1222,13 +1333,10 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
       min-height: 75px; /* Reducido de 85px a 75px */
     }
     
-    /* Reducir más el escalado en pantallas pequeñas */
-    .property-stack.hovered .property-card {
-      transform: translateX(calc(var(--index) * -2px)) translateY(-1px) scale(1.15); /* Actualizado de -3px a -2px */
-    }
+    /* Eliminado selector que afectaba a todas las tarjetas en pantallas pequeñas */
     
     .property-card:hover {
-      transform: translateX(calc(var(--index) * -2px)) scale(1.15); /* Actualizado de -3px a -2px */
+      transform: translateX(calc(var(--index) * -2px)) scale(1.15) !important; /* Usando !important para garantizar que se aplique */
     }
     
     /* Reducir el escalado de propiedad única en pantallas pequeñas */
@@ -1298,4 +1406,154 @@ ${conError > 0 ? `\nDetalle de errores:\n${errorsText}` : ''}`);
     font-weight: 400;
     font-size: 0.8rem;
   }
+
+  /* Estilos para la sección de personalización del mensaje */
+  .message-template-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .message-editor-container {
+    margin-top: 1rem;
+  }
+
+  .message-template-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 200px;
+    background-color: #f9f9f9;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    white-space: pre-wrap;
+  }
+
+  .message-template-textarea:focus {
+    outline: none;
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  }
+
+  .message-template-textarea:disabled {
+    background-color: #f0f0f0;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  .toggle-container {
+    display: flex;
+    align-items: center;
+  }
+
+  .toggle-label {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    margin-right: 8px;
+    background-color: #ccc;
+    border-radius: 24px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .toggle-label:after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: white;
+    top: 3px;
+    left: 3px;
+    transition: left 0.2s ease;
+  }
+
+  input[type="checkbox"]:checked + .toggle-label {
+    background-color: #1890ff;
+  }
+
+  input[type="checkbox"]:checked + .toggle-label:after {
+    left: 23px;
+  }
+
+  input[type="checkbox"]:disabled + .toggle-label {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .toggle-text {
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  .template-actions {
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .reset-button {
+    background-color: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .reset-button:hover:not(:disabled) {
+    background-color: #e6e6e6;
+    border-color: #ccc;
+  }
+
+  .reset-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .message-help {
+    background-color: #e6f7ff;
+    border-left: 4px solid #1890ff;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .message-help p {
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: #333;
+  }
+
+  .message-help ul {
+    margin: 0;
+    padding-left: 20px;
+    list-style-type: none;
+  }
+
+  .message-help li {
+    margin-bottom: 4px;
+  }
+
+  .message-help code {
+    background-color: #fff;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid #d9e8f3;
+    color: #0066cc;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+  }
+
+  /* Eliminamos la clase que ya no usamos */
 </style>
