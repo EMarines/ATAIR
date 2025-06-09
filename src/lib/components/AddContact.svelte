@@ -46,8 +46,10 @@
     // Estado unificado del formulario
     export let existingContact: Contact | null = null;
     
-    let contact: Contact = existingContact ? { ...existingContact } : {
-        budget: 0,
+    let contact: Contact = existingContact 
+        ? { ...existingContact } 
+        : {
+        budget: 0, // Valor numérico por defecto
         comContact: '',
         contactStage: 'Etapa 1',
         createdAt: Date.now(),
@@ -71,6 +73,9 @@
         typeContact: '',
     };
   
+    // Variable string para el input de presupuesto, inicializada desde el contact.budget actual (que ya considera existingContact)
+    let budgetStringForInput: string = String(contact.budget);
+
     // Función para generar un UUID
     function generateUUID() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -127,6 +132,8 @@
     }
   
     async function handleSubmit() {
+        console.log("[AddContact] handleSubmit: budgetStringForInput (valor del input) AL INICIO:", budgetStringForInput, "Tipo:", typeof budgetStringForInput);
+        // El contact.budget original no se modifica directamente por el input bindeado a budgetStringForInput
         // console.log($propertyStore, contact, "handleSubmit");
         try {
             isSubmitting = true;
@@ -137,6 +144,29 @@
                 return;
             }
   
+            // Parsear budgetStringForInput a número para guardar
+            let parsedBudgetNumber: number = 0;
+            if (budgetStringForInput !== null && budgetStringForInput !== undefined && String(budgetStringForInput).trim() !== '') {
+                let numericStringToParse = String(budgetStringForInput).trim();
+                const lastComma = numericStringToParse.lastIndexOf(',');
+                const lastDot = numericStringToParse.lastIndexOf('.');
+
+                if (lastComma !== -1 && (lastDot === -1 || lastDot < lastComma)) { // Coma es decimal
+                    numericStringToParse = numericStringToParse.replace(/\./g, '').replace(',', '.');
+                } else { // Punto es decimal o no hay decimal, comas son miles
+                    numericStringToParse = numericStringToParse.replace(/,/g, '');
+                }
+                // Eliminar cualquier caracter que no sea dígito o el primer punto decimal
+                numericStringToParse = numericStringToParse.replace(/[^\d.]/g, (match, offset, fullString) => {
+                    return (match === '.' && fullString.indexOf('.') === offset) ? '.' : '';
+                });
+
+                const tempParsedValue = parseFloat(numericStringToParse);
+                parsedBudgetNumber = isNaN(tempParsedValue) ? 0 : tempParsedValue;
+            }
+            console.log(`[AddContact] handleSubmit: budgetStringForInput ('${budgetStringForInput}') parseado a parsedBudgetNumber:`, parsedBudgetNumber);
+
+
             // Crear una copia limpia del contacto con valores por defecto para campos vacíos
             const cleanContactData: Contact = {
                 id: contact.id || '',
@@ -149,9 +179,7 @@
                 comContact: contact.comContact || '',
                 contactStage: contact.contactStage || 'Etapa 1',
                 isActive: contact.isActive !== undefined ? contact.isActive : true,
-                budget: typeof contact.budget === 'string' ? 
-                    (contact.budget === '' ? '' : Number(contact.budget)) : 
-                    (contact.budget || ''),
+                budget: parsedBudgetNumber, // Usar el valor parseado
                 selecTP: contact.selecTP || '',
                 rangeProp: contact.rangeProp || '',
                 numBaths: contact.numBaths || 0,
@@ -207,6 +235,7 @@
             }
   
             // console.log('Guardando contacto con ID:', cleanContactData.id);
+            console.log('[AddContact] handleSubmit: cleanContactData (DATOS FINALES A GUARDAR):', cleanContactData);
             
             // Guardar el contacto en Firebase
             let result;
@@ -466,12 +495,12 @@
                                             contact.typeContact = convertOperationEbFb(property.selecTO) || '',
                                             contact.rangeProp = property.price 
                                                 ? ranPrice(property.price)
-                                                : '';
-                                            // contact.selecTO = convertOperationEbFb(property.selecTO) || '';
-                                            
+                                                : '';                                            
                                             // Guardar la propiedad seleccionada en el store
                                             propertyStore.set(property);
-                                            
+                                            // Si se quisiera que el precio de la propiedad llene el presupuesto:
+                                            // contact.budget = property.price || 0;
+                                            // budgetStringForInput = String(contact.budget);
                                             propToRender = [];
                                             showProp = false;
                                             searchTerm = "";
@@ -531,24 +560,9 @@
                     </div>            
                     <div class="inp__lat">
                         <InputText 
-                            identifier="budget" 
-                            name="Presupuesto" 
-                            value={contact.budget !== undefined && contact.budget !== null ? String(contact.budget) : ''}
-                            on:blur={(e) => {
-                                console.log("Budget blur event:", e.detail);
-                                const inputValue = e.detail.value;
-                                
-                                // Eliminar caracteres no numéricos excepto puntos y comas
-                                const cleanValue = inputValue.replace(/[^\d.,]/g, '')
-                                    .replace(/,/g, '.'); // Reemplazar comas por puntos
-                                
-                                // Convertir a número si es válido, o usar 0
-                                const numValue = cleanValue ? parseFloat(cleanValue) : 0;
-                                
-                                // Actualizar el valor en el objeto contact
-                                contact.budget = numValue;
-                                console.log("Asignado a contact.budget:", numValue, "tipo:", typeof numValue);
-                            }}
+                            identifier="budget"
+                            name="Presupuesto"
+                            bind:value={budgetStringForInput}
                         />
                         <InputOptions 
                             identificador="rangeProp" 
