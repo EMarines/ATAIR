@@ -13,6 +13,9 @@
 		"lint": "prettier --check . && eslint .",
 		"vercel-build": "svelte-kit sync && vite build"
 	},
+	"engines": {
+		"node": "20.x"
+	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.3",
 		"@sveltejs/adapter-auto": "^3.0.0",
