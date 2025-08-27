@@ -1,11 +1,10 @@
-// c:\Users\Propietario\OneDrive\AB GrupoUrbania\OneDrive\Escritorio\Web Projects\ATAIR\src\lib\functions\filContacts.ts
 import { mosRange } from '../functions/rangeValue';
 import { tagToUbicacion, tagToFeatures } from './tagConverters';
 import type { Property, Contact } from '$lib/types';
 
 const dateTo = new Date().getTime();
 const oneYearAgo = new Date();
-oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 3);
 const oneYearAgoTimestamp = oneYearAgo.getTime();
 
 export function findContactsForProperty(property: Property, contacts: Contact[]): Contact[] {
