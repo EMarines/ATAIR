@@ -21,13 +21,43 @@ export function sendWhatsApp(fullTel: string, msg: string) {
     return { close: () => {} };
   }
 
-  // 2. Validar número
-  if (!fullTel || !/^\d+$/.test(fullTel)) {
+  // 2. Validar y normalizar número
+  if (!fullTel || typeof fullTel !== 'string') {
       console.error("sendWhatsApp: Número de teléfono inválido:", fullTel);
       return { close: () => {} };
   }
 
-  // 3. Cerrar ventana previa (si aplica y es posible)
+  // Limpiar el número: solo dígitos
+  let cleanNumber = fullTel.replace(/\D/g, '');
+  
+  if (!cleanNumber || cleanNumber.length < 10) {
+      console.error("sendWhatsApp: Número de teléfono muy corto:", fullTel);
+      return { close: () => {} };
+  }
+
+  // 3. Agregar código de país si no lo tiene
+  // Para México (52) - ajusta según tu país
+  if (!cleanNumber.startsWith('52')) {
+    // Si el número empieza con 1 (formato NANP), usar 52 + número sin el 1
+    if (cleanNumber.startsWith('1') && cleanNumber.length === 11) {
+      cleanNumber = '52' + cleanNumber.substring(1);
+    } 
+    // Si es un número local de 10 dígitos, agregar código de país
+    else if (cleanNumber.length === 10) {
+      cleanNumber = '52' + cleanNumber;
+    }
+    // Si tiene 12 dígitos y empieza con otro código de país, dejarlo como está
+    else if (cleanNumber.length >= 11) {
+      // Ya tiene código de país, no modificar
+    } else {
+      // Número con formato no reconocido, agregar 52 por defecto
+      cleanNumber = '52' + cleanNumber;
+    }
+  }
+
+  console.log(`sendWhatsApp: Número normalizado de "${fullTel}" a "${cleanNumber}"`);
+
+  // 4. Cerrar ventana previa (si aplica y es posible)
   if (whatsappWindow && !whatsappWindow.closed) {
     try {
         whatsappWindow.close();
@@ -38,17 +68,32 @@ export function sendWhatsApp(fullTel: string, msg: string) {
     whatsappWindow = null;
   }
 
-  // 4. Codificar mensaje
+  console.log(`sendWhatsApp: Número normalizado de "${fullTel}" a "${cleanNumber}"`);
+
+  // 4. Cerrar ventana previa (si aplica y es posible)
+  if (whatsappWindow && !whatsappWindow.closed) {
+    try {
+        whatsappWindow.close();
+        console.log("sendWhatsApp: Ventana de WhatsApp anterior cerrada.");
+    } catch (e) {
+        console.warn("sendWhatsApp: No se pudo cerrar la ventana anterior.", e);
+    }
+    whatsappWindow = null;
+  }
+
+  // 5. Codificar mensaje
   const encodedMsg = encodeURIComponent(msg);
 
-  // 5. Construir URL universal
-  const whatsappUrl = `https://wa.me/${fullTel}?text=${encodedMsg}`;
+  // 6. Construir URL universal con número normalizado
+  const whatsappUrl = `https://wa.me/${cleanNumber}?text=${encodedMsg}`;
+  
+  console.log(`sendWhatsApp: URL construida: ${whatsappUrl}`);
 
-  // 6. Definir características para la ventana popup
+  // 7. Definir características para la ventana popup
   const windowFeatures = 'popup=yes,width=300,height=500,noopener,noreferrer,scrollbars=yes,resizable=yes'; // Ajusta tamaño si quieres
   const windowName = 'whatsappPopup';
 
-  // 7. Intentar abrir la ventana popup
+  // 8. Intentar abrir la ventana popup
   try {
     whatsappWindow = window.open(whatsappUrl, windowName, windowFeatures);
 
@@ -71,7 +116,7 @@ export function sendWhatsApp(fullTel: string, msg: string) {
     return { close: () => console.warn("sendWhatsApp: No se puede cerrar ventana/tab (redirección directa).") };
   }
 
-  // 8. Devolver método close para la ventana abierta (si aplica)
+  // 9. Devolver método close para la ventana abierta (si aplica)
   return {
     close: () => {
       if (whatsappWindow && !whatsappWindow.closed) {

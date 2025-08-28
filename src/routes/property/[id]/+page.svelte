@@ -112,10 +112,30 @@
 	};
 
   const sendWA = async (contact: Contact) => {
+    // Validaciones más robustas
     if (!contact || !contact.telephon) {
         alert('El contacto debe tener un número de teléfono');
         return;
     }
+    
+    if (!contact.id) {
+        alert('Error: El contacto no tiene un ID válido');
+        console.error('Contacto sin ID:', contact);
+        return;
+    }
+    
+    if (!property || !property.public_id) {
+        alert('Error: La propiedad no tiene un ID válido');
+        console.error('Propiedad sin public_id:', property);
+        return;
+    }
+
+    console.log('📤 Enviando propiedad:', {
+        contactName: contact.name,
+        contactId: contact.id,
+        propertyId: property.public_id,
+        telephon: contact.telephon
+    });
 
     let saludoHora = diaTarde();
     let contacto = capitalize(contact.name);
@@ -123,27 +143,36 @@
       `${property.public_url}    ${contacto}. ${saludoHora}.  ${mensaje}` : 
       `${contacto}. ${saludoHora}.  ${mensaje}`;
     let tel = contact.telephon;
-    sendWhatsApp(tel, msg);
     
-    const newBinnacle: Binnacle = {
-        date: Date.now(),
-        comment: property && property.public_id ? property.public_id : "Sin ID público",
-        to: contact.id,
-        action: "Propiedad enviada:"
-    };
-
     try {
+        // Enviar WhatsApp primero
+        sendWhatsApp(tel, msg);
+        
+        // Crear objeto de bitácora con validaciones
+        const newBinnacle: Binnacle = {
+            date: Date.now(),
+            comment: property.public_id.trim(), // Asegurar que no tenga espacios extra
+            to: contact.id.trim(), // Asegurar que el ID esté limpio
+            action: "Propiedad enviada: " // ✅ Espacio al final consistente con otros archivos
+        };
+
+        // Guardar en bitácora
         const binnacleToAdd = collection(db, "binnacles");
-        await addDoc(binnacleToAdd, newBinnacle);					
+        await addDoc(binnacleToAdd, newBinnacle);
+        
+        console.log(`✅ Bitácora guardada exitosamente: ${contact.name} - ${property.public_id}`);
+        
     } catch (error) {
-        console.log(error);
+        console.error('❌ Error al guardar en bitácora:', error);
+        // Mostrar error al usuario pero no interrumpir el flujo
+        alert(`Advertencia: El mensaje se envió pero hubo un error al guardar el registro. Error: ${error}`);
     }
 
     if($systStatus === "sendPropToContacts"){
         contToSend = {} as Contact;
         listToRender();
     }
-  };
+};
 
   const findCustomers = () => {
     listToRender()

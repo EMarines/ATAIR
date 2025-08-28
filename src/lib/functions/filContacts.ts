@@ -7,12 +7,15 @@ const oneYearAgo = new Date();
 oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 3);
 const oneYearAgoTimestamp = oneYearAgo.getTime();
 
-export function findContactsForProperty(property: Property, contacts: Contact[]): Contact[] {
 
-    // Filtro inicial: Contactos activos (último año) O en Etapa 4
+   export function findContactsForProperty(property: Property, contacts: Contact[]): Contact[] {
+    // Filtro inicial: Contactos activos (últimos 3 año) O en Etapa 4, pero NUNCA en "PAUSA"
     let interestedContacts = contacts.filter((cont) =>
-        (cont.createdAt >= oneYearAgoTimestamp && cont.createdAt <= dateTo) || cont.contactStage === "Etapa4"
+        cont.contactStage !== "PAUSA" && 
+        ((cont.createdAt >= oneYearAgoTimestamp && cont.createdAt <= dateTo) || cont.contactStage === "Etapa4")
     );
+
+    // Resto del código sin cambios...
 
     // Determinar el tipo de contacto objetivo basado en la operación de la propiedad
     let targetContactType = '';
