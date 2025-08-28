@@ -40,6 +40,12 @@
       description: 'Ajustes del sistema'
     },
     {
+      id: 'cleanup-binnacles',
+      icon: 'fa-solid fa-broom',
+      title: 'Limpieza de Bitácora',
+      description: 'Eliminar registros de bitácora huérfanos (Solo administradores)'
+    },
+    {
       id: 'send-sellers-report',
       icon: 'fa-solid fa-house-laptop',
       title: 'Reoporte a Vendedores',
