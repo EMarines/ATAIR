@@ -1,8 +1,10 @@
 <script lang="ts">
   // Importaciones
-  import { loginWithEmailPassword, registerWithEmailPassword } from '$lib/firebase/firebase'; // <-- Importa la función de registro
-  import { auth } from '$lib/firebase/init';
+  import { loginWithEmailPassword, registerWithEmailPassword } from '$lib/firebase/firebase'; 
+  import { userStore, ensureValidToken } from '$lib/firebase/authManager';
+  import { auth } from '$lib/firebase_toggle';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
 
   // Creamos variables locales para el formulario
   let email = '';
@@ -10,6 +12,25 @@
   let isLoading = false;
   let error = null;
   let isRegisterMode = false;
+  let rememberMe = true; // Por defecto habilitado para recordar sesión
+
+  // Verificar si ya está autenticado al cargar la página
+  onMount(() => {
+    // Cargar email guardado si existe
+    const savedEmail = localStorage.getItem('savedEmail');
+    if (savedEmail) {
+      email = savedEmail;
+    }
+
+    const unsubscribe = userStore.subscribe(user => {
+      if (user && user.uid) {
+        console.log('Usuario ya autenticado, redirigiendo...');
+        goto('/');
+      }
+    });
+
+    return unsubscribe;
+  });
 
   // Función para resetear los campos del formulario
   function resetForm() {
@@ -34,40 +55,61 @@
         // --- Lógica de Registro ---
         result = await registerWithEmailPassword(emailValue, passwordValue);
         if (result.success) {
-          console.log(result, "Registro exitoso");
-          // Podrías redirigir o mostrar un mensaje de éxito antes de redirigir
-          // Por ahora, redirigimos igual que en el login
+          console.log('✅ Registro exitoso');
+          
+          // Verificar que tenemos un token válido
+          try {
+            await ensureValidToken();
+            console.log('✅ Token verificado después del registro');
+          } catch (tokenError) {
+            console.warn('⚠️ Problema con token después del registro:', tokenError);
+          }
+          
           setTimeout(async () => {
-            try { await goto('/'); } catch (navErr) { console.error("Error en redirección:", navErr); window.location.href = '/'; }
+            try { 
+              await goto('/'); 
+            } catch (navErr) { 
+              console.error("Error en redirección:", navErr); 
+              window.location.href = '/'; 
+            }
           }, 500);
         } else {
-          // Asegúrate de que getErrorMessage esté definida y maneje los códigos de error
           error = { message: getErrorMessage(result.code) || `Error de registro: ${result.message}` };
-          // Limpiar los campos después de un intento fallido
           resetForm();
         }
       } else {
         // --- Lógica de Login ---
         result = await loginWithEmailPassword(emailValue, passwordValue);
         if (result.success) {
-          console.log(result, "Autenticación exitosa");
-          // Redirigir al usuario
+          console.log('✅ Login exitoso');
+          
+          // Guardar email si el usuario quiere recordar
+          if (rememberMe) {
+            localStorage.setItem('savedEmail', emailValue);
+          } else {
+            localStorage.removeItem('savedEmail');
+          }
+          
+          // No necesitamos verificar token aquí, Firebase ya maneja la sesión
+          // El authManager se encargará de actualizar el estado
+          
           setTimeout(async () => {
-            try { await goto('/'); } catch (navErr) { console.error("Error en redirección:", navErr); window.location.href = '/'; }
+            try { 
+              await goto('/'); 
+            } catch (navErr) { 
+              console.error("Error en redirección:", navErr); 
+              window.location.href = '/'; 
+            }
           }, 500);
         } else {
-          // Asegúrate de que getErrorMessage esté definida y maneje los códigos de error
           error = { message: getErrorMessage(result.code) || `Error de login: ${result.message}` };
-          // Limpiar los campos después de un intento fallido
           resetForm();
         }
       }
 
     } catch (err) {
       console.error("Error general:", err.message);
-      // Asegúrate de que el mensaje de error sea útil
       error = { message: `Error inesperado: ${err.message}` };
-      // Limpiar los campos después de un error general
       resetForm();
     } finally {
       isLoading = false;
@@ -91,7 +133,10 @@
       'auth/wrong-password': 'Contraseña incorrecta',
       'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
       'auth/network-request-failed': 'Error de red. Verifica tu conexión',
-      'auth/unauthorized-domain': 'Este dominio no está autorizado para operaciones de Firebase'
+      'auth/unauthorized-domain': 'Este dominio no está autorizado para operaciones de Firebase',
+      'auth/user-token-expired': 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente',
+      'auth/invalid-user-token': 'Token de usuario inválido. Por favor, inicia sesión nuevamente',
+      'auth/too-many-requests': 'Demasiados intentos fallidos. Intenta más tarde'
       // Puedes añadir más códigos de error aquí si es necesario
     };
 
@@ -129,6 +174,20 @@
           autocomplete={isRegisterMode ? "new-password" : "current-password"} 
         >
       </label>
+
+      <!-- Checkbox para recordar sesión -->
+      {#if !isRegisterMode}
+      <div class="remember-me">
+        <label class="checkbox-label">
+          <input 
+            type="checkbox" 
+            bind:checked={rememberMe}
+          />
+          <span class="checkmark"></span>
+          Recordar mis datos
+        </label>
+      </div>
+      {/if}
 
       <!-- Botón de envío -->
       <button
@@ -272,6 +331,31 @@
       background: none; /* Asegurar que no cambie el fondo */
   }
 
+  /* Estilos para el checkbox "Recordarme" */
+  .remember-me {
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .checkbox-label {
+    display: flex !important;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.9em;
+    color: #ccc;
+    position: relative !important;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: auto !important;
+    margin-right: 0.5rem;
+    transform: scale(1.2);
+  }
+
+  .checkbox-label input[type="checkbox"]:checked {
+    accent-color: lightblue;
+  }
 
   .error {
     color: #ff4d4d; /* Rojo más visible */

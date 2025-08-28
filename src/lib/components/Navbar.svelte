@@ -1,22 +1,32 @@
 <script lang="ts">
     import "../../styles/main.css"
     import { useAuth } from '../hooks/useAuth'
-    import { useLogout } from '../hooks/useLogout'
+    import { handleLogout, userStore } from '$lib/firebase/authManager';
     import { onMount } from 'svelte';
     import Moon from "./icons/moon.svelte";
     import Sun from "./icons/sun.svelte";
     import { useTestDb } from '$lib/firebase_toggle';
     import { empresa } from '$lib/config/empresa';
-    // import { writable } from 'svelte/store'
-    // import { browser } from '$app/environment';
-    // import { page } from '$app/stores';
 
     let currentTheme = "";
     let nav__links = "wide";
     let menuOpen = false;
+    let logoutLoading = false;
 
     const { isAuthenticated } = useAuth()
-    const { logout, loading: logoutLoading } = useLogout()
+
+    // Función de logout mejorada
+    async function logout() {
+        logoutLoading = true;
+        try {
+            await handleLogout();
+            console.log('✅ Logout exitoso');
+        } catch (error) {
+            console.error('❌ Error durante logout:', error);
+        } finally {
+            logoutLoading = false;
+        }
+    }
 
     onMount(() => {
         const userPrefersDarkMode = window.matchMedia(
@@ -108,12 +118,13 @@
             href="/" 
             class="nav__link" 
             on:click={(e) => {
+              e.preventDefault();
               handleLinkClick();
               logout();
             }}
-            class:disabled={$logoutLoading}
+            class:disabled={logoutLoading}
           >
-            {$logoutLoading ? 'Cerrando sesión...' : 'Logout'}
+            {logoutLoading ? 'Cerrando sesión...' : 'Logout'}
           </a>
         </li>
       {:else}

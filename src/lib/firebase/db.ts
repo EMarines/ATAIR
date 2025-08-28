@@ -1,4 +1,4 @@
-import { db } from './init';
+import { db } from '$lib/firebase_toggle';
 import { collection, getDocs } from 'firebase/firestore';
 
 // // Tipos

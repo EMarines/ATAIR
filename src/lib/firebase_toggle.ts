@@ -152,9 +152,11 @@ if (allConfigPresent) {
 
         if (browser) {
             setPersistence(auth, browserLocalPersistence)
+            .then(() => {
+                console.log('✅ Persistencia de Firebase configurada correctamente');
+            })
             .catch((error) => {
-                // Mantener este error específico de persistencia, es útil
-                console.error("Error al configurar la persistencia:", error);
+                console.error("❌ Error al configurar la persistencia:", error);
             });
         }
     } catch (initError) {

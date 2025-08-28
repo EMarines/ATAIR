@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { app, db, auth } from './init';
+import { app, db, auth } from '$lib/firebase_toggle';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword // <-- Importado para el registro

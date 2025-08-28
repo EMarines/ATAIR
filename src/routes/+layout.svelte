@@ -7,14 +7,49 @@
   import type { Contact, Binnacle, Property } from '$lib/types';
   import {Navbar, Footer} from '$components';
   import NotificationContainer from '$lib/components/NotificationContainer.svelte';
+  import { initializeAuthManager, authInitialized, userStore, checkPersistedSession } from '$lib/firebase/authManager';
+  import { onMount } from 'svelte';
 
   const unsubscribes: (() => void)[] = [];
 
   // Función para obtener la instancia de Firestore
   const getDb = () => db;
 
+  // Inicializar el gestor de autenticación al cargar la app
+  onMount(async () => {
+    console.log('🚀 Inicializando aplicación...');
+    
+    // Verificar si hay una sesión persistente
+    const persistedUser = await checkPersistedSession();
+    if (persistedUser) {
+      console.log('✅ Sesión persistente restaurada');
+    }
+    
+    // Inicializar el gestor de autenticación
+    await initializeAuthManager();
+  });
 
-    // Configurar nuevos listeners
+  // Esperar a que la autenticación esté inicializada Y el usuario esté autenticado
+  $: if ($authInitialized && $userStore) {
+    setupFirestoreListeners();
+  } else if ($authInitialized && !$userStore) {
+    // Limpiar listeners si el usuario se desconecta
+    cleanupListeners();
+  }
+
+  function cleanupListeners() {
+    console.log('🧹 Limpiando listeners de Firestore...');
+    unsubscribes.forEach(unsubscribe => unsubscribe());
+    unsubscribes.length = 0;
+  }
+
+  function setupFirestoreListeners() {
+    console.log('🔗 Configurando listeners de Firestore para usuario autenticado...');
+    
+    // Limpiar listeners existentes
+    cleanupListeners();
+
+    // Configurar nuevos listeners - ahora sin executeWithValidToken ya que el usuario está autenticado
     unsubscribes.push(
       onSnapshot(
         collection(getDb(), 'contacts'),
@@ -123,11 +158,7 @@
         }
       )
     );
-  // }
-
-  // onDestroy(() => {
-  //   unsubscribes.forEach(unsubscribe => unsubscribe());
-  // });
+  }
 </script>
 
 <div class="app-container">
