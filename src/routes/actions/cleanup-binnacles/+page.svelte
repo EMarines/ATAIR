@@ -718,10 +718,10 @@
     font-size: 1rem;
   }
 
-  .manual-section .action-buttons {
+  /* .manual-section .action-buttons {
     flex-direction: row;
     margin-top: 1rem;
-  }
+  } */
 
   .backup-btn {
     background: #ff9800;
