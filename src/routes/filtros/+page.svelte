@@ -6,6 +6,10 @@
   import { convertOperation, ranPrice } from '$functions/index'
   import { goto } from '$app/navigation';
   import { tick } from 'svelte';
+  import { db } from '$lib/firebase';
+  import { collection, getDocs } from 'firebase/firestore';
+  import { requireAuth } from '$lib/firebase/authGuard';
+  import { onMount } from 'svelte';
 
   // Objeto para almacenar los criterios de filtro
   let reqFiltro: Partial<Property> = {
@@ -17,6 +21,15 @@
     // Aquí añadirías más propiedades de filtro a medida que agregues inputs
     // Ejemplo: priceMin: undefined, numRooms: undefined, etc.
   };
+
+  // Estados para descarga
+  let downloading = false;
+  let downloadStatus = '';
+
+  onMount(async () => {
+    // Verificar autenticación
+    await requireAuth();
+  });
 
 
   // Array para almacenar las propiedades que coinciden con los filtros
@@ -72,10 +85,251 @@
     goto('/');
   }
 
+  /**
+   * Descarga toda la colección de contactos en formato JSON
+   */
+  async function downloadContacts() {
+    if (downloading) return;
+    
+    downloading = true;
+    downloadStatus = 'Descargando contactos...';
+    
+    try {
+      console.log('📥 Iniciando descarga de contactos...');
+      
+      // Obtener todos los documentos de la colección contacts
+      const contactsSnapshot = await getDocs(collection(db, 'contacts'));
+      const contacts = contactsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Crear el objeto de exportación con metadatos
+      const exportData = {
+        collectionName: 'contacts',
+        exportDate: new Date().toISOString(),
+        totalRecords: contacts.length,
+        data: contacts
+      };
+
+      // Generar archivo JSON para descarga
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Crear elemento de descarga
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contacts_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      downloadStatus = `✅ ${contacts.length} contactos descargados exitosamente`;
+      console.log('✅ Descarga de contactos completada');
+      
+    } catch (error) {
+      console.error('❌ Error descargando contactos:', error);
+      downloadStatus = `❌ Error: ${error.message}`;
+    } finally {
+      downloading = false;
+      // Limpiar mensaje después de 3 segundos
+      setTimeout(() => {
+        downloadStatus = '';
+      }, 3000);
+    }
+  }
+
+  /**
+   * Descarga toda la colección de binnacles (bitácoras) en formato JSON
+   */
+  async function downloadBinnacles() {
+    if (downloading) return;
+    
+    downloading = true;
+    downloadStatus = 'Descargando bitácoras...';
+    
+    try {
+      console.log('📥 Iniciando descarga de bitácoras...');
+      
+      // Obtener todos los documentos de la colección binnacles
+      const binnaclesSnapshot = await getDocs(collection(db, 'binnacles'));
+      const binnacles = binnaclesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Crear el objeto de exportación con metadatos
+      const exportData = {
+        collectionName: 'binnacles',
+        exportDate: new Date().toISOString(),
+        totalRecords: binnacles.length,
+        data: binnacles
+      };
+
+      // Generar archivo JSON para descarga
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Crear elemento de descarga
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `binnacles_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      downloadStatus = `✅ ${binnacles.length} bitácoras descargadas exitosamente`;
+      console.log('✅ Descarga de bitácoras completada');
+      
+    } catch (error) {
+      console.error('❌ Error descargando bitácoras:', error);
+      downloadStatus = `❌ Error: ${error.message}`;
+    } finally {
+      downloading = false;
+      // Limpiar mensaje después de 3 segundos
+      setTimeout(() => {
+        downloadStatus = '';
+      }, 3000);
+    }
+  }
+
+  /**
+   * Descarga ambas colecciones en un solo archivo
+   */
+  async function downloadAllData() {
+    if (downloading) return;
+    
+    downloading = true;
+    downloadStatus = 'Descargando todos los datos...';
+    
+    try {
+      console.log('📥 Iniciando descarga completa...');
+      
+      // Obtener ambas colecciones en paralelo
+      const [contactsSnapshot, binnaclesSnapshot] = await Promise.all([
+        getDocs(collection(db, 'contacts')),
+        getDocs(collection(db, 'binnacles'))
+      ]);
+
+      const contacts = contactsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      const binnacles = binnaclesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Crear el objeto de exportación completo
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        totalContacts: contacts.length,
+        totalBinnacles: binnacles.length,
+        collections: {
+          contacts: {
+            collectionName: 'contacts',
+            totalRecords: contacts.length,
+            data: contacts
+          },
+          binnacles: {
+            collectionName: 'binnacles',
+            totalRecords: binnacles.length,
+            data: binnacles
+          }
+        }
+      };
+
+      // Generar archivo JSON para descarga
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Crear elemento de descarga
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `full_database_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      downloadStatus = `✅ Descarga completa: ${contacts.length} contactos y ${binnacles.length} bitácoras`;
+      console.log('✅ Descarga completa finalizada');
+      
+    } catch (error) {
+      console.error('❌ Error en descarga completa:', error);
+      downloadStatus = `❌ Error: ${error.message}`;
+    } finally {
+      downloading = false;
+      // Limpiar mensaje después de 3 segundos
+      setTimeout(() => {
+        downloadStatus = '';
+      }, 3000);
+    }
+  }
+
 </script>
 
 <div class="container">
-  <h1 class="title">Filtros</h1>
+  <h1 class="title">Filtros y Descargas</h1>
+
+  <!-- Sección de Descargas -->
+  <div class="download-section">
+    <h2 class="section-title">📥 Descargar Colecciones</h2>
+    <p class="section-description">Descarga todos los datos de las colecciones en formato JSON</p>
+    
+    {#if downloadStatus}
+      <div class="download-status" class:success={downloadStatus.includes('✅')} class:error={downloadStatus.includes('❌')}>
+        {downloadStatus}
+      </div>
+    {/if}
+
+    <div class="download-buttons">
+      <Button
+        element="button"
+        type="button"
+        variant="solid"
+        name="Descargar Contactos"
+        disabled={downloading}
+        on:click={downloadContacts}
+      >
+        {downloading ? '⏳ Descargando...' : '👥 Descargar Contactos'}
+      </Button>
+
+      <Button
+        element="button"
+        type="button"
+        variant="solid"
+        name="Descargar Bitácoras"
+        disabled={downloading}
+        on:click={downloadBinnacles}
+      >
+        {downloading ? '⏳ Descargando...' : '📋 Descargar Bitácoras'}
+      </Button>
+
+      <Button
+        element="button"
+        type="button"
+        variant="solid"
+        name="Descargar Todo"
+        disabled={downloading}
+        on:click={downloadAllData}
+      >
+        {downloading ? '⏳ Descargando...' : '🗂️ Descargar Todo'}
+      </Button>
+    </div>
+  </div>
+
+  <!-- Separador -->
+  <div class="separator"></div>
+
+  <!-- Sección de Filtros existente -->
+  <h2 class="section-title">🔍 Filtros de Propiedades</h2>
 
   <div class="buttons">
     <Button
@@ -160,6 +414,65 @@
     text-align: center;
     color: #333;
     margin-bottom: 1.5rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    color: #444;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .section-description {
+    text-align: center;
+    color: #666;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+  }
+
+  .download-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 2px solid #e9ecef;
+  }
+
+  .download-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  .download-status {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    font-weight: bold;
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 2px solid #bbdefb;
+  }
+
+  .download-status.success {
+    background: #e8f5e8;
+    color: #2e7d32;
+    border-color: #a5d6a7;
+  }
+
+  .download-status.error {
+    background: #ffebee;
+    color: #c62828;
+    border-color: #ef9a9a;
+  }
+
+  .separator {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #ddd, transparent);
+    margin: 2rem 0;
   }
 
   .options {
