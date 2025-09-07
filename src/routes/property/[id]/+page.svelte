@@ -29,6 +29,7 @@
 	let contCheck: Contact[] = [];
 	let contToSend: Contact;
 	let enviados = 0;
+	let autoMode = false; // Switch para modo automático vs manual
 
 	$: contacts = $contactsStore as Contact[];
 	$: currProperty = property as Property;
@@ -81,8 +82,8 @@
     handleCheckboxChange();
   };
 
-  // Envía en bucle la propiedad a uno o varios contactos
-	function sendProperty() {
+  // Función principal que decide el método de envío según el switch
+	async function sendProperty() {
 		if(mensaje === "") {
 			alert("Tienes que escribir un mensaje para enviar las propiedades");
 			return;
@@ -91,7 +92,94 @@
 			alert("Selecciona al menos un contacto");
 			return;
 		}
+
+		if (autoMode) {
+			// Modo automático: enviar a n8n
+			await sendToN8n();
+		} else {
+			// Modo manual: envío uno por uno con WhatsApp
+			sendManually();
+		}
+	};
+
+	// Envía los datos a n8n para procesamiento automático
+	async function sendToN8n() {
+		// Cambiar estado para mostrar que está procesando
+		$systStatus = "sendingToN8N";
 		
+		try {
+			// Preparar el paquete de datos para n8n
+			const dataPackage = {
+				property: {
+					id: property.public_id,
+					title: `${property.property_type} en ${typeof property.location === 'string' ? 
+						property.location.replace("Chihuahua, Chihuahua", "").replace("I,", "") : 
+						property.location.name.replace("Chihuahua, Chihuahua", "").replace("I,", "")} en ${property.selecTO === "sale" ? "Venta" : "Renta"}`,
+					price: property.price,
+					url: property.public_url || '',
+					image: property.title_image_thumb || '',
+					bedrooms: property.bedrooms || 0,
+					bathrooms: property.bathrooms || 0,
+					construction_size: property.construction_size || 0,
+					lot_size: property.lot_size || 0
+				},
+				message: mensaje,
+				contacts: contCheck.map(contact => ({
+					id: contact.id,
+					name: contact.name,
+					phone: contact.telephon,
+					email: contact.email || ''
+				})),
+				metadata: {
+					timestamp: Date.now(),
+					totalContacts: contCheck.length,
+					requestedBy: 'ATAIR_APP'
+				}
+			};
+
+			// URL del webhook de n8n (reemplazar con la URL real)
+			const webhookUrl = 'http://localhost:5678/webhook-test/86de1afe-3936-4150-a7f8-b296c5836f3c';
+			
+			console.log('📤 Enviando datos a n8n:', dataPackage);
+
+			// Enviar datos a n8n
+			const response = await fetch(webhookUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(dataPackage)
+			});
+
+			if (response.ok) {
+				const result = await response.json();
+				console.log('✅ Datos enviados exitosamente a n8n:', result);
+				
+				alert(`✅ Proceso automático iniciado!\n\nn8n se encargará de enviar la propiedad a ${contCheck.length} contactos.\nLos envíos se procesarán automáticamente en segundo plano.`);
+
+				// Resetear estado después del éxito
+				setTimeout(() => {
+					$systStatus = "";
+					contCheck = [];
+					contIntToSend = 0;
+					enviados = 0;
+					contFalt = 0;
+					show__contacts = false;
+				}, 1000);
+
+			} else {
+				throw new Error(`Error en la respuesta: ${response.status} - ${response.statusText}`);
+			}
+
+		} catch (error) {
+			console.error('❌ Error enviando a n8n:', error);
+			alert(`❌ Error al enviar a n8n: ${error.message}\n\nVerifica la conexión y la URL del webhook.`);
+			$systStatus = "";
+		}
+	}
+
+	// Envío manual: en bucle la propiedad a uno o varios contactos
+	function sendManually() {
 		contToSend = contCheck[enviados];
 		contFalt = contCheck.length - (enviados + 1);
 		$systStatus = "sendProps";
@@ -360,6 +448,25 @@
 							></textarea>
 					</div>
 					
+					<!-- Switch para modo automático/manual -->
+					<div class="mode-selector">
+						<div class="switch-container">
+							<span class="mode-label" class:active={!autoMode}>📱 Manual</span>
+							<label class="switch">
+								<input type="checkbox" bind:checked={autoMode}>
+								<span class="slider"></span>
+							</label>
+							<span class="mode-label" class:active={autoMode}>🤖 Automático</span>
+						</div>
+						<div class="mode-description">
+							{#if autoMode}
+								<p>🚀 Modo automático: Los mensajes se enviarán a través de n8n en segundo plano</p>
+							{:else}
+								<p>📱 Modo manual: Envío uno por uno, abrir WhatsApp manualmente</p>
+							{/if}
+						</div>
+					</div>
+					
 					<div class="sect__Title">					
 						{#if contToRender.length === 0}
 							<h1>No hay contactos para enviar</h1>
@@ -381,11 +488,21 @@
 				<!-- Muestra los contactos a los que le puede interesar la propiedad -->
 				<div class="btn__send">
 					{#if showBtn}
-						<button id="Evio_prop_selec" class="send__Prop" on:click={sendProperty}>
-							{#if enviados === 0}
-								Enviar a {contCheck.length} contactos
+						<button 
+							id="Evio_prop_selec" 
+							class="send__Prop" 
+							class:auto-mode={autoMode}
+							on:click={sendProperty} 
+							disabled={$systStatus === "sendingToN8N" || $systStatus === "sendProps"}
+						>
+							{#if $systStatus === "sendingToN8N"}
+								🚀 Enviando a n8n...
+							{:else if $systStatus === "sendProps"}
+								� Enviando {enviados}/{contCheck.length}...
+							{:else if autoMode}
+								🤖 Enviar automático ({contCheck.length} contactos)
 							{:else}
-								Enviados: {enviados}, Faltan: {contCheck.length - enviados}
+								📱 Enviar manual ({contCheck.length} contactos)
 							{/if}
 						</button>
 						<label>
@@ -393,6 +510,7 @@
 								type="checkbox" 
 								on:change={selectAll}
 								checked={contToRender.length > 0 && contCheck.length === contToRender.length}
+								disabled={$systStatus === "sendingToN8N" || $systStatus === "sendProps"}
 							> 
 							Seleccionar todos
 						</label>
@@ -616,12 +734,119 @@
 		padding: 0.75rem 1.5rem;
 		cursor: pointer;
 		transition: transform 0.2s, box-shadow 0.2s;
+		color: white;
+		font-size: 1rem;
 	}
 
-	.send__Prop:hover {
+	.send__Prop:hover:not(:disabled) {
 		transform: translateY(-2px);
 		box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 		background: rgb(76, 76, 76);
+	}
+
+	.send__Prop:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+		background: rgb(40, 40, 40);
+	}
+
+	.send__Prop.auto-mode {
+		background: linear-gradient(135deg, #4caf50, #66bb6a);
+		border-color: #4caf50;
+	}
+
+	.send__Prop.auto-mode:hover:not(:disabled) {
+		background: linear-gradient(135deg, #388e3c, #4caf50);
+	}
+
+	/* Estilos para el switch de modo */
+	.mode-selector {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+		margin: 1rem 0;
+		padding: 1rem;
+		background: rgba(255, 255, 255, 0.05);
+		border-radius: 12px;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+	}
+
+	.switch-container {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.mode-label {
+		font-size: 1rem;
+		color: rgba(255, 255, 255, 0.6);
+		transition: all 0.3s ease;
+		font-weight: 500;
+	}
+
+	.mode-label.active {
+		color: #4caf50;
+		font-weight: bold;
+	}
+
+	.switch {
+		position: relative;
+		display: inline-block;
+		width: 60px;
+		height: 34px;
+	}
+
+	.switch input {
+		opacity: 0;
+		width: 0;
+		height: 0;
+	}
+
+	.slider {
+		position: absolute;
+		cursor: pointer;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: #333;
+		transition: .4s;
+		border-radius: 34px;
+		border: 2px solid rgba(255, 255, 255, 0.2);
+	}
+
+	.slider:before {
+		position: absolute;
+		content: "";
+		height: 24px;
+		width: 24px;
+		left: 3px;
+		bottom: 3px;
+		background-color: white;
+		transition: .4s;
+		border-radius: 50%;
+	}
+
+	input:checked + .slider {
+		background-color: #4caf50;
+		border-color: #4caf50;
+	}
+
+	input:checked + .slider:before {
+		transform: translateX(26px);
+	}
+
+	.mode-description {
+		text-align: center;
+		max-width: 400px;
+	}
+
+	.mode-description p {
+		font-size: 0.9rem;
+		color: rgba(255, 255, 255, 0.8);
+		margin: 0;
+		line-height: 1.4;
 	}
 
 	.btn__send label {
