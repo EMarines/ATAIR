@@ -45,6 +45,222 @@
   
     // Estado unificado del formulario
     export let existingContact: Contact | null = null;
+
+    // Función para enviar datos del contacto a n8n para sincronización con Google Contacts
+    async function sendToN8n(contactData: Contact) {
+        const startTime = Date.now();
+        console.log('🚀 INICIANDO ENVÍO A N8N - Timestamp:', new Date().toISOString());
+        console.log('📤 Datos del contacto a enviar:', contactData);
+
+        // URL del webhook de n8n para Google Contacts
+        // MODO TEST - Usa esta URL cuando actives "Listen for test event" en n8n
+        const webhookUrlTest = 'https://n8n-n8n.wjj5il.easypanel.host/webhook-test/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        
+        // MODO PRODUCCIÓN - URL del webhook cuando el workflow está activo
+        const webhookUrlProd = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        
+                // Cambiar a true para usar modo test, false para producción
+        const useTestMode = false;
+        const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
+        
+        console.log(`🔧 Modo: ${useTestMode ? 'TEST' : 'PRODUCCIÓN'}`);
+        console.log(`🔗 URL a usar: ${webhookUrl}`);
+
+        try {
+            // Preparar el paquete de datos para n8n (siguiendo el patrón exitoso de propiedades)
+            const dataPackage = {
+                contact: {
+                    id: contactData.id,
+                    name: contactData.name,
+                    lastname: contactData.lastname || '',
+                    fullName: `${contactData.name} ${contactData.lastname || ''}`.trim(),
+                    email: contactData.email || '',
+                    phone: contactData.telephon || '',
+                    notes: contactData.notes || '',
+                    typeContact: contactData.typeContact || '',
+                    contactMode: contactData.selecMC || '',
+                    budget: contactData.budget || 0,
+                    propertyType: contactData.selecTP || '',
+                    contactStage: contactData.contactStage || ''
+                },
+                metadata: {
+                    timestamp: Date.now(),
+                    timestampISO: new Date().toISOString(),
+                    source: 'ATAIR_APP',
+                    action: 'CREATE_CONTACT',
+                    requestedBy: 'AddContact_Component',
+                    testMode: useTestMode,
+                    version: '1.0',
+                    environment: useTestMode ? 'TEST' : 'PRODUCTION'
+                },
+                // Información adicional para Google Contacts
+                googleContactsData: {
+                    displayName: contactData.name,
+                    givenName: contactData.name.split(' ')[0] || contactData.name,
+                    familyName: contactData.lastname || contactData.name.split(' ').slice(1).join(' ') || '',
+                    phoneNumbers: [
+                        {
+                            value: contactData.telephon,
+                            type: 'mobile'
+                        }
+                    ],
+                    emailAddresses: contactData.email ? [
+                        {
+                            value: contactData.email,
+                            type: 'home'
+                        }
+                    ] : [],
+                    organizations: [
+                        {
+                            name: 'ATAIR Contact',
+                            title: contactData.typeContact || 'Cliente'
+                        }
+                    ]
+                }
+            };
+
+            console.log('📦 PAQUETE COMPLETO A ENVIAR:', JSON.stringify(dataPackage, null, 2));
+            console.log('🔗 URL del webhook:', webhookUrl);
+
+            // Crear AbortController para timeout
+            const controller = new AbortController();
+            // Timeout más corto para modo test (3s vs 30s)
+            const timeoutMs = useTestMode ? 3000 : 30000;
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            
+            console.log(`⏱️ Timeout configurado a ${timeoutMs}ms (${timeoutMs/1000}s)`);
+
+            // Función para enviar con modo específico
+            const sendWithMode = async (mode) => {
+                return await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dataPackage),
+                    signal: controller.signal,
+                    mode: mode
+                });
+            };
+
+            try {
+                let response;
+                
+                // En modo test, usar directamente no-cors
+                if (useTestMode) {
+                    console.log('🧪 Modo TEST: usando no-cors directamente');
+                    response = await sendWithMode('no-cors');
+                } else {
+                    // En producción, intentar primero con CORS, si falla usar no-cors
+                    console.log('🚀 Modo PRODUCCIÓN: intentando con CORS primero');
+                    try {
+                        response = await sendWithMode('cors');
+                        console.log('✅ CORS exitoso en producción');
+                    } catch (corsError) {
+                        console.log('⚠️ CORS falló, intentando con no-cors como fallback');
+                        console.log('Error CORS:', corsError.message);
+                        response = await sendWithMode('no-cors');
+                        console.log('✅ Fallback no-cors exitoso');
+                    }
+                }
+                
+                clearTimeout(timeoutId); // Cancelar timeout si la respuesta llega
+                
+                const duration = Date.now() - startTime;
+                console.log(`⏱️ Tiempo de respuesta: ${duration}ms`);
+                console.log('📡 Respuesta de n8n - Status:', response.status);
+                console.log('📡 Respuesta de n8n - StatusText:', response.statusText);
+                console.log('📡 Respuesta de n8n - Headers:', Object.fromEntries(response.headers.entries()));
+                console.log('🔍 URL utilizada:', webhookUrl);
+                console.log(`🔧 Modo: ${useTestMode ? 'TEST' : 'PRODUCCIÓN'}`);
+
+                if (response.ok) {
+                    let result;
+                    try {
+                        const responseText = await response.text();
+                        console.log('📄 Respuesta cruda:', responseText);
+                        
+                        if (responseText) {
+                            result = JSON.parse(responseText);
+                        } else {
+                            result = { message: 'Success - No response body' };
+                        }
+                    } catch (parseError) {
+                        console.log('⚠️ No se pudo parsear JSON, pero la respuesta fue exitosa');
+                        result = { message: 'Success - Response not JSON' };
+                    }
+                    
+                    console.log('✅ ÉXITO: Contacto enviado a n8n:', result);
+                    
+                    // Mostrar alert de éxito con información detallada
+                    alert(`✅ ¡Webhook enviado exitosamente!\n\n` +
+                          `Contacto: ${contactData.name}\n` +
+                          `Tiempo: ${duration}ms\n` +
+                          `Status: ${response.status}\n` +
+                          `Timestamp: ${new Date().toLocaleString()}\n\n` +
+                          `✨ Si n8n está en "listen for test event", deberías ver este evento ahora.`);
+
+                } else {
+                    // Intentar obtener el cuerpo de la respuesta de error
+                    let errorBody = '';
+                    try {
+                        errorBody = await response.text();
+                    } catch (e) {
+                        errorBody = 'No se pudo leer el cuerpo del error';
+                    }
+                    
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}\nDetalle: ${errorBody}`);
+                }
+
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                
+                if (fetchError.name === 'AbortError') {
+                    throw new Error('Timeout: El servidor n8n no respondió en 30 segundos');
+                }
+                throw fetchError;
+            }
+
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            console.error('❌ ERROR COMPLETO al enviar a n8n:', error);
+            console.error('❌ Duración hasta el error:', duration + 'ms');
+            
+            // Mostrar alerta de error detallada
+            let errorMessage = '';
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage = `🌐 Error de conectividad con n8n:\n\n` +
+                              `• El webhook funciona desde terminal, pero el navegador lo bloquea\n` +
+                              `• Esto es típico por políticas CORS del navegador\n` +
+                              `• El contacto se guardó en Firebase correctamente\n` +
+                              `• Tiempo transcurrido: ${duration}ms\n\n` +
+                              `💡 SOLUCIONES:\n` +
+                              `1. Verificar configuración CORS en n8n\n` +
+                              `2. Usar modo "Listen for test event" para desarrollo\n` +
+                              `3. Configurar un proxy para producción\n\n` +
+                              `URL: ${webhookUrl}`;
+            } else if (error.message.includes('Timeout')) {
+                errorMessage = `⏱️ Timeout al conectar con n8n:\n\n` +
+                              `El servidor tardó más de 30 segundos en responder.\n` +
+                              `Verifica el estado de tu servidor n8n.`;
+            } else if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
+                errorMessage = `🚫 Error CORS detectado:\n\n` +
+                              `El navegador está bloqueando la petición por políticas de seguridad.\n` +
+                              `El webhook funciona (confirmado por terminal).\n` +
+                              `El contacto se guardó correctamente en Firebase.\n\n` +
+                              `💡 Para solucionar:\n` +
+                              `• Configura CORS en tu servidor n8n\n` +
+                              `• Usa "Listen for test event" para desarrollo`;
+            } else {
+                errorMessage = `❌ Error: ${error.message}\n\n` +
+                              `Tiempo: ${duration}ms\n` +
+                              `El contacto se guardó en Firebase correctamente.\n\n` +
+                              `💡 El webhook funciona desde terminal, pero hay un problema de conectividad desde el navegador.`;
+            }
+            
+            alert(errorMessage);
+        }
+    }
     
     let contact: Contact = existingContact 
         ? { ...existingContact } 
@@ -236,14 +452,23 @@
   
             // console.log('Guardando contacto con ID:', cleanContactData.id);
             console.log('[AddContact] handleSubmit: cleanContactData (DATOS FINALES A GUARDAR):', cleanContactData);
+            console.log('🔥🔥🔥 ESTE LOG DEBE APARECER - SI NO LO VES HAY PROBLEMA DE CACHE 🔥🔥🔥');
             
             // Guardar el contacto en Firebase
+            console.log('💾 Iniciando guardado en Firebase...');
+            console.log('💾 existingContact:', existingContact);
+            console.log('💾 Operación:', existingContact ? 'UPDATE' : 'ADD');
+            
             let result;
             if (existingContact) {
+                console.log('📝 Ejecutando contactsStore.update...');
                 result = await contactsStore.update(cleanContactData);
             } else {
+                console.log('➕ Ejecutando contactsStore.add...');
                 result = await contactsStore.add(cleanContactData);
             }
+            
+            console.log('🎯 Resultado de Firebase:', result);
   
             if (!result.success) {
                 const errorMessage = result.error ? 
@@ -276,14 +501,35 @@
                 // Actualizar el store con la nueva lista
                 contactsStore.set([...currentContacts]);
                 
+                console.log('📊 Store actualizado exitosamente');
                 // console.log('Contacto añadido/actualizado manualmente en el store:', cleanContactData);
+            }
+
+            console.log('🚀 Punto de control: llegando al código de n8n...');
+
+            // IMPORTANTE: Enviar a n8n ANTES del dispatch para evitar interrupciones
+            console.log('🔍 Verificando si enviar a n8n...');
+            console.log('🔍 existingContact:', existingContact);
+            console.log('🔍 Es contacto nuevo?', !existingContact);
+            
+            // Determinar si es un contacto nuevo basándose en el resultado de Firebase
+            const isNewContact = !existingContact && result.success && 'id' in result;
+            console.log('🔍 Es contacto REALMENTE nuevo (por Firebase)?', isNewContact);
+            
+            if (isNewContact) {
+                console.log('✅ Enviando contacto NUEVO a n8n...');
+                try {
+                    await sendToN8n(cleanContactData);
+                } catch (n8nError) {
+                    console.error('❌ Error enviando a n8n:', n8nError);
+                    // No bloqueamos el flujo si n8n falla
+                }
+            } else {
+                console.log('⏭️ SALTANDO envío a n8n - contacto existente o error de guardado');
             }
   
             // Emitir evento de éxito
             dispatch('success', { contact: cleanContactData });
-            
-            // Registrar el contacto guardado para depuración
-            // console.log('Contacto guardado exitosamente:', cleanContactData);
             
             // Verificar nuevamente que el ID sea válido antes de redirigir
             if (cleanContactData.id && cleanContactData.id.trim() !== '') {
