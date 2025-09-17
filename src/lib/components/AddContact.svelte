@@ -192,6 +192,33 @@
                     
                     console.log('✅ ÉXITO: Contacto enviado a n8n:', result);
                     
+                    // 🔥 NUEVO: Capturar googleContactId si está presente
+                    if (result && result.googleContactId) {
+                        console.log('🆔 Google Contact ID recibido:', result.googleContactId);
+                        
+                        // Actualizar el contacto en Firebase con el googleContactId
+                        try {
+                            const updatedContactData = {
+                                ...contactData,
+                                googleContactId: result.googleContactId,
+                                googleSyncedAt: Date.now()
+                            };
+                            
+                            console.log('💾 Actualizando contacto con Google ID...');
+                            const updateResult = await contactsStore.update(updatedContactData);
+                            
+                            if (updateResult.success) {
+                                console.log('✅ Google Contact ID guardado en Firebase');
+                            } else {
+                                console.error('❌ Error guardando Google Contact ID:', updateResult.error);
+                            }
+                        } catch (updateError) {
+                            console.error('❌ Error actualizando contacto con Google ID:', updateError);
+                        }
+                    } else {
+                        console.log('⚠️ No se recibió googleContactId en la respuesta');
+                    }
+                    
                     // Mostrar alert de éxito con información detallada
                     alert(`✅ ¡Webhook enviado exitosamente!\n\n` +
                           `Contacto: ${contactData.name}\n` +
@@ -259,6 +286,277 @@
             }
             
             alert(errorMessage);
+        }
+    }
+
+    // 🔄 FUNCIÓN PARA ACTUALIZAR CONTACTO EN GOOGLE CONTACTS
+    async function updateContactInGoogle(contactData: Contact) {
+        if (!contactData.googleContactId) {
+            console.log('⚠️ No se puede actualizar: contacto sin googleContactId');
+            return { success: false, error: 'No Google Contact ID' };
+        }
+
+        console.log('🔄 INICIANDO ACTUALIZACIÓN EN GOOGLE CONTACTS');
+        console.log('🆔 Google Contact ID:', contactData.googleContactId);
+        
+        const startTime = Date.now();
+
+        // Configurar URLs según el modo
+        const webhookUrlTest = 'https://n8n-n8n.wjj5il.easypanel.host/webhook-test/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrlProd = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
+
+        const dataPackage = {
+            action: 'UPDATE',
+            googleContactId: contactData.googleContactId,
+            contact: {
+                id: contactData.id,
+                name: contactData.name,
+                lastname: contactData.lastname || '',
+                fullName: `${contactData.name} ${contactData.lastname || ''}`.trim(),
+                email: contactData.email || '',
+                phone: contactData.telephon || '',
+                notes: contactData.observ || '',
+                typeContact: contactData.typeContact || '',
+                contactMode: contactData.selecMC || '',
+                budget: contactData.budget || 0,
+                propertyType: contactData.selecTP || '',
+                contactStage: contactData.contactStage || ''
+            },
+            googleContactsData: {
+                displayName: contactData.name,
+                givenName: contactData.name.split(' ')[0] || contactData.name,
+                familyName: contactData.lastname || contactData.name.split(' ').slice(1).join(' ') || '',
+                phoneNumbers: [
+                    {
+                        value: contactData.telephon,
+                        type: 'mobile'
+                    }
+                ],
+                emailAddresses: contactData.email ? [
+                    {
+                        value: contactData.email,
+                        type: 'home'
+                    }
+                ] : [],
+                organizations: [
+                    {
+                        name: 'ATAIR Contact',
+                        title: contactData.typeContact || 'Cliente'
+                    }
+                ]
+            },
+            metadata: {
+                timestamp: Date.now(),
+                timestampISO: new Date().toISOString(),
+                source: 'ATAIR_APP',
+                action: 'UPDATE_CONTACT',
+                requestedBy: 'AddContact_Component',
+                testMode: useTestMode,
+                version: '1.0',
+                environment: useTestMode ? 'TEST' : 'PRODUCTION'
+            }
+        };
+
+        try {
+            const controller = new AbortController();
+            const timeoutMs = useTestMode ? 3000 : 30000;
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            console.log('📦 PAQUETE UPDATE A ENVIAR:', JSON.stringify(dataPackage, null, 2));
+
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dataPackage),
+                signal: controller.signal,
+                mode: useTestMode ? 'no-cors' : 'cors'
+            });
+
+            clearTimeout(timeoutId);
+            const duration = Date.now() - startTime;
+
+            console.log(`✅ UPDATE enviado exitosamente en ${duration}ms`);
+            return { success: true, duration };
+
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            console.error('❌ Error actualizando en Google:', error);
+            return { success: false, error: error.message, duration };
+        }
+    }
+
+    // 🗑️ FUNCIÓN PARA ELIMINAR CONTACTO DE GOOGLE CONTACTS
+    async function deleteContactFromGoogle(contactData: Contact) {
+        if (!contactData.googleContactId) {
+            console.log('⚠️ No se puede eliminar: contacto sin googleContactId');
+            return { success: false, error: 'No Google Contact ID' };
+        }
+
+        console.log('🗑️ INICIANDO ELIMINACIÓN EN GOOGLE CONTACTS');
+        console.log('🆔 Google Contact ID:', contactData.googleContactId);
+        
+        const startTime = Date.now();
+
+        // Configurar URLs según el modo
+        const webhookUrlTest = 'https://n8n-n8n.wjj5il.easypanel.host/webhook-test/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrlProd = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
+
+        const dataPackage = {
+            action: 'DELETE',
+            googleContactId: contactData.googleContactId,
+            contact: {
+                id: contactData.id,
+                name: contactData.name,
+                fullName: `${contactData.name} ${contactData.lastname || ''}`.trim()
+            },
+            metadata: {
+                timestamp: Date.now(),
+                timestampISO: new Date().toISOString(),
+                source: 'ATAIR_APP',
+                action: 'DELETE_CONTACT',
+                requestedBy: 'AddContact_Component',
+                testMode: useTestMode,
+                version: '1.0',
+                environment: useTestMode ? 'TEST' : 'PRODUCTION'
+            }
+        };
+
+        try {
+            const controller = new AbortController();
+            const timeoutMs = useTestMode ? 3000 : 30000;
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            console.log('📦 PAQUETE DELETE A ENVIAR:', JSON.stringify(dataPackage, null, 2));
+
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dataPackage),
+                signal: controller.signal,
+                mode: useTestMode ? 'no-cors' : 'cors'
+            });
+
+            clearTimeout(timeoutId);
+            const duration = Date.now() - startTime;
+
+            console.log(`✅ DELETE enviado exitosamente en ${duration}ms`);
+            return { success: true, duration };
+
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            console.error('❌ Error eliminando de Google:', error);
+            return { success: false, error: error.message, duration };
+        }
+    }
+
+    // 🔥 NUEVA: Función para actualizar contacto en Google Contacts
+    async function updateContactInGoogle(contactData: Contact) {
+        if (!contactData.googleContactId) {
+            console.log('⚠️ No se puede actualizar: contacto sin googleContactId');
+            return;
+        }
+
+        console.log('📝 ACTUALIZANDO contacto en Google Contacts:', contactData.googleContactId);
+        
+        const webhookUrlProd = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/update-contact/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrlTest = 'https://n8n-n8n.wjj5il.easypanel.host/webhook-test/update-contact/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const useTestMode = false;
+        const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
+
+        const updatePackage = {
+            googleContactId: contactData.googleContactId,
+            contact: {
+                id: contactData.id,
+                name: contactData.name,
+                lastname: contactData.lastname,
+                fullName: `${contactData.name} ${contactData.lastname}`,
+                email: contactData.email,
+                phone: contactData.telephon,
+                notes: contactData.notes || '',
+            },
+            googleContactsData: {
+                displayName: contactData.name,
+                givenName: contactData.name.split(' ')[0] || contactData.name,
+                familyName: contactData.lastname || '',
+                phoneNumbers: [{ value: contactData.telephon, type: 'mobile' }],
+                emailAddresses: contactData.email ? [{ value: contactData.email, type: 'home' }] : []
+            },
+            metadata: {
+                timestamp: Date.now(),
+                action: 'UPDATE_CONTACT',
+                source: 'ATAIR_APP'
+            }
+        };
+
+        try {
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatePackage),
+                mode: 'cors'
+            });
+
+            if (response.ok) {
+                console.log('✅ Contacto actualizado en Google Contacts');
+                // Actualizar timestamp de sincronización
+                await contactsStore.update({
+                    ...contactData,
+                    googleSyncedAt: Date.now(),
+                    googleSyncStatus: 'synced'
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error actualizando contacto en Google:', error);
+        }
+    }
+
+    // 🔥 NUEVA: Función para eliminar contacto de Google Contacts
+    async function deleteContactFromGoogle(contactData: Contact) {
+        if (!contactData.googleContactId) {
+            console.log('⚠️ No se puede eliminar: contacto sin googleContactId');
+            return;
+        }
+
+        console.log('🗑️ ELIMINANDO contacto de Google Contacts:', contactData.googleContactId);
+        
+        const webhookUrlProd = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/delete-contact/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrlTest = 'https://n8n-n8n.wjj5il.easypanel.host/webhook-test/delete-contact/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const useTestMode = false;
+        const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
+
+        const deletePackage = {
+            googleContactId: contactData.googleContactId,
+            contact: {
+                id: contactData.id,
+                name: contactData.name,
+                lastname: contactData.lastname
+            },
+            metadata: {
+                timestamp: Date.now(),
+                action: 'DELETE_CONTACT',
+                source: 'ATAIR_APP'
+            }
+        };
+
+        try {
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(deletePackage),
+                mode: 'cors'
+            });
+
+            if (response.ok) {
+                console.log('✅ Contacto eliminado de Google Contacts');
+            }
+        } catch (error) {
+            console.error('❌ Error eliminando contacto de Google:', error);
         }
     }
     
@@ -514,7 +812,9 @@
             
             // Determinar si es un contacto nuevo basándose en el resultado de Firebase
             const isNewContact = !existingContact && result.success && 'id' in result;
+            const isUpdatedContact = existingContact && result.success;
             console.log('🔍 Es contacto REALMENTE nuevo (por Firebase)?', isNewContact);
+            console.log('🔍 Es contacto ACTUALIZADO?', isUpdatedContact);
             
             if (isNewContact) {
                 console.log('✅ Enviando contacto NUEVO a n8n...');
@@ -524,8 +824,16 @@
                     console.error('❌ Error enviando a n8n:', n8nError);
                     // No bloqueamos el flujo si n8n falla
                 }
+            } else if (isUpdatedContact && cleanContactData.googleContactId) {
+                console.log('📝 Actualizando contacto EXISTENTE en Google...');
+                try {
+                    await updateContactInGoogle(cleanContactData);
+                } catch (updateError) {
+                    console.error('❌ Error actualizando en Google:', updateError);
+                    // No bloqueamos el flujo si la actualización falla
+                }
             } else {
-                console.log('⏭️ SALTANDO envío a n8n - contacto existente o error de guardado');
+                console.log('⏭️ SALTANDO sincronización - sin googleContactId o error de guardado');
             }
   
             // Emitir evento de éxito

@@ -86,6 +86,52 @@
     layOut = "";
   }
 
+   // 🔥 NUEVA: Función para eliminar contacto de Google Contacts
+   async function deleteContactFromGoogle(contactData: Contact) {
+        if (!contactData.googleContactId) {
+            console.log('⚠️ No se puede eliminar de Google: contacto sin googleContactId');
+            return;
+        }
+
+        console.log('🗑️ ELIMINANDO contacto de Google Contacts:', contactData.googleContactId);
+        
+        const webhookUrlProd = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/delete-contact/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrlTest = 'https://n8n-n8n.wjj5il.easypanel.host/webhook-test/delete-contact/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const useTestMode = false;
+        const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
+
+        const deletePackage = {
+            googleContactId: contactData.googleContactId,
+            contact: {
+                id: contactData.id,
+                name: contactData.name,
+                lastname: contactData.lastname
+            },
+            metadata: {
+                timestamp: Date.now(),
+                action: 'DELETE_CONTACT',
+                source: 'ATAIR_APP'
+            }
+        };
+
+        try {
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(deletePackage),
+                mode: 'cors'
+            });
+
+            if (response.ok) {
+                console.log('✅ Contacto eliminado de Google Contacts');
+            } else {
+                console.log('⚠️ Error al eliminar de Google Contacts - Status:', response.status);
+            }
+        } catch (error) {
+            console.error('❌ Error eliminando contacto de Google:', error);
+        }
+    }
+
    // Delete contact
    async function deleContact(contactId: string) {
     if (!contactId || contactId.trim() === '') {
@@ -96,11 +142,18 @@
 
     if (confirm("¿Deseas eliminar definitivamente al contacto?")) {
         try {
+            // 🔥 NUEVO: Primero eliminar de Google Contacts si tiene googleContactId
+            if (contact && contact.googleContactId) {
+                console.log('🔄 Eliminando de Google Contacts primero...');
+                await deleteContactFromGoogle(contact);
+            }
+
             // Crear referencia al documento
             const contactRef = doc(db, "contacts", contactId);
             // Eliminar de Firebase usando deleteDoc
             await deleteDoc(contactRef);
             // Si deleteDoc no lanza error, la eliminación fue exitosa
+            console.log('✅ Contacto eliminado completamente (Firebase + Google)');
             goto("/contacts");
         } catch (error) {
             console.error("Error al eliminar el contacto:", error);

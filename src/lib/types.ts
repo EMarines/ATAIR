@@ -33,6 +33,10 @@ export interface Contact {
   typeContact: string;
   typeOperation?: string;
   typeProperty?: string;
+  // 🔥 NUEVOS: Campos para sincronización con Google Contacts
+  googleContactId?: string;     // ID del contacto en Google Contacts
+  googleSyncedAt?: number;      // Timestamp de última sincronización
+  googleSyncStatus?: 'pending' | 'synced' | 'error';  // Estado de sincronización
 }
 
 export interface PropertyFB {
