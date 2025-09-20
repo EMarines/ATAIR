@@ -43,7 +43,29 @@
     let showFooter = true; // Variable para controlar la visibilidad del footer
     let selectedProperties: string[] = [];
     
-    // Variables para n8n webhook configuration
+    // Variables para notificación automática (solo errores)
+    let showNotification = false;
+    let notificationMessage = '';
+    let notificationType: 'error' = 'error';
+    
+    // Función para mostrar notificación de error
+    function showAutoNotification(message: string, type: 'error' = 'error') {
+        notificationMessage = message;
+        notificationType = type;
+        showNotification = true;
+        
+        // Asegurar que la animación se ejecute después de que el DOM se actualice
+        setTimeout(() => {
+            const notification = document.querySelector('.auto-notification');
+            if (notification) {
+                notification.classList.add('show');
+            }
+        }, 50);
+        
+        setTimeout(() => {
+            showNotification = false;
+        }, 1500);
+    }    // Variables para n8n webhook configuration
     // Cambiar a true para usar modo test, false para producción
     const useTestMode = false;
     const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
@@ -173,17 +195,8 @@
                 console.log(`🔧 Modo: ${useTestMode ? 'TEST' : 'PRODUCCIÓN'}`);
 
                 // En modo no-cors, status 0 es normal y significa que la petición se envió
-                if (response.status === 0 && useTestMode) {
+                if (response.status === 0) {
                     console.log('✅ MODO NO-CORS: Petición enviada exitosamente (status 0 es normal)');
-                    
-                    // Mostrar alert de éxito para modo no-cors
-                    alert(`✅ ¡Webhook enviado exitosamente en modo TEST!\n\n` +
-                          `Contacto: ${contactData.name}\n` +
-                          `Tiempo: ${duration}ms\n` +
-                          `Status: 0 (normal en no-cors)\n` +
-                          `Timestamp: ${new Date().toLocaleString()}\n\n` +
-                          `📡 La petición llegó al servidor n8n.\n` +
-                          `🔍 Revisa tu workflow n8n para ver el evento recibido.`);
                     
                     return; // Salir exitosamente
                 }
@@ -232,14 +245,6 @@
                     } else {
                         console.log('⚠️ No se recibió googleContactId en la respuesta');
                     }
-                    
-                    // Mostrar alert de éxito con información detallada
-                    alert(`✅ ¡Webhook enviado exitosamente!\n\n` +
-                          `Contacto: ${contactData.name}\n` +
-                          `Tiempo: ${duration}ms\n` +
-                          `Status: ${response.status}\n` +
-                          `Timestamp: ${new Date().toLocaleString()}\n\n` +
-                          `✨ Si n8n está en "listen for test event", deberías ver este evento ahora.`);
 
                 } else {
                     // Intentar obtener el cuerpo de la respuesta de error
@@ -299,7 +304,8 @@
                               `💡 El webhook funciona desde terminal, pero hay un problema de conectividad desde el navegador.`;
             }
             
-            alert(errorMessage);
+            // Mostrar notificación de error simplificada
+            showAutoNotification('⚠️ Contacto guardado en Firebase. Error de conexión con Google Contacts.', 'error');
         }
     }
 
@@ -1104,6 +1110,13 @@
     </form>
   </div>
   
+  <!-- Notificación automática (solo errores) -->
+  {#if showNotification}
+    <div class="auto-notification" class:show={showNotification}>
+      <span class="notification-text">{notificationMessage}</span>
+    </div>
+  {/if}
+  
   {#if showFooter}
     <!-- Aquí va el contenido del footer -->
   {/if}
@@ -1293,5 +1306,37 @@
         .search-results {
             max-height: 80vh; /* Limitar altura en pantallas pequeñas usando viewport height */
         }
+    }
+
+    /* Estilos para notificación automática (solo errores) */
+    .auto-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        font-family: 'Poppins', sans-serif;
+        font-weight: 500;
+        max-width: 400px;
+        transform: translateX(120%);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        will-change: transform, opacity;
+        background-color: #ef4444;
+        color: white;
+        border-left: 4px solid #dc2626;
+    }
+
+    .auto-notification.show {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    .notification-text {
+        font-size: 14px;
+        line-height: 1.4;
+        white-space: nowrap;
     }
   </style>
