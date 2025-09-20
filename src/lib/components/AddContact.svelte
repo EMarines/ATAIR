@@ -9,6 +9,7 @@
     import { convertOperationEbFb } from '$lib/functions/converterEb-Fb';
     import { onMount, onDestroy } from 'svelte';
     import { get } from 'svelte/store';
+    import { db, auth } from '$lib/firebase'; // Para debug de Firebase
   
     const dispatch = createEventDispatcher<AddContactEvents>();
   
@@ -668,6 +669,11 @@
             // console.log('Guardando contacto con ID:', cleanContactData.id);
             console.log('[AddContact] handleSubmit: cleanContactData (DATOS FINALES A GUARDAR):', cleanContactData);
             console.log('🔥🔥🔥 ESTE LOG DEBE APARECER - SI NO LO VES HAY PROBLEMA DE CACHE 🔥🔥🔥');
+            
+            // DEBUG: Verificar configuración de Firebase
+            console.log('🔍 DEBUG Firebase - db instance:', !!db);
+            console.log('🔍 DEBUG Firebase - auth instance:', !!auth);
+            console.log('🔍 DEBUG Firebase - db config:', db?.app?.options?.projectId);
             
             // Guardar el contacto en Firebase
             console.log('💾 Iniciando guardado en Firebase...');
