@@ -674,6 +674,15 @@
             console.log('🔍 DEBUG Firebase - db instance:', !!db);
             console.log('🔍 DEBUG Firebase - auth instance:', !!auth);
             console.log('🔍 DEBUG Firebase - db config:', db?.app?.options?.projectId);
+            console.log('🔍 DEBUG Firebase - contactsStore:', typeof contactsStore);
+            
+            // DEBUG: Verificar si contactsStore tiene los métodos necesarios
+            try {
+                console.log('🔍 DEBUG contactsStore.add function:', typeof contactsStore.add);
+                console.log('🔍 DEBUG contactsStore.update function:', typeof contactsStore.update);
+            } catch (e) {
+                console.error('❌ ERROR accessing contactsStore methods:', e);
+            }
             
             // Guardar el contacto en Firebase
             console.log('💾 Iniciando guardado en Firebase...');
@@ -681,15 +690,24 @@
             console.log('💾 Operación:', existingContact ? 'UPDATE' : 'ADD');
             
             let result;
-            if (existingContact) {
-                console.log('📝 Ejecutando contactsStore.update...');
-                result = await contactsStore.update(cleanContactData);
-            } else {
-                console.log('➕ Ejecutando contactsStore.add...');
-                result = await contactsStore.add(cleanContactData);
+            try {
+                if (existingContact) {
+                    console.log('📝 Ejecutando contactsStore.update...');
+                    result = await contactsStore.update(cleanContactData);
+                } else {
+                    console.log('➕ Ejecutando contactsStore.add...');
+                    result = await contactsStore.add(cleanContactData);
+                }
+                console.log('🎯 Resultado de Firebase:', result);
+            } catch (firebaseError) {
+                console.error('❌ ERROR CRÍTICO en operación Firebase:', firebaseError);
+                console.error('❌ Error stack:', firebaseError.stack);
+                console.error('❌ Error message:', firebaseError.message);
+                
+                // Mostrar error al usuario
+                showAutoNotification('Error crítico al guardar: ' + firebaseError.message, 'error');
+                return; // Salir de la función
             }
-            
-            console.log('🎯 Resultado de Firebase:', result);
   
             if (!result.success) {
                 const errorMessage = result.error ? 
