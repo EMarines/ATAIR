@@ -67,7 +67,7 @@
         }, 1500);
     }    // Variables para n8n webhook configuration
     // Cambiar a true para usar modo test, false para producción
-    const useTestMode = false;
+    const useTestMode = true; // TEMPORAL: Para debug en producción
     const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
     const webhookUrlTest = webhookUrlBase + '?test=true';
     const webhookUrlProd = webhookUrlBase;
