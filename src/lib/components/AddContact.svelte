@@ -140,6 +140,20 @@
             };
 
             console.log('📦 PAQUETE COMPLETO A ENVIAR:', JSON.stringify(dataPackage, null, 2));
+            
+            // DEBUG: Verificar serialización
+            const jsonString = JSON.stringify(dataPackage);
+            console.log('🔍 JSON STRING LENGTH:', jsonString.length);
+            console.log('🔍 JSON STRING PREVIEW:', jsonString.substring(0, 100) + '...');
+            console.log('🔍 JSON IS VALID:', (() => {
+                try { JSON.parse(jsonString); return true; } catch { return false; }
+            })());
+            
+            // ASEGURAR que el body sea una cadena JSON válida
+            const bodyToSend = jsonString; // Usar la cadena ya serializada
+            console.log('🔍 BODY TYPE:', typeof bodyToSend);
+            console.log('🔍 BODY IS STRING:', typeof bodyToSend === 'string');
+            
             console.log('🔗 URL del webhook:', webhookUrl);
 
             // Crear AbortController para timeout
@@ -149,15 +163,22 @@
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             
             console.log(`⏱️ Timeout configurado a ${timeoutMs}ms (${timeoutMs/1000}s)`);
+            console.log('📤 Headers a enviar:', {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            });
 
             // Función para enviar con modo específico
             const sendWithMode = async (mode) => {
                 return await fetch(webhookUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify(dataPackage),
+                    body: bodyToSend, // Usar la cadena ya serializada
                     signal: controller.signal,
                     mode: mode
                 });
