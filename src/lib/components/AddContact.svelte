@@ -46,8 +46,9 @@
     // Variables para n8n webhook configuration
     // Cambiar a true para usar modo test, false para producción
     const useTestMode = false;
-    const webhookUrlTest = 'https://n8n-n8n.wjj5il.easypanel.host/webhook-test/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
-    const webhookUrlProd = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+    const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+    const webhookUrlTest = webhookUrlBase + '?test=true';
+    const webhookUrlProd = webhookUrlBase;
   
     // Estado unificado del formulario
     export let existingContact: Contact | null = null;
@@ -170,6 +171,22 @@
                 console.log('📡 Respuesta de n8n - Headers:', Object.fromEntries(response.headers.entries()));
                 console.log('🔍 URL utilizada:', webhookUrl);
                 console.log(`🔧 Modo: ${useTestMode ? 'TEST' : 'PRODUCCIÓN'}`);
+
+                // En modo no-cors, status 0 es normal y significa que la petición se envió
+                if (response.status === 0 && useTestMode) {
+                    console.log('✅ MODO NO-CORS: Petición enviada exitosamente (status 0 es normal)');
+                    
+                    // Mostrar alert de éxito para modo no-cors
+                    alert(`✅ ¡Webhook enviado exitosamente en modo TEST!\n\n` +
+                          `Contacto: ${contactData.name}\n` +
+                          `Tiempo: ${duration}ms\n` +
+                          `Status: 0 (normal en no-cors)\n` +
+                          `Timestamp: ${new Date().toLocaleString()}\n\n` +
+                          `📡 La petición llegó al servidor n8n.\n` +
+                          `🔍 Revisa tu workflow n8n para ver el evento recibido.`);
+                    
+                    return; // Salir exitosamente
+                }
 
                 if (response.ok) {
                     let result;
@@ -299,8 +316,9 @@
         const startTime = Date.now();
 
         // Configurar URLs según el modo
-        const webhookUrlTest = 'https://n8n-n8n.wjj5il.easypanel.host/webhook-test/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
-        const webhookUrlProd = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrlTest = webhookUrlBase + '?test=true';
+        const webhookUrlProd = webhookUrlBase;
         const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
 
         const dataPackage = {
@@ -398,8 +416,9 @@
         const startTime = Date.now();
 
         // Configurar URLs según el modo
-        const webhookUrlTest = 'https://n8n-n8n.wjj5il.easypanel.host/webhook-test/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
-        const webhookUrlProd = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+        const webhookUrlTest = webhookUrlBase + '?test=true';
+        const webhookUrlProd = webhookUrlBase;
         const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
 
         const dataPackage = {
