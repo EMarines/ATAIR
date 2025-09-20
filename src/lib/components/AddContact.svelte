@@ -9,7 +9,6 @@
     import { convertOperationEbFb } from '$lib/functions/converterEb-Fb';
     import { onMount, onDestroy } from 'svelte';
     import { get } from 'svelte/store';
-    import { db, auth } from '$lib/firebase'; // Para debug de Firebase
   
     const dispatch = createEventDispatcher<AddContactEvents>();
   
@@ -68,7 +67,7 @@
         }, 1500);
     }    // Variables para n8n webhook configuration
     // Cambiar a true para usar modo test, false para producción
-    const useTestMode = true; // TEMPORAL: Para debug en producción
+    const useTestMode = false; // Modo producción
     const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
     const webhookUrlTest = webhookUrlBase + '?test=true';
     const webhookUrlProd = webhookUrlBase;
@@ -670,44 +669,21 @@
             console.log('[AddContact] handleSubmit: cleanContactData (DATOS FINALES A GUARDAR):', cleanContactData);
             console.log('🔥🔥🔥 ESTE LOG DEBE APARECER - SI NO LO VES HAY PROBLEMA DE CACHE 🔥🔥🔥');
             
-            // DEBUG: Verificar configuración de Firebase
-            console.log('🔍 DEBUG Firebase - db instance:', !!db);
-            console.log('🔍 DEBUG Firebase - auth instance:', !!auth);
-            console.log('🔍 DEBUG Firebase - db config:', db?.app?.options?.projectId);
-            console.log('🔍 DEBUG Firebase - contactsStore:', typeof contactsStore);
-            
-            // DEBUG: Verificar si contactsStore tiene los métodos necesarios
-            try {
-                console.log('🔍 DEBUG contactsStore.add function:', typeof contactsStore.add);
-                console.log('🔍 DEBUG contactsStore.update function:', typeof contactsStore.update);
-            } catch (e) {
-                console.error('❌ ERROR accessing contactsStore methods:', e);
-            }
-            
             // Guardar el contacto en Firebase
             console.log('💾 Iniciando guardado en Firebase...');
             console.log('💾 existingContact:', existingContact);
             console.log('💾 Operación:', existingContact ? 'UPDATE' : 'ADD');
             
             let result;
-            try {
-                if (existingContact) {
-                    console.log('📝 Ejecutando contactsStore.update...');
-                    result = await contactsStore.update(cleanContactData);
-                } else {
-                    console.log('➕ Ejecutando contactsStore.add...');
-                    result = await contactsStore.add(cleanContactData);
-                }
-                console.log('🎯 Resultado de Firebase:', result);
-            } catch (firebaseError) {
-                console.error('❌ ERROR CRÍTICO en operación Firebase:', firebaseError);
-                console.error('❌ Error stack:', firebaseError.stack);
-                console.error('❌ Error message:', firebaseError.message);
-                
-                // Mostrar error al usuario
-                showAutoNotification('Error crítico al guardar: ' + firebaseError.message, 'error');
-                return; // Salir de la función
+            if (existingContact) {
+                console.log('📝 Ejecutando contactsStore.update...');
+                result = await contactsStore.update(cleanContactData);
+            } else {
+                console.log('➕ Ejecutando contactsStore.add...');
+                result = await contactsStore.add(cleanContactData);
             }
+            
+            console.log('🎯 Resultado de Firebase:', result);
   
             if (!result.success) {
                 const errorMessage = result.error ? 
