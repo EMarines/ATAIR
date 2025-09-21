@@ -67,7 +67,11 @@
         }, 1500);
     }    // Variables para n8n webhook configuration
     // Cambiar a true para usar modo test, false para producción
-    const useTestMode = false; // Modo producción
+    // Auto-detectar modo según entorno
+    const useTestMode = !import.meta.env.PROD; // true en desarrollo, false en producción
+    console.log('🔧 AUTO-DETECT MODE:', useTestMode ? 'TEST' : 'PRODUCTION');
+    console.log('🔧 ENV.PROD:', import.meta.env.PROD);
+    console.log('🔧 ENV.MODE:', import.meta.env.MODE);
     const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
     const webhookUrlTest = webhookUrlBase + '?test=true';
     const webhookUrlProd = webhookUrlBase;
