@@ -78,10 +78,9 @@
     // Función para enviar datos del contacto a n8n para sincronización con Google Contacts
     async function sendToN8n(contactData: Contact) {
         const startTime = Date.now();
-        console.log('🚀 INICIANDO ENVÍO A N8N - Timestamp:', new Date().toISOString());
-        console.log('📤 Datos del contacto a enviar:', contactData);
-
-        const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
+            console.log('🚀 INICIANDO ENVÍO A N8N - Timestamp:', new Date().toISOString());
+            console.log('� CÓDIGO VERSION: af9e2c1 - 2025-09-21 DEBUG JSON');
+            console.log('�📤 Datos del contacto a enviar:', contactData);        const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
         
         console.log(`🔧 Modo: ${useTestMode ? 'TEST' : 'PRODUCCIÓN'}`);
         console.log(`🔗 URL a usar: ${webhookUrl}`);
@@ -153,6 +152,9 @@
             const bodyToSend = jsonString; // Usar la cadena ya serializada
             console.log('🔍 BODY TYPE:', typeof bodyToSend);
             console.log('🔍 BODY IS STRING:', typeof bodyToSend === 'string');
+            console.log('🔍 ENVIRONMENT:', import.meta.env.MODE);
+            console.log('🔍 IS PRODUCTION BUILD:', import.meta.env.PROD);
+            console.log('🔍 VERCEL ENV:', typeof window !== 'undefined' ? window.location.hostname : 'SSR');
             
             console.log('🔗 URL del webhook:', webhookUrl);
 
