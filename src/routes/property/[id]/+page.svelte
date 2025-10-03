@@ -30,6 +30,7 @@
 	let contToSend: Contact;
 	let enviados = 0;
 	let autoMode = false; // Switch para modo automático vs manual
+	let isProcessing = false; // Estado para controlar si está procesando
 
 	$: contacts = $contactsStore as Contact[];
 	$: currProperty = property as Property;
@@ -82,7 +83,7 @@
     handleCheckboxChange();
   };
 
-  // Función principal que decide el método de envío según el switch
+	// Función principal que decide el método de envío según el switch
 	async function sendProperty() {
 		if(mensaje === "") {
 			alert("Tienes que escribir un mensaje para enviar las propiedades");
@@ -93,16 +94,30 @@
 			return;
 		}
 
-		if (autoMode) {
-			// Modo automático: enviar a n8n
-			await sendToN8n();
-		} else {
-			// Modo manual: envío uno por uno con WhatsApp
-			sendManually();
+		// Prevenir múltiples ejecuciones
+		if (isProcessing) {
+			console.log('⚠️ Ya hay un proceso en ejecución');
+			return;
 		}
-	};
 
-	// Envía los datos a n8n para procesamiento automático
+		isProcessing = true;
+		console.log(`🚀 Iniciando ${autoMode ? 'automático' : 'manual'} - Contactos seleccionados: ${contCheck.length}`);
+
+		try {
+			if (autoMode) {
+				// Modo automático: enviar a n8n
+				await sendToN8n();
+			} else {
+				// Modo manual: envío uno por uno con WhatsApp (click por click)
+				await sendManually();
+			}
+		} catch (error) {
+			console.error('❌ Error en sendProperty:', error);
+			alert(`❌ Error: ${error.message}`);
+		} finally {
+			isProcessing = false;
+		}
+	};	// Envía los datos a n8n para procesamiento automático
 	async function sendToN8n() {
 		// Cambiar estado para mostrar que está procesando
 		$systStatus = "sendingToN8N";
@@ -179,24 +194,51 @@
 		}
 	}
 
-	// Envío manual: en bucle la propiedad a uno o varios contactos
-	function sendManually() {
-		contToSend = contCheck[enviados];
-		contFalt = contCheck.length - (enviados + 1);
-		$systStatus = "sendProps";
-		sendWA(contToSend);
+	// Envío manual: envía al siguiente contacto en la lista cada vez que se hace click
+	async function sendManually() {
+		console.log(`🔍 Estado actual: enviados=${enviados}, total=${contCheck.length}`);
 		
-		enviados++;
+		// Verificar si hay contactos pendientes
+		if (enviados >= contCheck.length) {
+			console.log("🔄 Reiniciando proceso - todos los contactos fueron enviados");
+			// Resetear para permitir nuevo envío
+			enviados = 0;
+			alert(`✅ Proceso completado!\n\nSe procesaron ${contCheck.length} contactos.\n\nPuedes seleccionar nuevos contactos o modificar la selección.`);
+			return;
+		}
+
+		console.log(`📤 Preparando envío a contacto ${enviados + 1}/${contCheck.length}`);
 		
-		if (enviados === contCheck.length) {
-			setTimeout(() => {
-				$systStatus = "";
-				contCheck = [];
-				contIntToSend = 0;
-				enviados = 0;
-				contFalt = 0;
-				show__contacts = false;
-			}, 2000);
+		// Obtener el siguiente contacto a enviar
+		const contact = contCheck[enviados];
+		if (!contact) {
+			console.error('❌ No se encontró el contacto en el índice:', enviados);
+			return;
+		}
+		
+		contToSend = contact;
+		console.log(`👤 Siguiente contacto: ${contact.name}`);
+		
+		try {
+			// Enviar WhatsApp y guardar en bitácora
+			await sendWA(contact);
+			
+			// Actualizar contadores DESPUÉS del envío exitoso
+			enviados++;
+			contFalt = contCheck.length - enviados;
+			contIntToSend = contCheck.length;
+			
+			console.log(`✅ Contacto ${enviados}/${contCheck.length} procesado: ${contact.name}`);
+			console.log(`📊 Quedan ${contFalt} contactos por enviar`);
+			
+			// NO resetear el estado aquí, solo mostrar mensaje si es el último
+			if (enviados >= contCheck.length) {
+				console.log("🎉 Último contacto enviado");
+			}
+			
+		} catch (error) {
+			console.error('❌ Error en envío:', error);
+			alert(`❌ Error al enviar a ${contact.name}: ${error.message}`);
 		}
 	};
 
@@ -257,10 +299,11 @@
         alert(`Advertencia: El mensaje se envió pero hubo un error al guardar el registro. Error: ${error}`);
     }
 
-    if($systStatus === "sendPropToContacts"){
-        contToSend = {} as Contact;
-        listToRender();
-    }
+    // COMENTADO: Esta línea estaba causando que se reseteara el estado
+    // if($systStatus === "sendPropToContacts"){
+    //     contToSend = {} as Contact;
+    //     listToRender();
+    // }
 };
 
   const findCustomers = () => {
@@ -494,24 +537,41 @@
 							class="send__Prop" 
 							class:auto-mode={autoMode}
 							on:click={sendProperty} 
-							disabled={$systStatus === "sendingToN8N" || $systStatus === "sendProps"}
+							disabled={isProcessing || $systStatus === "sendingToN8N"}
 						>
 							{#if $systStatus === "sendingToN8N"}
 								🚀 Enviando a n8n...
-							{:else if $systStatus === "sendProps"}
-								� Enviando {enviados}/{contCheck.length}...
 							{:else if autoMode}
 								🤖 Enviar automático ({contCheck.length} contactos)
+							{:else if contCheck.length > 0 && enviados < contCheck.length}
+								📱 Enviar a {contCheck[enviados]?.name || 'siguiente'} ({enviados + 1}/{contCheck.length})
+							{:else if enviados >= contCheck.length && contCheck.length > 0}
+								✅ Todos enviados - Reiniciar
 							{:else}
 								📱 Enviar manual ({contCheck.length} contactos)
 							{/if}
 						</button>
+						
+						{#if enviados >= contCheck.length && contCheck.length > 0}
+							<button 
+								class="reset__btn" 
+								on:click={() => {
+									enviados = 0;
+									contCheck = [];
+									contIntToSend = 0;
+									contFalt = 0;
+								}}
+							>
+								🔄 Nueva selección
+							</button>
+						{/if}
+						
 						<label>
 							<input 
 								type="checkbox" 
 								on:change={selectAll}
 								checked={contToRender.length > 0 && contCheck.length === contToRender.length}
-								disabled={$systStatus === "sendingToN8N" || $systStatus === "sendProps"}
+								disabled={isProcessing || $systStatus === "sendingToN8N"}
 							> 
 							Seleccionar todos
 						</label>
@@ -519,15 +579,19 @@
 				</div>
 
 				<div class="cards__container">
-					{#each contToRender as cont}
-						<div class="select__conts">					
+					{#each contToRender as cont, index}
+						<div class="select__conts" class:sent={enviados > 0 && contCheck.findIndex(c => c.id === cont.id) < enviados && contCheck.some(c => c.id === cont.id)}>					
 							<input type="checkbox" 
 							value={cont}
 							name={cont.id}
 							class="form__contCheck"
 							bind:group={contCheck}
 							on:change={handleCheckboxChange}
+							disabled={isProcessing || $systStatus === "sendingToN8N"}
 							/>
+							{#if enviados > 0 && contCheck.findIndex(c => c.id === cont.id) < enviados && contCheck.some(c => c.id === cont.id)}
+								<div class="sent-indicator">✅ Enviado</div>
+							{/if}
 								<CardContact {cont}/>         
 						</div>  
 					{/each}
@@ -585,6 +649,26 @@
 
 	.select__conts {
 		position: relative;
+	}
+
+	.select__conts.sent {
+		opacity: 0.7;
+		transform: scale(0.95);
+		transition: all 0.3s ease;
+	}
+
+	.sent-indicator {
+		position: absolute;
+		top: 5px;
+		right: 5px;
+		background: rgba(76, 175, 80, 0.9);
+		color: white;
+		padding: 4px 8px;
+		border-radius: 12px;
+		font-size: 0.8rem;
+		font-weight: bold;
+		z-index: 25;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 	}
 
 	.form__contCheck {
@@ -758,6 +842,23 @@
 
 	.send__Prop.auto-mode:hover:not(:disabled) {
 		background: linear-gradient(135deg, #388e3c, #4caf50);
+	}
+
+	.reset__btn {
+		background: rgb(76, 76, 76);
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		border-radius: 8px;
+		padding: 0.75rem 1.5rem;
+		cursor: pointer;
+		transition: transform 0.2s, box-shadow 0.2s;
+		color: white;
+		font-size: 1rem;
+	}
+
+	.reset__btn:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+		background: rgb(96, 96, 96);
 	}
 
 	/* Estilos para el switch de modo */

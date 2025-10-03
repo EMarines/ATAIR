@@ -35,8 +35,6 @@ export class EasyBrokerService {
     private formatPropertyForFirebase(property: PropertyEB): Property {
         return {
             created_at: new Date(property.created_at).getTime(),
-            // budget: property.operations[0].amount,
-            // selecTO: property.operations[0].type,
             lot_size: property.lot_size || 0,
             public_url: property.public_url.replace('https://www.easybroker.com/mx/listings', 'https://www.matchhome.net/property'),
             construction_size: property.construction_size || 0,
@@ -57,6 +55,10 @@ export class EasyBrokerService {
             price: property.operations[0].amount || 0,
             selecTO: property.operations[0].type || '',
             selecTP: property.property_type || '',
+            // Agregar campos faltantes requeridos por la interface Property
+            budget: property.operations[0].amount || 0,
+            range: '', // Campo vacío por defecto
+            selecMC: '', // Campo vacío por defecto
         };
     };
 

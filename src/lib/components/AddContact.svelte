@@ -66,20 +66,15 @@
             showNotification = false;
         }, 1500);
     }    // Variables para n8n webhook configuration
-    // Cambiar a true para usar modo test, false para producción
-    // Auto-detectar entorno para n8n
-    const isLocalhost = typeof window !== 'undefined'
-        ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        : false;
+    // Auto-detección de entorno
+    const isLocalhost = typeof window !== 'undefined' && 
+                       (window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' || 
+                        window.location.hostname.includes('localhost'));
     const environment = isLocalhost ? 'TEST' : 'PRODUCTION';
-    const useTestMode = isLocalhost; // true en localhost, false en producción
-
-    console.log('🔍 DETECCIÓN DE ENTORNO:');
-    console.log('🔍 Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'SSR');
-    console.log('🔍 Is Localhost:', isLocalhost);
-    console.log('🔍 Environment:', environment);
-    console.log('🔍 Use Test Mode:', useTestMode);
-    const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+    const useTestMode = isLocalhost; // true para localhost (test), false para producción
+    
+    const webhookUrlBase = import.meta.env.VITE_N8N_WEBHOOK_BASE || 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
     const webhookUrlTest = webhookUrlBase + '?test=true';
     const webhookUrlProd = webhookUrlBase;
   
@@ -93,9 +88,8 @@
             console.log('� CÓDIGO VERSION: af9e2c1 - 2025-09-21 DEBUG JSON');
             console.log('�📤 Datos del contacto a enviar:', contactData);        const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
         
-        console.log(`🔧 Modo AUTO-DETECTADO: ${useTestMode ? 'TEST' : 'PRODUCCIÓN'}`);
+        console.log(`🔧 Modo: ${useTestMode ? 'TEST' : 'PRODUCCIÓN'}`);
         console.log(`🔗 URL a usar: ${webhookUrl}`);
-        console.log('🎯 Environment en metadata:', environment);
 
         try {
             // Preparar el paquete de datos para n8n (siguiendo el patrón exitoso de propiedades)
@@ -122,7 +116,7 @@
                     requestedBy: 'AddContact_Component',
                     testMode: useTestMode,
                     version: '1.0',
-                    environment: environment // ✅ Ahora usa la detección automática
+                    environment: environment
                 },
                 // Información adicional para Google Contacts
                 googleContactsData: {
@@ -357,9 +351,6 @@
         const startTime = Date.now();
 
         // Configurar URLs según el modo
-        const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
-        const webhookUrlTest = webhookUrlBase + '?test=true';
-        const webhookUrlProd = webhookUrlBase;
         const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
 
         const dataPackage = {
@@ -410,7 +401,7 @@
                 requestedBy: 'AddContact_Component',
                 testMode: useTestMode,
                 version: '1.0',
-                environment: useTestMode ? 'TEST' : 'PRODUCTION'
+                environment: environment
             }
         };
 
@@ -457,9 +448,6 @@
         const startTime = Date.now();
 
         // Configurar URLs según el modo
-        const webhookUrlBase = 'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
-        const webhookUrlTest = webhookUrlBase + '?test=true';
-        const webhookUrlProd = webhookUrlBase;
         const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
 
         const dataPackage = {
@@ -478,7 +466,7 @@
                 requestedBy: 'AddContact_Component',
                 testMode: useTestMode,
                 version: '1.0',
-                environment: useTestMode ? 'TEST' : 'PRODUCTION'
+                environment: environment
             }
         };
 

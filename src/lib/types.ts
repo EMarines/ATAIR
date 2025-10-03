@@ -164,11 +164,13 @@ export interface Todo {
   task: string;
   endTask: number; // Timestamp combinado (siempre existe, usa 00:00 si no hay hora)
   timeString?: string; // HH:MM - SOLO si el usuario la especificó
+  timeTask?: string; // Agregar timeTask como propiedad opcional para compatibilidad
   notes?: string;
   isCompleted: boolean;
   createdAt: number;
   type?: string;
   user?: string;
+  stage?: number | string; // Agregar stage como propiedad opcional (puede ser number o string)
 }
 
 

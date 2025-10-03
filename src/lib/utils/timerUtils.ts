@@ -24,7 +24,7 @@ export function createOptimizedTimeout(callback: () => void, delay: number, isVi
         handle.value = requestAnimationFrame(loop);
         return handle.value;
     } else {
-        return setTimeout(callback, delay);
+        return setTimeout(callback, delay) as unknown as number;
     }
 }
 
@@ -48,7 +48,7 @@ export function createAdaptiveInterval(callback: () => Promise<void> | void, tar
     stop: () => void 
 } {
     let running = false;
-    let timeoutId: number | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     
     async function executeAndSchedule() {
         if (!running) return;
@@ -87,10 +87,10 @@ export function createAdaptiveInterval(callback: () => Promise<void> | void, tar
 /**
  * Función para throttle - limita la frecuencia de ejecución de una función
  */
-export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
+export function throttle<T extends (...args: never[]) => unknown>(func: T, limit: number): (...args: Parameters<T>) => void {
     let inThrottle = false;
     
-    return function(this: any, ...args: Parameters<T>): void {
+    return function(this: unknown, ...args: Parameters<T>): void {
         if (!inThrottle) {
             func.apply(this, args);
             inThrottle = true;
@@ -104,10 +104,10 @@ export function throttle<T extends (...args: any[]) => any>(func: T, limit: numb
 /**
  * Función para debounce - retrasa la ejecución hasta que pase un tiempo sin llamadas
  */
-export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
-    let timeout: number | null = null;
+export function debounce<T extends (...args: never[]) => unknown>(func: T, wait: number): (...args: Parameters<T>) => void {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     
-    return function(this: any, ...args: Parameters<T>): void {
+    return function(this: unknown, ...args: Parameters<T>): void {
         const later = () => {
             timeout = null;
             func.apply(this, args);
