@@ -69,14 +69,15 @@ class AuthService {
                 try {
                     const lastTokenTime = localStorage.getItem('last-token-refresh');
                     const now = Date.now();
-                    if (!lastTokenTime || (now - parseInt(lastTokenTime)) > 30 * 60 * 1000) {
+                    // Aumentar intervalo a 50 minutos para evitar renovaciones innecesarias
+                    if (!lastTokenTime || (now - parseInt(lastTokenTime)) > 50 * 60 * 1000) {
                         const token = await user.getIdToken(false); // No forzar renovación
                         this.saveToken(token);
-                        console.log(`Token actualizado vía onIdTokenChanged. Próxima verificación programada si es necesario.`);
+                        console.log(`✅ Token actualizado vía onIdTokenChanged`);
                     }
                 } catch (error) {
-                    console.warn('Error al procesar cambio de token, pero la sesión continúa:', error);
-                    // Aquí podrías manejar errores específicos si es necesario
+                    console.warn('⚠️ Error al procesar cambio de token, la sesión continúa:', error);
+                    // No desconectar al usuario por errores de renovación
                 }
             } else {
                 // Limpiar token si no hay usuario
@@ -92,23 +93,24 @@ class AuthService {
     scheduleTokenRefresh(delay: number): void {
         if (!browser || !this.internalAuthInstance?.currentUser) return;
 
-        const actualDelay = Math.max(delay, 30 * 60 * 1000);
+        // Aumentar intervalo mínimo a 45 minutos (tokens de Firebase duran 1 hora)
+        const actualDelay = Math.max(delay, 45 * 60 * 1000);
 
         this.clearTokenRefreshTimer();
 
         this.tokenRefreshTimer = setTimeout(async () => {
             if (this.internalAuthInstance?.currentUser) {
                 try {
-                    // Usar getIdToken(true) para forzar la renovación si está cerca de expirar o expirado.
-                    // La SDK maneja la lógica de si realmente necesita hacer una llamada de red.
-                    await this.internalAuthInstance.currentUser.getIdToken(true);
+                    // Solo verificar, no forzar renovación a menos que sea necesario
+                    await this.internalAuthInstance.currentUser.getIdToken(false);
                     localStorage.setItem('last-token-refresh', Date.now().toString());
-                    console.log('Token verificado/renovado automáticamente por scheduleTokenRefresh');
+                    console.log('✅ Token verificado automáticamente');
                     // Reprogramar la siguiente verificación
-                    this.scheduleTokenRefresh(30 * 60 * 1000);
+                    this.scheduleTokenRefresh(45 * 60 * 1000);
                 } catch (error) {
-                    console.warn('Error al renovar token en scheduleTokenRefresh:', error);
-                    // Podríamos intentar reprogramar con un backoff aquí si es un error transitorio o si el usuario sigue activo.
+                    console.warn('⚠️ Error al verificar token:', error);
+                    // Intentar reprogramar en caso de error de red temporal
+                    this.scheduleTokenRefresh(5 * 60 * 1000); // Reintentar en 5 min
                 }
             }
         }, actualDelay);
@@ -131,9 +133,11 @@ class AuthService {
     saveToken(token: string): void {
         if (!browser) return;
         try {
-            sessionStorage.setItem('firebase-token', token);
+            // Cambiado a localStorage para persistencia entre sesiones
+            localStorage.setItem('firebase-token', token);
             localStorage.setItem('user-logged-in', 'true');
             localStorage.setItem('last-token-refresh', Date.now().toString());
+            console.log('✅ Token guardado en localStorage');
         } catch (error) {
             console.error('Error al guardar token:', error);
         }
@@ -145,9 +149,10 @@ class AuthService {
     clearToken(): void {
         if (!browser) return;
         try {
-            sessionStorage.removeItem('firebase-token');
+            localStorage.removeItem('firebase-token');
             localStorage.removeItem('user-logged-in');
-            localStorage.removeItem('last-token-refresh'); // También limpiar este
+            localStorage.removeItem('last-token-refresh');
+            console.log('🧹 Token limpiado del almacenamiento');
         } catch (error) {
             console.error('Error al limpiar token:', error);
         }
@@ -216,32 +221,48 @@ class AuthService {
 
         // Tenemos un currentUser. Intentemos verificar su token.
         try {
-            // getIdTokenResult no fuerza la renovación a menos que el token esté a punto de expirar.
-            // Es una buena forma de obtener el estado actual y las claims.
+            // Verificar token sin forzar renovación
             await getIdTokenResult(currentUser);
-            localStorage.setItem('user-logged-in', 'true'); // Asegurar que el flag esté puesto
+            const token = await currentUser.getIdToken(false);
+            
+            // Guardar token y actualizar estado
+            this.saveToken(token);
+            localStorage.setItem('user-logged-in', 'true');
             localStorage.setItem('last-token-refresh', Date.now().toString());
 
-            // Si el temporizador de refresco no está activo, iniciarlo.
+            // Si el temporizador de refresco no está activo, iniciarlo
             if (!this.tokenRefreshTimer) {
-                this.scheduleTokenRefresh(30 * 60 * 1000);
+                this.scheduleTokenRefresh(45 * 60 * 1000);
             }
+            
+            console.log('✅ Sesión verificada exitosamente');
             return true;
-        } catch (error: unknown) { // Usar unknown como tipo más seguro que any
+        } catch (error: unknown) {
             const errorMessage = error && typeof error === 'object' && 'message' in error 
                 ? (error as { message: string }).message 
                 : String(error);
-            console.warn('Error al verificar/obtener token en verifyToken:', errorMessage);
-            // Si el token no es válido (ej. auth/user-token-expired, auth/invalid-user-token),
-            // onIdTokenChanged debería eventualmente manejarlo si el SDK no puede refrescarlo.
-            // Por ahora, consideramos la sesión no verificada y limpiamos el estado local.
+            
+            // Solo limpiar token si es un error crítico de autenticación
             if (error && typeof error === 'object' && 'code' in error) {
-                if (error.code === 'auth/user-token-expired' || error.code === 'auth/invalid-user-token') {
-                    this.clearToken(); // El token no es válido, clearToken ya elimina 'last-token-refresh'
+                const errorCode = (error as { code: string }).code;
+                
+                if (errorCode === 'auth/user-token-expired' || 
+                    errorCode === 'auth/invalid-user-token' ||
+                    errorCode === 'auth/user-disabled') {
+                    console.error('❌ Token inválido o usuario deshabilitado:', errorCode);
+                    this.clearToken();
+                    return false;
                 }
-            } else {
-                console.error("Error no reconocido o sin código en verifyToken:", error);
             }
+            
+            // Para otros errores (red, etc), no desconectar
+            console.warn('⚠️ Error temporal al verificar token:', errorMessage);
+            // Si había un login previo válido, mantener la sesión
+            if (localStorage.getItem('user-logged-in') === 'true') {
+                console.log('ℹ️ Manteniendo sesión existente a pesar del error temporal');
+                return true;
+            }
+            
             return false;
         }
     }
