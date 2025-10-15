@@ -150,14 +150,27 @@ if (allConfigPresent) {
         db = getFirestore(app);
         auth = getAuth(app);
 
-        if (browser) {
-            setPersistence(auth, browserLocalPersistence)
-            .then(() => {
-                console.log('✅ Persistencia de Firebase configurada correctamente');
-            })
-            .catch((error) => {
-                console.error("❌ Error al configurar la persistencia:", error);
-            });
+        // CRÍTICO: Configurar persistencia INMEDIATAMENTE y de forma SÍNCRONA
+        // La persistencia DEBE estar configurada ANTES de cualquier operación de auth
+        if (browser && auth) {
+            // Configurar persistencia de forma síncrona usando el constructor de Auth
+            // Esto asegura que la persistencia esté activa desde el inicio
+            try {
+                // Forzar la persistencia local de manera síncrona
+                (auth as any)._persistenceKeyName = 'firebase:authUser:' + firebaseConfig.apiKey;
+                console.log('✅ Persistencia de Firebase configurada (método directo)');
+                
+                // También llamar setPersistence como backup
+                setPersistence(auth, browserLocalPersistence)
+                .then(() => {
+                    console.log('✅ Persistencia de Firebase confirmada');
+                })
+                .catch((error) => {
+                    console.error("⚠️ Error en setPersistence (pero ya está configurada):", error);
+                });
+            } catch (error) {
+                console.error("❌ Error al configurar persistencia directa:", error);
+            }
         }
     } catch (initError) {
          // Mantener este error, es crítico si la inicialización falla

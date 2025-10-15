@@ -4,31 +4,18 @@
  */
 
 import type { HandleClientError } from '@sveltejs/kit';
-import { authService } from '$lib/services/authService';
 import { initializeAuthManager } from '$lib/firebase/authManager';
 
 // Inicializar el gestor de autenticación cuando se carga la app
 if (typeof window !== 'undefined') {
     console.log('🔄 Inicializando hooks.client.ts');
     
-    // Inicializar el gestor de autenticación
+    // El AuthManager con onAuthStateChanged automáticamente detectará 
+    // y restaurará la sesión si Firebase tiene un usuario persistente
     initializeAuthManager().then(() => {
-        console.log('✅ AuthManager inicializado desde hooks.client');
-        
-        // Verificar si hay una sesión persistente
-        const isLoggedIn = localStorage.getItem('user-logged-in') === 'true';
-        if (isLoggedIn) {
-            console.log('🔍 Sesión persistente detectada, verificando...');
-            authService.verifyToken().then(isValid => {
-                if (isValid) {
-                    console.log('✅ Sesión restaurada exitosamente');
-                } else {
-                    console.warn('⚠️ Sesión expirada, se requiere nuevo login');
-                }
-            });
-        } else {
-            console.log('ℹ️ No hay sesión persistente');
-        }
+        console.log('✅ AuthManager inicializado - Firebase Auth manejará la persistencia automáticamente');
+    }).catch((error) => {
+        console.error('❌ Error inicializando AuthManager:', error);
     });
 }
 

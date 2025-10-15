@@ -2,7 +2,9 @@ import { writable } from 'svelte/store';
 import { app, db, auth } from '$lib/firebase_toggle';
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword // <-- Importado para el registro
+  createUserWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 
 // Importamos useTestDb desde firebase_toggle.ts en lugar de definirlo aquí
@@ -25,15 +27,21 @@ export async function loginWithEmailPassword(email: string, password: string) {
       throw new Error("No se pudo inicializar Firebase Auth");
     }
 
+    // CRÍTICO: Configurar persistencia ANTES del login
+    await setPersistence(auth, browserLocalPersistence);
+    console.log('✅ Persistencia configurada antes del login');
+
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return { success: true, user: userCredential.user, error: null, code: null, message: null }; // Añadido code y message null para consistencia
+    console.log('✅ Login exitoso con persistencia');
+    return { success: true, user: userCredential.user, error: null, code: null, message: null };
   } catch (error) {
+    console.error('❌ Error en login:', error);
     return {
       success: false,
       user: null,
       error: error,
-      code: error.code, // Código de error de Firebase
-      message: error.message // Mensaje de error de Firebase
+      code: error.code,
+      message: error.message
     };
   }
 }
@@ -46,15 +54,21 @@ export async function registerWithEmailPassword(email: string, password: string)
       throw new Error("No se pudo inicializar Firebase Auth");
     }
 
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password); // <-- Usa la función de registro
-    return { success: true, user: userCredential.user, error: null, code: null, message: null }; // Añadido code y message null para consistencia
+    // CRÍTICO: Configurar persistencia ANTES del registro
+    await setPersistence(auth, browserLocalPersistence);
+    console.log('✅ Persistencia configurada antes del registro');
+
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    console.log('✅ Registro exitoso con persistencia');
+    return { success: true, user: userCredential.user, error: null, code: null, message: null };
   } catch (error) {
+    console.error('❌ Error en registro:', error);
     return {
       success: false,
       user: null,
       error: error,
-      code: error.code, // <-- Asegúrate de devolver el código de error
-      message: error.message // <-- Y el mensaje
+      code: error.code,
+      message: error.message
     };
   }
 }
