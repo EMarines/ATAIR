@@ -1,0 +1,23 @@
+{
+   "companyName": "Match Home",
+   "logoUrl": "/logos/matchhome-logo.png",
+   "faviconUrl": "/favicon-matchhome.png",
+   "slogan": "¡Tu Patrimonio en Buenas Manos!",
+   "agentName": "Enrique Marines",
+   "companyUrl": "https://www.matchhome.net/",
+   "phoneNumber": "(614) 540 4003",
+   "whatsapp": "(614) 540 4003",
+   "email": "matchhome@hotmail.com",
+   "address": {
+      "street": "Ave. Francisco Villa # 5700",
+      "city": "Chihuahua",
+      "state": "Chih.",
+      "zipCode": "61203",
+      "country": "México"
+   },
+   "socialMedia": {
+      "facebook": "https://www.facebook.com/matchhomemx",
+      "instagram": "https://www.instagram.com/matchhomemx",
+      "linkedin": "https://www.linkedin.com/company/match-home"
+   }
+}

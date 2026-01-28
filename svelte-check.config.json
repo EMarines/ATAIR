@@ -1,0 +1,5 @@
+{
+  "compilerOptions": {
+    "ignoreWarnings": ["css-unused-selector"]
+  }
+}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="/favicon.png" type="image/png"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- Content Security Policy - Updated for n8n integration with specific domain -->
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://*.googleapis.com; connect-src 'self' http://localhost:5678 https://*.googleapis.com https://firebaseinstallations.googleapis.com https://firestore.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com https://n8n-n8n.wjj5il.easypanel.host https://*.easypanel.host; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.googleapis.com;">
+
+		%sveltekit.head%
+		
+		<!-- Google Fonts - Poppins -->
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+		<link href="https://fonts.googleapis.com/css2?family=Nothing+You+Could+Do&display=swap" rel="stylesheet">
+		
+		<!-- Font Awesome -->
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+		
+		<!-- Script para detectar y aplicar preferencia de modo oscuro -->
+		<script>
+			// Función para detectar y aplicar el modo oscuro
+			(function() {
+				// Verificar si hay una preferencia guardada en localStorage
+				const savedTheme = localStorage.getItem('theme');
+				
+				// Si hay preferencia guardada, usarla
+				if (savedTheme) {
+					document.documentElement.setAttribute('data-theme', savedTheme);
+				} 
+				// Si no hay preferencia guardada, detectar preferencia del sistema
+				else {
+					// Verifica si el usuario prefiere modo oscuro
+					const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+					
+					// Aplicar modo oscuro si el usuario lo prefiere
+					if (prefersDarkMode) {
+						document.documentElement.setAttribute('data-theme', 'dark');
+						localStorage.setItem('theme', 'dark');
+					} else {
+						document.documentElement.setAttribute('data-theme', 'light');
+						localStorage.setItem('theme', 'light');
+					}
+				}
+			})();
+		</script>
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

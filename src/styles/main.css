@@ -1,0 +1,312 @@
+*{
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  transition-duration: 200ms;
+  font-family: 'Poppins', sans-serif;
+  scrollbar-color: blue lightblue;
+  scroll-behavior: smooth;
+ 
+}
+:root{
+  font-family: 'Poppins', Roboto, sans-serif;
+  --primary-color:#6495ed;
+  --bg-color:white;
+  --color: #333;
+  --bg-color: #e9e9e9;
+	--sidebar-color: #000;
+	--header-color: #000;
+	--text-color: #fff;
+	--accent-color: #0cbff6;
+	--menu-background-color: #2e2e2e;
+	--light-gray: #a7a7a7;
+	--medium-gray: #2e2e2e;
+	--dark-gray: #181818;
+	--menu-text-color: #fff;
+	--border: rgba(255, 255, 255, 0.15);
+	--sidebar-width: 250px;
+	--header-height: 64px;
+	--error: #c24141;
+	--warning: #e7a917;
+}
+
+
+[data-theme="dark"] {
+  --primary-color: #2d3f63;
+  --bg-color: #000000;
+  --color: #ddd;
+}
+
+body{
+  background-color: var(--bg-color);
+  color: var(--color);
+}
+.container{
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 10px;
+  /* background: red; */
+}
+
+.pageContainer {
+  padding: 10px;  
+}
+
+/* Estilos generales para centrar y limitar el ancho */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Estilos para la navbar */
+.navbar {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px 20px;
+}
+
+/* Estilos para el contenedor de tarjetas */
+.cards__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    position: relative;
+    z-index: 5;
+}
+
+/* Estilos para el footer */
+.footer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    margin-top: 20px;
+    clear: both;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: hidden; /* Evitar scroll horizontal */
+}
+
+h1.title {
+  font-size: 2.5em;
+  font-weight: 350;
+  color: #6b21a8;
+  text-align: center;
+}
+h1 , h2{
+  text-transform: capitalize;
+}
+
+h2.title {
+  font-size: 2em;
+  font-weight: 250;
+  color: #6b21a8;
+  margin: 0 auto;
+  text-align: center
+}
+
+h3.title {
+  font-size: 1.5em;
+  font-weight: 200;
+  color: #6b21a8;
+  text-align: center;
+
+}
+h4.title {
+  font-size: 1.3em;
+  font-weight: 200;
+  color: #6b21a8;
+  text-align: center;  
+}
+h1.name {
+  font-size: 2.2em;
+  font-weight: 300;
+}
+
+.btn__submit {
+  width: 180px;
+  background: blue;
+  color: whitesmoke;
+  font-weight: 800;
+  padding: 8px;
+  margin: 8px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+
+/* inputs dessigns   */
+
+.above, .center {
+  position: absolute;
+  transform: translateY(-50%);
+  min-width: 150px;
+  pointer-events: none;
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: .8em;
+}
+
+.slogan {
+  font-family: Nothing You Could Do;
+  font-size: 2.5rem;
+  color: #6b21a8;
+  text-shadow: 1px 1px 3px rgba(200, 200, 200, 0.5);
+}
+
+.izq {
+  transform: translatex(-50%);
+
+}
+
+.above {
+  top: 0;
+  left: 24px;
+  color: whitesmoke;
+  background: navy;
+  border: 1px solid blue;
+  font-size: .7em;
+}
+
+.center {
+  top: 50%;
+  left: 6px;
+  border: 1px solid transparent;
+  opacity: 0;
+}
+
+.label__title {
+  position: relative; 
+  border: 1px solid navy;
+  border-radius: 5px;
+  padding: 5px 3px 7px 3px;
+}
+
+.in__sel {  
+  padding: 3px 0 3px 5px;
+  width: 250px;
+  border-color: 2px solid blue;
+  border-radius: 8px;
+  font-size: .8em;
+  padding: 3px;
+  font-weight: 600;
+  color: darkblue;    
+  }
+
+
+  input::placeholder{
+    color: navy;
+  }
+
+  .capitalize {
+    text-transform: capitalize;
+  }
+
+
+/* iconos */
+
+.fa-pen-to-square {
+  font-size: 1em;
+  color: blue;
+  opacity: 40%;
+  cursor: pointer;
+}
+
+.fa-trash-can {
+  font-size:1em;
+  color: red;
+  opacity: 40%;
+  cursor: pointer;
+}
+
+.fa-square-check {
+  font-size: 1em;
+  color: darkgreen;
+  opacity: 40%;
+  cursor: pointer;
+}
+
+i:hover {
+  color: yellow;
+  opacity: 100%;
+}
+
+/* Iconos de acciones */
+.whatsapp-icon {
+  color: #25D366 !important;  /* Color oficial de WhatsApp */
+  font-size: 1.5em !important;  /* 50% más grande */
+}
+
+.fa-users-viewfinder {
+  color: blue !important;
+  font-size: 1.5em !important;  /* 50% más grande */
+}
+
+.fa-arrow-left {
+  color: yellow !important;
+  font-size: 1.5em !important;  /* 50% más grande */
+}
+
+.fa-arrow-up-right-from-square {
+  color: purple !important;
+  font-size: 1.5em !important;  /* 50% más grande */
+}
+
+
+select,
+input,
+button,
+a {
+	&:focus-visible {
+		outline: 2px solid var(--accent-color);
+		outline-offset: 2px;
+	}
+}
+
+/* Estilos para la barra de scroll - Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(155, 155, 155, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6b21a8;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8b31d8;
+}
+
+/* Estilos para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #6b21a8 rgba(155, 155, 155, 0.1);
+}
+
+/* Para elementos con scroll horizontal */
+.scroll-horizontal {
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hidden-footer {
+  display: none !important;
+}

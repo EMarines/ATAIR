@@ -1,0 +1,41 @@
+node_modules
+.vite_cache
+
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+/ATAIR/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+.vercel
+
+# Archivos de credenciales
+# src/lib/config/google-credentials.ts
+functions/service-account-key.json
+src/lib/functions/service-account-key.json
+
+# Archivos de diagnóstico
+debug-tokens.html
+# diagnostico-google.html
+diagnostico-simple.html
+firebase-debug.log
+
+.vercel
