@@ -12,6 +12,8 @@ const config = defineConfig({
     target: 'esnext', // Cambia el target a 'esnext' para soportar top-level await
   },
   server: {
+    port: 5173,
+    strictPort: true,
     fs: {
       // Permitir servir archivos desde fuera del directorio raíz
       allow: [

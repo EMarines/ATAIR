@@ -37,6 +37,11 @@ export interface Contact {
     title?: string;
     typeProperty?: string;
     typeOperation?: string;
+    googleContactId?: string;
+    publicUrl?: string;
+    notes?: string;
+    googleSyncedAt?: number;
+    lastResponse?: number;
 }
 
 export interface ContactOption {
@@ -100,12 +105,16 @@ export interface PropertyEB {
 // ============================================
 
 export interface Binnacle {
-    id: string;
-    contactId: string;
-    createdAt: number;
-    content: string;
+    id?: string;
+    contactId?: string;
+    createdAt?: number;
+    content?: string;
     type?: string;
     author?: string;
+    date?: number;
+    comment?: string;
+    action?: string;
+    to?: string;
     [key: string]: any;
 }
 

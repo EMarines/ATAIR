@@ -6,17 +6,23 @@ import {
   onAuthStateChanged, 
   signOut,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  type User
 } from 'firebase/auth';
-import { auth } from '$lib/firebase_toggle';
+import { doc, onSnapshot, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '$lib/firebase_toggle';
 import { writable, get } from 'svelte/store';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 
 // Store para el estado del usuario
-export const userStore = writable<any>(null);
+export const userStore = writable<User | null>(null);
+export const userProfile = writable<any>(null);
 export const authInitialized = writable(false);
 export const authLoading = writable(true);
+
+// Listener para el perfil del usuario
+let profileUnsubscribe: (() => void) | null = null;
 
 /**
  * Inicializa el gestor de autenticación
@@ -35,28 +41,69 @@ export async function initializeAuthManager() {
     console.log('🔄 Inicializando gestor de autenticación...');
 
     // Escuchar cambios en el estado de autenticación
-    // Firebase AUTOMÁTICAMENTE restaura la sesión si existe
     onAuthStateChanged(auth, async (user) => {
-      console.log('🔄 Estado de autenticación cambió:', user ? user.email : 'No autenticado');
+      console.log('🔄 onAuthStateChanged:', user ? `✅ Conectado: ${user.email}` : '❌ Desconectado');
       
+      // Limpiar listener de perfil anterior si existe
+      if (profileUnsubscribe) {
+        profileUnsubscribe();
+        profileUnsubscribe = null;
+      }
+
       if (user) {
-        // Actualizar store del usuario con datos básicos
-        userStore.set({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          emailVerified: user.emailVerified,
-          photoURL: user.photoURL
-        });
+        // Actualizar store del usuario
+        userStore.set(user);
+
+        try {
+          // Verificar si el perfil existe en Firestore, si no, crearlo
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+
+          if (!userDocSnap.exists()) {
+            console.log('✨ Usuario nuevo detectado, creando perfil en Firestore...');
+            
+            // Definir rol inicial (Admin para el dueño, user para los demás)
+            const isAdmin = user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com'; 
+            const newProfile = {
+              email: user.email,
+              role: isAdmin ? 'admin' : 'user',
+              createdAt: serverTimestamp(),
+              lastLogin: serverTimestamp(),
+              uid: user.uid
+            };
+
+            await setDoc(userDocRef, newProfile);
+            console.log(`✅ Perfil creado exitosamente con rol: ${newProfile.role}`);
+          } else {
+            // Actualizar lastLogin si ya existe
+            await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+          }
+
+          // Configurar listener para cambios en tiempo real del perfil
+          profileUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              userProfile.set(data);
+              console.log('👤 Perfil de usuario actualizado:', data.role || 'user');
+            }
+          });
+
+        } catch (error) {
+          console.error('❌ Error gestionando perfil en Firestore:', error);
+          // Fallback a rol user en caso de error de permisos o red
+          userProfile.set({ role: 'user', email: user.email });
+        }
 
         console.log('✅ Usuario autenticado:', user.email);
       } else {
         userStore.set(null);
+        userProfile.set(null);
         console.log('👋 Usuario no autenticado');
       }
       
       authLoading.set(false);
       authInitialized.set(true);
+      console.log('✅ AuthManager: Estado inicializado');
     });
 
   } catch (error) {

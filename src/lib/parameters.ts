@@ -74,3 +74,5 @@ export const range = [
     "7,000,000 - 10,000,000",
     "10,000,000+"
 ];
+
+export const operTypes = ["Venta", "Arrendador"];

@@ -126,38 +126,50 @@ if (browser) {
 
 if (allConfigPresent) {
     try {
-        if (getApps().length) {
-            app = getApp(); // Obtener la app predeterminada existente
-            console.log("Usando app de Firebase existente");
+        if (getApps().length > 0) {
+            app = getApp();
+            // Si la configuración actual no coincide con la de la app existente, 
+            // la reinicializamos (útil en desarrollo con HMR si cambias el .env)
+            const currentConfig = app.options;
+            if (currentConfig.apiKey !== firebaseConfig.apiKey) {
+                console.log("🔄 Detectado cambio de configuración, reinicializando Firebase App...");
+                // Nota: In Firebase v9+, no puedes simplemente borrar una app, 
+                // pero initializeApp con el mismo nombre (o default) la sobrescribe.
+                app = initializeApp(firebaseConfig);
+            } else {
+                console.log("✅ Usando app de Firebase existente");
+            }
         } else {
-            // Inicializar la app principal
             app = initializeApp(firebaseConfig);
-            console.log("Inicializando nueva app de Firebase");
+            console.log("✨ Inicializando nueva app de Firebase");
         }
         
         db = getFirestore(app);
         auth = getAuth(app);
 
-        // Configurar persistencia una sola vez al inicio
+        // Configurar persistencia explícitamente
         if (browser && auth) {
             setPersistence(auth, browserLocalPersistence)
-                .then(() => console.log('✅ Persistencia Local establecida'))
-                .catch(err => console.error('❌ Error persistencia:', err));
+                .then(() => {
+                    console.log('✅ Persistencia Local establecida correctamente');
+                    // Solo en desarrollo, mostrar un log extra para confirmar el proyecto
+                    if (!import.meta.env.PROD) {
+                        console.log(`📍 Proyecto Firebase activo: ${firebaseConfig.projectId}`);
+                    }
+                })
+                .catch(err => {
+                    console.error('❌ Error crítico al establecer persistencia:', err);
+                });
         }
     } catch (initError) {
-         // Mantener este error, es crítico si la inicialización falla
          console.error("¡Error Crítico! Fallo durante la inicialización de Firebase:", initError);
-         // Asegurarse que las variables queden null si hay error aquí
          app = null;
          db = null;
          auth = null;
     }
 } else {
-    // --- ¡MANTENER ESTE ERROR CRÍTICO! Es necesario para diagnóstico ---
-    console.error("¡Error Crítico! Faltan variables de configuración de Firebase. Revisa las variables de entorno (VITE_FIREBASE_... o VITE_TEST_FIREBASE_...). La aplicación no puede inicializar Firebase.");
-    // Las variables app, db, auth ya son null por defecto
+    console.error("¡Error Crítico! Faltan variables de configuración de Firebase. Revisa las variables de entorno.");
 }
 
-
-// Exportar las instancias (pueden ser null si la configuración/inicialización falló)
+// Exportar las instancias
 export { app, db, auth };

@@ -11,7 +11,7 @@
 	import { db } from '$lib/firebase_toggle';
 	import { diaTarde } from '$lib/functions/dateFunctions';
 	import { capitalize } from '$lib/functions/capitalize';
-	import { sendWhatsApp } from '$lib/functions/sendWhatsApp';
+	import { sendWhatsApp } from '$lib/functions/whatsapp';
 	// findPropertiesForContact
 	export let data;
 	let property = data.property as Property;
@@ -22,7 +22,7 @@
 	let contToRender: Contact[] = [];
 	let contInitial = [];
 	let msgToShow = '';
-	let poroShowTo: ContactOption[] = ['Posobles_Interesados', 'Por_Enviar', 'Ya_Se_Envió'];
+	let poroShowTo: string[] = ['Posobles_Interesados', 'Por_Enviar', 'Ya_Se_Envió'];
 	let showBtn = false;
 	let contIntToSend = 0;
 	let contFalt = 0;
