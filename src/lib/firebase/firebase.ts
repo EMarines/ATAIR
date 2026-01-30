@@ -29,13 +29,11 @@ export async function loginWithEmailPassword(email: string, password: string) {
 
     // CRÍTICO: Configurar persistencia ANTES del login
     await setPersistence(auth, browserLocalPersistence);
-    console.log('✅ Persistencia configurada antes del login');
 
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log('✅ Login exitoso con persistencia');
     return { success: true, user: userCredential.user, error: null, code: null, message: null };
   } catch (error) {
-    console.error('❌ Error en login:', error);
+    console.error('Error en login:', error);
     return {
       success: false,
       user: null,
@@ -56,13 +54,11 @@ export async function registerWithEmailPassword(email: string, password: string)
 
     // CRÍTICO: Configurar persistencia ANTES del registro
     await setPersistence(auth, browserLocalPersistence);
-    console.log('✅ Persistencia configurada antes del registro');
 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    console.log('✅ Registro exitoso con persistencia');
     return { success: true, user: userCredential.user, error: null, code: null, message: null };
   } catch (error) {
-    console.error('❌ Error en registro:', error);
+    console.error('Error en registro:', error);
     return {
       success: false,
       user: null,

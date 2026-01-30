@@ -33,17 +33,12 @@ let profileUnsubscribe: (() => void) | null = null;
  */
 async function handleUserProfile(user: User) {
   try {
-    if (!db) {
-      console.warn('⚠️ handleUserProfile: DB no disponible, esperando...');
-      // El toggle de firebase_toggle debería inicializarse pronto
-      return;
-    }
+    if (!db) return;
 
     const userDocRef = doc(db, 'users', user.uid);
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
-      console.log('✨ Usuario nuevo: Creando perfil...');
       const isAdmin = user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com'; 
       const newProfile = {
         email: user.email,
@@ -63,12 +58,11 @@ async function handleUserProfile(user: User) {
       if (docSnap.exists()) {
         const data = docSnap.data();
         userProfile.set(data);
-        console.log('👤 Perfil actualizado:', data.role || 'user');
       }
     });
 
   } catch (error) {
-    console.error('❌ Error en handleUserProfile:', error);
+    console.error('Error en handleUserProfile:', error);
     // Fallback preventivo
     userProfile.set({ role: 'user', email: user.email });
   }
@@ -81,16 +75,15 @@ export async function initializeAuthManager() {
   if (get(authInitialized) || !browser) return;
 
   if (!auth) {
-    console.error('❌ initializeAuthManager: Auth no disponible');
+    console.error('initializeAuthManager: Auth no disponible');
     authLoading.set(false);
     authInitialized.set(true);
     return;
   }
 
-  console.log('🔐 AuthManager: Iniciando listener...');
+  // Inicializando listener...
 
   onAuthStateChanged(auth, async (user) => {
-    console.log('🔄 onAuthStateChanged:', user ? `✅ Conectado: ${user.email}` : '❌ Desconectado');
     
     if (profileUnsubscribe) {
       profileUnsubscribe();
@@ -107,7 +100,6 @@ export async function initializeAuthManager() {
     
     authLoading.set(false);
     authInitialized.set(true);
-    console.log('✅ AuthManager: Inicialización completada');
   });
 }
 
@@ -136,12 +128,10 @@ export async function ensureValidToken() {
 export async function handleLogout() {
   try {
     await signOut(auth);
-    console.log('👋 Sesión cerrada exitosamente');
-    
     // Redirigir al login
     goto('/login');
   } catch (error) {
-    console.error('❌ Error cerrando sesión:', error);
+    console.error('Error cerrando sesión:', error);
     
     // Forzar limpieza manual si falla el signOut
     userStore.set(null);

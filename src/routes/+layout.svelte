@@ -27,14 +27,7 @@
 	// Inicializar el gestor de autenticación al cargar la app
 	// Firebase automáticamente restaura sesiones persistentes vía onAuthStateChanged
 	onMount(async () => {
-		if (typeof window !== 'undefined') {
-			console.log('🚀 App: Montando layout principal');
-			const currentProject = localStorage.getItem('useTestDb') === 'true' ? 'TEST' : 'PRINCIPAL';
-			console.log(`📍 Base de Datos configurada en cliente: ${currentProject}`);
-		}
-
 		await initializeAuthManager();
-		console.log('✅ App: AuthManager inicializado');
 	});
 
 	// Esperar a que la autenticación esté inicializada Y el usuario esté autenticado
@@ -59,7 +52,6 @@
 		// 1. Caso: Usuario NO autenticado
 		if (!user) {
 			if (!isPublic) {
-				console.log('🚫 Acceso denegado: Redirigiendo a login');
 				goto('/login');
 			}
 			return;
@@ -67,7 +59,6 @@
 
 		// 2. Caso: Usuario autenticado intentando entrar al login
 		if (path === '/login') {
-			console.log('🏠 Ya autenticado: Redirigiendo a inicio');
 			goto('/');
 			return;
 		}
@@ -79,7 +70,6 @@
 			if (role === 'user') {
 				// Si es un usuario básico y está en una ruta de admin, redirigir a propiedades
 				if (isAdminOnlyRoute(path)) {
-					console.log('⛔ Acceso restringido para usuario regular: Redirigiendo a propiedades');
 					goto('/properties');
 				}
 			}
@@ -87,21 +77,18 @@
 	}
 
 	function cleanupListeners() {
-		console.log('🧹 Limpiando listeners de Firestore...');
 		unsubscribes.forEach((unsubscribe) => unsubscribe());
 		unsubscribes.length = 0;
 	}
 
 	function setupFirestoreListeners(profile: any) {
 		const isAdmin = profile?.role === 'admin';
-		console.log(`🔗 Configurando listeners de Firestore. Modo Admin: ${isAdmin}`);
 
 		// Limpiar listeners existentes para evitar duplicados
 		cleanupListeners();
 
 		// 1. SUSCRIPCIONES DE ADMIN (Contactos y Bitácoras)
 		if (isAdmin) {
-			console.log('📋 Cargando datos sensibles (Contactos/Bitácoras) para administrador...');
 			unsubscribes.push(
 				onSnapshot(
 					collection(getDb(), 'contacts'),
@@ -168,7 +155,6 @@
 				})
 			);
 		} else {
-			console.log('🔒 Usuario no-admin: Omitiendo carga de contactos y bitácoras.');
 			// Limpiar stores por seguridad si el rol cambia a no-admin
 			contactsStore.set([]);
 			binnaclesStore.set([]);

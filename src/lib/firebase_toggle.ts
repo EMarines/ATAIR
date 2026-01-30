@@ -35,7 +35,6 @@ const createDbToggleStore = () => {
         if (browser) {
             update(value => {
                 const newValue = !value;
-                console.log("Cambiando base de datos a:", newValue ? "PRUEBA" : "PRODUCCIÓN");
                 localStorage.setItem('useTestDb', String(newValue));
                 // Agregar pequeño retraso antes de recargar para asegurar que
                 // localStorage se actualice completamente
@@ -44,8 +43,6 @@ const createDbToggleStore = () => {
                 }, 100);
                 return newValue;
             });
-        } else {
-            console.log("Toggle no disponible en entorno no-browser");
         }
      }
   };
@@ -56,7 +53,6 @@ export const useTestDb = createDbToggleStore();
 function getFirebaseConfig() {
   // En producción, siempre usar la configuración principal
   if (import.meta.env.PROD) {
-    console.log("Modo producción: usando base de datos principal (Match Home)");
     return {
       apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
       authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -74,7 +70,6 @@ function getFirebaseConfig() {
   if (browser) {
     // Leer directamente de localStorage con fallback seguro
     isUsingTestDb = localStorage.getItem('useTestDb') === 'true';
-    console.log("Modo desarrollo: usando base de datos:", isUsingTestDb ? "TEST (Curso Svelte)" : "PRINCIPAL (Match Home)");
   }
 
   if (isUsingTestDb) {
@@ -119,29 +114,18 @@ let app: ReturnType<typeof initializeApp> | null = null;
 let db: ReturnType<typeof getFirestore> | null = null;  
 let auth: ReturnType<typeof getAuth> | null = null;     
 
-// Mensaje de diagnóstico
-if (browser) {
-    console.log(`Estado inicial de useTestDb (localStorage): ${localStorage.getItem('useTestDb')}`);
-}
+// Firebase initialization...
 
 if (allConfigPresent) {
     try {
         if (getApps().length > 0) {
             app = getApp();
-            // Si la configuración actual no coincide con la de la app existente, 
-            // la reinicializamos (útil en desarrollo con HMR si cambias el .env)
-            const currentConfig = app.options;
-            if (currentConfig.apiKey !== firebaseConfig.apiKey) {
-                console.log("🔄 Detectado cambio de configuración, reinicializando Firebase App...");
-                // Nota: In Firebase v9+, no puedes simplemente borrar una app, 
-                // pero initializeApp con el mismo nombre (o default) la sobrescribe.
+            // Re-initialize if config changed (HMR)
+            if (app.options.apiKey !== firebaseConfig.apiKey) {
                 app = initializeApp(firebaseConfig);
-            } else {
-                console.log("✅ Usando app de Firebase existente");
             }
         } else {
             app = initializeApp(firebaseConfig);
-            console.log("✨ Inicializando nueva app de Firebase");
         }
         
         db = getFirestore(app);
@@ -150,13 +134,6 @@ if (allConfigPresent) {
         // Configurar persistencia explícitamente
         if (browser && auth) {
             setPersistence(auth, browserLocalPersistence)
-                .then(() => {
-                    console.log('✅ Persistencia Local establecida correctamente');
-                    // Solo en desarrollo, mostrar un log extra para confirmar el proyecto
-                    if (!import.meta.env.PROD) {
-                        console.log(`📍 Proyecto Firebase activo: ${firebaseConfig.projectId}`);
-                    }
-                })
                 .catch(err => {
                     console.error('❌ Error crítico al establecer persistencia:', err);
                 });

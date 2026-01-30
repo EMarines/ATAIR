@@ -19,22 +19,16 @@
 
 	// Verificar si ya está autenticado al cargar la página
 	onMount(() => {
-		console.log('🚪 Login Page: Montado');
-
 		// Cargar email guardado si existe
 		const savedEmail = localStorage.getItem('savedEmail');
 		if (savedEmail) {
-			console.log('📧 Email recuperado de localStorage:', savedEmail);
 			email = savedEmail;
 		}
 
 		// Suscribirse al store de usuario para redirigir si ya hay sesión
 		const unsubscribe = userStore.subscribe((user) => {
 			if (user && user.uid) {
-				console.log('✅ Usuario ya autenticado detectado en login page, redirigiendo a inicio...');
 				goto('/');
-			} else {
-				console.log('ℹ️ No hay sesión activa en la página de login');
 			}
 		});
 
@@ -64,8 +58,6 @@
 				// --- Lógica de Registro ---
 				result = await registerWithEmailPassword(emailValue, passwordValue);
 				if (result.success) {
-					console.log('✅ Registro exitoso - Firebase maneja la persistencia automáticamente');
-
 					// Firebase automáticamente actualiza el estado via onAuthStateChanged
 					// Solo esperamos un momento para que el estado se actualice
 					setTimeout(async () => {
@@ -86,8 +78,6 @@
 				// --- Lógica de Login ---
 				result = await loginWithEmailPassword(emailValue, passwordValue);
 				if (result.success) {
-					console.log('✅ Login exitoso - Firebase maneja la persistencia automáticamente');
-
 					// Guardar email si el usuario quiere recordar
 					if (rememberMe) {
 						localStorage.setItem('savedEmail', emailValue);

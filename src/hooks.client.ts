@@ -8,13 +8,11 @@ import { initializeAuthManager } from '$lib/firebase/authManager';
 
 // Inicializar el gestor de autenticación cuando se carga la app
 if (typeof window !== 'undefined') {
-    console.log('🔄 Inicializando hooks.client.ts');
+// Initializing hooks.client.ts
     
     // El AuthManager con onAuthStateChanged automáticamente detectará 
     // y restaurará la sesión si Firebase tiene un usuario persistente
-    initializeAuthManager().then(() => {
-        console.log('✅ AuthManager inicializado - Firebase Auth manejará la persistencia automáticamente');
-    }).catch((error) => {
+    initializeAuthManager().catch((error) => {
         console.error('❌ Error inicializando AuthManager:', error);
     });
 }
