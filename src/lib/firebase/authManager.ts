@@ -28,89 +28,87 @@ let profileUnsubscribe: (() => void) | null = null;
  * Inicializa el gestor de autenticación
  * Firebase automáticamente restaura sesiones gracias a browserLocalPersistence
  */
-export async function initializeAuthManager() {
+/**
+ * Carga o crea el perfil del usuario en Firestore
+ */
+async function handleUserProfile(user: User) {
   try {
-    // Solo ejecutar en el navegador
-    if (!browser || !auth) {
-      console.log('⚠️ Auth no disponible o no estamos en el navegador');
-      authLoading.set(false);
-      authInitialized.set(true);
+    if (!db) {
+      console.warn('⚠️ handleUserProfile: DB no disponible, esperando...');
+      // El toggle de firebase_toggle debería inicializarse pronto
       return;
     }
 
-    console.log('🔄 Inicializando gestor de autenticación...');
+    const userDocRef = doc(db, 'users', user.uid);
+    const userDocSnap = await getDoc(userDocRef);
 
-    // Escuchar cambios en el estado de autenticación
-    onAuthStateChanged(auth, async (user) => {
-      console.log('🔄 onAuthStateChanged:', user ? `✅ Conectado: ${user.email}` : '❌ Desconectado');
-      
-      // Limpiar listener de perfil anterior si existe
-      if (profileUnsubscribe) {
-        profileUnsubscribe();
-        profileUnsubscribe = null;
+    if (!userDocSnap.exists()) {
+      console.log('✨ Usuario nuevo: Creando perfil...');
+      const isAdmin = user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com'; 
+      const newProfile = {
+        email: user.email,
+        role: isAdmin ? 'admin' : 'user',
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        uid: user.uid
+      };
+      await setDoc(userDocRef, newProfile);
+    } else {
+      await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+    }
+
+    // Suscribirse a cambios en el perfil
+    if (profileUnsubscribe) profileUnsubscribe();
+    profileUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        userProfile.set(data);
+        console.log('👤 Perfil actualizado:', data.role || 'user');
       }
-
-      if (user) {
-        // Actualizar store del usuario
-        userStore.set(user);
-
-        try {
-          // Verificar si el perfil existe en Firestore, si no, crearlo
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-
-          if (!userDocSnap.exists()) {
-            console.log('✨ Usuario nuevo detectado, creando perfil en Firestore...');
-            
-            // Definir rol inicial (Admin para el dueño, user para los demás)
-            const isAdmin = user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com'; 
-            const newProfile = {
-              email: user.email,
-              role: isAdmin ? 'admin' : 'user',
-              createdAt: serverTimestamp(),
-              lastLogin: serverTimestamp(),
-              uid: user.uid
-            };
-
-            await setDoc(userDocRef, newProfile);
-            console.log(`✅ Perfil creado exitosamente con rol: ${newProfile.role}`);
-          } else {
-            // Actualizar lastLogin si ya existe
-            await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-          }
-
-          // Configurar listener para cambios en tiempo real del perfil
-          profileUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-              const data = docSnap.data();
-              userProfile.set(data);
-              console.log('👤 Perfil de usuario actualizado:', data.role || 'user');
-            }
-          });
-
-        } catch (error) {
-          console.error('❌ Error gestionando perfil en Firestore:', error);
-          // Fallback a rol user en caso de error de permisos o red
-          userProfile.set({ role: 'user', email: user.email });
-        }
-
-        console.log('✅ Usuario autenticado:', user.email);
-      } else {
-        userStore.set(null);
-        userProfile.set(null);
-        console.log('👋 Usuario no autenticado');
-      }
-      
-      authLoading.set(false);
-      authInitialized.set(true);
-      console.log('✅ AuthManager: Estado inicializado');
     });
 
   } catch (error) {
-    console.error('❌ Error inicializando gestor de autenticación:', error);
+    console.error('❌ Error en handleUserProfile:', error);
+    // Fallback preventivo
+    userProfile.set({ role: 'user', email: user.email });
+  }
+}
+
+/**
+ * Inicializa el gestor de autenticación
+ */
+export async function initializeAuthManager() {
+  if (get(authInitialized) || !browser) return;
+
+  if (!auth) {
+    console.error('❌ initializeAuthManager: Auth no disponible');
     authLoading.set(false);
     authInitialized.set(true);
+    return;
   }
+
+  console.log('🔐 AuthManager: Iniciando listener...');
+
+  onAuthStateChanged(auth, async (user) => {
+    console.log('🔄 onAuthStateChanged:', user ? `✅ Conectado: ${user.email}` : '❌ Desconectado');
+    
+    if (profileUnsubscribe) {
+      profileUnsubscribe();
+      profileUnsubscribe = null;
+    }
+
+    if (user) {
+      userStore.set(user);
+      await handleUserProfile(user);
+    } else {
+      userStore.set(null);
+      userProfile.set(null);
+    }
+    
+    authLoading.set(false);
+    authInitialized.set(true);
+    console.log('✅ AuthManager: Inicialización completada');
+  });
 }
 
 /**
