@@ -16,6 +16,8 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+	// Global constant for versioning
+	const __APP_VERSION__: string;
 }
 
 export {};

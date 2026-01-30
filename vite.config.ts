@@ -21,6 +21,21 @@ const config = defineConfig({
         resolve('static/data')
       ]
     }
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify((() => {
+      const date = new Date();
+      // Year: Last 2 digits (e.g. 2026 -> 26)
+      const year = date.getFullYear().toString().slice(-2);
+      // Month: 1-12
+      const month = date.getMonth() + 1;
+      // Day: 1-31
+      const day = date.getDate();
+      // Time: HHMM
+      const time = date.getHours().toString().padStart(2, '0') + date.getMinutes().toString().padStart(2, '0');
+      
+      return `V(${year}.${month}.${day}.${time})`;
+    })())
   }
 });
 
