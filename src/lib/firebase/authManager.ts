@@ -84,6 +84,7 @@ export async function initializeAuthManager() {
   // Inicializando listener...
 
   onAuthStateChanged(auth, async (user) => {
+    console.log('🔥 [AuthManager] Estado cambiado:', user ? `Usuario: ${user.email}` : 'Sin usuario');
     
     if (profileUnsubscribe) {
       profileUnsubscribe();
@@ -91,9 +92,11 @@ export async function initializeAuthManager() {
     }
 
     if (user) {
+      console.log('🔥 [AuthManager] Usuario detectado, actualizando stores...');
       userStore.set(user);
       await handleUserProfile(user);
     } else {
+      console.log('🔥 [AuthManager] Usuario nulo (logout o inicial)');
       userStore.set(null);
       userProfile.set(null);
     }

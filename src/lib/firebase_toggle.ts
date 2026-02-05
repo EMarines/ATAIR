@@ -118,31 +118,39 @@ let auth: ReturnType<typeof getAuth> | null = null;
 
 if (allConfigPresent) {
     try {
+        // Manejo robusto de inicialización para evitar errores con HMR (Hot Module Replacement)
         if (getApps().length > 0) {
-            app = getApp();
-            // Re-initialize if config changed (HMR)
-            if (app.options.apiKey !== firebaseConfig.apiKey) {
-                app = initializeApp(firebaseConfig);
-            }
+            app = getApp(); 
+            console.log("♻️ Usando instancia de Firebase existente");
         } else {
             app = initializeApp(firebaseConfig);
+            console.log("✨ Inicializada nueva instancia de Firebase");
         }
         
         db = getFirestore(app);
         auth = getAuth(app);
 
-        // Configurar persistencia explícitamente
+        // Configurar persistencia una sola vez al inicio
         if (browser && auth) {
+            // No esperes a que termine para continuar, pero loguea el resultado
             setPersistence(auth, browserLocalPersistence)
-                .catch(err => {
-                    console.error('❌ Error crítico al establecer persistencia:', err);
-                });
+                .then(() => console.log('✅ Persistencia (BrowserLocal) configurada'))
+                .catch(err => console.error('❌ Error configurando persistencia:', err));
         }
     } catch (initError) {
-         console.error("¡Error Crítico! Fallo durante la inicialización de Firebase:", initError);
-         app = null;
-         db = null;
-         auth = null;
+         console.error("❌ Error Crítico inicializando Firebase:", initError);
+         // Intentar recuperación: si falló por 'App already exists', intentar obtenerla
+         try {
+            app = getApp();
+            db = getFirestore(app);
+            auth = getAuth(app);
+            console.log("⚠️ Recuperado de error de inicialización usando app existente");
+         } catch (retryError) {
+            console.error("❌ Falló la recuperación:", retryError);
+            app = null; 
+            db = null; 
+            auth = null;
+         }
     }
 } else {
     console.error("¡Error Crítico! Faltan variables de configuración de Firebase. Revisa las variables de entorno.");

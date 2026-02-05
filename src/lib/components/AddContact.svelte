@@ -543,6 +543,34 @@
 		}
 	}
 
+	// 🚀 AUTOMATIZACIÓN WHATSAPP (PHASE 1)
+	async function triggerWhatsAppAutomation(contactData: Contact, propertyData: Property | null) {
+		if (!contactData.telephon) return;
+
+		console.log('🚀 Triggering WhatsApp Automation...');
+		try {
+			// Usamos endpoint relativo para que funcione en dev y prod
+			const response = await fetch('/api/whatsapp/send', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					contact: contactData,
+					property: propertyData
+				})
+			});
+			const result = await response.json();
+			if (result.success) {
+				console.log('✅ WhatsApp automated message sent!', result.data);
+				showAutoNotification('WhatsApp enviado correctamente', 'error'); // Usamos el estilo existente aunque sea éxito
+			} else {
+				console.error('❌ WhatsApp automation failed:', result.error);
+				// showAutoNotification('Error enviando WhatsApp', 'error');
+			}
+		} catch (e) {
+			console.error('❌ WhatsApp fetch error:', e);
+		}
+	}
+
 	let contact: Contact = existingContact
 		? { ...existingContact }
 		: {
@@ -826,6 +854,14 @@
 				} catch (n8nError) {
 					console.error('❌ Error enviando a n8n:', n8nError);
 					// No bloqueamos el flujo si n8n falla
+				}
+				// 🚀 TRIGGER WHATSAPP AUTOMATION
+				try {
+					const currentProp = get(propertyStore);
+					// Solo enviar si hay propiedad seleccionada o al menos intentar
+					triggerWhatsAppAutomation(cleanContactData, currentProp);
+				} catch (waError) {
+					console.error('❌ Error triggering WhatsApp:', waError);
 				}
 			} else if (isUpdatedContact && cleanContactData.googleContactId) {
 				console.log('📝 Actualizando contacto EXISTENTE en Google...');
