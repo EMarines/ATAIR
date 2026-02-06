@@ -1,7 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { sendTemplateMessage } from '$lib/services/whatsapp';
 // import { generateWelcomeMessage } from '$lib/services/ai'; // Optional: Use if we want to generate variable content
-import { TEMPLATE_NAME } from '$env/static/private';
+import { env } from '$env/dynamic/private';
+
+const TEMPLATE_NAME = env.TEMPLATE_NAME;
 
 export async function POST({ request }) {
     try {

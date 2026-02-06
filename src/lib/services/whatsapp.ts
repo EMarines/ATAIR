@@ -1,4 +1,7 @@
-import { META_PHONE_ID, META_ACCESS_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
+
+const META_PHONE_ID = env.META_PHONE_ID;
+const META_ACCESS_TOKEN = env.META_ACCESS_TOKEN;
 
 const GRAPH_API_VERSION = 'v21.0';
 const BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`;

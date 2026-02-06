@@ -1,4 +1,6 @@
-import { OPENAI_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
+
+const OPENAI_API_KEY = env.OPENAI_API_KEY;
 
 /**
  * Generates a personalized welcome message or property description using OpenAI.
