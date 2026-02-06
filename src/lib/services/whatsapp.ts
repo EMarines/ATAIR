@@ -82,7 +82,7 @@ export async function sendTextMessage(to: string, text: string) {
     const response = await fetch(url, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${META_ACCESS_TOKEN}`,
+            'Authorization': `Bearer ${env.META_ACCESS_TOKEN}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
