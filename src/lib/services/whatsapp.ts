@@ -1,8 +1,5 @@
 import { env } from '$env/dynamic/private';
 
-const META_PHONE_ID = env.META_PHONE_ID;
-const META_ACCESS_TOKEN = env.META_ACCESS_TOKEN;
-
 const GRAPH_API_VERSION = 'v21.0';
 const BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
@@ -19,11 +16,11 @@ export async function sendTemplateMessage(
     languageCode: string = 'es_MX',
     components: any[] = []
 ) {
-    if (!META_PHONE_ID || !META_ACCESS_TOKEN) {
+    if (!env.META_PHONE_ID || !env.META_ACCESS_TOKEN) {
         throw new Error('Missing Meta Cloud API credentials (META_PHONE_ID or META_ACCESS_TOKEN)');
     }
 
-    const url = `${BASE_URL}/${META_PHONE_ID}/messages`;
+    const url = `${BASE_URL}/${env.META_PHONE_ID}/messages`;
 
     const body = {
         messaging_product: 'whatsapp',
@@ -43,7 +40,7 @@ export async function sendTemplateMessage(
     const response = await fetch(url, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${META_ACCESS_TOKEN}`,
+            'Authorization': `Bearer ${env.META_ACCESS_TOKEN}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
@@ -65,11 +62,11 @@ export async function sendTemplateMessage(
  * To initiate a conversation, you MUST use sendTemplateMessage.
  */
 export async function sendTextMessage(to: string, text: string) {
-     if (!META_PHONE_ID || !META_ACCESS_TOKEN) {
+     if (!env.META_PHONE_ID || !env.META_ACCESS_TOKEN) {
         throw new Error('Missing Meta Cloud API credentials');
     }
 
-    const url = `${BASE_URL}/${META_PHONE_ID}/messages`;
+    const url = `${BASE_URL}/${env.META_PHONE_ID}/messages`;
 
     const body = {
         messaging_product: 'whatsapp',

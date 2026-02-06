@@ -1,12 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-// import { VITE_EASYBROKER_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export const GET: RequestHandler = async ({ params }) => {
     const response = await fetch(
         `https://api.easybroker.com/v1/properties/${params.id}`, {
         headers: {
-            'X-Authorization': import.meta.env.VITE_EASYBROKER_API_KEY,
+            'X-Authorization': env.VITE_EASYBROKER_API_KEY,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }

@@ -1,7 +1,5 @@
 import { env } from '$env/dynamic/private';
 
-const OPENAI_API_KEY = env.OPENAI_API_KEY;
-
 /**
  * Generates a personalized welcome message or property description using OpenAI.
  * @param contactName Name of the client
@@ -13,7 +11,7 @@ export async function generateWelcomeMessage(
     propertyTitle: string,
     context: string = ''
 ): Promise<string> {
-    if (!OPENAI_API_KEY) {
+    if (!env.OPENAI_API_KEY) {
         console.warn('[AI Service] No OpenAI API Key found. Returning fallback text.');
         return `Hola ${contactName}, aquí tienes la información sobre ${propertyTitle}.`;
     }
@@ -23,7 +21,7 @@ export async function generateWelcomeMessage(
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENAI_API_KEY}`
+                'Authorization': `Bearer ${env.OPENAI_API_KEY}`
             },
             body: JSON.stringify({
                 model: 'gpt-3.5-turbo', // Or 'gpt-4' if available/preferred

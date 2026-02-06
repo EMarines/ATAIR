@@ -3,8 +3,6 @@ import { sendTemplateMessage } from '$lib/services/whatsapp';
 // import { generateWelcomeMessage } from '$lib/services/ai'; // Optional: Use if we want to generate variable content
 import { env } from '$env/dynamic/private';
 
-const TEMPLATE_NAME = env.TEMPLATE_NAME;
-
 export async function POST({ request }) {
     try {
         const { contact, property } = await request.json();
@@ -17,7 +15,7 @@ export async function POST({ request }) {
         const to = contact.telephon; // Ensure this is formatted (cleanNumber logic might be needed here or in service)
         const name = contact.name || 'Cliente';
         // Fallback to a default template if env var is missing (e.g., for testing)
-        const template = TEMPLATE_NAME || 'hello_world'; 
+        const template = env.TEMPLATE_NAME || 'hello_world'; 
         
         let components = [];
 
