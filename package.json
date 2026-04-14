@@ -37,6 +37,7 @@
 		"vite": "^5.0.0"
 	},
 	"dependencies": {
+		"@sveltejs/adapter-node": "^5.5.4",
 		"firebase": "^11.6.0",
 		"uuid": "^11.0.5",
 		"zimmerframe": "^1.1.0"
