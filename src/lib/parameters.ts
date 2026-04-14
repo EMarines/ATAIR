@@ -20,7 +20,7 @@ export const typeContacts = [
 export const modeContact = [
     "Lona en Propiedad",
     "Llamada",
-    "WhatsApp",
+    "WA",
     "Email",
     "Mensaje",
     "Presencial",

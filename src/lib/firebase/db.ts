@@ -1,38 +1,71 @@
-import { db } from '$lib/firebase_toggle';
 import { collection, getDocs } from 'firebase/firestore';
+import { db } from '$lib/firebase';
+import type { Contact, Binnacle, Todo, Property } from '$types';
 
-// // Tipos
-// export interface Contact {
-//     id: string;
-//     // ... otros campos
-// }
+/**
+ * Obtiene todos los contactos de la colección 'contacts'
+ */
+export async function getContacts(): Promise<Contact[]> {
+    try {
+        if (!db) {
+            console.warn('Firestore no está inicializado en getContacts');
+            return [];
+        }
+        const snapshot = await getDocs(collection(db, 'contacts'));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
+    } catch (error) {
+        console.error('Error al obtener contactos de Firebase:', error);
+        return [];
+    }
+}
 
-// export interface Property {
-//     id: string;
-//     // ... otros campos
-// }
+/**
+ * Obtiene todas las bitácoras de la colección 'binnacles'
+ */
+export async function getBinnacles(): Promise<Binnacle[]> {
+    try {
+        if (!db) {
+            console.warn('Firestore no está inicializado en getBinnacles');
+            return [];
+        }
+        const snapshot = await getDocs(collection(db, 'binnacles'));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Binnacle));
+    } catch (error) {
+        console.error('Error al obtener bitácoras de Firebase:', error);
+        return [];
+    }
+}
 
-// Funciones de base de datos
-export const getContacts = async () => {
-    const contactsCol = collection(db, 'contacts');
-    const snapshot = await getDocs(contactsCol);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-};
+/**
+ * Obtiene todas las tareas de la colección 'todos'
+ */
+export async function getTodos(): Promise<Todo[]> {
+    try {
+        if (!db) {
+            console.warn('Firestore no está inicializado en getTodos');
+            return [];
+        }
+        const snapshot = await getDocs(collection(db, 'todos'));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Todo));
+    } catch (error) {
+        console.error('Error al obtener tareas de Firebase:', error);
+        return [];
+    }
+}
 
-export const getProperties = async () => {
-    const propertiesCol = collection(db, 'properties');
-    const snapshot = await getDocs(propertiesCol);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-};
-
-export const getBinnacles = async () => {
-    const binnacleCol = collection(db, 'binnacles');
-    const snapshot = await getDocs(binnacleCol);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-};
-
-export const getTodos = async () => {
-    const todosCol = collection(db, 'todos');
-    const snapshot = await getDocs(todosCol);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-};
+/**
+ * Obtiene todas las propiedades de la colección 'properties'
+ */
+export async function getProperties(): Promise<Property[]> {
+    try {
+        if (!db) {
+            console.warn('Firestore no está inicializado en getProperties');
+            return [];
+        }
+        const snapshot = await getDocs(collection(db, 'properties'));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as Property));
+    } catch (error) {
+        console.error('Error al obtener propiedades de Firebase:', error);
+        return [];
+    }
+}
