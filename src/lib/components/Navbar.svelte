@@ -5,7 +5,6 @@
 	import { onMount } from 'svelte';
 	import Moon from './icons/moon.svelte';
 	import Sun from './icons/sun.svelte';
-	import { useTestDb } from '$lib/firebase_toggle';
 	import { empresa } from '$lib/config/empresa';
 
 	let currentTheme = '';
@@ -65,8 +64,6 @@
 			toggleMenu();
 		}
 	}
-
-	$: dbIcon = $useTestDb ? '🔄' : '🔥';
 </script>
 
 <nav>
@@ -154,13 +151,6 @@
 				{/if}
 			</li>
 		</ul>
-
-		<div class="db-toggle">
-			<button on:click={() => useTestDb.toggle()} class="toggle-btn">
-				<span class="db-icon">{dbIcon}</span>
-				<!-- <span class="db-label">{dbLabel}</span> -->
-			</button>
-		</div>
 	</div>
 </nav>
 
@@ -271,38 +261,11 @@
 		display: none;
 	}
 
-	.db-toggle {
-		display: flex;
-		align-items: center;
-	}
-
-	.toggle-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		background: transparent;
-		border: 1px solid var(--text-2);
-		border-radius: 4px;
-		padding: 0.25rem 0.5rem;
-		color: var(--text-1);
-		font-size: 0.8rem;
-		cursor: pointer;
-		transition: all 0.2s;
-	}
-
-	.toggle-btn:hover {
-		background: var(--surface-2);
-	}
-
 	/* Aumentar tamaño de iconos */
 	:global(.moon svg),
 	:global(.sun svg) {
 		width: 2em;
 		height: 2em;
-	}
-
-	.db-icon {
-		font-size: 2em;
 	}
 
 	/* Tablet */
@@ -395,36 +358,6 @@
 
 		.menu-overlay {
 			display: block;
-		}
-
-		.db-toggle {
-			display: none;
-		}
-
-		.db-toggle-mobile {
-			display: flex;
-			width: 100%;
-			margin-top: 1rem;
-		}
-
-		.toggle-btn-mobile {
-			display: flex;
-			align-items: center;
-			gap: 0.5rem;
-			background: transparent;
-			border: 1px solid var(--text-2);
-			border-radius: 4px;
-			padding: 0.5rem 1rem;
-			color: var(--text-1);
-			font-size: 1rem;
-			cursor: pointer;
-			transition: all 0.2s;
-			width: 100%;
-			justify-content: center;
-		}
-
-		.toggle-btn-mobile:hover {
-			background: var(--surface-2);
 		}
 	}
 </style>

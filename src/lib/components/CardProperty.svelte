@@ -18,9 +18,10 @@
 	}
 
 	// Función para formatear la ubicación y limitar su longitud
-	const formatLocation = (location: string | { name: string } | undefined | null) => {
+	const formatLocation = (location: string | { name?: string } | undefined | null) => {
 		if (!location) return 'Sin dirección';
-		const locationStr = typeof location === 'string' ? location : location.name;
+		const locationStr = typeof location === 'string' ? location : location?.name || '';
+		if (!locationStr || typeof locationStr !== 'string') return 'Sin dirección';
 		let formattedLocation = locationStr
 			.replace('Chihuahua, Chihuahua', '')
 			.replaceAll(',', '')
@@ -38,7 +39,7 @@
 		// Limitar la longitud absoluta para evitar desbordamiento
 		return formattedLocation.length > 25
 			? formattedLocation.substring(0, 22) + '...'
-			: formattedLocation;
+			: formattedLocation || 'Sin dirección';
 	};
 
 	// Formatear características con longitud controlada

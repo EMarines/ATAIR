@@ -7,15 +7,13 @@ import type { HandleClientError } from '@sveltejs/kit';
 import { initializeAuthManager } from '$lib/firebase/authManager';
 
 // Inicializar el gestor de autenticación cuando se carga la app
-if (typeof window !== 'undefined') {
-// Initializing hooks.client.ts
-    
-    // El AuthManager con onAuthStateChanged automáticamente detectará 
-    // y restaurará la sesión si Firebase tiene un usuario persistente
-    initializeAuthManager().catch((error) => {
+export const init = async () => {
+    try {
+        await initializeAuthManager();
+    } catch (error) {
         console.error('❌ Error inicializando AuthManager:', error);
-    });
-}
+    }
+};
 
 /**
  * Maneja errores del cliente

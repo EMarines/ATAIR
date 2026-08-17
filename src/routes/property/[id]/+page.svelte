@@ -36,6 +36,13 @@
 	$: currProperty = property as Property;
 	$: binnacles = $binnaclesStore as Binnacle[];
 
+	// Función segura para obtener nombre de ubicación
+	function getLocationString(loc: string | { name: string } | undefined | null): string {
+		if (!loc) return '';
+		const str = typeof loc === 'string' ? loc : loc?.name || '';
+		return str.replace('Chihuahua, Chihuahua', '').replace('I,', '').trim();
+	}
+
 	// Funciones
 	const listToRender = () => {
 		contCheck = [];
@@ -125,11 +132,7 @@
 			const dataPackage = {
 				property: {
 					id: property.public_id,
-					title: `${property.property_type} en ${
-						typeof property.location === 'string'
-							? property.location.replace('Chihuahua, Chihuahua', '').replace('I,', '')
-							: property.location.name.replace('Chihuahua, Chihuahua', '').replace('I,', '')
-					} en ${property.selecTO === 'sale' ? 'Venta' : 'Renta'}`,
+					title: `${property.property_type || 'Propiedad'} en ${getLocationString(property.location)} en ${property.selecTO === 'sale' ? 'Venta' : 'Renta'}`,
 					price: property.price,
 					url: property.public_url || '',
 					image: property.title_image_thumb || '',
@@ -335,7 +338,7 @@
 
 	const deleProperty = async (id: string) => {
 		if (confirm('Deseas eleiminar definitivamente la propiedad?')) {
-			await deleteDoc(doc(db, 'properties', property.public_id));
+			await deleteDoc(doc(db, 'easybroker_properties', property.public_id));
 			goto('/propiedades');
 		} else {
 			return;
@@ -370,8 +373,8 @@
 			<div class="prop__image">
 				<p class="prop__clave">{property.public_id}</p>
 				<img
-					src={property.title_image_thumb}
-					alt={typeof property.location === 'string' ? property.location : property.location.name}
+					src={property.title_image_thumb || '/placeholder-property.png'}
+					alt={getLocationString(property.location) || property.title || 'Propiedad'}
 				/>
 			</div>
 
@@ -379,9 +382,7 @@
 				<div class="prop__info">
 					<div class="propTitle">
 						<h1 class="title">
-							{property.property_type} en {typeof property.location === 'string'
-								? property.location.replace('Chihuahua, Chihuahua', '').replace('I,', '')
-								: property.location.name.replace('Chihuahua, Chihuahua', '').replace('I,', '')} en {property.selecTO ===
+							{property.property_type || 'Propiedad'} en {getLocationString(property.location) || 'Sin ubicación'} en {property.selecTO ===
 							'sale'
 								? 'Venta'
 								: 'Renta'}

@@ -1,5 +1,6 @@
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '$lib/firebase';
+import { normalizeProperty } from '$lib/functions/normalizeProperty';
 import type { Contact, Binnacle, Todo, Property } from '$types';
 
 /**
@@ -62,8 +63,8 @@ export async function getProperties(): Promise<Property[]> {
             console.warn('Firestore no está inicializado en getProperties');
             return [];
         }
-        const snapshot = await getDocs(collection(db, 'properties'));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as Property));
+        const snapshot = await getDocs(collection(db, 'easybroker_properties'));
+        return snapshot.docs.map(doc => normalizeProperty(doc.data(), doc.id));
     } catch (error) {
         console.error('Error al obtener propiedades de Firebase:', error);
         return [];

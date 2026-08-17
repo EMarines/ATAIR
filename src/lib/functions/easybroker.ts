@@ -74,7 +74,7 @@ async function processBatch(properties: Property[]): Promise<void> {
     }
     
     try {
-      const propertyRef = doc(db, "properties", property.id);
+      const propertyRef = doc(db, "easybroker_properties", property.id);
       const docSnap = await getDoc(propertyRef);
       
       const cleanedData = removeUndefinedFields(property);

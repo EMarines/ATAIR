@@ -15,6 +15,7 @@
 		authLoading
 	} from '$lib/firebase/authManager';
 	import { isPublicRoute, isUserRoute, isAdminOnlyRoute } from '$lib/config/routes';
+	import { normalizeProperty } from '$lib/functions/normalizeProperty';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -163,11 +164,8 @@
 		// 2. SUSCRIPCIONES PÚBLICAS (Propiedades)
 		// Todos los usuarios autenticados pueden ver propiedades
 		unsubscribes.push(
-			onSnapshot(collection(getDb(), 'properties'), (snapshot: QuerySnapshot<DocumentData>) => {
-				const datos = snapshot.docs.map((doc) => ({
-					public_id: doc.id,
-					...doc.data()
-				})) as Property[];
+			onSnapshot(collection(getDb(), 'easybroker_properties'), (snapshot: QuerySnapshot<DocumentData>) => {
+				const datos = snapshot.docs.map((doc) => normalizeProperty(doc.data(), doc.id));
 				propertiesStore.set(datos);
 			})
 		);

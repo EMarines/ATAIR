@@ -9,8 +9,8 @@
 //   let property: Property = {} as Property;
 
   // Ordenar propiedades por fecha de creación (más recientes primero)
-  $: properties = $propertiesStore.sort((a, b) => {
-    return Number(b.created_at) - Number(a.created_at);
+  $: properties = [...$propertiesStore].sort((a, b) => {
+    return Number(b.created_at || 0) - Number(a.created_at || 0);
   });
 
 //   /  Le da el valor de prop a $property y Redirige a propSelect
@@ -21,8 +21,8 @@
 
   // Search property by title, id y description
     function searProp() {
-      return properties = $propertiesStore
-        .sort((a, b) => Number(b.created_at) - Number(a.created_at))
+      return properties = [...$propertiesStore]
+        .sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0))
         .filter((propety) => {
           // Asegurarse de que los valores existan antes de usarlos
           const title = propety.title || '';

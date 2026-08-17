@@ -166,13 +166,13 @@ export class EasyBrokerService {
             
             // Crear o actualizar propiedades
             for (const property of propertiesToUpload) {
-                const propertyRef = doc(db, "properties", property.public_id);
+                const propertyRef = doc(db, "easybroker_properties", property.public_id);
                 batch.set(propertyRef, property);
             }
             
             // Eliminar propiedades
             for (const propertyId of propertiesToDelete) {
-                const propertyRef = doc(db, "properties", propertyId);
+                const propertyRef = doc(db, "easybroker_properties", propertyId);
                 batch.delete(propertyRef);
             }
             
