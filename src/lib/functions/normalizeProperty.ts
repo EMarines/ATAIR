@@ -126,6 +126,11 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 
 	const updated_at = raw.updated_at || raw.updatedAt || new Date().toISOString();
 
+	// Origen / Fuente de la propiedad
+	let source = raw.source || (public_id.startsWith('EB-') || raw.claveEB ? 'easybroker' : 'direct');
+	let sourceName = raw.sourceName || (source === 'easybroker' ? 'MatchHome (EasyBroker)' : (source === 'synergy' ? 'Sinergia' : 'Directa'));
+	let isOwn = raw.isOwn !== undefined ? Boolean(raw.isOwn) : (source === 'easybroker' || source === 'direct');
+
 	return {
 		...raw,
 		public_id,
@@ -151,6 +156,9 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 		public_url: public_id ? `https://matchhome.vercel.app/propuesta/${public_id}` : (raw.public_url || ''),
 		tags: Array.isArray(raw.tags) ? raw.tags : [],
 		range: raw.range || '',
-		selecMC: raw.selecMC || ''
+		selecMC: raw.selecMC || '',
+		source,
+		sourceName,
+		isOwn
 	};
 }

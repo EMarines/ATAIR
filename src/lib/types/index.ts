@@ -75,6 +75,9 @@ export interface Property {
     half_bathrooms?: number;
     updated_at?: string;
     created_at?: string;
+    source?: 'easybroker' | 'synergy' | 'external' | 'direct' | string;
+    sourceName?: string;
+    isOwn?: boolean;
     [key: string]: any; // Para campos adicionales
 }
 

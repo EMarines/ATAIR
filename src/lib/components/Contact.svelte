@@ -6,7 +6,7 @@
     <p>Col. Panamericana</p>
     <p>Chihuahua, Chih.</p>
     <p>Tel: (614) 540 4003</p>
-    <p>Email: <a href="mailto:matchhome@hotmail.com">MacthHome@hotmail.com</a></p>
+    <p>Email: <a href="mailto:matchhomebr@gmail.com">matchhomebr@gmail.com</a></p>
 </div>
 
 <style>

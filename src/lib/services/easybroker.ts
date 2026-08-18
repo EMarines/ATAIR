@@ -59,6 +59,9 @@ export class EasyBrokerService {
             budget: property.operations[0].amount || 0,
             range: '', // Campo vacío por defecto
             selecMC: '', // Campo vacío por defecto
+            source: 'easybroker',
+            sourceName: 'MatchHome (EasyBroker)',
+            isOwn: true,
         };
     };
 
@@ -123,9 +126,14 @@ export class EasyBrokerService {
             total: 0
         };
 
+        // Filtrar solo propiedades de EasyBroker de la base de datos para no evaluar/borrar otras fuentes
+        const ebFirebaseProps = firebaseProps.filter(
+            p => p.source === 'easybroker' || p.public_id?.startsWith('EB-') || !p.source
+        );
+
         // Detectar nuevas y modificadas
         easyBrokerProps.forEach(ebProp => {
-            const fbProp = firebaseProps.find(p => p.public_id === ebProp.public_id);
+            const fbProp = ebFirebaseProps.find(p => p.public_id === ebProp.public_id);
             
             if (!fbProp) {
                 changes.new.push(ebProp);
@@ -134,17 +142,19 @@ export class EasyBrokerService {
                 const ebDate = new Date(ebProp.updated_at).getTime();
                 const fbDate = new Date(fbProp.updated_at).getTime();
                 
-                if (ebDate !== fbDate) {
-                    // console.log(`Propiedad ${ebProp.public_id} modificada:`);
-                    // console.log('Fecha EB:', ebProp.updated_at, '→', ebDate);
-                    // console.log('Fecha FB:', fbProp.updated_at, '→', fbDate);
+                // Detectar cambios en fecha, precio o estatus
+                const priceChanged = Number(ebProp.price || 0) !== Number(fbProp.price || 0);
+                const titleChanged = ebProp.title !== fbProp.title;
+                const statusChanged = ebProp.property_status !== fbProp.property_status;
+                
+                if (ebDate !== fbDate || priceChanged || titleChanged || statusChanged) {
                     changes.modified.push(ebProp);
                 }
             }
         });
 
-        // Detectar eliminadas
-        firebaseProps.forEach(fbProp => {
+        // Detectar eliminadas (SOLO entre las de EasyBroker)
+        ebFirebaseProps.forEach(fbProp => {
             if (!easyBrokerProps.find(p => p.public_id === fbProp.public_id)) {
                 changes.deleted.push(fbProp);
             }
@@ -166,13 +176,13 @@ export class EasyBrokerService {
             
             // Crear o actualizar propiedades
             for (const property of propertiesToUpload) {
-                const propertyRef = doc(db, "easybroker_properties", property.public_id);
+                const propertyRef = doc(db, "properties", property.public_id);
                 batch.set(propertyRef, property);
             }
             
             // Eliminar propiedades
             for (const propertyId of propertiesToDelete) {
-                const propertyRef = doc(db, "easybroker_properties", propertyId);
+                const propertyRef = doc(db, "properties", propertyId);
                 batch.delete(propertyRef);
             }
             

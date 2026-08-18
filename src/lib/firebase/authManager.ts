@@ -39,7 +39,7 @@ async function handleUserProfile(user: User) {
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
-      const isAdmin = user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com'; 
+      const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com'; 
       const newProfile = {
         email: user.email,
         role: isAdmin ? 'admin' : 'user',

@@ -4,56 +4,105 @@
   import type { Property } from '$lib/types';
   import { goto } from '$app/navigation';
 
-//   let prop = {};
   let searchTerm = "";
-//   let property: Property = {} as Property;
+  let selectedSource: 'all' | 'easybroker' | 'synergy' | 'external' = 'all';
 
-  // Ordenar propiedades por fecha de creación (más recientes primero)
-  $: properties = [...$propertiesStore].sort((a, b) => {
-    return Number(b.created_at || 0) - Number(a.created_at || 0);
-  });
+  // Filtrado reactivo por origen y término de búsqueda
+  $: filteredProperties = [...$propertiesStore]
+    .sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0))
+    .filter((prop) => {
+      // 1. Filtro por origen
+      if (selectedSource === 'easybroker' && prop.source !== 'easybroker' && !prop.public_id?.startsWith('EB-')) {
+        return false;
+      }
+      if (selectedSource === 'synergy' && prop.source !== 'synergy') {
+        return false;
+      }
+      if (selectedSource === 'external' && prop.source !== 'external') {
+        return false;
+      }
 
-//   /  Le da el valor de prop a $property y Redirige a propSelect
-    function seleProperty(prop: Property) {
-      console.log(prop);
-      goto("/property/" + prop.public_id)
-    }
+      // 2. Filtro por término de búsqueda
+      if (!searchTerm.trim()) return true;
 
-  // Search property by title, id y description
-    function searProp() {
-      return properties = [...$propertiesStore]
-        .sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0))
-        .filter((propety) => {
-          // Asegurarse de que los valores existan antes de usarlos
-          const title = propety.title || '';
-          const description = propety.description || '';
-          const publicId = propety.public_id || '';
-          
-          let contInfo = (title + " " + description + " " + publicId)
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase();
-          return contInfo.includes(searchTerm.toLowerCase());
-        });  
-    };
+      const title = prop.title || '';
+      const description = prop.description || '';
+      const publicId = prop.public_id || '';
+      const location = typeof prop.location === 'string' ? prop.location : (prop.location?.name || '');
+      
+      const contInfo = (title + " " + description + " " + publicId + " " + location)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
 
+      return contInfo.includes(
+        searchTerm
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+      );
+    });
 
+  // Contadores reactivos
+  $: totalCount = $propertiesStore.length;
+  $: ebCount = $propertiesStore.filter(p => p.source === 'easybroker' || p.public_id?.startsWith('EB-')).length;
+  $: synergyCount = $propertiesStore.filter(p => p.source === 'synergy').length;
+  $: externalCount = $propertiesStore.filter(p => p.source === 'external').length;
+
+  function seleProperty(prop: Property) {
+    goto("/property/" + prop.public_id);
+  }
 </script>
  
   <!-- Renderización -->
   <div class="mainContainer">
       
     <div class="title__head">
-
       <h1 class="title">Propiedades</h1>
-      <div class="title__inter">
-        <Search bind:searchTerm on:input={searProp} on:keydown={()=>{}}/>
+      
+      <!-- Selector de Origen / Fuente -->
+      <div class="source-tabs">
+        <button 
+          class="source-tab" 
+          class:active={selectedSource === 'all'} 
+          on:click={() => selectedSource = 'all'}
+        >
+          Todas <span class="tab-badge">{totalCount}</span>
+        </button>
+        <button 
+          class="source-tab" 
+          class:active={selectedSource === 'easybroker'} 
+          on:click={() => selectedSource = 'easybroker'}
+        >
+          MatchHome <span class="tab-badge">{ebCount}</span>
+        </button>
+        {#if synergyCount > 0}
+          <button 
+            class="source-tab" 
+            class:active={selectedSource === 'synergy'} 
+            on:click={() => selectedSource = 'synergy'}
+          >
+            Sinergias <span class="tab-badge">{synergyCount}</span>
+          </button>
+        {/if}
+        {#if externalCount > 0}
+          <button 
+            class="source-tab" 
+            class:active={selectedSource === 'external'} 
+            on:click={() => selectedSource = 'external'}
+          >
+            Externas <span class="tab-badge">{externalCount}</span>
+          </button>
+        {/if}
       </div>
 
+      <div class="title__inter">
+        <Search bind:searchTerm on:input={() => {}} on:keydown={() => {}}/>
+      </div>
     </div>
 
     <div class="card__container">
-      {#each properties as prop}
+      {#each filteredProperties as prop}
         <div class="card__prop"
           on:click={() => seleProperty(prop)} 
           on:keydown={() => seleProperty(prop)}
@@ -61,6 +110,10 @@
           tabindex="0"
         >
           <CardProperty property={prop} />
+        </div>
+      {:else}
+        <div class="empty-state">
+          <p>No se encontraron propiedades con los criterios seleccionados.</p>
         </div>
       {/each}  
     </div>
@@ -126,6 +179,55 @@
 
 .card__prop:hover :global(> *) {
   background-color: rgb(63, 63, 63);
+}
+
+.source-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.source-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  color: #ccc;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.source-tab:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.source-tab.active {
+  background: #6b21a8;
+  border-color: #9333ea;
+  color: #fff;
+  font-weight: 500;
+}
+
+.tab-badge {
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #888;
+  font-size: 0.95rem;
 }
 
 @media (max-width: 768px) {

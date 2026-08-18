@@ -149,6 +149,9 @@ export interface Property {
   title: string,
   title_image_thumb: string,
   updated_at: string,
+  source?: 'easybroker' | 'synergy' | 'external' | 'direct' | string,
+  sourceName?: string,
+  isOwn?: boolean,
 }
 
 export interface Binnacle {

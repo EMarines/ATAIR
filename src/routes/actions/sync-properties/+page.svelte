@@ -63,7 +63,7 @@
 
 			// Eliminar propiedades manualmente si es necesario
 			for (const propertyId of propertiesToDelete) {
-				const propertyRef = doc(db, 'easybroker_properties', propertyId);
+				const propertyRef = doc(db, 'properties', propertyId);
 				batch.delete(propertyRef);
 			}
 

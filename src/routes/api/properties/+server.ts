@@ -1,7 +1,19 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-const env = import.meta.env;
+import { env as privateEnv } from '$env/dynamic/private';
 import type { Property } from '$lib/types';
+
+function getApiKey(): string {
+	const pEnv = privateEnv as Record<string, string>;
+	const procEnv = (typeof process !== 'undefined' ? process.env : {}) as Record<string, string>;
+	return (
+		pEnv.VITE_EASYBROKER_API_KEY ||
+		pEnv.PRIVATE_EASYBROKER_API_KEY ||
+		procEnv.VITE_EASYBROKER_API_KEY ||
+		procEnv.PRIVATE_EASYBROKER_API_KEY ||
+		''
+	);
+}
 
 const LIMIT = 50; // EasyBroker recomienda este límite por página
 const DELAY = 1000; // 1 segundo entre peticiones para respetar rate limits
@@ -33,8 +45,9 @@ async function getAllProperties(): Promise<Property[]> {
     let page = 1;
     let hasMore = true;
 
+    const apiKey = getApiKey();
     const headers = {
-        'X-Authorization': env.VITE_EASYBROKER_API_KEY,
+        'X-Authorization': apiKey,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     };
@@ -69,11 +82,12 @@ async function getAllProperties(): Promise<Property[]> {
 }
 
 export const GET: RequestHandler = async () => {
+    const apiKey = getApiKey();
     // Verificar API key
-    if (!env.VITE_EASYBROKER_API_KEY) {
-        console.error('API key no configurada');
+    if (!apiKey) {
+        console.error('API key de EasyBroker no configurada en variables de entorno');
         return json(
-            { error: 'Configuración del servidor incompleta' }, 
+            { error: 'Falta configurar la variable VITE_EASYBROKER_API_KEY en el archivo .env' }, 
             { status: 500 }
         );
     }

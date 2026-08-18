@@ -271,71 +271,62 @@
 
 	// Selecciona Mensaje para WA
 	async function selMsgWA() {
-		// Si no hay propiedad seleccionada, verificamos si el contacto tiene una propiedad asociada
-		if (!property) {
-			// Prioridad 1: Usar la URL del contacto si existe
+		// Si no hay mensaje preparado en el textarea y no hay propiedad directa, buscarla
+		if (!commInpuyBinnacle && !property) {
 			if (contact.publicUrl) {
-				commInpuyBinnacle = contact.publicUrl;
-				return;
-			}
-
-			// Prioridad 2: Usar la propiedad del store
-			let foundProperty = false;
-			const unsubscribe = propertyStore.subscribe((selectedProperty) => {
-				if (selectedProperty) {
-					commInpuyBinnacle = selectedProperty.public_id
-						? `https://matchhome.vercel.app/propuesta/${selectedProperty.public_id}`
-						: (selectedProperty.public_url || '');
-					foundProperty = true;
-				}
-			});
-
-			// Limpiar la suscripción
-			unsubscribe();
-
-			if (foundProperty) {
-				return;
+				const saludo = contact.name ? `Gracias por contactarnos, ${contact.name}.` : 'Gracias por contactarnos.';
+				const infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
+				commInpuyBinnacle = `${contact.publicUrl}\n\n${saludo} ${infoContacto}`;
+			} else {
+				let foundProperty = false;
+				const unsubscribe = propertyStore.subscribe((selectedProperty) => {
+					if (selectedProperty) {
+						const propUrl = selectedProperty.public_id
+							? `https://matchhome.vercel.app/propuesta/${selectedProperty.public_id}`
+							: (selectedProperty.public_url || '');
+						const saludo = contact.name ? `Gracias por contactarnos, ${contact.name}.` : 'Gracias por contactarnos.';
+						const infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
+						commInpuyBinnacle = propUrl ? `${propUrl}\n\n${saludo} ${infoContacto}` : `${saludo} ${infoContacto}`;
+						foundProperty = true;
+					}
+				});
+				unsubscribe();
 			}
 		}
 
-		// Envía la propiedad seleccionada del listado (propCheck) Alta de Contacto
+		// Envía la propiedad y datos de contacto en UN SOLO mensaje (Alta de Contacto)
 		if ($systStatus === 'addContact') {
 			let binnacle: Binnacle = {
 				date: Date.now(),
-				comment: `${contact.name} ${contact.lastname}`,
+				comment: `${contact.name} ${contact.lastname}`.trim(),
 				to: contact.id,
 				action: 'Se agregó a: '
 			};
 			infoToBinnacle(binnacle);
+
 			msg = commInpuyBinnacle;
 			sendWhatsApp(tel, msg);
-			binnacle = {
-				date: Date.now(),
-				comment: property.public_id,
-				to: contact.id,
-				action: 'Propiedad enviada: '
-			};
-			infoToBinnacle(binnacle);
-			$systStatus = 'msgGratitude';
-			commInpuyBinnacle = `Gracias por contactarnos. ${empresa.agentName}, asesor de ventas en ${empresa.companyName}}, tel. ${empresa.phoneNumber}}, email ${empresa.email}.} ✔ Visita ${empresa.companyUrl}✔ ¡Seguro encuentras algo de interés!`;
-			// Envia mensaje de agradecimiento después de enviar la propiedad en alta de contacto
-		} else if ($systStatus === 'msgGratitude') {
-			// Envía en mensaje de agradecimiento
-			let binnacle = {
-				date: Date.now(),
-				comment: property.public_id,
-				to: contact.telephon,
-				action: 'Propiedad enviada: '
-			};
-			infoToBinnacle(binnacle);
-			msg = commInpuyBinnacle;
-			sendWhatsApp(tel, msg);
+
+			const propId = property?.public_id || contact.propCont || '';
+			if (propId) {
+				binnacle = {
+					date: Date.now(),
+					comment: propId,
+					to: contact.id,
+					action: 'Propiedad enviada: '
+				};
+				infoToBinnacle(binnacle);
+			}
+
 			$systStatus = '';
+			commInpuyBinnacle = '';
+			msg = '';
+			contBinn();
 			// Envía por WA lo que está en TextArea y guarda la bitácora
 		} else if ($systStatus === 'sendComm') {
 			msg = commInpuyBinnacle;
 			sendWhatsApp(tel, msg);
-			$systStatus = 'sendWA';
+			$systStatus = '';
 			let binnacle: Binnacle = {
 				date: Date.now(),
 				comment: commInpuyBinnacle,
@@ -343,6 +334,8 @@
 				action: 'WhatsApp enviado: '
 			};
 			infoToBinnacle(binnacle);
+			commInpuyBinnacle = '';
+			contBinn();
 		} else if ($systStatus === 'sendProps') {
 			faltanProp = propCheck.length - (sig + 1);
 			let msg =
@@ -390,38 +383,51 @@
 				}, 2500);
 			}
 			sig++;
+		} else {
+			// Caso por defecto: Si hay contenido en commInpuyBinnacle, enviarlo
+			if (commInpuyBinnacle) {
+				msg = commInpuyBinnacle;
+				sendWhatsApp(tel, msg);
+				let binnacle: Binnacle = {
+					date: Date.now(),
+					comment: commInpuyBinnacle,
+					to: contact.id,
+					action: 'WhatsApp enviado: '
+				};
+				infoToBinnacle(binnacle);
+				commInpuyBinnacle = '';
+				contBinn();
+			}
 		}
 		// Borra la información del envío
-		if ($systStatus !== 'msgGratitude') {
-			if ($systStatus !== 'sendProps') {
-				msg = '';
-				propCheck = [];
-				commInpuyBinnacle = '';
-				searchTerm = '';
-				$systStatus = '';
-				// Actualizar la bitácora para reflejar los cambios
-				contBinn();
+		if ($systStatus !== 'sendProps') {
+			msg = '';
+			propCheck = [];
+			commInpuyBinnacle = '';
+			searchTerm = '';
+			$systStatus = '';
+			// Actualizar la bitácora para reflejar los cambios
+			contBinn();
 
-				// Actualizar las listas de propiedades si estamos en la vista de propiedades
-				if (layOut === 'sendProps' || layOut === 'sendProp') {
-					// Obtener IDs de propiedades ya enviadas desde la bitácora actualizada
-					const sentPropertyIds = sortedBinn
-						.filter((item) => item.action?.includes('Propiedad enviada'))
-						.map((item) => item.comment?.trim())
-						.filter(Boolean);
+			// Actualizar las listas de propiedades si estamos en la vista de propiedades
+			if (layOut === 'sendProps' || layOut === 'sendProp') {
+				// Obtener IDs de propiedades ya enviadas desde la bitácora actualizada
+				const sentPropertyIds = sortedBinn
+					.filter((item) => item.action?.includes('Propiedad enviada'))
+					.map((item) => item.comment?.trim())
+					.filter(Boolean);
 
-					// Actualizar las listas basadas en la bitácora actualizada
-					alreadySentProperties = properties.filter((prop) =>
-						sentPropertyIds.includes(prop.public_id)
-					);
+				// Actualizar las listas basadas en la bitácora actualizada
+				alreadySentProperties = properties.filter((prop) =>
+					sentPropertyIds.includes(prop.public_id)
+				);
 
-					// Ordenar las propiedades enviadas de la más reciente a la más antigua
-					alreadySentProperties = orderSentPropertiesByDate(alreadySentProperties);
+				// Ordenar las propiedades enviadas de la más reciente a la más antigua
+				alreadySentProperties = orderSentPropertiesByDate(alreadySentProperties);
 
-					recommendedProperties = propToRender.filter(
-						(prop) => !sentPropertyIds.includes(prop.public_id)
-					);
-				}
+				recommendedProperties = propToRender.filter(
+					(prop) => !sentPropertyIds.includes(prop.public_id)
+				);
 			}
 		}
 	}
@@ -470,28 +476,34 @@
 			return;
 		}
 
-		// Cargar la URL pública en el textarea
+		// Cargar el mensaje unificado en el textarea
 		if ($systStatus === 'addContact') {
+			let propUrl = '';
 			if (contact.publicUrl) {
-				commInpuyBinnacle = contact.publicUrl;
-				return;
-			}
-
-			if (property && (property.public_id || property.public_url)) {
-				commInpuyBinnacle = property.public_id
+				propUrl = contact.publicUrl;
+			} else if (property && (property.public_id || property.public_url)) {
+				propUrl = property.public_id
 					? `https://matchhome.vercel.app/propuesta/${property.public_id}`
-					: property.public_url;
-				return;
+					: (property.public_url || '');
+			} else {
+				const unsubscribe = propertyStore.subscribe((selectedProperty) => {
+					if (selectedProperty) {
+						propUrl = selectedProperty.public_id
+							? `https://matchhome.vercel.app/propuesta/${selectedProperty.public_id}`
+							: (selectedProperty.public_url || '');
+					}
+				});
+				unsubscribe();
 			}
 
-			const unsubscribe = propertyStore.subscribe((selectedProperty) => {
-				if (selectedProperty) {
-					commInpuyBinnacle = selectedProperty.public_id
-						? `https://matchhome.vercel.app/propuesta/${selectedProperty.public_id}`
-						: (selectedProperty.public_url || '');
-				}
-			});
-			unsubscribe();
+			const saludo = contact.name 
+				? `Gracias por contactarnos, ${contact.name}.` 
+				: 'Gracias por contactarnos.';
+			const infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
+
+			commInpuyBinnacle = propUrl 
+				? `${propUrl}\n\n${saludo} ${infoContacto}` 
+				: `${saludo} ${infoContacto}`;
 		}
 
 		// Si después de todo esto el textarea sigue vacío, mostrar un mensaje en la consola

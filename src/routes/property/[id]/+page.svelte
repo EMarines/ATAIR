@@ -12,6 +12,7 @@
 	import { diaTarde } from '$lib/functions/dateFunctions';
 	import { capitalize } from '$lib/functions/capitalize';
 	import { sendWhatsApp } from '$lib/functions/whatsapp';
+	import { empresa } from '$lib/config/empresa';
 	// findPropertiesForContact
 	export let data;
 	let property = data.property as Property;
@@ -275,13 +276,15 @@
 		});
 
 		let saludoHora = diaTarde();
-		let contacto = capitalize(contact.name);
+		let contacto = contact.name ? capitalize(contact.name) : '';
 		let propUrl = property?.public_id
 			? `https://matchhome.vercel.app/propuesta/${property.public_id}`
 			: (property?.public_url || '');
+		let saludo = contacto ? `¡${saludoHora}, ${contacto}!` : `¡${saludoHora}!`;
+		let infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
 		let msg = propUrl
-			? `${propUrl}    ${contacto}. ${saludoHora}.  ${mensaje}`
-			: `${contacto}. ${saludoHora}.  ${mensaje}`;
+			? `${propUrl}\n\n${saludo} Te comparto la información de esta propiedad.\n\n${infoContacto}`
+			: `${saludo} Te comparto la información.\n\n${infoContacto}`;
 		let tel = contact.telephon;
 
 		try {
