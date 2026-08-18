@@ -20,7 +20,9 @@
 		infoToBinnacle,
 		findPropertiesForContact,
 		sendWhatsApp,
-		sortBinnacle
+		sortBinnacle,
+		getProposalUrl,
+		ensureContactInProposalUrl
 	} from '$lib/functions';
 	import { empresa } from '$lib/config/empresa';
 
@@ -274,15 +276,16 @@
 		// Si no hay mensaje preparado en el textarea y no hay propiedad directa, buscarla
 		if (!commInpuyBinnacle && !property) {
 			if (contact.publicUrl) {
+				const formattedUrl = ensureContactInProposalUrl(contact.publicUrl, contact.id);
 				const saludo = contact.name ? `Gracias por contactarnos, ${contact.name}.` : 'Gracias por contactarnos.';
 				const infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
-				commInpuyBinnacle = `${contact.publicUrl}\n\n${saludo} ${infoContacto}`;
+				commInpuyBinnacle = `${formattedUrl}\n\n${saludo} ${infoContacto}`;
 			} else {
 				let foundProperty = false;
 				const unsubscribe = propertyStore.subscribe((selectedProperty) => {
 					if (selectedProperty) {
 						const propUrl = selectedProperty.public_id
-							? `https://matchhome.vercel.app/propuesta/${selectedProperty.public_id}`
+							? getProposalUrl(selectedProperty.public_id, contact.id)
 							: (selectedProperty.public_url || '');
 						const saludo = contact.name ? `Gracias por contactarnos, ${contact.name}.` : 'Gracias por contactarnos.';
 						const infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
@@ -340,7 +343,7 @@
 			faltanProp = propCheck.length - (sig + 1);
 			let msg =
 				propCheck[sig] && propCheck[sig].public_id
-					? `https://matchhome.vercel.app/propuesta/${propCheck[sig].public_id}`
+					? getProposalUrl(propCheck[sig].public_id, contact.id)
 					: (propCheck[sig]?.public_url || 'No hay URL pública disponible para esta propiedad');
 			sendWhatsApp(tel, msg);
 
@@ -480,16 +483,16 @@
 		if ($systStatus === 'addContact') {
 			let propUrl = '';
 			if (contact.publicUrl) {
-				propUrl = contact.publicUrl;
+				propUrl = ensureContactInProposalUrl(contact.publicUrl, contact.id);
 			} else if (property && (property.public_id || property.public_url)) {
 				propUrl = property.public_id
-					? `https://matchhome.vercel.app/propuesta/${property.public_id}`
+					? getProposalUrl(property.public_id, contact.id)
 					: (property.public_url || '');
 			} else {
 				const unsubscribe = propertyStore.subscribe((selectedProperty) => {
 					if (selectedProperty) {
 						propUrl = selectedProperty.public_id
-							? `https://matchhome.vercel.app/propuesta/${selectedProperty.public_id}`
+							? getProposalUrl(selectedProperty.public_id, contact.id)
 							: (selectedProperty.public_url || '');
 					}
 				});

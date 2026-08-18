@@ -1,4 +1,5 @@
 import type { Property, PropertyEB } from '$lib/types';
+import { getProposalUrl } from '$lib/functions/urlUtils';
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '$lib/firebase_toggle';
 
@@ -36,7 +37,7 @@ export class EasyBrokerService {
         return {
             created_at: new Date(property.created_at).getTime(),
             lot_size: property.lot_size || 0,
-            public_url: `https://matchhome.vercel.app/propuesta/${property.public_id}`,
+            public_url: getProposalUrl(property.public_id),
             construction_size: property.construction_size || 0,
             description: property.description || '',
             agent: property.agent || '',

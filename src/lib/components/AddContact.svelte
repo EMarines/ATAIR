@@ -32,6 +32,7 @@
 	import type { Property, Contact, AddContactEvents } from '$lib/types';
 	import { ranPrice } from '$lib/functions/rangeValue';
 	import { convertOperationEbFb } from '$lib/functions/converterEb-Fb';
+	import { getProposalUrl } from '$lib/functions/urlUtils';
 	import { onMount, onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
 
@@ -738,7 +739,7 @@
 				contMode: contact.contMode || '',
 				notes: contact.notes || '',
 				propCont: contact.propCont || '',
-				publicUrl: contact.publicUrl || (contact.propCont ? `https://matchhome.vercel.app/propuesta/${contact.propCont}` : ''),
+				publicUrl: contact.publicUrl || (contact.propCont ? getProposalUrl(contact.propCont, contact.id) : ''),
 				// selecTO: contact.selecTO || '',
 				// selecTO: convertOperationEbFb($propertyStore.selecTO) || '',
 
@@ -1083,7 +1084,7 @@
 										isSelected={contact.propCont === property.public_id}
 										onSelect={() => {
 											contact.propCont = property.public_id;
-											contact.publicUrl = `https://matchhome.vercel.app/propuesta/${property.public_id}`;
+											contact.publicUrl = getProposalUrl(property.public_id, contact.id);
 											contact.selecTP = property.property_type || '';
 											(contact.typeContact = convertOperationEbFb(property.selecTO) || ''),
 												(contact.rangeProp = property.price ? ranPrice(property.price) : '');

@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { sendTemplateMessage } from '$lib/services/whatsapp';
 // import { generateWelcomeMessage } from '$lib/services/ai'; // Optional: Use if we want to generate variable content
 import { env } from '$env/dynamic/private';
+import { getProposalUrl, ensureContactInProposalUrl } from '$lib/functions/urlUtils';
 
 export async function POST({ request }) {
     try {
@@ -25,8 +26,8 @@ export async function POST({ request }) {
         
         if (template !== 'hello_world') {
             const propertyLink = property?.public_id
-                ? `https://matchhome.vercel.app/propuesta/${property.public_id}`
-                : (contact?.publicUrl || 'https://matchhome.vercel.app');
+                ? getProposalUrl(property.public_id, contact?.id)
+                : (ensureContactInProposalUrl(contact?.publicUrl, contact?.id) || 'https://matchhome.vercel.app');
             
             components = [
                 {

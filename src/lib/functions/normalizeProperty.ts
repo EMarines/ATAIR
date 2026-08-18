@@ -1,4 +1,5 @@
 import type { Property } from '$lib/types';
+import { getProposalUrl } from './urlUtils';
 
 /**
  * Normaliza cualquier formato de documento de propiedad de Firestore (inglés o español)
@@ -153,7 +154,7 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 		created_at,
 		updated_at,
 		property_status: raw.property_status || 'available',
-		public_url: public_id ? `https://matchhome.vercel.app/propuesta/${public_id}` : (raw.public_url || ''),
+		public_url: public_id ? getProposalUrl(public_id) : (raw.public_url || ''),
 		tags: Array.isArray(raw.tags) ? raw.tags : [],
 		range: raw.range || '',
 		selecMC: raw.selecMC || '',
