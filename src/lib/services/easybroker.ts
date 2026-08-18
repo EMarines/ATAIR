@@ -36,7 +36,7 @@ export class EasyBrokerService {
         return {
             created_at: new Date(property.created_at).getTime(),
             lot_size: property.lot_size || 0,
-            public_url: property.public_url.replace('https://www.easybroker.com/mx/listings', 'https://www.matchhome.net/property'),
+            public_url: `https://matchhome.vercel.app/propuesta/${property.public_id}`,
             construction_size: property.construction_size || 0,
             description: property.description || '',
             agent: property.agent || '',

@@ -142,7 +142,7 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 		created_at,
 		updated_at,
 		property_status: raw.property_status || 'available',
-		public_url: raw.public_url || '',
+		public_url: public_id ? `https://matchhome.vercel.app/propuesta/${public_id}` : (raw.public_url || ''),
 		tags: Array.isArray(raw.tags) ? raw.tags : [],
 		range: raw.range || '',
 		selecMC: raw.selecMC || ''

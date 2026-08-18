@@ -283,11 +283,10 @@
 			let foundProperty = false;
 			const unsubscribe = propertyStore.subscribe((selectedProperty) => {
 				if (selectedProperty) {
-					// Si la propiedad tiene public_url, usarla directamente
-					if (selectedProperty && selectedProperty.public_url) {
-						commInpuyBinnacle = selectedProperty.public_url;
-						foundProperty = true;
-					}
+					commInpuyBinnacle = selectedProperty.public_id
+						? `https://matchhome.vercel.app/propuesta/${selectedProperty.public_id}`
+						: (selectedProperty.public_url || '');
+					foundProperty = true;
 				}
 			});
 
@@ -347,9 +346,9 @@
 		} else if ($systStatus === 'sendProps') {
 			faltanProp = propCheck.length - (sig + 1);
 			let msg =
-				propCheck[sig] && propCheck[sig].public_url
-					? propCheck[sig].public_url
-					: 'No hay URL pública disponible para esta propiedad';
+				propCheck[sig] && propCheck[sig].public_id
+					? `https://matchhome.vercel.app/propuesta/${propCheck[sig].public_id}`
+					: (propCheck[sig]?.public_url || 'No hay URL pública disponible para esta propiedad');
 			sendWhatsApp(tel, msg);
 
 			const sentPropertyId =
@@ -472,29 +471,28 @@
 		}
 
 		// Cargar la URL pública en el textarea
-		// Prioridad 1: Usar la URL del contacto si existe
-		if (property && property.public_url && $systStatus === 'addContact') {
-			commInpuyBinnacle = property.public_url;
-			return;
-		}
-
-		// Prioridad 2: Usar la propiedad del store
-		const unsubscribe = propertyStore.subscribe((selectedProperty) => {
-			if (selectedProperty) {
-				// Si la propiedad tiene public_url, usarla directamente
-				if (selectedProperty && selectedProperty.public_url && $systStatus === 'addContact') {
-					commInpuyBinnacle = selectedProperty.public_url;
-				}
-				// Si no tiene public_url pero tiene public_id, generar la URL
-				// else if (selectedProperty.public_id) {
-				//   const publicUrl = `https://atair.com.mx/property/${selectedProperty.public_id}`;
-				//   commInpuyBinnacle = publicUrl;
-				// }
+		if ($systStatus === 'addContact') {
+			if (contact.publicUrl) {
+				commInpuyBinnacle = contact.publicUrl;
+				return;
 			}
-		});
 
-		// Limpiar la suscripción después de obtener el valor
-		unsubscribe();
+			if (property && (property.public_id || property.public_url)) {
+				commInpuyBinnacle = property.public_id
+					? `https://matchhome.vercel.app/propuesta/${property.public_id}`
+					: property.public_url;
+				return;
+			}
+
+			const unsubscribe = propertyStore.subscribe((selectedProperty) => {
+				if (selectedProperty) {
+					commInpuyBinnacle = selectedProperty.public_id
+						? `https://matchhome.vercel.app/propuesta/${selectedProperty.public_id}`
+						: (selectedProperty.public_url || '');
+				}
+			});
+			unsubscribe();
+		}
 
 		// Si después de todo esto el textarea sigue vacío, mostrar un mensaje en la consola
 		if (!commInpuyBinnacle) {

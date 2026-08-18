@@ -595,7 +595,8 @@
 				selecTP: '',
 				tagsProperty: [],
 				telephon: '',
-				typeContact: ''
+				typeContact: '',
+				publicUrl: ''
 			};
 
 	// Variable string para el input de presupuesto, inicializada desde el contact.budget actual (que ya considera existingContact)
@@ -737,6 +738,7 @@
 				contMode: contact.contMode || '',
 				notes: contact.notes || '',
 				propCont: contact.propCont || '',
+				publicUrl: contact.publicUrl || (contact.propCont ? `https://matchhome.vercel.app/propuesta/${contact.propCont}` : ''),
 				// selecTO: contact.selecTO || '',
 				// selecTO: convertOperationEbFb($propertyStore.selecTO) || '',
 
@@ -1081,6 +1083,7 @@
 										isSelected={contact.propCont === property.public_id}
 										onSelect={() => {
 											contact.propCont = property.public_id;
+											contact.publicUrl = `https://matchhome.vercel.app/propuesta/${property.public_id}`;
 											contact.selecTP = property.property_type || '';
 											(contact.typeContact = convertOperationEbFb(property.selecTO) || ''),
 												(contact.rangeProp = property.price ? ranPrice(property.price) : '');

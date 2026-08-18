@@ -276,10 +276,12 @@
 
 		let saludoHora = diaTarde();
 		let contacto = capitalize(contact.name);
-		let msg =
-			property && property.public_url
-				? `${property.public_url}    ${contacto}. ${saludoHora}.  ${mensaje}`
-				: `${contacto}. ${saludoHora}.  ${mensaje}`;
+		let propUrl = property?.public_id
+			? `https://matchhome.vercel.app/propuesta/${property.public_id}`
+			: (property?.public_url || '');
+		let msg = propUrl
+			? `${propUrl}    ${contacto}. ${saludoHora}.  ${mensaje}`
+			: `${contacto}. ${saludoHora}.  ${mensaje}`;
 		let tel = contact.telephon;
 
 		try {

@@ -40,3 +40,6 @@ diagnostico-simple.html
 firebase-debug.log
 
 .vercel
+
+.vercel
+.env*
