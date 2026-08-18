@@ -63,7 +63,7 @@ export async function getProperties(): Promise<Property[]> {
             console.warn('Firestore no está inicializado en getProperties');
             return [];
         }
-        const snapshot = await getDocs(collection(db, 'easybroker_properties'));
+        const snapshot = await getDocs(collection(db, 'properties'));
         return snapshot.docs.map(doc => normalizeProperty(doc.data(), doc.id));
     } catch (error) {
         console.error('Error al obtener propiedades de Firebase:', error);

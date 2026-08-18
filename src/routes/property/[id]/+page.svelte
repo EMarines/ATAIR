@@ -340,7 +340,7 @@
 
 	const deleProperty = async (id: string) => {
 		if (confirm('Deseas eleiminar definitivamente la propiedad?')) {
-			await deleteDoc(doc(db, 'easybroker_properties', property.public_id));
+			await deleteDoc(doc(db, 'properties', property.public_id));
 			goto('/propiedades');
 		} else {
 			return;

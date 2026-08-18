@@ -40,7 +40,7 @@ if (allConfigPresent) {
             console.log("Usando instancia de Firebase existente");
         } else {
             app = initializeApp(firebaseConfig);
-            console.log("Inicializada nueva instancia de Firebase (matchhome-crm-46de4)");
+            console.log(`Inicializada nueva instancia de Firebase (${firebaseConfig.projectId})`);
         }
         
         db = getFirestore(app);

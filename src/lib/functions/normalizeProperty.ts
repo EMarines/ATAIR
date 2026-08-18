@@ -112,13 +112,19 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 
 	// Fechas
 	let created_at = Date.now();
-	if (raw.created_at) {
-		created_at =
-			typeof raw.created_at === 'number'
-				? raw.created_at
-				: new Date(raw.created_at).getTime() || Date.now();
+	const rawCreated = raw.created_at ?? raw.createdAt ?? raw.fechaCreacion;
+	if (rawCreated) {
+		if (typeof rawCreated === 'number') {
+			created_at = rawCreated;
+		} else {
+			const parsedTime = new Date(rawCreated).getTime();
+			if (!isNaN(parsedTime)) {
+				created_at = parsedTime;
+			}
+		}
 	}
-	const updated_at = raw.updated_at || new Date().toISOString();
+
+	const updated_at = raw.updated_at || raw.updatedAt || new Date().toISOString();
 
 	return {
 		...raw,

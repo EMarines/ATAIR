@@ -6,8 +6,13 @@ import { normalizeProperty } from '$lib/functions/normalizeProperty';
 import { error } from '@sveltejs/kit';
 
 export const load: PageLoad = async ({ params }) => {
-    const docRef = doc(db, 'easybroker_properties', params.id);
-    const docSnap = await getDoc(docRef);
+    let docRef = doc(db, 'properties', params.id);
+    let docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+        docRef = doc(db, 'easybroker_properties', params.id);
+        docSnap = await getDoc(docRef);
+    }
 
     if (!docSnap.exists()) {
         throw error(404, 'Propiedad no encontrada');
