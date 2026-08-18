@@ -277,9 +277,9 @@
 		if (!commInpuyBinnacle && !property) {
 			if (contact.publicUrl) {
 				const formattedUrl = ensureContactInProposalUrl(contact.publicUrl, contact.id);
-				const saludo = contact.name ? `Gracias por contactarnos, ${contact.name}.` : 'Gracias por contactarnos.';
-				const infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
-				commInpuyBinnacle = `${formattedUrl}\n\n${saludo} ${infoContacto}`;
+				const saludo = contact.name ? `Gracias por contactarnos ${contact.name}.` : 'Gracias por contactarnos.';
+				const mensajeNuevoContacto = `${saludo} Quedo al pendiente para saber que te pareció. Saludos ${empresa.agentName}.`;
+				commInpuyBinnacle = `${formattedUrl}\n\n${mensajeNuevoContacto}`;
 			} else {
 				let foundProperty = false;
 				const unsubscribe = propertyStore.subscribe((selectedProperty) => {
@@ -287,9 +287,9 @@
 						const propUrl = selectedProperty.public_id
 							? getProposalUrl(selectedProperty.public_id, contact.id)
 							: (selectedProperty.public_url || '');
-						const saludo = contact.name ? `Gracias por contactarnos, ${contact.name}.` : 'Gracias por contactarnos.';
-						const infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
-						commInpuyBinnacle = propUrl ? `${propUrl}\n\n${saludo} ${infoContacto}` : `${saludo} ${infoContacto}`;
+						const saludo = contact.name ? `Gracias por contactarnos ${contact.name}.` : 'Gracias por contactarnos.';
+						const mensajeNuevoContacto = `${saludo} Quedo al pendiente para saber que te pareció. Saludos ${empresa.agentName}.`;
+						commInpuyBinnacle = propUrl ? `${propUrl}\n\n${mensajeNuevoContacto}` : mensajeNuevoContacto;
 						foundProperty = true;
 					}
 				});
@@ -500,13 +500,13 @@
 			}
 
 			const saludo = contact.name 
-				? `Gracias por contactarnos, ${contact.name}.` 
+				? `Gracias por contactarnos ${contact.name}.` 
 				: 'Gracias por contactarnos.';
-			const infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
+			const mensajeNuevoContacto = `${saludo} Quedo al pendiente para saber que te pareció. Saludos ${empresa.agentName}.`;
 
 			commInpuyBinnacle = propUrl 
-				? `${propUrl}\n\n${saludo} ${infoContacto}` 
-				: `${saludo} ${infoContacto}`;
+				? `${propUrl}\n\n${mensajeNuevoContacto}` 
+				: mensajeNuevoContacto;
 		}
 
 		// Si después de todo esto el textarea sigue vacío, mostrar un mensaje en la consola
