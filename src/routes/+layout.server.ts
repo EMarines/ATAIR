@@ -1,45 +1,15 @@
 import type { LayoutServerLoad } from './$types';
-import { getContacts, getBinnacles, getTodos, getProperties } from '$lib/firebase/db';
+
+// NOTA: Los datos de Firebase (contacts, binnacles, todos, properties) se cargan
+// del lado del cliente en +layout.svelte mediante onSnapshot listeners,
+// que se activan DESPUÉS de que el usuario se autentica correctamente.
+// No se deben cargar aquí porque el server-side no tiene sesión de Firebase Auth.
 
 export const load: LayoutServerLoad = async ({ locals, cookies }) => {
-    try {
-        console.log('Obteniendo datos de Firebase');
-        // Añadido manejo de errores para cada promesa individual
-        const [contactsFB, binnaclesFB, todosFB, propertiesFB] = await Promise.allSettled([
-            getContacts(),
-            getBinnacles(),
-            getTodos(),       
-            getProperties(),
-        ]).then(results => {
-            return results.map(result => 
-                result.status === 'fulfilled' ? result.value : []
-            );
-        });
+    const lastSyncDate = cookies.get('lastSyncDate') || null;
 
-        // Obtener la fecha de última sincronización
-        const lastSyncDate = cookies.get('lastSyncDate');
-        console.log('Última fecha de sincronización:', lastSyncDate);
-
-        return {
-            contactsFB,
-            binnaclesFB,
-            todosFB,
-            propertiesFB,
-            user: locals.user,
-            // propertiesEB,
-            lastSyncDate
-        };
-    } catch (error) {
-        console.error('Error al cargar datos en layout.server.ts:', error);
-        
-        // En caso de error, devolver datos vacíos pero no fallar completamente
-        return {
-            contactsFB: [],
-            binnaclesFB: [],
-            todosFB: [],
-            propertiesFB: [],
-            user: locals.user,
-            lastSyncDate: null
-        };
-    }
+    return {
+        user: locals.user,
+        lastSyncDate
+    };
 };

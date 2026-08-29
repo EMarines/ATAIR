@@ -86,6 +86,8 @@
 
 	// Cancel Button ""start""
 	function onCancel() {
+		propertyStore.set(null);
+		$systStatus = '';
 		goto('/contacts');
 	}
 
@@ -265,7 +267,7 @@
 		}
 	}
 
-	// Cambia el systStatus as escojer una propiedad o varias propiedades
+	// Cambia el systStatus al escojer una propiedad o varias propiedades
 	function sendPropF() {
 		$systStatus = 'sendProps';
 		commInpuyBinnacle = '';
@@ -273,30 +275,6 @@
 
 	// Selecciona Mensaje para WA
 	async function selMsgWA() {
-		// Si no hay mensaje preparado en el textarea y no hay propiedad directa, buscarla
-		if (!commInpuyBinnacle && !property) {
-			if (contact.publicUrl) {
-				const formattedUrl = ensureContactInProposalUrl(contact.publicUrl, contact.id);
-				const saludo = contact.name ? `Gracias por contactarnos ${contact.name}.` : 'Gracias por contactarnos.';
-				const mensajeNuevoContacto = `${saludo} Quedo al pendiente para saber que te pareció. Saludos ${empresa.agentName}.`;
-				commInpuyBinnacle = `${formattedUrl}\n\n${mensajeNuevoContacto}`;
-			} else {
-				let foundProperty = false;
-				const unsubscribe = propertyStore.subscribe((selectedProperty) => {
-					if (selectedProperty) {
-						const propUrl = selectedProperty.public_id
-							? getProposalUrl(selectedProperty.public_id, contact.id)
-							: (selectedProperty.public_url || '');
-						const saludo = contact.name ? `Gracias por contactarnos ${contact.name}.` : 'Gracias por contactarnos.';
-						const mensajeNuevoContacto = `${saludo} Quedo al pendiente para saber que te pareció. Saludos ${empresa.agentName}.`;
-						commInpuyBinnacle = propUrl ? `${propUrl}\n\n${mensajeNuevoContacto}` : mensajeNuevoContacto;
-						foundProperty = true;
-					}
-				});
-				unsubscribe();
-			}
-		}
-
 		// Envía la propiedad y datos de contacto en UN SOLO mensaje (Alta de Contacto)
 		if ($systStatus === 'addContact') {
 			let binnacle: Binnacle = {
@@ -308,7 +286,9 @@
 			infoToBinnacle(binnacle);
 
 			msg = commInpuyBinnacle;
-			sendWhatsApp(tel, msg);
+			if (msg && msg.trim()) {
+				sendWhatsApp(tel, msg);
+			}
 
 			const propId = property?.public_id || contact.propCont || '';
 			if (propId) {
@@ -324,9 +304,13 @@
 			$systStatus = '';
 			commInpuyBinnacle = '';
 			msg = '';
+			propertyStore.set(null);
 			contBinn();
 			// Envía por WA lo que está en TextArea y guarda la bitácora
 		} else if ($systStatus === 'sendComm') {
+			if (!commInpuyBinnacle || !commInpuyBinnacle.trim()) {
+				return;
+			}
 			msg = commInpuyBinnacle;
 			sendWhatsApp(tel, msg);
 			$systStatus = '';
@@ -338,12 +322,16 @@
 			};
 			infoToBinnacle(binnacle);
 			commInpuyBinnacle = '';
+			propertyStore.set(null);
 			contBinn();
 		} else if ($systStatus === 'sendProps') {
+			if (!propCheck || propCheck.length === 0 || !propCheck[sig]) {
+				return;
+			}
 			faltanProp = propCheck.length - (sig + 1);
 			let msg =
 				propCheck[sig] && propCheck[sig].public_id
-					? getProposalUrl(propCheck[sig].public_id, contact.id)
+					? getProposalUrl(propCheck[sig].public_id, contact.id || contact.name)
 					: (propCheck[sig]?.public_url || 'No hay URL pública disponible para esta propiedad');
 			sendWhatsApp(tel, msg);
 
@@ -380,6 +368,7 @@
 					showProp = false;
 					sig = 0;
 					faltanProp = 0;
+					propertyStore.set(null);
 					// Actualizar propToRender para mantener consistencia
 					propToRender = [...recommendedProperties, ...alreadySentProperties];
 					return;
@@ -387,8 +376,8 @@
 			}
 			sig++;
 		} else {
-			// Caso por defecto: Si hay contenido en commInpuyBinnacle, enviarlo
-			if (commInpuyBinnacle) {
+			// Caso por defecto: Si hay contenido escrito en commInpuyBinnacle, enviarlo
+			if (commInpuyBinnacle && commInpuyBinnacle.trim() !== '') {
 				msg = commInpuyBinnacle;
 				sendWhatsApp(tel, msg);
 				let binnacle: Binnacle = {
@@ -399,6 +388,7 @@
 				};
 				infoToBinnacle(binnacle);
 				commInpuyBinnacle = '';
+				propertyStore.set(null);
 				contBinn();
 			}
 		}
@@ -409,6 +399,7 @@
 			commInpuyBinnacle = '';
 			searchTerm = '';
 			$systStatus = '';
+			propertyStore.set(null);
 			// Actualizar la bitácora para reflejar los cambios
 			contBinn();
 
@@ -483,16 +474,16 @@
 		if ($systStatus === 'addContact') {
 			let propUrl = '';
 			if (contact.publicUrl) {
-				propUrl = ensureContactInProposalUrl(contact.publicUrl, contact.id);
+				propUrl = ensureContactInProposalUrl(contact.publicUrl, contact.id || contact.name);
 			} else if (property && (property.public_id || property.public_url)) {
 				propUrl = property.public_id
-					? getProposalUrl(property.public_id, contact.id)
+					? getProposalUrl(property.public_id, contact.id || contact.name)
 					: (property.public_url || '');
 			} else {
 				const unsubscribe = propertyStore.subscribe((selectedProperty) => {
 					if (selectedProperty) {
 						propUrl = selectedProperty.public_id
-							? getProposalUrl(selectedProperty.public_id, contact.id)
+							? getProposalUrl(selectedProperty.public_id, contact.id || contact.name)
 							: (selectedProperty.public_url || '');
 					}
 				});
@@ -513,6 +504,11 @@
 		if (!commInpuyBinnacle) {
 			console.log('No se encontró ninguna URL pública para cargar en el textarea');
 		}
+	});
+
+	onDestroy(() => {
+		propertyStore.set(null);
+		$systStatus = '';
 	});
 
 	// Nueva función para ordenar propiedades enviadas por fecha de envío

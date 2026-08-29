@@ -25,9 +25,14 @@ export async function POST({ request }) {
         // Assumption: A custom "welcome_property" template might have {{1}}=Name, {{2}}=PropertyLink
         
         if (template !== 'hello_world') {
+            const isNewContact = (contact as any)?.isNew ?? (!contact?.id);
+            const contactIdentifier = isNewContact
+                ? (contact?.name || contact?.id)
+                : (contact?.id || contact?.name);
+
             const propertyLink = property?.public_id
-                ? getProposalUrl(property.public_id, contact?.id)
-                : (ensureContactInProposalUrl(contact?.publicUrl, contact?.id) || 'https://matchhome.vercel.app');
+                ? getProposalUrl(property.public_id, contactIdentifier)
+                : (ensureContactInProposalUrl(contact?.publicUrl, contactIdentifier) || 'https://matchhome.vercel.app');
             
             components = [
                 {

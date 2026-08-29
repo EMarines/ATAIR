@@ -100,8 +100,9 @@ function createContactsStore() {
         }
     };
     
-    // Cargar contactos al inicializar el store
-    loadContacts();
+    // NOTA: No se llama loadContacts() aquí porque los contactos se cargan
+    // en +layout.svelte vía onSnapshot DESPUÉS de que el usuario se autentica.
+    // Llamarlo aquí causaba errores de permisos al no haber sesión activa.
 
     return {
         subscribe,

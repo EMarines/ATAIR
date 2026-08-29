@@ -545,7 +545,7 @@
 	}
 
 	// 🚀 AUTOMATIZACIÓN WHATSAPP (PHASE 1)
-	async function triggerWhatsAppAutomation(contactData: Contact, propertyData: Property | null) {
+	async function triggerWhatsAppAutomation(contactData: Contact, propertyData: Property | null, isNew: boolean = false) {
 		if (!contactData.telephon) return;
 
 		console.log('🚀 Triggering WhatsApp Automation...');
@@ -555,7 +555,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					contact: contactData,
+					contact: { ...contactData, isNew },
 					property: propertyData
 				})
 			});
@@ -739,7 +739,7 @@
 				contMode: contact.contMode || '',
 				notes: contact.notes || '',
 				propCont: contact.propCont || '',
-				publicUrl: contact.publicUrl || (contact.propCont ? getProposalUrl(contact.propCont, contact.id) : ''),
+				publicUrl: contact.publicUrl || (contact.propCont ? getProposalUrl(contact.propCont, existingContact ? (existingContact.id || contact.id) : (contact.name || contact.id)) : ''),
 				// selecTO: contact.selecTO || '',
 				// selecTO: convertOperationEbFb($propertyStore.selecTO) || '',
 
@@ -862,7 +862,7 @@
 				try {
 					const currentProp = get(propertyStore);
 					// Solo enviar si hay propiedad seleccionada o al menos intentar
-					triggerWhatsAppAutomation(cleanContactData, currentProp);
+					triggerWhatsAppAutomation(cleanContactData, currentProp, isNewContact);
 				} catch (waError) {
 					console.error('❌ Error triggering WhatsApp:', waError);
 				}
@@ -931,6 +931,7 @@
 			}
 		}
 		$systStatus = '';
+		propertyStore.set(null);
 		dispatch('cancel');
 	}
 
@@ -1084,7 +1085,8 @@
 										isSelected={contact.propCont === property.public_id}
 										onSelect={() => {
 											contact.propCont = property.public_id;
-											contact.publicUrl = getProposalUrl(property.public_id, contact.id);
+											const contactIdentifier = existingContact ? (existingContact.id || contact.id) : (contact.name || contact.id);
+											contact.publicUrl = getProposalUrl(property.public_id, contactIdentifier);
 											contact.selecTP = property.property_type || '';
 											(contact.typeContact = convertOperationEbFb(property.selecTO) || ''),
 												(contact.rangeProp = property.price ? ranPrice(property.price) : '');

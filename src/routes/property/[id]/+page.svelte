@@ -279,7 +279,7 @@
 		let saludoHora = diaTarde();
 		let contacto = contact.name ? capitalize(contact.name) : '';
 		let propUrl = property?.public_id
-			? getProposalUrl(property.public_id, contact.id)
+			? getProposalUrl(property.public_id, contact.id || contact.name)
 			: (property?.public_url || '');
 		let saludo = contacto ? `¡${saludoHora}, ${contacto}!` : `¡${saludoHora}!`;
 		let infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
