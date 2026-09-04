@@ -50,7 +50,10 @@
   $: externalCount = $propertiesStore.filter(p => p.source === 'external').length;
 
   function seleProperty(prop: Property) {
-    goto("/property/" + prop.public_id);
+    const idToUse = prop.public_id || prop.id || prop.clavePropiedad || prop.claveEB || prop.claveMH;
+    if (idToUse) {
+      goto("/property/" + encodeURIComponent(idToUse));
+    }
   }
 </script>
  

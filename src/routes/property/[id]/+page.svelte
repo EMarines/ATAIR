@@ -329,34 +329,37 @@
 
 	const actCancel = () => {
 		property = {} as Property;
-		goto('/propiedades');
+		goto('/properties');
 	};
 
 	const cancel = () => {
 		$systStatus = '';
-		goto('/propiedades');
+		goto('/properties');
 	};
 
 	const editProp = (id: string) => {
 		$systStatus = 'editing';
-		goto('/propiedades/altaPropiedad');
+		goto('/properties');
 	};
 
 	const deleProperty = async (id: string) => {
-		if (confirm('Deseas eleiminar definitivamente la propiedad?')) {
-			await deleteDoc(doc(db, 'properties', property.public_id));
-			goto('/propiedades');
+		if (confirm('Deseas eliminar definitivamente la propiedad?')) {
+			const targetId = property.docId || property.id || property.public_id;
+			if (targetId) {
+				await deleteDoc(doc(db, 'properties', targetId));
+			}
+			goto('/properties');
 		} else {
 			return;
 		}
 	};
 
 	const tagToUbicacion = (tags: string[]) => {
-		// Implementar esta función
+		return tags?.join(', ') || '';
 	};
 
 	const tagToFeatures = (tags: string[]) => {
-		// Implementar esta función
+		return '';
 	};
 
 	// const toComaSep = (num: number) => {
@@ -364,8 +367,11 @@
 	// };
 
 	const followLink = () => {
-		// Implementa la lógica que necesites aquí
-		console.log('Siguiendo enlace...');
+		if (property?.public_url) {
+			window.open(property.public_url, '_blank');
+		} else if (property?.public_id) {
+			window.open(getProposalUrl(property.public_id), '_blank');
+		}
 	};
 </script>
 

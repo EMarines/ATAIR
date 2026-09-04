@@ -27,18 +27,12 @@
 <style>
 	footer {
 		background-color: var(--bg-color);
-		color: var(--text-color);
-		/* padding: 2rem 0; */
-		margin-top: auto; /* Added to push footer to the bottom when content is short */
+		color: var(--footer-text, var(--text-color));
+		margin-top: auto;
 		width: 100%;
 		position: relative;
-		z-index: 10; /* Ensure footer appears above other elements */
+		z-index: 10;
 	}
-
-	/* .container {
-        margin: 0 auto;
-        padding: 0 2rem;
-    } */
 
 	.footer__content {
 		display: flex;
@@ -50,17 +44,21 @@
 	.footer__section {
 		margin-bottom: 1rem;
 		min-width: 200px;
-		font-size: 0.7rem;
+		font-size: 0.75rem;
+		color: var(--footer-muted, #a1a1aa);
 	}
 
-	/* .footer__section h3 {
-        margin-bottom: 1rem;
-        font-size: 1.2rem;
-    }
+	.footer__section h3 {
+		color: var(--footer-text, #ffffff);
+		font-size: 0.85rem;
+		font-weight: 600;
+		margin-bottom: 0.25rem;
+	}
 
-    .footer__section p {
-        margin: 0.5rem 0;
-    } */
+	.footer__section p {
+		margin: 0.15rem 0;
+		color: var(--footer-muted, #a1a1aa);
+	}
 
 	.footer__bottom {
 		border-top: 1px solid rgba(255, 255, 255, 0.1);

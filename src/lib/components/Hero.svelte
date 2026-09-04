@@ -26,13 +26,15 @@
 <style>
     .hero{
         margin: 0 0.5em;
-        background-color: var(--primary-color);
-        border-radius: 3px;
+        background: var(--hero-bg, var(--primary-color));
+        border-radius: 8px;
         font-weight: 600;
     }
 
     .title {
-        color: antiquewhite;
+        color: #ffffff !important;
+        font-size: 2.5rem;
+        font-weight: 400;
     }
 
 

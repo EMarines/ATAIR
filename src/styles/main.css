@@ -8,33 +8,91 @@
   scroll-behavior: smooth;
  
 }
-:root{
+:root, [data-theme="light"] {
   font-family: 'Poppins', Roboto, sans-serif;
-  --primary-color:#6495ed;
-  --bg-color:white;
-  --color: #333;
-  --bg-color: #e9e9e9;
-	--sidebar-color: #000;
-	--header-color: #000;
-	--text-color: #fff;
-	--accent-color: #0cbff6;
-	--menu-background-color: #2e2e2e;
-	--light-gray: #a7a7a7;
-	--medium-gray: #2e2e2e;
-	--dark-gray: #181818;
-	--menu-text-color: #fff;
-	--border: rgba(255, 255, 255, 0.15);
-	--sidebar-width: 250px;
-	--header-height: 64px;
-	--error: #c24141;
-	--warning: #e7a917;
+  --primary-color: #2d3f63;
+  --hero-bg: #2d3f63;
+  --primary-hover: #3d5584;
+  --accent-color: #0284c7;
+  --bg-color: #f4f4f6;
+  --surface-1: #ffffff;
+  --surface-card: #ffffff;
+  --surface-card-hover: #f1f5f9;
+  --color: #18181b;
+  --text-1: #18181b;
+  --text-muted: #52525b;
+  --border: #d4d4d8;
+  --border-hover: #a1a1aa;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.14);
+  --title-color: #6b21a8;
+  --title-heading: #18181b;
+  --dashboard-card-bg: #ffffff;
+  --dashboard-card-border: #e4e4e7;
+  --dashboard-card-hover: #f8fafc;
+  --dashboard-card-title: #18181b;
+  --dashboard-card-desc: #52525b;
+  --footer-text: #18181b;
+  --footer-muted: #52525b;
+  --nav-bg: #ffffff;
+  --nav-text: #18181b;
+  --nav-logo: #6b21a8;
+  --input-bg: #ffffff;
+  --input-border: #a1a1aa;
+  --input-text: #18181b;
+  --sidebar-color: #ffffff;
+  --header-color: #ffffff;
+  --text-color: #18181b;
+  --menu-background-color: #ffffff;
+  --light-gray: #71717a;
+  --medium-gray: #e4e4e7;
+  --dark-gray: #f4f4f5;
+  --menu-text-color: #18181b;
+  --sidebar-width: 250px;
+  --header-height: 64px;
+  --error: #c24141;
+  --warning: #d97706;
 }
-
 
 [data-theme="dark"] {
   --primary-color: #2d3f63;
+  --hero-bg: #2d3f63;
+  --primary-hover: #3d5584;
+  --accent-color: #0cbff6;
   --bg-color: #000000;
-  --color: #ddd;
+  --surface-1: #18181b;
+  --surface-card: rgb(56, 56, 56);
+  --surface-card-hover: rgb(76, 76, 76);
+  --color: #f4f4f5;
+  --text-1: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.15);
+  --border-hover: rgba(255, 255, 255, 0.3);
+  --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  --card-shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.4);
+  --title-color: #a855f7;
+  --title-heading: #ffffff;
+  --dashboard-card-bg: rgba(255, 255, 255, 0.05);
+  --dashboard-card-border: rgba(255, 255, 255, 0.1);
+  --dashboard-card-hover: rgba(255, 255, 255, 0.08);
+  --dashboard-card-title: #ffffff;
+  --dashboard-card-desc: rgba(255, 255, 255, 0.6);
+  --footer-text: #ffffff;
+  --footer-muted: #a1a1aa;
+  --nav-bg: #18181b;
+  --nav-text: #f4f4f5;
+  --nav-logo: #ffffff;
+  --input-bg: #27272a;
+  --input-border: #3f3f46;
+  --input-text: #f4f4f5;
+  --sidebar-color: #000000;
+  --header-color: #000000;
+  --text-color: #ffffff;
+  --menu-background-color: #2e2e2e;
+  --light-gray: #a7a7a7;
+  --medium-gray: #2e2e2e;
+  --dark-gray: #181818;
+  --menu-text-color: #ffffff;
 }
 
 body{

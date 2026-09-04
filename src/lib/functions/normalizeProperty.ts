@@ -9,7 +9,15 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 	if (!raw) return {} as Property;
 
 	// Identificador
-	const public_id = raw.public_id || raw.id || raw.claveEB || raw.claveMH || docId || '';
+	const public_id =
+		raw.public_id ||
+		raw.id ||
+		raw.clavePropiedad ||
+		raw.easybroker_id ||
+		raw.claveEB ||
+		raw.claveMH ||
+		docId ||
+		'';
 
 	// Precio
 	let price = 0;
@@ -134,6 +142,8 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 
 	return {
 		...raw,
+		id: docId || raw.id || public_id,
+		docId: docId || raw.docId || raw.id || '',
 		public_id,
 		price,
 		budget: price,

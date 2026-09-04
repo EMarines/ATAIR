@@ -8,6 +8,7 @@ export const PUBLIC_ROUTES = ['/login'];
 export const USER_ROUTES = [
     '/',
     '/properties',
+    '/property',
     '/about',
     '/help',
 ];
@@ -35,7 +36,7 @@ export function isUserRoute(path: string): boolean {
     if (isPublicRoute(path)) return true;
     
     // Properties and home are accessible by users
-    if (path === '/' || path.startsWith('/properties')) return true;
+    if (path === '/' || path.startsWith('/properties') || path.startsWith('/property')) return true;
     
     // Explicit user routes
     return USER_ROUTES.some(route => path === route || path.startsWith(route + '/'));

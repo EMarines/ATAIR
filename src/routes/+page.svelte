@@ -169,7 +169,7 @@
 		text-align: center;
 		margin-bottom: 2rem;
 		font-size: 2rem;
-		color: white;
+		color: var(--title-heading, #ffffff);
 	}
 
 	.actions-grid {
@@ -184,20 +184,21 @@
 		flex-direction: column;
 		align-items: center;
 		padding: 2rem;
-		background: rgba(255, 255, 255, 0.05);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: var(--dashboard-card-bg, rgba(255, 255, 255, 0.05));
+		border: 1px solid var(--dashboard-card-border, rgba(255, 255, 255, 0.1));
 		border-radius: 12px;
 		transition: all 0.3s ease;
 		cursor: pointer;
 		text-align: center;
 		width: 100%;
+		box-shadow: var(--card-shadow, 0 4px 12px rgba(0, 0, 0, 0.08));
 	}
 
 	.action-card:not(.disabled):hover {
 		transform: translateY(-8px);
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--dashboard-card-hover, rgba(255, 255, 255, 0.08));
 		border-color: #6b21a8;
-		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
 	}
 
 	.action-card i {
@@ -210,12 +211,13 @@
 	.action-card h3 {
 		margin: 0.5rem 0;
 		font-size: 1.25rem;
-		color: white;
+		color: var(--dashboard-card-title, #ffffff);
+		font-weight: 600;
 	}
 
 	.action-card p {
 		font-size: 0.9rem;
-		color: rgba(255, 255, 255, 0.6);
+		color: var(--dashboard-card-desc, rgba(255, 255, 255, 0.6));
 		margin: 0;
 	}
 

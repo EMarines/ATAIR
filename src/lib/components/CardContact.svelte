@@ -92,23 +92,24 @@
 		display: flex;
 		flex-direction: column;
 		width: 100%;
-		background: rgb(56, 56, 56);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: var(--surface-card, rgb(56, 56, 56));
+		color: var(--color, #ffffff);
+		border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
 		border-radius: 8px;
 		padding: 0.5em;
 		margin: 0;
 		gap: 0.8rem;
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
+		transition: transform 0.25s, box-shadow 0.25s, background 0.25s, border-color 0.25s;
 		height: 100%;
 		box-sizing: border-box;
+		box-shadow: var(--card-shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
 	}
 
 	.card:hover {
 		transform: translateY(-5px);
-		box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-		background: rgb(76, 76, 76);
+		box-shadow: var(--card-shadow-hover, 0 8px 20px rgba(0, 0, 0, 0.35));
+		background: var(--surface-card-hover, rgb(76, 76, 76));
+		border-color: var(--border-hover, rgba(255, 255, 255, 0.25));
 	}
 
 	.card--invalid {

@@ -55,6 +55,12 @@ export interface ContactOption {
 
 export interface Property {
     public_id: string;
+    id?: string;
+    docId?: string;
+    clavePropiedad?: string;
+    claveEB?: string;
+    claveMH?: string;
+    easybroker_id?: string;
     title?: string;
     description?: string;
     location?: string;

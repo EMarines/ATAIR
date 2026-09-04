@@ -188,8 +188,9 @@
 	}
 
 	.title {
-		color: antiquewhite;
+		color: var(--nav-logo, var(--title-color, #6b21a8));
 		font-size: 1.5em;
+		font-weight: 600;
 	}
 
 	a {
