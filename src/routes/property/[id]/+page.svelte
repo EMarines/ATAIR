@@ -34,6 +34,12 @@
 	let autoMode = false; // Switch para modo automático vs manual
 	let isProcessing = false; // Estado para controlar si está procesando
 
+	// Popup para enviar WhatsApp manual / sin contacto previo
+	let showPhonePopup = false;
+	let customPhone = '';
+	let customName = '';
+	let copySuccess = false;
+
 	$: contacts = $contactsStore as Contact[];
 	$: currProperty = property as Property;
 	$: binnacles = $binnaclesStore as Binnacle[];
@@ -320,6 +326,74 @@
 		// }
 	};
 
+	function handleWhatsAppClick() {
+		if (contToSend && contToSend.telephon) {
+			sendWA(contToSend);
+		} else {
+			showPhonePopup = true;
+		}
+	}
+
+	async function sendCustomWhatsApp() {
+		const clean = customPhone.replace(/\D/g, '');
+		if (!clean || clean.length < 10) {
+			alert('Por favor ingresa un número de teléfono válido (10 dígitos).');
+			return;
+		}
+
+		let saludoHora = diaTarde();
+		let contacto = customName.trim() ? capitalize(customName.trim()) : '';
+		let propUrl = property?.public_id
+			? getProposalUrl(property.public_id, contacto || '')
+			: (property?.public_url || '');
+		let saludo = contacto ? `¡${saludoHora}, ${contacto}!` : `¡${saludoHora}!`;
+		let infoContacto = `${empresa.agentName}, asesor de ventas en ${empresa.companyName}, tel. ${empresa.phoneNumber}, email ${empresa.email}. Visita ${empresa.companyUrl} ¡Seguro encuentras algo de interés!`;
+		let msg = propUrl
+			? `${propUrl}\n\n${saludo} Te comparto la información de esta propiedad.\n\n${infoContacto}`
+			: `${saludo} Te comparto la información.\n\n${infoContacto}`;
+
+		// Abrir WhatsApp con el número limpio
+		sendWhatsApp(clean, msg);
+
+		// Registrar en bitácora si es posible
+		try {
+			const newBinnacle: Binnacle = {
+				date: Date.now(),
+				comment: (property.public_id || '').trim(),
+				to: `Tel: ${clean}${contacto ? ` (${contacto})` : ''}`,
+				action: 'Propiedad enviada por WhatsApp: '
+			};
+			await addDoc(collection(db, 'binnacles'), newBinnacle);
+			console.log(`✅ Bitácora guardada para envío manual a ${clean}`);
+		} catch (err) {
+			console.warn('No se pudo registrar en bitácora:', err);
+		}
+
+		showPhonePopup = false;
+		customPhone = '';
+		customName = '';
+	}
+
+	function copyCustomLink() {
+		const contacto = customName.trim() ? capitalize(customName.trim()) : '';
+		const propUrl = property?.public_id
+			? getProposalUrl(property.public_id, contacto || '')
+			: (property?.public_url || '');
+
+		if (propUrl) {
+			navigator.clipboard.writeText(propUrl);
+			copySuccess = true;
+			setTimeout(() => {
+				copySuccess = false;
+			}, 2500);
+		}
+	}
+
+	function closePhonePopup() {
+		showPhonePopup = false;
+		copySuccess = false;
+	}
+
 	const findCustomers = () => {
 		listToRender();
 		show__contacts = !show__contacts;
@@ -473,7 +547,7 @@
 				element="button"
 				variant="solid"
 				icon="fa-brands fa-whatsapp whatsapp-icon"
-				on:click={() => sendWA(contToSend)}
+				on:click={handleWhatsAppClick}
 			>
 				Enviar WhatsApp
 			</Button>
@@ -631,7 +705,367 @@
 	</div>
 </div>
 
+{#if showPhonePopup}
+	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<div 
+		class="popup-backdrop" 
+		on:click={closePhonePopup} 
+		on:keydown={(e) => e.key === 'Escape' && closePhonePopup()}
+		role="dialog" 
+		aria-modal="true"
+		tabindex="-1"
+	>
+		<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+		<div 
+			class="popup-card" 
+			on:click|stopPropagation={() => {}} 
+			on:keydown|stopPropagation={() => {}} 
+			role="document"
+		>
+			<div class="popup-header">
+				<div class="popup-title-group">
+					<i class="fa-brands fa-whatsapp popup-wa-icon"></i>
+					<h3>Enviar por WhatsApp</h3>
+				</div>
+				<button class="popup-close-btn" on:click={closePhonePopup} aria-label="Cerrar">
+					<i class="fa-solid fa-xmark"></i>
+				</button>
+			</div>
+
+			<div class="popup-prop-badge">
+				<span class="popup-prop-id">{property.public_id}</span>
+				<span class="popup-prop-name">
+					{property.property_type || 'Propiedad'} en {getLocationString(property.location) || 'Ubicación'}
+				</span>
+			</div>
+
+			<div class="popup-body">
+				<div class="popup-field">
+					<label for="custom-phone">Número de WhatsApp (10 dígitos) *</label>
+					<div class="input-with-icon">
+						<i class="fa-solid fa-phone input-icon"></i>
+						<input
+							id="custom-phone"
+							type="tel"
+							placeholder="Ej: 6141234567"
+							bind:value={customPhone}
+							maxlength="15"
+							on:keydown={(e) => e.key === 'Enter' && sendCustomWhatsApp()}
+						/>
+					</div>
+				</div>
+
+				<div class="popup-field">
+					<label for="custom-name">Nombre del Contacto (Opcional)</label>
+					<div class="input-with-icon">
+						<i class="fa-solid fa-user input-icon"></i>
+						<input
+							id="custom-name"
+							type="text"
+							placeholder="Ej: Juan Pérez"
+							bind:value={customName}
+							on:keydown={(e) => e.key === 'Enter' && sendCustomWhatsApp()}
+						/>
+					</div>
+				</div>
+
+				<!-- Vista previa del enlace de propuesta -->
+				<div class="popup-link-box">
+					<span class="link-label">Enlace a compartir:</span>
+					<div class="link-display">
+						<code>
+							{property?.public_id ? getProposalUrl(property.public_id, customName.trim() || null) : (property?.public_url || 'https://matchhome.vercel.app')}
+						</code>
+						<button class="copy-btn" class:copied={copySuccess} on:click={copyCustomLink} title="Copiar enlace">
+							<i class={copySuccess ? "fa-solid fa-check" : "fa-regular fa-copy"}></i>
+							<span>{copySuccess ? "¡Copiado!" : "Copiar"}</span>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="popup-actions">
+				<button class="btn-cancel" on:click={closePhonePopup}>
+					Cancelar
+				</button>
+				<button class="btn-send-wa" on:click={sendCustomWhatsApp}>
+					<i class="fa-brands fa-whatsapp"></i>
+					Abrir WhatsApp
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
+	/* POPUP MODAL STYLES (ATAIR Brand Identity) */
+	.popup-backdrop {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100vw;
+		height: 100vh;
+		background: rgba(0, 0, 0, 0.75);
+		backdrop-filter: blur(4px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 9999;
+		padding: 1rem;
+		box-sizing: border-box;
+		animation: popupFadeIn 0.2s ease-out;
+	}
+
+	@keyframes popupFadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+
+	.popup-card {
+		background: rgb(45, 45, 45);
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		border-radius: 12px;
+		width: 100%;
+		max-width: 480px;
+		padding: 1.5rem;
+		color: #ffffff;
+		box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+		display: flex;
+		flex-direction: column;
+		gap: 1.2rem;
+		box-sizing: border-box;
+		animation: popupScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	@keyframes popupScaleUp {
+		from { transform: scale(0.95); opacity: 0; }
+		to { transform: scale(1); opacity: 1; }
+	}
+
+	.popup-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		padding-bottom: 0.8rem;
+	}
+
+	.popup-title-group {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+
+	.popup-wa-icon {
+		font-size: 1.5rem;
+		color: #25d366;
+	}
+
+	.popup-header h3 {
+		margin: 0;
+		font-size: 1.25rem;
+		font-weight: 500;
+		color: #ffffff;
+	}
+
+	.popup-close-btn {
+		background: transparent;
+		border: none;
+		color: #aaa;
+		font-size: 1.2rem;
+		cursor: pointer;
+		padding: 0.2rem 0.5rem;
+		border-radius: 6px;
+		transition: all 0.2s;
+	}
+
+	.popup-close-btn:hover {
+		color: #fff;
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	.popup-prop-badge {
+		background: rgba(107, 33, 168, 0.2);
+		border: 1px solid rgba(147, 51, 234, 0.3);
+		border-radius: 8px;
+		padding: 0.5rem 0.8rem;
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		font-size: 0.85rem;
+	}
+
+	.popup-prop-id {
+		font-weight: 700;
+		color: #c084fc;
+		background: rgba(0, 0, 0, 0.3);
+		padding: 0.15rem 0.45rem;
+		border-radius: 4px;
+	}
+
+	.popup-prop-name {
+		color: #e2e8f0;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.popup-body {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.popup-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.popup-field label {
+		font-size: 0.85rem;
+		color: #ccc;
+	}
+
+	.input-with-icon {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
+	.input-icon {
+		position: absolute;
+		left: 0.9rem;
+		color: #888;
+		font-size: 0.95rem;
+		pointer-events: none;
+	}
+
+	.input-with-icon input {
+		width: 100%;
+		padding: 0.65rem 0.75rem 0.65rem 2.4rem;
+		background: rgb(30, 30, 30);
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		border-radius: 8px;
+		color: #ffffff;
+		font-size: 0.95rem;
+		font-family: inherit;
+		box-sizing: border-box;
+		transition: border-color 0.2s, box-shadow 0.2s;
+	}
+
+	.input-with-icon input:focus {
+		outline: none;
+		border-color: #25d366;
+		box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.25);
+	}
+
+	.popup-link-box {
+		background: rgb(30, 30, 30);
+		border: 1px dashed rgba(255, 255, 255, 0.2);
+		border-radius: 8px;
+		padding: 0.65rem 0.8rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.link-label {
+		font-size: 0.75rem;
+		color: #888;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+
+	.link-display {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	.link-display code {
+		color: #38bdf8;
+		font-size: 0.8rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		flex: 1;
+	}
+
+	.copy-btn {
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		border-radius: 6px;
+		color: #fff;
+		padding: 0.3rem 0.65rem;
+		font-size: 0.8rem;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		transition: all 0.2s;
+		white-space: nowrap;
+	}
+
+	.copy-btn:hover {
+		background: rgba(255, 255, 255, 0.15);
+	}
+
+	.copy-btn.copied {
+		background: #166534;
+		border-color: #22c55e;
+		color: #86efac;
+	}
+
+	.popup-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.75rem;
+		border-top: 1px solid rgba(255, 255, 255, 0.1);
+		padding-top: 1rem;
+		margin-top: 0.2rem;
+	}
+
+	.btn-cancel {
+		background: transparent;
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		border-radius: 8px;
+		color: #ccc;
+		padding: 0.6rem 1.1rem;
+		font-size: 0.9rem;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.btn-cancel:hover {
+		background: rgba(255, 255, 255, 0.08);
+		color: #fff;
+	}
+
+	.btn-send-wa {
+		background: #25d366;
+		border: none;
+		border-radius: 8px;
+		color: #0b2912;
+		font-weight: 600;
+		padding: 0.6rem 1.2rem;
+		font-size: 0.9rem;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		transition: all 0.2s;
+		box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+	}
+
+	.btn-send-wa:hover {
+		background: #22c35e;
+		transform: translateY(-2px);
+		box-shadow: 0 6px 16px rgba(37, 211, 102, 0.4);
+	}
+
 	.mainContainer {
 		display: flex;
 		flex-direction: column;
