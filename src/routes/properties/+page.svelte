@@ -5,7 +5,7 @@
   import { goto } from '$app/navigation';
 
   let searchTerm = "";
-  let selectedSource: 'all' | 'easybroker' | 'synergy' | 'external' = 'all';
+  let selectedSource: 'all' | 'easybroker' | 'direct' | 'synergy' | 'external' = 'all';
 
   // Filtrado reactivo por origen y término de búsqueda
   $: filteredProperties = [...$propertiesStore]
@@ -13,6 +13,9 @@
     .filter((prop) => {
       // 1. Filtro por origen
       if (selectedSource === 'easybroker' && prop.source !== 'easybroker' && !prop.public_id?.startsWith('EB-')) {
+        return false;
+      }
+      if (selectedSource === 'direct' && prop.source !== 'direct') {
         return false;
       }
       if (selectedSource === 'synergy' && prop.source !== 'synergy') {
@@ -46,6 +49,7 @@
   // Contadores reactivos
   $: totalCount = $propertiesStore.length;
   $: ebCount = $propertiesStore.filter(p => p.source === 'easybroker' || p.public_id?.startsWith('EB-')).length;
+  $: directCount = $propertiesStore.filter(p => p.source === 'direct').length;
   $: synergyCount = $propertiesStore.filter(p => p.source === 'synergy').length;
   $: externalCount = $propertiesStore.filter(p => p.source === 'external').length;
 
@@ -79,6 +83,15 @@
         >
           MatchHome <span class="tab-badge">{ebCount}</span>
         </button>
+        {#if directCount > 0}
+          <button 
+            class="source-tab" 
+            class:active={selectedSource === 'direct'} 
+            on:click={() => selectedSource = 'direct'}
+          >
+            Directas <span class="tab-badge">{directCount}</span>
+          </button>
+        {/if}
         {#if synergyCount > 0}
           <button 
             class="source-tab" 

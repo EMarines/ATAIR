@@ -136,8 +136,20 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 	const updated_at = raw.updated_at || raw.updatedAt || new Date().toISOString();
 
 	// Origen / Fuente de la propiedad
-	let source = raw.source || (public_id.startsWith('EB-') || raw.claveEB ? 'easybroker' : 'direct');
-	let sourceName = raw.sourceName || (source === 'easybroker' ? 'MatchHome (EasyBroker)' : (source === 'synergy' ? 'Sinergia' : 'Directa'));
+	const rawKey = String(public_id || raw.clavePropiedad || raw.claveEB || '');
+	const isEB = raw.source === 'easybroker' || rawKey.startsWith('EB-');
+	const isSyn = !isEB && (raw.source === 'synergy' || raw.procedencia === 'S1' || raw.procedencia === 'S2' || raw.procedencia === 'S3' || rawKey.startsWith('S1-') || rawKey.startsWith('S2-') || rawKey.startsWith('S3-'));
+	
+	let source = raw.source || (isEB ? 'easybroker' : (isSyn ? 'synergy' : 'direct'));
+	if (source === 'manual') source = isSyn ? 'synergy' : 'direct';
+
+	let sourceName = raw.sourceName || (
+		source === 'easybroker'
+			? 'MatchHome (EasyBroker)'
+			: (source === 'synergy'
+				? `Sinergia (${raw.procedencia || 'Red'})`
+				: 'Captura Directa (Manual)')
+	);
 	let isOwn = raw.isOwn !== undefined ? Boolean(raw.isOwn) : (source === 'easybroker' || source === 'direct');
 
 	return {

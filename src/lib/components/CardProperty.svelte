@@ -10,6 +10,7 @@
 
 	let imgError = false;
 	$: imgSrc = property?.title_image_thumb || '/placeholder-property.png';
+	$: propertyCode = property?.clavePropiedad || property?.public_id || property?.id || '';
 
 	// Función para manejar errores de carga de imagen
 	function handleImageError() {
@@ -58,6 +59,9 @@
 			<img src={imgSrc} alt="Imagen de propiedad" on:error={handleImageError} loading="lazy" />
 			{#if imgError}
 				<div class="img-error-overlay">Sin imagen</div>
+			{/if}
+			{#if propertyCode}
+				<span class="card-badge-clave">{propertyCode}</span>
 			{/if}
 		</div>
 
@@ -169,6 +173,28 @@
 		border-radius: 8px;
 		margin: 0;
 		display: block;
+	}
+
+	.card-badge-clave {
+		position: absolute;
+		bottom: 6px;
+		left: 7px;
+		font-family: inherit;
+		font-size: 0.74rem;
+		font-weight: 800;
+		color: #ffffff;
+		padding: 0;
+		background: transparent;
+		border: none;
+		letter-spacing: 0.04em;
+		text-shadow:
+			0 1px 2px rgba(0, 0, 0, 1),
+			0 0 4px rgba(0, 0, 0, 0.95),
+			0 0 8px rgba(0, 0, 0, 0.85);
+		z-index: 5;
+		pointer-events: none;
+		display: inline-flex;
+		align-items: center;
 	}
 
 	.img-error-overlay {

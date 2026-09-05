@@ -5,6 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "svelte-kit sync && vite dev",
+		"sync:sandbox": "node ../MatchHomeSite/scripts/mirror-properties.js",
 		"prepare": "svelte-kit sync",
 		"build": "vite build",
 		"preview": "vite preview",

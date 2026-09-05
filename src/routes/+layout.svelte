@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../styles/main.css';
-	import { db } from '$lib/firebase_toggle';
+	import { db, isSandbox, currentProjectId } from '$lib/firebase_toggle';
 	import { collection, onSnapshot } from 'firebase/firestore';
 	import type { QuerySnapshot, DocumentData } from 'firebase/firestore';
 	import { contactsStore, binnaclesStore, propertiesStore } from '$lib/stores/dataStore';
@@ -186,6 +186,17 @@
 		</header>
 
 		<main>
+			{#if isSandbox}
+				<div class="sandbox-banner">
+					<div class="sandbox-left">
+						<span class="sandbox-pill">🧪 MODO SANDBOX ACTIVO</span>
+						<span class="sandbox-desc">
+							Conectado a <strong>{currentProjectId}</strong>. Las propiedades creadas o editadas aquí no afectarán la base oficial de producción.
+						</span>
+					</div>
+					<span class="sandbox-badge">Aislamiento Seguro</span>
+				</div>
+			{/if}
 			<slot />
 		</main>
 
@@ -239,5 +250,57 @@
 		width: 100%; /* Asegurar que main ocupe exactamente el ancho disponible */
 	}
 
-	/* Removed the footer-container div as it's not needed */
+	/* === SANDBOX BANNER === */
+	.sandbox-banner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.75rem 1.5rem;
+		background: linear-gradient(90deg, rgba(245, 158, 11, 0.18) 0%, rgba(217, 119, 6, 0.12) 100%);
+		border-bottom: 1px solid rgba(245, 158, 11, 0.4);
+		backdrop-filter: blur(8px);
+	}
+
+	.sandbox-left {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.sandbox-pill {
+		background: #f59e0b;
+		color: #18181b;
+		font-size: 0.72rem;
+		font-weight: 800;
+		padding: 0.2rem 0.6rem;
+		border-radius: 9999px;
+		letter-spacing: 0.04em;
+		box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+	}
+
+	.sandbox-desc {
+		color: #fef3c7;
+		font-size: 0.85rem;
+	}
+
+	.sandbox-desc strong {
+		color: #ffffff;
+		font-family: monospace;
+		background: rgba(0, 0, 0, 0.3);
+		padding: 0.1rem 0.4rem;
+		border-radius: 4px;
+	}
+
+	.sandbox-badge {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: #f59e0b;
+		border: 1px solid rgba(245, 158, 11, 0.5);
+		background: rgba(245, 158, 11, 0.1);
+		padding: 0.25rem 0.65rem;
+		border-radius: 9999px;
+		white-space: nowrap;
+	}
 </style>

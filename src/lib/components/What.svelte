@@ -1,7 +1,8 @@
 <script>
 // // @ts-nocheck
 
-    import { Contact, Button} from '$components';
+    import Contact from './Contact.svelte';
+    import Button from './Button.svelte';
 //     import { currContList, currPropList } from './stores/store';
 //     // import { dbProperties } from '../firebase'
 

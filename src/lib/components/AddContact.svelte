@@ -7,17 +7,15 @@
 		property as propertyStore,
 		contactsStore
 	} from '$lib/stores/dataStore';
-	import {
-		Search,
-		Tags,
-		Ubication,
-		InputText,
-		InputOptions,
-		InputEmail,
-		InputNumber,
-		CardProperty,
-		Button
-	} from '$components';
+	import Search from './Search.svelte';
+	import Tags from './Tags.svelte';
+	import Ubication from './Ubication.svelte';
+	import InputText from './InputText.svelte';
+	import InputOptions from './InputOptions.svelte';
+	import InputEmail from './InputEmail.svelte';
+	import InputNumber from './InputNumber.svelte';
+	import CardProperty from './CardProperty.svelte';
+	import Button from './Button.svelte';
 	import {
 		typeContacts,
 		modeContact,

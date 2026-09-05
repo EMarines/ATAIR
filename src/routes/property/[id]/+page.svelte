@@ -478,6 +478,40 @@
 						<h2>Precio $ {toComaSep(property.price)}.</h2>
 						<p class="alta__prop">Alta: {formatDate(Number(property.created_at))}</p>
 					</div>
+					{#if property.source === 'synergy' || property.procedencia?.startsWith('S') || property.companiaCaptadora || property.idCompaniaCaptadora}
+						<div class="prop__captador_row">
+							<span class="badge-syn-tag">
+								🤝 Sinergia {property.procedencia || ''}: {property.companiaCaptadora || property.idCompaniaCaptadora || 'Aliada'}{property.nombreContactoCaptador && property.nombreContactoCaptador !== (property.companiaCaptadora || property.idCompaniaCaptadora) ? ` (${property.nombreContactoCaptador})` : ''}
+							</span>
+							{#if property.telefonoContactoCaptador}
+								<a
+									href="https://wa.me/52{String(property.telefonoContactoCaptador).replace(/\D/g, '')}"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="badge-phone-link"
+								>
+									📞 {property.telefonoContactoCaptador} (WhatsApp)
+								</a>
+							{/if}
+						</div>
+					{:else if property.source === 'direct' || (!property.public_id?.startsWith('EB-') && property.source !== 'easybroker')}
+						<div class="prop__captador_row">
+							<span class="badge-direct-tag">📝 Captura Directa (Manual)</span>
+							{#if property.companiaCaptadora || property.idCompaniaCaptadora}
+								<span class="badge-comp-tag">🏢 {property.companiaCaptadora || property.idCompaniaCaptadora}</span>
+							{/if}
+							{#if property.telefonoContactoCaptador}
+								<a
+									href="https://wa.me/52{String(property.telefonoContactoCaptador).replace(/\D/g, '')}"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="badge-phone-link"
+								>
+									📞 {property.telefonoContactoCaptador} (WhatsApp)
+								</a>
+							{/if}
+						</div>
+					{/if}
 					<div class="prop__cont">
 						<div class="prop__features">
 							{#if property.property_type === 'Casa' || property.property_type === 'Departamento'}
@@ -1427,6 +1461,62 @@
 
 	.btn__send input[type='checkbox'] {
 		cursor: pointer;
+	}
+
+	.prop__captador_row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+		margin: 0.35rem 0;
+	}
+
+	.badge-syn-tag {
+		background: rgba(16, 185, 129, 0.2);
+		color: #10b981;
+		border: 1px solid rgba(16, 185, 129, 0.4);
+		font-size: 0.8rem;
+		font-weight: 600;
+		padding: 0.2rem 0.55rem;
+		border-radius: 4px;
+	}
+
+	.badge-phone-link {
+		background: rgba(56, 189, 248, 0.15);
+		color: #0284c7;
+		border: 1px solid rgba(56, 189, 248, 0.35);
+		font-size: 0.8rem;
+		font-weight: 600;
+		padding: 0.2rem 0.55rem;
+		border-radius: 4px;
+		text-decoration: none;
+		font-family: monospace;
+		transition: all 0.2s ease;
+	}
+
+	.badge-phone-link:hover {
+		background: rgba(56, 189, 248, 0.25);
+		color: #0369a1;
+	}
+
+	.badge-direct-tag {
+		background: rgba(147, 51, 234, 0.15);
+		color: #7e22ce;
+		border: 1px solid rgba(147, 51, 234, 0.35);
+		font-size: 0.8rem;
+		font-weight: 600;
+		padding: 0.2rem 0.55rem;
+		border-radius: 4px;
+	}
+
+	.badge-comp-tag {
+		background: rgba(245, 158, 11, 0.15);
+		color: #d97706;
+		border: 1px solid rgba(245, 158, 11, 0.35);
+		font-size: 0.8rem;
+		font-weight: 600;
+		padding: 0.2rem 0.55rem;
+		border-radius: 4px;
 	}
 
 	/* .card__container {  */
