@@ -1,7 +1,7 @@
 <script lang="ts">
   import { db } from '$lib/firebase_toggle';
   import { collection, addDoc, getDocs } from 'firebase/firestore';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
 
   export let value: string = '';
   export let contactId: string = '';
@@ -120,8 +120,12 @@
   let isSavingAgent = false;
   let modalError = '';
 
-  function openCreateAgentModal(rawName: string = '') {
+  async function openCreateAgentModal(rawName: string = '') {
+    // Capturar el nombre AHORA antes de que blur pueda limpiar searchTerm
     const clean = rawName.trim();
+    isOpen = false;  // Cerrar dropdown primero
+    await tick();    // Esperar ciclo de render, evita race con blur
+
     modalError = '';
     if (clean) {
       const parts = clean.split(/\s+/);
@@ -144,7 +148,6 @@
       modalSynergy = 'S1';
     }
     isModalOpen = true;
-    isOpen = false;
   }
 
   function closeCreateAgentModal() {
@@ -515,7 +518,7 @@
             <button
               type="button"
               class="btn-create-agent-contact"
-              on:click={() => openCreateAgentModal(searchTerm)}
+              on:mousedown|preventDefault={() => openCreateAgentModal(searchTerm)}
             >
               <span class="btn-create-icon">👤➕</span>
               <span class="btn-create-text">
@@ -544,7 +547,7 @@
               <button
                 type="button"
                 class="btn-quick-create-link"
-                on:click={() => openCreateAgentModal(searchTerm)}
+                on:mousedown|preventDefault={() => openCreateAgentModal(searchTerm)}
                 title="Dar de alta como nuevo Agente Inmobiliario"
               >
                 👤➕ Alta Agente
