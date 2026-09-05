@@ -1,6 +1,6 @@
 <script lang="ts">
   import { db } from '$lib/firebase_toggle';
-  import { collection, getDocs } from 'firebase/firestore';
+  import { collection, addDoc, getDocs } from 'firebase/firestore';
   import { onMount } from 'svelte';
 
   export let value: string = '';
@@ -108,12 +108,121 @@
     };
   });
 
-  function handleCreateContact(nameToCreate: string) {
-    const clean = nameToCreate.trim();
-    const url = `/contacts/new?name=${encodeURIComponent(clean)}&typeContact=${encodeURIComponent('Agente Inmobiliario')}`;
-    // Abrir en nueva pestaña para no interrumpir ni perder el formulario de propiedad actual
-    if (typeof window !== 'undefined') {
-      window.open(url, '_blank');
+  // ============================================================
+  // ESTADOS Y MÉTODOS DEL POPUP / MODAL DE ALTA RÁPIDA
+  // ============================================================
+  let isModalOpen = false;
+  let modalName = '';
+  let modalLastname = '';
+  let modalPhone = '';
+  let modalCompany = '';
+  let modalSynergy = 'S1'; // 'S1' | 'S2' | 'S3' | 'MH'
+  let isSavingAgent = false;
+  let modalError = '';
+
+  function openCreateAgentModal(rawName: string = '') {
+    const clean = rawName.trim();
+    modalError = '';
+    if (clean) {
+      const parts = clean.split(/\s+/);
+      if (parts.length > 1) {
+        modalName = parts[0];
+        modalLastname = parts.slice(1).join(' ');
+      } else {
+        modalName = clean;
+        modalLastname = '';
+      }
+    } else {
+      modalName = '';
+      modalLastname = '';
+    }
+    modalPhone = contactPhone || '';
+    modalCompany = companyName || '';
+    if (procedencia === 'S1' || procedencia === 'S2' || procedencia === 'S3') {
+      modalSynergy = procedencia;
+    } else {
+      modalSynergy = 'S1';
+    }
+    isModalOpen = true;
+    isOpen = false;
+  }
+
+  function closeCreateAgentModal() {
+    if (isSavingAgent) return;
+    isModalOpen = false;
+    modalError = '';
+  }
+
+  async function handleSaveNewAgent() {
+    if (!modalName.trim()) {
+      modalError = 'Por favor ingresa el nombre del agente.';
+      return;
+    }
+    if (!modalPhone.trim()) {
+      modalError = 'El teléfono es obligatorio para dar de alta al agente.';
+      return;
+    }
+
+    isSavingAgent = true;
+    modalError = '';
+
+    try {
+      const fullName = `${modalName.trim()} ${modalLastname.trim()}`.trim();
+      const synergyLabel = modalSynergy === 'S1' ? 'Sinergia 1 (S1)' : modalSynergy === 'S2' ? 'Sinergia 2 (S2)' : modalSynergy === 'S3' ? 'Sinergia 3 (S3)' : modalSynergy;
+      const notes = `Agente Inmobiliario · ${synergyLabel}`;
+      
+      const newContactData: any = {
+        name: modalName.trim(),
+        lastname: modalLastname.trim(),
+        telephon: modalPhone.trim(),
+        phone: modalPhone.trim(),
+        company: modalCompany.trim(),
+        inmobiliaria: modalCompany.trim(),
+        typeContact: 'Agente Inmobiliario',
+        contactType: 'Agente Inmobiliario',
+        procedencia: modalSynergy,
+        notes: notes,
+        comContact: notes,
+        createdAt: Date.now(),
+        isActive: true,
+        budget: 0,
+        tagsProperty: [],
+        locaProperty: [],
+        sendedProperties: []
+      };
+
+      let newId = '';
+      if (db) {
+        const docRef = await addDoc(collection(db, 'contacts'), newContactData);
+        newId = docRef.id;
+      } else {
+        newId = 'local-' + Date.now();
+      }
+
+      const fullCreatedContact = {
+        id: newId,
+        ...newContactData,
+        _fullName: fullName,
+        _company: modalCompany.trim(),
+        _phone: modalPhone.trim(),
+        _notes: notes,
+        _procedencia: modalSynergy,
+        _isAgent: true
+      };
+
+      // Agregar a la lista local de contactos
+      contacts = [fullCreatedContact, ...contacts];
+
+      // Auto-seleccionar al nuevo agente
+      selectContact(fullCreatedContact);
+
+      isModalOpen = false;
+      searchTerm = '';
+    } catch (err: any) {
+      console.error('Error al guardar nuevo agente en Firestore:', err);
+      modalError = 'Error al guardar en Firestore: ' + (err.message || err);
+    } finally {
+      isSavingAgent = false;
     }
   }
 
@@ -406,11 +515,11 @@
             <button
               type="button"
               class="btn-create-agent-contact"
-              on:click={() => handleCreateContact(searchTerm)}
+              on:click={() => openCreateAgentModal(searchTerm)}
             >
               <span class="btn-create-icon">👤➕</span>
               <span class="btn-create-text">
-                Dar de alta a <strong>"{searchTerm.trim()}"</strong> como <strong>Agente Inmobiliario</strong> ↗
+                Dar de alta a <strong>"{searchTerm.trim()}"</strong> como <strong>Agente Inmobiliario</strong> ✨
               </span>
             </button>
 
@@ -435,10 +544,10 @@
               <button
                 type="button"
                 class="btn-quick-create-link"
-                on:click={() => handleCreateContact(searchTerm)}
+                on:click={() => openCreateAgentModal(searchTerm)}
                 title="Dar de alta como nuevo Agente Inmobiliario"
               >
-                👤➕ Alta Agente ↗
+                👤➕ Alta Agente
               </button>
             </div>
 
@@ -482,6 +591,167 @@
         {/if}
       </div>
     {/if}
+  {/if}
+
+  {#if isModalOpen}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="agent-modal-backdrop" on:click={closeCreateAgentModal}>
+      <div class="agent-modal-dialog glass" on:click|stopPropagation>
+        <!-- Modal Header -->
+        <div class="agent-modal-header">
+          <div class="modal-title-wrap">
+            <div class="modal-avatar-icon">👤➕</div>
+            <div>
+              <h3>Alta Rápida de Agente Inmobiliario</h3>
+              <p>Registra al asesor o inmobiliaria para vincularlo inmediatamente a la propiedad.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn-modal-close"
+            on:click={closeCreateAgentModal}
+            disabled={isSavingAgent}
+            aria-label="Cerrar modal"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Modal Form Body -->
+        <form on:submit|preventDefault={handleSaveNewAgent} class="agent-modal-body">
+          {#if modalError}
+            <div class="modal-alert-error">
+              ⚠️ {modalError}
+            </div>
+          {/if}
+
+          <div class="modal-form-grid">
+            <!-- Nombre -->
+            <div class="modal-field">
+              <label for="agent-modal-name" class="modal-label required">Nombre(s)</label>
+              <input
+                id="agent-modal-name"
+                type="text"
+                class="modal-input"
+                placeholder="Ej. Perla / Carlos"
+                bind:value={modalName}
+                required
+                disabled={isSavingAgent}
+              />
+            </div>
+
+            <!-- Apellido -->
+            <div class="modal-field">
+              <label for="agent-modal-lastname" class="modal-label">Apellido(s)</label>
+              <input
+                id="agent-modal-lastname"
+                type="text"
+                class="modal-input"
+                placeholder="Ej. Burra / González"
+                bind:value={modalLastname}
+                disabled={isSavingAgent}
+              />
+            </div>
+
+            <!-- Teléfono -->
+            <div class="modal-field">
+              <label for="agent-modal-phone" class="modal-label required">
+                Teléfono / WhatsApp
+                <span class="label-hint">(10 dígitos)</span>
+              </label>
+              <div class="modal-input-prefix-wrap">
+                <span class="modal-phone-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  </svg>
+                </span>
+                <input
+                  id="agent-modal-phone"
+                  type="tel"
+                  class="modal-input has-prefix"
+                  placeholder="6141234567"
+                  bind:value={modalPhone}
+                  required
+                  disabled={isSavingAgent}
+                />
+              </div>
+            </div>
+
+            <!-- Empresa / Inmobiliaria -->
+            <div class="modal-field">
+              <label for="agent-modal-company" class="modal-label">Empresa / Inmobiliaria</label>
+              <input
+                id="agent-modal-company"
+                type="text"
+                class="modal-input"
+                placeholder="Ej. Century 21 / Keller Williams / AGH"
+                bind:value={modalCompany}
+                disabled={isSavingAgent}
+              />
+            </div>
+
+            <!-- Tipo de Sinergia -->
+            <div class="modal-field full-row">
+              <label for="agent-modal-synergy" class="modal-label required">Tipo de Sinergia</label>
+              <div class="synergy-radio-pills">
+                <label class="synergy-pill" class:active={modalSynergy === 'S1'}>
+                  <input type="radio" bind:group={modalSynergy} value="S1" disabled={isSavingAgent} />
+                  <span class="synergy-pill-badge badge-s1">S1</span>
+                  <span class="synergy-pill-text">Sinergia 1 (Compartida)</span>
+                </label>
+
+                <label class="synergy-pill" class:active={modalSynergy === 'S2'}>
+                  <input type="radio" bind:group={modalSynergy} value="S2" disabled={isSavingAgent} />
+                  <span class="synergy-pill-badge badge-s2">S2</span>
+                  <span class="synergy-pill-text">Sinergia 2 (Red Externa)</span>
+                </label>
+
+                <label class="synergy-pill" class:active={modalSynergy === 'S3'}>
+                  <input type="radio" bind:group={modalSynergy} value="S3" disabled={isSavingAgent} />
+                  <span class="synergy-pill-badge badge-s3">S3</span>
+                  <span class="synergy-pill-text">Sinergia 3 (Alianza)</span>
+                </label>
+
+                <label class="synergy-pill" class:active={modalSynergy === 'MH'}>
+                  <input type="radio" bind:group={modalSynergy} value="MH" disabled={isSavingAgent} />
+                  <span class="synergy-pill-badge badge-mh">MH</span>
+                  <span class="synergy-pill-text">Directa Match Home</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal Footer Actions -->
+          <div class="agent-modal-footer">
+            <button
+              type="button"
+              class="btn-modal-cancel"
+              on:click={closeCreateAgentModal}
+              disabled={isSavingAgent}
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="submit"
+              class="btn-modal-save"
+              disabled={isSavingAgent || !modalName.trim() || !modalPhone.trim()}
+            >
+              {#if isSavingAgent}
+                <span class="modal-spinner"></span>
+                <span>Guardando en Firebase...</span>
+              {:else}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+                <span>Guardar y Vincular Agente</span>
+              {/if}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   {/if}
 </div>
 
@@ -979,5 +1249,353 @@
     background: rgba(99, 102, 241, 0.35);
     color: #ffffff;
     border-color: #818cf8;
+  }
+
+  /* ============================================================
+     ESTILOS DEL MODAL / POPUP DE ALTA RÁPIDA DE AGENTE
+     ============================================================ */
+  .agent-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(8, 11, 22, 0.82);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1rem;
+    animation: modalFadeIn 0.2s ease-out;
+  }
+
+  @keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .agent-modal-dialog {
+    background: #181c30;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 1rem;
+    width: 100%;
+    max-width: 560px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.2);
+    overflow: hidden;
+    animation: modalScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes modalScaleUp {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .agent-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+    gap: 1rem;
+  }
+
+  .modal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .modal-avatar-icon {
+    font-size: 1.4rem;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .modal-title-wrap h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+  }
+
+  .modal-title-wrap p {
+    margin: 0.2rem 0 0 0;
+    font-size: 0.78rem;
+    color: var(--text-muted, #94a3b8);
+  }
+
+  .btn-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #94a3b8);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.35rem;
+    transition: all 0.15s ease;
+    line-height: 1;
+  }
+
+  .btn-modal-close:hover:not(:disabled) {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .agent-modal-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .modal-alert-error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #f87171;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.45rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .modal-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.15rem;
+  }
+
+  @media (max-width: 540px) {
+    .modal-form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .modal-field.full-row {
+    grid-column: 1 / -1;
+  }
+
+  .modal-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary, #cbd5e1);
+  }
+
+  .modal-label.required:after {
+    content: ' *';
+    color: #f87171;
+  }
+
+  .label-hint {
+    font-weight: 400;
+    font-size: 0.74rem;
+    color: var(--text-muted, #94a3b8);
+    margin-left: 0.25rem;
+  }
+
+  .modal-input {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    background: #101322;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: var(--radius-sm, 0.45rem);
+    color: #f1f5f9;
+    font-size: 0.88rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .modal-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  }
+
+  .modal-input::placeholder {
+    color: #94a3b8;
+    opacity: 0.85;
+  }
+
+  .modal-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .modal-input-prefix-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .modal-phone-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: #ef4444; /* Ícono de teléfono en rojo */
+    display: inline-flex;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  .modal-input.has-prefix {
+    padding-left: 2.2rem;
+  }
+
+  /* Synergy Radio Pills */
+  .synergy-radio-pills {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+  }
+
+  .synergy-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.65rem;
+    background: #101322;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: var(--radius-sm, 0.45rem);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+
+  .synergy-pill input[type="radio"] {
+    display: none;
+  }
+
+  .synergy-pill:hover {
+    border-color: rgba(99, 102, 241, 0.45);
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  .synergy-pill.active {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.18);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+  }
+
+  .synergy-pill-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.2rem;
+    flex-shrink: 0;
+  }
+
+  .badge-s1 {
+    background: rgba(16, 185, 129, 0.25);
+    color: #34d399;
+  }
+
+  .badge-s2 {
+    background: rgba(6, 182, 212, 0.25);
+    color: #22d3ee;
+  }
+
+  .badge-s3 {
+    background: rgba(245, 158, 11, 0.25);
+    color: #fbbf24;
+  }
+
+  .badge-mh {
+    background: rgba(99, 102, 241, 0.25);
+    color: #818cf8;
+  }
+
+  .synergy-pill-text {
+    font-size: 0.76rem;
+    color: var(--text-secondary, #cbd5e1);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Modal Footer */
+  .agent-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .btn-modal-cancel {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-secondary, #cbd5e1);
+    padding: 0.6rem 1.1rem;
+    border-radius: var(--radius-sm, 0.45rem);
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-modal-cancel:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+  }
+
+  .btn-modal-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border: none;
+    color: #ffffff;
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius-sm, 0.45rem);
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    transition: all 0.2s ease;
+  }
+
+  .btn-modal-save:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.5);
+    filter: brightness(1.1);
+  }
+
+  .btn-modal-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .modal-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
   }
 </style>
