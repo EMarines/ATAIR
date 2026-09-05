@@ -65,7 +65,20 @@
   <div class="mainContainer">
       
     <div class="title__head">
-      <h1 class="title">Propiedades</h1>
+      <div class="title-action-row">
+        <h1 class="title">Propiedades</h1>
+        <div class="header-actions-group">
+          <a href="/dashboard" class="btn-secondary-action" title="Ver analíticas y métricas de inventario">
+            📊 Dashboard
+          </a>
+          <a href="/subir-link" class="btn-secondary-action" title="Ingestar propiedad pegando enlace">
+            🔗 Por Link
+          </a>
+          <a href="/subir-propiedad" class="btn-subir-propiedad">
+            <span class="plus-icon">+</span> Subir Propiedad
+          </a>
+        </div>
+      </div>
       
       <!-- Selector de Origen / Fuente -->
       <div class="source-tabs">
@@ -155,6 +168,73 @@
   align-items: center;
   width: 100%;
   margin-bottom: 1rem;
+}
+
+.title-action-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.btn-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary, #ffffff);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+  padding: 0.55rem 0.95rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary-action:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.btn-subir-propiedad {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+  padding: 0.55rem 1.15rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.88rem;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-subir-propiedad:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+  color: #ffffff;
+}
+
+.plus-icon {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .title__inter {

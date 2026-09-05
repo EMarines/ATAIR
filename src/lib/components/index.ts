@@ -19,6 +19,10 @@ export { default as InputText } from './InputText.svelte';
 export { default as InputNumber } from './InputNumber.svelte';
 export { default as AddContact } from './AddContact.svelte';
 export { default as InputOptionsMultiple } from './InputOptionsMultiple.svelte';
+export { default as DropdownSelect } from './DropdownSelect.svelte';
+export { default as ContactSelector } from './ContactSelector.svelte';
+export { default as ImageUploader } from './ImageUploader.svelte';
+export { default as PropertyNavActions } from './PropertyNavActions.svelte';
 
 // export { default as BtnFind } from './BtnFind.svelte';
 // export { default as BtnWA } from './BtnWA.svelte';

@@ -104,6 +104,13 @@
 										const docId = doc.id && doc.id.trim() !== '' ? doc.id : null;
 										if (!docId) return null;
 
+										const rawType = data.typeContact || data.tipo || '';
+										let cleanType = rawType;
+										if (rawType === 'Cliente' || rawType === 'Venta') cleanType = 'Comprador';
+										else if (rawType === 'Propietario') cleanType = 'Vendedor';
+										else if (rawType === 'Inmobiliaria' || rawType === 'Colaborador') cleanType = 'Agente Inmobiliario';
+										else if (rawType === 'Renta') cleanType = 'Arrendatario';
+
 										return {
 											id: docId,
 											createdAt: data.createdAt || Date.now(),
@@ -111,7 +118,6 @@
 											lastname: data.lastname || '',
 											email: data.email || '',
 											telephon: data.telephon || '',
-											typeContact: data.typeContact || '',
 											selecMC: data.selecMC || '',
 											comContact: data.comContact || '',
 											contactStage: data.contactStage || 0,
@@ -127,7 +133,8 @@
 											locaProperty: Array.isArray(data.locaProperty) ? data.locaProperty : [],
 											tagsProperty: Array.isArray(data.tagsProperty) ? data.tagsProperty : [],
 											modePay: data.modePay || '',
-											...data
+											...data,
+											typeContact: cleanType
 										};
 									} catch (docError) {
 										return null;

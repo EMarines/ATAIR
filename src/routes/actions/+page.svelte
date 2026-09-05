@@ -10,6 +10,24 @@
 
   const actions: Action[] = [
     {
+      id: 'dashboard',
+      icon: 'fa-solid fa-chart-line',
+      title: 'Dashboard de Métricas',
+      description: 'Analíticas comparativas, inventario y catálogo'
+    },
+    {
+      id: 'subir-link',
+      icon: 'fa-solid fa-link',
+      title: 'Subir por Link',
+      description: 'Ingestar propiedad extrayendo datos con n8n'
+    },
+    {
+      id: 'herramientas',
+      icon: 'fa-solid fa-toolbox',
+      title: 'Herramientas y Sincronización',
+      description: 'Sincronizar EasyBroker y mantenimiento de datos'
+    },
+    {
       id: 'sync-properties',
       icon: 'fa-solid fa-house-laptop',
       title: 'Sincronizar Propiedades',
@@ -55,6 +73,15 @@
 
   function handleAction(actionId: string) {
     switch (actionId) {
+      case 'dashboard':
+        goto('/dashboard');
+        break;
+      case 'subir-link':
+        goto('/subir-link');
+        break;
+      case 'herramientas':
+        goto('/herramientas');
+        break;
       case 'sync-properties':
         goto('/actions/sync-properties');
         break;
@@ -64,15 +91,12 @@
       case 'prop-filter':
         goto('/actions/prop-filter');
         break;
-      case 'cont-filter':
-        goto('/actions/cont-filter');
-        break;
       case 'configuration':
         goto('/actions/contfiguration');
         break;
       case 'send-sellers-report':
         goto('/actions/send-repo');
-        break
+        break;
       // Aquí agregaremos más casos cuando implementemos las otras acciones
       default:
         console.log(`Acción ${actionId} aún no implementada`);

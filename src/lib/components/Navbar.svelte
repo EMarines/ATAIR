@@ -90,6 +90,9 @@
 		<ul class={nav__links} id="menu" role="menu">
 			{#if $isAuthenticated}
 				<li role="menuitem"><a href="/" on:click={handleLinkClick}>Home</a></li>
+				<li role="menuitem">
+					<a href="/dashboard" class="nav__link" on:click={handleLinkClick}>Dashboard</a>
+				</li>
 				{#if !$userProfile || $userProfile.role === 'admin'}
 					<li role="menuitem">
 						<a href="/contacts" class="nav__link" on:click={handleLinkClick}>Contacto</a>
@@ -201,6 +204,15 @@
 
 	a:hover {
 		color: var(--brand);
+	}
+
+	:global(.nav__link-highlight) {
+		color: var(--brand, #6366f1) !important;
+		font-weight: 600;
+	}
+
+	:global(.nav__link-highlight:hover) {
+		opacity: 0.85;
 	}
 
 	.nav__target {

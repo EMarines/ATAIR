@@ -164,7 +164,7 @@
 					organizations: [
 						{
 							name: 'ATAIR Contact',
-							title: contactData.typeContact || 'Cliente'
+							title: contactData.typeContact || 'Comprador'
 						}
 					]
 				}
@@ -435,7 +435,7 @@
 				organizations: [
 					{
 						name: 'ATAIR Contact',
-						title: contactData.typeContact || 'Cliente'
+						title: contactData.typeContact || 'Comprador'
 					}
 				]
 			},

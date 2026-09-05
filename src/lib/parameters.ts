@@ -10,10 +10,13 @@ export const tags = [
 ];
 
 export const typeContacts = [
-    "Cliente",
-    "Propietario",
-    "Inmobiliaria",
-    "Colaborador",
+    "Comprador",
+    "Vendedor",
+    "Arrendador",
+    "Arrendatario",
+    "Agente Inmobiliario",
+    "Constructor",
+    "Inversionista",
     "Otro"
 ];
 

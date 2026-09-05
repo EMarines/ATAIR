@@ -25,8 +25,8 @@
 
 	// Suscripción a las stores
 	const unsubContacts = contactsStore.subscribe((allContacts) => {
-		// Filtrar solo los vendedores
-		vendors = allContacts.filter((contact) => contact.typeContact === 'Vendedor');
+		// Filtrar solo los vendedores (y propietarios existentes)
+		vendors = allContacts.filter((contact) => contact.typeContact === 'Vendedor' || contact.typeContact === 'Propietario');
 		updateVendorProperties();
 	});
 

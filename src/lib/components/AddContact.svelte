@@ -162,7 +162,7 @@
 					organizations: [
 						{
 							name: 'ATAIR Contact',
-							title: contactData.typeContact || 'Cliente'
+							title: contactData.typeContact || 'Comprador'
 						}
 					]
 				}
@@ -433,7 +433,7 @@
 				organizations: [
 					{
 						name: 'ATAIR Contact',
-						title: contactData.typeContact || 'Cliente'
+						title: contactData.typeContact || 'Comprador'
 					}
 				]
 			},
@@ -570,8 +570,22 @@
 		}
 	}
 
+	function normalizeTypeContact(raw?: string): string {
+		if (!raw) return '';
+		const r = raw.trim();
+		if (r === 'Cliente') return 'Comprador';
+		if (r === 'Propietario') return 'Vendedor';
+		if (r === 'Inmobiliaria' || r === 'Colaborador') return 'Agente Inmobiliario';
+		if (r === 'Venta') return 'Comprador';
+		if (r === 'Renta') return 'Arrendatario';
+		return r;
+	}
+
 	let contact: Contact = existingContact
-		? { ...existingContact }
+		? {
+				...existingContact,
+				typeContact: normalizeTypeContact(existingContact.typeContact)
+		  }
 		: {
 				budget: 0, // Valor numérico por defecto
 				comContact: '',
@@ -600,6 +614,26 @@
 
 	// Variable string para el input de presupuesto, inicializada desde el contact.budget actual (que ya considera existingContact)
 	let budgetStringForInput: string = String(contact.budget);
+
+	onMount(() => {
+		if (typeof window !== 'undefined') {
+			const urlParams = new URLSearchParams(window.location.search);
+			const paramName = urlParams.get('name') || urlParams.get('nombre');
+			const paramType = urlParams.get('typeContact') || urlParams.get('type') || urlParams.get('tipo');
+			const paramPhone = urlParams.get('phone') || urlParams.get('telefono');
+
+			if (paramName && (!contact.name || contact.name === '')) {
+				contact.name = paramName;
+			}
+			if (paramType && (!contact.typeContact || contact.typeContact === '')) {
+				contact.typeContact = normalizeTypeContact(paramType);
+			}
+			if (paramPhone && (!contact.telephon || contact.telephon === '')) {
+				contact.telephon = paramPhone;
+			}
+			contact = { ...contact };
+		}
+	});
 
 	// Función para generar un UUID
 	function generateUUID() {

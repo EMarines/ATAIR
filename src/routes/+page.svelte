@@ -15,6 +15,12 @@
 
 	const actions: Action[] = [
 		{
+			id: 'dashboard',
+			icon: 'fa-solid fa-chart-line',
+			title: 'Dashboard',
+			description: 'Métricas y catálogo'
+		},
+		{
 			id: 'properties',
 			icon: 'fa-solid fa-house',
 			title: 'Propiedades',
@@ -74,6 +80,9 @@
 		}
 
 		switch (actionId) {
+			case 'dashboard':
+				goto('/dashboard');
+				break;
 			case 'properties':
 				goto('/properties');
 				break;
@@ -105,6 +114,7 @@
 
 	function getActionPath(id: string): string {
 		const paths: Record<string, string> = {
+			dashboard: '/dashboard',
 			properties: '/properties',
 			contacts: '/contacts',
 			agenda: '/agenda',

@@ -7,8 +7,12 @@ export const PUBLIC_ROUTES = ['/login'];
 // Routes accessible by authenticated users with 'user' role
 export const USER_ROUTES = [
     '/',
+    '/dashboard',
     '/properties',
     '/property',
+    '/subir-propiedad',
+    '/subir-link',
+    '/herramientas',
     '/about',
     '/help',
 ];
@@ -35,8 +39,16 @@ export function isPublicRoute(path: string): boolean {
 export function isUserRoute(path: string): boolean {
     if (isPublicRoute(path)) return true;
     
-    // Properties and home are accessible by users
-    if (path === '/' || path.startsWith('/properties') || path.startsWith('/property')) return true;
+    // Properties, dashboard, home and property uploads are accessible by users
+    if (
+        path === '/' ||
+        path.startsWith('/dashboard') ||
+        path.startsWith('/properties') ||
+        path.startsWith('/property') ||
+        path.startsWith('/subir-propiedad') ||
+        path.startsWith('/subir-link') ||
+        path.startsWith('/herramientas')
+    ) return true;
     
     // Explicit user routes
     return USER_ROUTES.some(route => path === route || path.startsWith(route + '/'));

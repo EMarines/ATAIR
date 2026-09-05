@@ -1,20 +1,28 @@
 export function convertOperationEbFb(operationType: string) {
-  switch(operationType) {
+  if (!operationType) return '';
+  const op = operationType.toLowerCase().trim();
+  switch(op) {
     case 'sale':
+    case 'venta':
       return 'Comprador';
     case 'rental':
-      return 'Arrendador';
+    case 'renta':
+      return 'Arrendatario';
     default:
       return '';
   }
 }
 
 export function convertOperation(operationType: string) {
-  switch(operationType) {
+  if (!operationType) return '';
+  const op = operationType.toLowerCase().trim();
+  switch(op) {
     case 'sale':
+    case 'venta':
       return 'Venta';
     case 'rental':
-      return 'Arrendador';
+    case 'renta':
+      return 'Renta';
     default:
       return '';
   }

@@ -21,6 +21,8 @@
     let startDate: string = '';
     let endDate: string = '';
 
+    import { typeContacts } from '$lib/parameters';
+
     const contactStage = {
         operation: {
             name: "Etapa",
@@ -30,20 +32,8 @@
 
     const typeContact = {
         operation: {
-            name: "Tipo de Operación",
-            choices: [
-    "Comprador",
-    "Vendedor",
-    "Arrendador",
-    "Arrendatario",
-    "Inmobiliario",
-    "Inmobiliario Asociado",
-    "Inversionista",
-    "Constructor",
-    "Desarrollador",
-    "Captación",
-    ""
-  ]
+            name: "Tipo de Contacto",
+            choices: typeContacts
         }
     };
 
@@ -138,11 +128,17 @@
             });
         }
 
-        // Filtrar por operación
+        // Filtrar por tipo de contacto
         if (selectedtypeContact) {
-            filteredContacts = filteredContacts.filter(contact => 
-                contact.typeContact === selectedtypeContact
-            );
+            filteredContacts = filteredContacts.filter(contact => {
+                const tc = contact.typeContact || '';
+                if (tc === selectedtypeContact) return true;
+                if (selectedtypeContact === 'Vendedor' && tc === 'Propietario') return true;
+                if (selectedtypeContact === 'Comprador' && (tc === 'Cliente' || tc === 'Venta')) return true;
+                if (selectedtypeContact === 'Arrendatario' && tc === 'Renta') return true;
+                if (selectedtypeContact === 'Agente Inmobiliario' && (tc === 'Inmobiliaria' || tc === 'Colaborador' || tc === 'Inmobiliario')) return true;
+                return false;
+            });
         }
 
         // Filtrar por tipo de propiedad

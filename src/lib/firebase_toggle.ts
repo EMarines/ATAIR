@@ -5,6 +5,7 @@ import { browser } from '$app/environment';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 const devConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_DEV_API_KEY || "AIzaSyCkuw82zTqtiPDp3eS2qwGr8UUQFDBBglM",
@@ -36,6 +37,7 @@ console.log(`[Firebase ATAIR] Conectado a: ${firebaseConfig.projectId} (${isSand
 let app: ReturnType<typeof initializeApp> | null = null;
 let db: ReturnType<typeof getFirestore> | null = null;  
 let auth: ReturnType<typeof getAuth> | null = null;     
+let storage: ReturnType<typeof getStorage> | null = null;
 
 try {
     if (getApps().length > 0) {
@@ -46,6 +48,9 @@ try {
     
     db = getFirestore(app);
     auth = getAuth(app);
+    if (app) {
+        storage = getStorage(app);
+    }
 
     if (browser && auth) {
         setPersistence(auth, browserLocalPersistence)
@@ -58,15 +63,20 @@ try {
         app = getApp();
         db = getFirestore(app);
         auth = getAuth(app);
+        if (app) {
+            storage = getStorage(app);
+        }
     } catch (retryError) {
         console.error("Falló la recuperación:", retryError);
         app = null; 
         db = null; 
         auth = null;
+        storage = null;
     }
 }
 
 const propertiesDb = db;
 
-export { app, db, auth, propertiesDb };
+export { app, db, auth, storage, propertiesDb };
+
 
