@@ -760,10 +760,15 @@
     box-sizing: border-box;
   }
 
-  input[type="text"]:focus, input[type="number"]:focus {
+  input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
     outline: none;
     border-color: #6366f1;
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #94a3b8;
+    opacity: 0.85;
   }
 
   .checkbox-group {
