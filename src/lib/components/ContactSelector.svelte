@@ -121,6 +121,7 @@
   let modalError = '';
 
   async function openCreateAgentModal(rawName: string = '') {
+    console.log('[MODAL DEBUG] openCreateAgentModal called with:', rawName);
     // Capturar el nombre AHORA antes de que blur pueda limpiar searchTerm
     const clean = rawName.trim();
     isOpen = false;  // Cerrar dropdown primero
@@ -148,6 +149,7 @@
       modalSynergy = 'S1';
     }
     isModalOpen = true;
+    console.log('[MODAL DEBUG] isModalOpen set to true, modalName:', modalName, 'modalLastname:', modalLastname);
   }
 
   function closeCreateAgentModal() {
@@ -1284,8 +1286,9 @@
     border-radius: 1rem;
     width: 100%;
     max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.2);
-    overflow: hidden;
     animation: modalScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
