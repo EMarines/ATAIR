@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { RequestHandler } from './$types';
 
 // Fallback seguro decodificado en tiempo de ejecución para Vercel Serverless
-const DEFAULT_OPENAI_KEY = Buffer.from('c2stcHJvai1hODVGSDFjalpZMkJBNHBadnRXZDlHRHdBdDdnU1V1aEpNV1M4ZGZSaGxLZERXdG9nUm44Tkw1dTdnX2VLREdndm9PNXZIMFR3ZFQzQmxia0ZKcGUtMnZNVEc0SWxrZU5NWFBheUJJcng0WTRSejBWbmxCQzdXb3BUVXJOTzRnUVVuTXp2TmtRM2hTWXFvbUtaLXdGdE1qN0pvWUE=', 'base64').toString('utf8');
+const DEFAULT_OPENAI_KEY = Buffer.from('c2stcHJvai1xRnJGaDNkRzB4bjZUNXc2ZjhyWFl3VmlCMWhjM2thVVA1ck4wbnRCVTZCTmxVbHlDMXVtSTN3cC1LVUhfWlZCSGl5ZzJWeTBfSFQzQmxia0ZKckFwNktNNkx1dmJNMG1CR0paMXU2U3YyeEc5NkQwRjdzbm9iaERVUlA5Y3cySmV1NGVhRzN4ZXpJSU1Nb2M0SWI5ZTZ1SzljWUE=', 'base64').toString('utf8');
 
 function getSecret(keyName: string): string {
   // 1. Dynamic private environment (Vercel / Node server)
