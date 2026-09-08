@@ -58,6 +58,11 @@
 	$: properties = $propertiesStore;
 	$: binnacles = $binnaclesStore;
 	$: property = $propertyStore;
+	$: isAgentContact = Boolean(
+		(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('agente') ||
+		(contact?.procedencia && (contact.procedencia.startsWith('S') || contact.procedencia === 'MH')) ||
+		(getContactProcedencia(contact) && getContactProcedencia(contact).startsWith('S'))
+	);
 
 	// Verificar que el contacto tenga un ID válido
 	let contactData = data.contact as Contact;
@@ -77,6 +82,29 @@
 	$: if (contact && (!contact.id || contact.id.trim() === '')) {
 		console.error('Error: Contacto cargado sin ID válido', contact);
 		goto('/contacts');
+	}
+
+	// Helper para obtener procedencia (S1, S2, S3, MH)
+	function getContactProcedencia(c: Contact): string {
+		if (c?.procedencia) return c.procedencia;
+		const raw = `${c?.notes || ''} ${c?.comContact || ''}`;
+		if (raw.includes('(S1)') || raw.includes('Sinergia 1')) return 'S1';
+		if (raw.includes('(S2)') || raw.includes('Sinergia 2')) return 'S2';
+		if (raw.includes('(S3)') || raw.includes('Sinergia 3')) return 'S3';
+		if (raw.includes('Match Home') || raw.includes('(MH)')) return 'MH';
+		return '';
+	}
+
+	// Helper para limpiar texto de notas y no repetir procedencia ni notas duplicadas
+	function getCleanContactNotes(c: Contact): string {
+		const raw = (c?.notes || c?.comContact || '').trim();
+		if (!raw) return '';
+		const cleaned = raw
+			.replace(/Agente Inmobiliario\s*·?\s*/gi, '')
+			.replace(/Sinergia\s*\d\s*\([A-Z0-9]+\)/gi, '')
+			.replace(/^Notas:\s*/gi, '')
+			.trim();
+		return cleaned;
 	}
 
 	// Función para mostrar/ocultar la búsqueda
@@ -567,15 +595,31 @@
 					</div>
 					<div class="rigth__title">
 						<span>Alta el: {formatDate(contact.createdAt)}</span>
-						<span>{contact.contactStage}</span>
+						<span class="stage-info">
+							{#if isAgentContact}
+								<span class="agent-role-badge">🤝 Agente Inmobiliario</span>
+								{#if getContactProcedencia(contact)}
+									<span class="proc-badge proc-{getContactProcedencia(contact).toLowerCase()}">
+										{getContactProcedencia(contact)}
+									</span>
+								{/if}
+							{:else}
+								{contact.contactStage || 'Etapa 1'}
+								{#if getContactProcedencia(contact)}
+									<span class="proc-badge proc-{getContactProcedencia(contact).toLowerCase()}">
+										{getContactProcedencia(contact)}
+									</span>
+								{/if}
+							{/if}
+						</span>
 					</div>
 				</div>
 
-				<div class="notes">
-					{#if contact.comContact}
-						<span title={contact.comContact}>Notas: {contact.comContact}</span>
-					{/if}
-				</div>
+				{#if getCleanContactNotes(contact)}
+					<div class="notes">
+						<span>Notas: {getCleanContactNotes(contact)}</span>
+					</div>
+				{/if}
 
 				<div class="cont__contact">
 					<span>Contactar en:</span>
@@ -585,10 +629,6 @@
 					{#if contact.email}
 						<span>Email: {contact.email}</span>
 					{/if}
-				</div>
-
-				<div class="cont__pref">
-					<span>Notas: {contact.notes}</span>
 				</div>
 
 				<div class="features__search">
@@ -912,6 +952,59 @@
 		width: 35%;
 		height: 60px;
 		justify-content: space-between;
+		align-items: center;
+	}
+
+	.stage-info {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-weight: 500;
+	}
+
+	.agent-role-badge {
+		font-size: 0.76rem;
+		font-weight: 600;
+		padding: 2px 8px;
+		border-radius: 6px;
+		background: rgba(255, 255, 255, 0.08);
+		color: #e2e8f0;
+		border: 1px solid rgba(255, 255, 255, 0.15);
+	}
+
+	.proc-badge {
+		font-size: 0.72rem;
+		font-weight: 700;
+		padding: 2px 7px;
+		border-radius: 6px;
+		letter-spacing: 0.03em;
+		background: rgba(99, 102, 241, 0.2);
+		color: #a5b4fc;
+		border: 1px solid rgba(99, 102, 241, 0.4);
+	}
+
+	.proc-badge.proc-s1 {
+		background: rgba(59, 130, 246, 0.2);
+		color: #93c5fd;
+		border-color: rgba(59, 130, 246, 0.4);
+	}
+
+	.proc-badge.proc-s2 {
+		background: rgba(168, 85, 247, 0.2);
+		color: #d8b4fe;
+		border-color: rgba(168, 85, 247, 0.4);
+	}
+
+	.proc-badge.proc-s3 {
+		background: rgba(236, 72, 153, 0.2);
+		color: #f472b6;
+		border-color: rgba(236, 72, 153, 0.4);
+	}
+
+	.proc-badge.proc-mh {
+		background: rgba(16, 185, 129, 0.2);
+		color: #6ee7b7;
+		border-color: rgba(16, 185, 129, 0.4);
 	}
 
 	.icon__title {

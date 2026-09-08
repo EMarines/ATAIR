@@ -14,6 +14,7 @@
 	import { sendWhatsApp } from '$lib/functions/whatsapp';
 	import { getProposalUrl } from '$lib/functions/urlUtils';
 	import { empresa } from '$lib/config/empresa';
+	import { formatZona, tagToFeatures } from '$lib/functions/tagConverters';
 	// findPropertiesForContact
 	export let data;
 	let property = data.property as Property;
@@ -44,11 +45,50 @@
 	$: currProperty = property as Property;
 	$: binnacles = $binnaclesStore as Binnacle[];
 
-	// Función segura para obtener nombre de ubicación
-	function getLocationString(loc: string | { name: string } | undefined | null): string {
-		if (!loc) return '';
-		const str = typeof loc === 'string' ? loc : loc?.name || '';
-		return str.replace('Chihuahua, Chihuahua', '').replace('I,', '').trim();
+	// Función robusta para obtener nombre de ubicación (colonia, dirección o municipio)
+	function getLocationString(propOrLoc: any): string {
+		if (!propOrLoc) return '';
+		let rawStr = '';
+		if (typeof propOrLoc === 'string') {
+			rawStr = propOrLoc;
+		} else if (typeof propOrLoc === 'object') {
+			if (typeof propOrLoc.name === 'string' && propOrLoc.name) {
+				rawStr = propOrLoc.name;
+			} else if (typeof propOrLoc.location === 'string' && propOrLoc.location) {
+				rawStr = propOrLoc.location;
+			} else if (typeof propOrLoc.location === 'object' && propOrLoc.location?.name) {
+				rawStr = propOrLoc.location.name;
+			} else if (typeof propOrLoc.colonia === 'string' && propOrLoc.colonia) {
+				rawStr = propOrLoc.colonia;
+			} else if (typeof propOrLoc.ubicacion === 'string' && propOrLoc.ubicacion) {
+				rawStr = propOrLoc.ubicacion;
+			} else if (typeof propOrLoc.direccion === 'string' && propOrLoc.direccion) {
+				rawStr = propOrLoc.direccion;
+			}
+		}
+
+		if (!rawStr) return '';
+
+		return rawStr
+			.replace(/,?\s*Chihuahua,?\s*Chihuahua/gi, '')
+			.replace(/,?\s*Chihuahua/gi, '')
+			.replaceAll(',', ', ')
+			.replace(/\s+/g, ' ')
+			.trim();
+	}
+
+	// Formato de título estándar: "[Tipo] Col. [Colonia] en [Venta/Renta]"
+	function formatPropertyTitle(p: Property): string {
+		if (!p) return 'Propiedad';
+		const type = p.property_type || 'Propiedad';
+		const isRental = p.selecTO === 'rental' || p.selecTO === 'rent' || String(p.tipoOperacion).toLowerCase() === 'renta' || p.operation_type === 'rental';
+		const op = isRental ? 'Renta' : 'Venta';
+		const col = getLocationString(p);
+		if (!col) {
+			return `${type} en ${op}`;
+		}
+		const cleanCol = col.replace(/^colonia\s+/i, '').replace(/^col\.?\s+/i, '').trim();
+		return `${type} Col. ${cleanCol} en ${op}`;
 	}
 
 	// Funciones
@@ -140,7 +180,7 @@
 			const dataPackage = {
 				property: {
 					id: property.public_id,
-					title: `${property.property_type || 'Propiedad'} en ${getLocationString(property.location)} en ${property.selecTO === 'sale' ? 'Venta' : 'Renta'}`,
+					title: formatPropertyTitle(property),
 					price: property.price,
 					url: property.public_url || '',
 					image: property.title_image_thumb || '',
@@ -412,8 +452,10 @@
 	};
 
 	const editProp = (id: string) => {
-		$systStatus = 'editing';
-		goto('/properties');
+		const targetId = property.public_id || property.id || property.clavePropiedad || id;
+		if (targetId) {
+			goto(`/subir-propiedad?edit=${encodeURIComponent(targetId)}`);
+		}
 	};
 
 	const deleProperty = async (id: string) => {
@@ -428,13 +470,7 @@
 		}
 	};
 
-	const tagToUbicacion = (tags: string[]) => {
-		return tags?.join(', ') || '';
-	};
 
-	const tagToFeatures = (tags: string[]) => {
-		return '';
-	};
 
 	// const toComaSep = (num: number) => {
 	//   return new Intl.NumberFormat('es-MX').format(num)
@@ -460,7 +496,7 @@
 				<p class="prop__clave">{property.public_id}</p>
 				<img
 					src={property.title_image_thumb || '/placeholder-property.png'}
-					alt={getLocationString(property.location) || property.title || 'Propiedad'}
+					alt={formatPropertyTitle(property)}
 				/>
 			</div>
 
@@ -468,10 +504,7 @@
 				<div class="prop__info">
 					<div class="propTitle">
 						<h1 class="title">
-							{property.property_type || 'Propiedad'} en {getLocationString(property.location) || 'Sin ubicación'} en {property.selecTO ===
-							'sale'
-								? 'Venta'
-								: 'Renta'}
+							{formatPropertyTitle(property)}
 						</h1>
 					</div>
 					<div class="prop__price">
@@ -541,13 +574,16 @@
 							{/if}
 						</div>
 						<div class="prop__features">
-							{#if property.tags?.length > 0}
-								<span>
+							{#if formatZona(property)}
+								<span title="Zona de la Ciudad">
 									<i class="fa-sharp fa-regular fa-compass to__showR"></i>
-									{tagToUbicacion(property?.tags)}
+									{formatZona(property)}
 								</span>
-								<span
-									><i class="fa-solid fa-tags to__showR"></i> {tagToFeatures(property.tags)}
+							{/if}
+							{#if tagToFeatures(property.tags).length > 0}
+								<span title="Amenidades">
+									<i class="fa-solid fa-tags to__showR"></i>
+									{tagToFeatures(property.tags).join(', ')}
 								</span>
 							{/if}
 						</div>
@@ -770,7 +806,7 @@
 			<div class="popup-prop-badge">
 				<span class="popup-prop-id">{property.public_id}</span>
 				<span class="popup-prop-name">
-					{property.property_type || 'Propiedad'} en {getLocationString(property.location) || 'Ubicación'}
+					{formatPropertyTitle(property)}
 				</span>
 			</div>
 

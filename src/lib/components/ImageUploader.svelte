@@ -1,9 +1,48 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import { onDestroy } from 'svelte';
   export let files: File[] = [];
   
   let isDragging = false;
   let dragOverIndex = -1;
   let draggingIndex = -1;
+
+  // Lista sincronizada de URLs para las vistas previas con ID estable
+  let fileUrls: { file: File; url: string; id: string }[] = [];
+  let nextId = 0;
+
+  $: if (browser && files) {
+    const existingMap = new Map(fileUrls.map(item => [item.file, item]));
+    const updated: { file: File; url: string; id: string }[] = [];
+
+    for (const file of files) {
+      if (existingMap.has(file)) {
+        updated.push(existingMap.get(file)!);
+      } else {
+        updated.push({
+          file,
+          url: URL.createObjectURL(file),
+          id: `f_${++nextId}_${Math.random().toString(36).slice(2, 7)}`
+        });
+      }
+    }
+
+    // Revocar las URLs de archivos que ya no existen
+    for (const [file, item] of existingMap.entries()) {
+      if (!files.includes(file)) {
+        URL.revokeObjectURL(item.url);
+      }
+    }
+
+    fileUrls = updated;
+  }
+
+  onDestroy(() => {
+    if (browser) {
+      fileUrls.forEach(item => URL.revokeObjectURL(item.url));
+      fileUrls = [];
+    }
+  });
 
   function handleDragEnter(e: DragEvent) {
     e.preventDefault();
@@ -39,6 +78,7 @@
     if (target.files) {
       const fls = Array.from(target.files).filter(f => f.type.startsWith('image/'));
       addFiles(fls);
+      target.value = '';
     }
   }
 
@@ -50,32 +90,70 @@
     files = files.filter((_, i) => i !== index);
   }
 
+  function moveFile(fromIndex: number, toIndex: number) {
+    if (fromIndex < 0 || fromIndex >= files.length || toIndex < 0 || toIndex >= files.length || fromIndex === toIndex) {
+      return;
+    }
+    const newFiles = [...files];
+    const [moved] = newFiles.splice(fromIndex, 1);
+    newFiles.splice(toIndex, 0, moved);
+    files = newFiles;
+  }
+
+  function makePrincipal(index: number) {
+    moveFile(index, 0);
+  }
+
   // --- Drag to reorder ---
   function handleItemDragStart(e: DragEvent, index: number) {
     draggingIndex = index;
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', String(index));
+      e.dataTransfer.setData('application/x-img-index', String(index));
+    }
+  }
+
+  function handleItemDragEnter(e: DragEvent, index: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggingIndex !== -1 && draggingIndex !== index) {
+      dragOverIndex = index;
     }
   }
 
   function handleItemDragOver(e: DragEvent, index: number) {
     e.preventDefault();
     e.stopPropagation();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    if (index !== draggingIndex) {
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+    if (draggingIndex !== -1 && draggingIndex !== index) {
       dragOverIndex = index;
+    }
+  }
+
+  function handleItemDragLeave(e: DragEvent, index: number) {
+    // Solo limpiar si salimos del elemento actual
+    if (dragOverIndex === index) {
+      dragOverIndex = -1;
     }
   }
 
   function handleItemDrop(e: DragEvent, index: number) {
     e.preventDefault();
     e.stopPropagation();
-    if (draggingIndex !== -1 && draggingIndex !== index) {
-      const newFiles = [...files];
-      const [moved] = newFiles.splice(draggingIndex, 1);
-      newFiles.splice(index, 0, moved);
-      files = newFiles;
+    
+    let fromIndex = draggingIndex;
+    if (e.dataTransfer) {
+      const dtData = e.dataTransfer.getData('application/x-img-index') || e.dataTransfer.getData('text/plain');
+      if (dtData && !isNaN(Number(dtData))) {
+        fromIndex = parseInt(dtData, 10);
+      }
+    }
+
+    if (fromIndex !== -1 && fromIndex !== index && fromIndex >= 0 && fromIndex < files.length && index >= 0 && index < files.length) {
+      moveFile(fromIndex, index);
     }
     draggingIndex = -1;
     dragOverIndex = -1;
@@ -113,29 +191,76 @@
   </div>
 
   {#if files.length > 0}
-    <p class="reorder-hint">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line></svg>
-      Arrastra las imágenes para reordenarlas
-    </p>
+    <div class="reorder-header">
+      <p class="reorder-hint">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+        <span>Arrastra las imágenes para reordenarlas ({files.length} fotos) · La primera será la <strong>Foto Principal</strong></span>
+      </p>
+    </div>
     <div class="preview-grid">
-      {#each files as file, i}
+      {#each fileUrls as item, i (item.id)}
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div
           class="preview-item {draggingIndex === i ? 'dragging-item' : ''} {dragOverIndex === i && draggingIndex !== i ? 'drop-target' : ''}"
           draggable="true"
           on:dragstart={(e) => handleItemDragStart(e, i)}
+          on:dragenter={(e) => handleItemDragEnter(e, i)}
           on:dragover={(e) => handleItemDragOver(e, i)}
+          on:dragleave={(e) => handleItemDragLeave(e, i)}
           on:drop={(e) => handleItemDrop(e, i)}
           on:dragend={handleItemDragEnd}
         >
-          <img src={URL.createObjectURL(file)} alt="Preview {i}" draggable="false" />
-          <div class="drag-handle" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
-          </div>
+          <img
+            src={item.url}
+            alt="Vista previa {i + 1}"
+            draggable="false"
+          />
+
           {#if i === 0}
-            <span class="badge-principal">Principal</span>
+            <span class="badge-principal">⭐ Principal</span>
           {/if}
-          <button type="button" class="remove-btn" aria-label="Remover" on:click={() => removeFile(i)}>×</button>
+
+          <!-- Quick Move Controls on Hover -->
+          <div class="quick-reorder-bar">
+            {#if i > 0}
+              <button
+                type="button"
+                class="btn-nav-img"
+                title="Mover a la izquierda"
+                on:click|stopPropagation={() => moveFile(i, i - 1)}
+              >
+                ◀
+              </button>
+              <button
+                type="button"
+                class="btn-nav-img star-btn"
+                title="Hacer foto principal"
+                on:click|stopPropagation={() => makePrincipal(i)}
+              >
+                ⭐
+              </button>
+            {/if}
+            {#if i < files.length - 1}
+              <button
+                type="button"
+                class="btn-nav-img"
+                title="Mover a la derecha"
+                on:click|stopPropagation={() => moveFile(i, i + 1)}
+              >
+                ▶
+              </button>
+            {/if}
+          </div>
+
+          <button
+            type="button"
+            class="remove-btn"
+            aria-label="Remover"
+            on:click|stopPropagation={() => removeFile(i)}
+            title="Eliminar foto"
+          >
+            ✕
+          </button>
         </div>
       {/each}
     </div>
@@ -244,9 +369,9 @@
   }
 
   .preview-item.drop-target {
-    border-color: var(--primary, #6366f1);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.5);
-    transform: scale(1.04);
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6), 0 0 20px rgba(99, 102, 241, 0.4);
+    transform: scale(1.06);
   }
 
   .preview-item img {
@@ -254,59 +379,127 @@
     height: 100%;
     object-fit: cover;
     pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
   }
 
-  .drag-handle {
+  .reorder-header {
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .reorder-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.5rem;
+    margin: 0;
+  }
+
+  .reorder-hint svg {
+    color: #818cf8;
+    flex-shrink: 0;
+  }
+
+  .reorder-hint strong {
+    color: #a5b4fc;
+  }
+
+  .quick-reorder-bar {
     position: absolute;
-    bottom: 0.3rem;
+    bottom: 0.35rem;
     left: 50%;
     transform: translateX(-50%);
-    color: white;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.18rem 0.35rem;
+    border-radius: 9999px;
     opacity: 0;
-    transition: opacity 0.2s;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
-    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 10;
   }
 
-  .preview-item:hover .drag-handle {
+  .preview-item:hover .quick-reorder-bar {
     opacity: 1;
+  }
+
+  .btn-nav-img {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f1f5f9;
+    border: none;
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .btn-nav-img:hover {
+    background: #6366f1;
+    color: #ffffff;
+    transform: scale(1.15);
+  }
+
+  .btn-nav-img.star-btn {
+    font-size: 0.72rem;
+  }
+
+  .btn-nav-img.star-btn:hover {
+    background: #eab308;
   }
 
   .badge-principal {
     position: absolute;
     top: 0.3rem;
     left: 0.3rem;
-    background-color: var(--primary, #6366f1);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
-    font-size: 0.6rem;
+    font-size: 0.62rem;
     font-weight: 700;
-    padding: 0.15rem 0.4rem;
-    border-radius: 0.25rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    padding: 0.18rem 0.45rem;
+    border-radius: 0.3rem;
+    letter-spacing: 0.04em;
     pointer-events: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    z-index: 5;
   }
 
   .remove-btn {
     position: absolute;
     top: 0.25rem;
     right: 0.25rem;
-    background-color: rgba(0, 0, 0, 0.65);
+    background-color: rgba(0, 0, 0, 0.7);
     color: white;
     border: none;
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 0.95rem;
     line-height: 1;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    z-index: 10;
   }
 
   .remove-btn:hover {
-    background-color: var(--error, #ef4444);
+    background-color: #ef4444;
+    transform: scale(1.1);
   }
+
 </style>

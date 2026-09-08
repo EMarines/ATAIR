@@ -74,6 +74,13 @@
           _notes: 'Captador inicial'
         };
       }
+    } else if (!value && selectedContact) {
+      selectedContact = null;
+      contactId = '';
+      contactPhone = '';
+      contactName = '';
+      companyName = '';
+      searchTerm = '';
     }
   }
 
@@ -152,6 +159,27 @@
     console.log('[MODAL DEBUG] isModalOpen set to true, modalName:', modalName, 'modalLastname:', modalLastname);
   }
 
+  // Action para teleportar el modal al body, evitando que contenedores con backdrop-filter o transform rompan position: fixed
+  function portal(node: HTMLElement) {
+    document.body.appendChild(node);
+    document.body.style.overflow = 'hidden';
+    return {
+      destroy() {
+        document.body.style.overflow = '';
+        if (node.parentNode) {
+          node.parentNode.removeChild(node);
+        }
+      }
+    };
+  }
+
+  function handleKeydownModal(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveNewAgent();
+    }
+  }
+
   function closeCreateAgentModal() {
     if (isSavingAgent) return;
     isModalOpen = false;
@@ -159,12 +187,24 @@
   }
 
   async function handleSaveNewAgent() {
-    if (!modalName.trim()) {
+    // Sanitizar nombre, apellido y empresa (recortar espacios y normalizar)
+    const cleanName = (modalName || '').trim().replace(/\s+/g, ' ');
+    const cleanLastname = (modalLastname || '').trim().replace(/\s+/g, ' ');
+    const cleanCompany = (modalCompany || '').trim().replace(/\s+/g, ' ');
+
+    // Sanitizar teléfono: eliminar espacios, guiones, paréntesis, puntos y caracteres no numéricos
+    const cleanPhone = (modalPhone || '').replace(/\D/g, '').trim();
+
+    if (!cleanName) {
       modalError = 'Por favor ingresa el nombre del agente.';
       return;
     }
-    if (!modalPhone.trim()) {
-      modalError = 'El teléfono es obligatorio para dar de alta al agente.';
+    if (!cleanPhone) {
+      modalError = 'El teléfono es obligatorio (solo números, mínimo 10 dígitos).';
+      return;
+    }
+    if (cleanPhone.length < 10) {
+      modalError = `El número de teléfono debe tener al menos 10 dígitos (actualmente tiene ${cleanPhone.length}).`;
       return;
     }
 
@@ -172,22 +212,24 @@
     modalError = '';
 
     try {
-      const fullName = `${modalName.trim()} ${modalLastname.trim()}`.trim();
+      const fullName = `${cleanName} ${cleanLastname}`.trim();
       const synergyLabel = modalSynergy === 'S1' ? 'Sinergia 1 (S1)' : modalSynergy === 'S2' ? 'Sinergia 2 (S2)' : modalSynergy === 'S3' ? 'Sinergia 3 (S3)' : modalSynergy;
       const notes = `Agente Inmobiliario · ${synergyLabel}`;
       
       const newContactData: any = {
-        name: modalName.trim(),
-        lastname: modalLastname.trim(),
-        telephon: modalPhone.trim(),
-        phone: modalPhone.trim(),
-        company: modalCompany.trim(),
-        inmobiliaria: modalCompany.trim(),
+        name: cleanName,
+        lastname: cleanLastname,
+        telephon: cleanPhone,
+        phone: cleanPhone,
+        telefono: cleanPhone,
+        company: cleanCompany,
+        inmobiliaria: cleanCompany,
         typeContact: 'Agente Inmobiliario',
         contactType: 'Agente Inmobiliario',
+        contactStage: 'Etapa 1',
         procedencia: modalSynergy,
-        notes: notes,
-        comContact: notes,
+        notes: '',
+        comContact: '',
         createdAt: Date.now(),
         isActive: true,
         budget: 0,
@@ -208,8 +250,8 @@
         id: newId,
         ...newContactData,
         _fullName: fullName,
-        _company: modalCompany.trim(),
-        _phone: modalPhone.trim(),
+        _company: cleanCompany,
+        _phone: cleanPhone,
         _notes: notes,
         _procedencia: modalSynergy,
         _isAgent: true
@@ -218,7 +260,7 @@
       // Agregar a la lista local de contactos
       contacts = [fullCreatedContact, ...contacts];
 
-      // Auto-seleccionar al nuevo agente
+      // Auto-seleccionar al nuevo agente con datos limpios
       selectContact(fullCreatedContact);
 
       isModalOpen = false;
@@ -406,7 +448,10 @@
   }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window 
+  on:click={handleClickOutside} 
+  on:keydown={(e) => { if (e.key === 'Escape' && isModalOpen) closeCreateAgentModal(); }} 
+/>
 
 <div class="contact-selector-container">
   {#if selectedContact && !isOpen}
@@ -601,7 +646,7 @@
   {#if isModalOpen}
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="agent-modal-backdrop" on:click={closeCreateAgentModal}>
+    <div class="agent-modal-backdrop" use:portal on:click={closeCreateAgentModal}>
       <div class="agent-modal-dialog glass" on:click|stopPropagation>
         <!-- Modal Header -->
         <div class="agent-modal-header">
@@ -623,8 +668,8 @@
           </button>
         </div>
 
-        <!-- Modal Form Body -->
-        <form on:submit|preventDefault={handleSaveNewAgent} class="agent-modal-body">
+        <!-- Modal Body (Uso de div para evitar conflicto con el form padre de subir-propiedad) -->
+        <div class="agent-modal-body">
           {#if modalError}
             <div class="modal-alert-error">
               ⚠️ {modalError}
@@ -641,7 +686,7 @@
                 class="modal-input"
                 placeholder="Ej. Perla / Carlos"
                 bind:value={modalName}
-                required
+                on:keydown={handleKeydownModal}
                 disabled={isSavingAgent}
               />
             </div>
@@ -655,6 +700,7 @@
                 class="modal-input"
                 placeholder="Ej. Burra / González"
                 bind:value={modalLastname}
+                on:keydown={handleKeydownModal}
                 disabled={isSavingAgent}
               />
             </div>
@@ -677,7 +723,7 @@
                   class="modal-input has-prefix"
                   placeholder="6141234567"
                   bind:value={modalPhone}
-                  required
+                  on:keydown={handleKeydownModal}
                   disabled={isSavingAgent}
                 />
               </div>
@@ -692,6 +738,7 @@
                 class="modal-input"
                 placeholder="Ej. Century 21 / Keller Williams / AGH"
                 bind:value={modalCompany}
+                on:keydown={handleKeydownModal}
                 disabled={isSavingAgent}
               />
             </div>
@@ -739,8 +786,9 @@
             </button>
 
             <button
-              type="submit"
+              type="button"
               class="btn-modal-save"
+              on:click={handleSaveNewAgent}
               disabled={isSavingAgent || !modalName.trim() || !modalPhone.trim()}
             >
               {#if isSavingAgent}
@@ -754,7 +802,7 @@
               {/if}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   {/if}
@@ -906,8 +954,9 @@
   }
 
   .phone-input::placeholder {
-    color: var(--text-secondary, #94a3b8);
-    opacity: 0.85;
+    color: rgba(148, 163, 184, 0.38);
+    font-weight: 300;
+    opacity: 1;
   }
 
   .whatsapp-preview-link {
@@ -966,8 +1015,9 @@
   }
 
   .search-input::placeholder {
-    color: var(--text-secondary, #94a3b8);
-    opacity: 0.85;
+    color: rgba(148, 163, 184, 0.38);
+    font-weight: 300;
+    opacity: 1;
   }
 
   .search-indicator, .loading-indicator {
@@ -1261,17 +1311,21 @@
      ============================================================ */
   .agent-modal-backdrop {
     position: fixed;
+    inset: 0;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(8, 11, 22, 0.82);
+    width: 100vw;
+    height: 100vh;
+    background: rgba(8, 11, 22, 0.85);
     backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 9999;
+    z-index: 99999;
     padding: 1rem;
+    box-sizing: border-box;
     animation: modalFadeIn 0.2s ease-out;
   }
 
@@ -1440,13 +1494,40 @@
   }
 
   .modal-input::placeholder {
-    color: #94a3b8;
-    opacity: 0.85;
+    color: rgba(148, 163, 184, 0.38);
+    font-weight: 300;
+    opacity: 1;
   }
 
   .modal-input:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  .modal-input:-webkit-autofill,
+  .modal-input:-webkit-autofill:hover,
+  .modal-input:-webkit-autofill:focus,
+  .modal-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #101322 inset !important;
+    box-shadow: 0 0 0 1000px #101322 inset !important;
+    -webkit-text-fill-color: #f1f5f9 !important;
+    caret-color: #f1f5f9 !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  .phone-input:-webkit-autofill,
+  .phone-input:-webkit-autofill:hover,
+  .phone-input:-webkit-autofill:focus,
+  .phone-input:-webkit-autofill:active,
+  .search-input:-webkit-autofill,
+  .search-input:-webkit-autofill:hover,
+  .search-input:-webkit-autofill:focus,
+  .search-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #1e1e35 inset !important;
+    box-shadow: 0 0 0 1000px #1e1e35 inset !important;
+    -webkit-text-fill-color: #f1f5f9 !important;
+    caret-color: #f1f5f9 !important;
+    transition: background-color 5000s ease-in-out 0s;
   }
 
   .modal-input-prefix-wrap {

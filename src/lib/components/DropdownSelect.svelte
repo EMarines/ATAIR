@@ -76,7 +76,7 @@
     background-color: #1e1e35;
     border: 1px solid var(--border-color, rgba(99, 102, 241, 0.2));
     border-radius: var(--radius-sm, 0.5rem);
-    color: var(--text-secondary, #94a3b8);
+    color: var(--text-primary, #f1f5f9);
     font-size: 0.95rem;
     text-align: left;
     cursor: pointer;
@@ -95,12 +95,14 @@
   }
 
   .label-text {
-    color: var(--text-secondary, #94a3b8);
+    color: var(--text-primary, #f1f5f9);
+    font-weight: 500;
   }
 
   .label-text.is-placeholder {
-    color: var(--text-secondary, #94a3b8);
-    opacity: 0.85;
+    color: rgba(148, 163, 184, 0.38);
+    font-weight: 300;
+    opacity: 1;
   }
 
   .chevron {

@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { db, storage, isSandbox } from '$lib/firebase_toggle';
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+  import { db, storage, prodStorage, isSandbox } from '$lib/firebase_toggle';
   import {
     collection,
     addDoc,
@@ -7,14 +9,17 @@
     query,
     where,
     getDocs,
+    getDoc,
     doc,
     updateDoc,
+    limit
   } from 'firebase/firestore';
   import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
   import ImageUploader from '$lib/components/ImageUploader.svelte';
   import DropdownSelect from '$lib/components/DropdownSelect.svelte';
   import ContactSelector from '$lib/components/ContactSelector.svelte';
   import PropertyNavActions from '$lib/components/PropertyNavActions.svelte';
+  import { formatZona, tagToUbicacion, tagToFeatures } from '$lib/functions/tagConverters';
 
   let isSubmitting = false;
   let uploadStatus: string | null = null;
@@ -22,6 +27,79 @@
   let lastSavedProperty: { clavePropiedad: string; titulo: string; procedenciaNombre: string; idCompaniaCaptadora?: string; telefonoContactoCaptador?: string } | null = null;
   let selectedImages: File[] = [];
   let formElement: HTMLFormElement | null = null;
+
+  // Estados para Modo Edición
+  let isEditMode = false;
+  let editingDocId: string | null = null;
+  let editingClave: string | null = null;
+  let existingImages: string[] = [];
+  let existingDraggingIndex = -1;
+  let existingDragOverIndex = -1;
+  let isLoadingEditData = false;
+
+  function moveExistingImage(fromIndex: number, toIndex: number) {
+    if (fromIndex < 0 || fromIndex >= existingImages.length || toIndex < 0 || toIndex >= existingImages.length || fromIndex === toIndex) {
+      return;
+    }
+    const newImgs = [...existingImages];
+    const [moved] = newImgs.splice(fromIndex, 1);
+    newImgs.splice(toIndex, 0, moved);
+    existingImages = newImgs;
+  }
+
+  function handleExistingDragStart(e: DragEvent, idx: number) {
+    existingDraggingIndex = idx;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+      e.dataTransfer.setData('application/x-existing-img', String(idx));
+    }
+  }
+
+  function handleExistingDragEnter(e: DragEvent, idx: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (existingDraggingIndex !== -1 && existingDraggingIndex !== idx) {
+      existingDragOverIndex = idx;
+    }
+  }
+
+  function handleExistingDragOver(e: DragEvent, idx: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    if (existingDraggingIndex !== -1 && existingDraggingIndex !== idx) {
+      existingDragOverIndex = idx;
+    }
+  }
+
+  function handleExistingDragLeave(e: DragEvent, idx: number) {
+    if (existingDragOverIndex === idx) {
+      existingDragOverIndex = -1;
+    }
+  }
+
+  function handleExistingDrop(e: DragEvent, idx: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    let fromIdx = existingDraggingIndex;
+    if (e.dataTransfer) {
+      const dtData = e.dataTransfer.getData('application/x-existing-img') || e.dataTransfer.getData('text/plain');
+      if (dtData && !isNaN(Number(dtData))) {
+        fromIdx = parseInt(dtData, 10);
+      }
+    }
+    if (fromIdx !== -1 && fromIdx !== idx && fromIdx >= 0 && fromIdx < existingImages.length && idx >= 0 && idx < existingImages.length) {
+      moveExistingImage(fromIdx, idx);
+    }
+    existingDraggingIndex = -1;
+    existingDragOverIndex = -1;
+  }
+
+  function handleExistingDragEnd() {
+    existingDraggingIndex = -1;
+    existingDragOverIndex = -1;
+  }
 
   // Estados para Generación con IA
   let isGeneratingAI = false;
@@ -251,26 +329,165 @@
     }
   }
 
+  async function loadPropertyToEdit(idOrKey: string) {
+    if (!db || !idOrKey) return;
+    isLoadingEditData = true;
+    uploadStatus = `Cargando datos de la propiedad (${idOrKey})...`;
+
+    try {
+      let foundDoc: any = null;
+      let foundDocId: string | null = null;
+
+      // 1. Búsqueda directa por docId
+      try {
+        const docRef = doc(db, 'properties', idOrKey);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          foundDoc = docSnap.data();
+          foundDocId = docSnap.id;
+        }
+      } catch (e) {
+        // no es docId directo
+      }
+
+      // 2. Búsqueda por clavePropiedad / public_id / id
+      if (!foundDoc) {
+        const fields = ['clavePropiedad', 'public_id', 'id', 'easybroker_id'];
+        for (const field of fields) {
+          try {
+            const q = query(collection(db, 'properties'), where(field, '==', idOrKey), limit(1));
+            const qSnap = await getDocs(q);
+            if (!qSnap.empty) {
+              foundDoc = qSnap.docs[0].data();
+              foundDocId = qSnap.docs[0].id;
+              break;
+            }
+          } catch (e) {
+            console.warn(`Error buscando por ${field}:`, e);
+          }
+        }
+      }
+
+      if (foundDoc && foundDocId) {
+        isEditMode = true;
+        editingDocId = foundDocId;
+        editingClave = foundDoc.clavePropiedad || foundDoc.public_id || idOrKey;
+
+        // Extraer fotos existentes
+        const rawImgs = foundDoc.images || foundDoc.imageUrls || [];
+        const rawPropImgs = (foundDoc.property_images || []).map((p: any) => typeof p === 'string' ? p : p?.url);
+        const primary = foundDoc.imagenPrincipal || foundDoc.title_image_thumb || foundDoc.title_image_full;
+        const allImgs = [...rawImgs, ...rawPropImgs, primary].filter((u: any): u is string => typeof u === 'string' && u.trim() !== '' && !u.includes('placeholder'));
+        existingImages = Array.from(new Set(allImgs));
+
+        // Precargar formData
+        const proc = foundDoc.procedencia || (editingClave && editingClave.startsWith('S1') ? 'S1' : editingClave && editingClave.startsWith('S2') ? 'S2' : editingClave && editingClave.startsWith('S3') ? 'S3' : 'MH');
+        const isSale = foundDoc.operation_type === 'rental' || foundDoc.tipoOperacion === 'Renta' ? 'Renta' : 'Venta';
+
+        formData = {
+          procedencia: proc,
+          idCompaniaCaptadora: foundDoc.idCompaniaCaptadora || foundDoc.companiaCaptadora || (proc === 'MH' ? 'Match Home' : ''),
+          companiaCaptadora: foundDoc.companiaCaptadora || foundDoc.idCompaniaCaptadora || '',
+          idContactoCaptador: foundDoc.idContactoCaptador || foundDoc.contactId || '',
+          nombreContactoCaptador: foundDoc.nombreContactoCaptador || '',
+          telefonoContactoCaptador: foundDoc.telefonoContactoCaptador || foundDoc.telefono || foundDoc.telephon || '',
+          tipoOperacion: isSale,
+          tipoPropiedad: foundDoc.property_type || foundDoc.tipoPropiedad || 'Casa',
+          precio: foundDoc.price ?? foundDoc.precio ?? (foundDoc.operations?.[0]?.amount || ''),
+          moneda: foundDoc.currency || foundDoc.moneda || 'MXN',
+          recamaras: foundDoc.bedrooms ?? foundDoc.recamaras ?? '',
+          banos: foundDoc.bathrooms ?? foundDoc.banos ?? '',
+          mediosBanos: foundDoc.half_bathrooms ?? foundDoc.mediosBanos ?? '',
+          estacionamientos: foundDoc.parking_spaces ?? foundDoc.estacionamientos ?? '',
+          terreno: foundDoc.lot_size ?? foundDoc.terreno ?? '',
+          construccion: foundDoc.construction_size ?? foundDoc.construccion ?? '',
+          condicion: foundDoc.condicion ?? '',
+          colonia: foundDoc.colonia || (typeof foundDoc.location === 'object' ? foundDoc.location?.name : (typeof foundDoc.location === 'string' && !tagToUbicacion(foundDoc.location) ? foundDoc.location : '')),
+          ubicacion: formatZona(foundDoc) || foundDoc.ubicacion || foundDoc.zona || '',
+          amenidades: tagToFeatures(Array.isArray(foundDoc.tags) ? foundDoc.tags : (Array.isArray(foundDoc.features) ? foundDoc.features : (Array.isArray(foundDoc.amenidades) ? foundDoc.amenidades : []))),
+          titulo: foundDoc.title || foundDoc.titulo || '',
+          descripcion: foundDoc.description || foundDoc.descripcion || ''
+        };
+
+        uploadStatus = null;
+      } else {
+        uploadError = `No se encontró la propiedad "${idOrKey}" en la base de datos para editar.`;
+      }
+    } catch (err: any) {
+      console.error('Error cargando propiedad para editar:', err);
+      uploadError = 'Error al cargar propiedad: ' + err.message;
+    } finally {
+      isLoadingEditData = false;
+    }
+  }
+
+  onMount(() => {
+    const editId = $page.url.searchParams.get('edit');
+    if (editId) {
+      loadPropertyToEdit(editId);
+    }
+  });
+
   function resetForm() {
+    isEditMode = false;
+    editingDocId = null;
+    editingClave = null;
+    existingImages = [];
     lastSavedProperty = null;
     uploadStatus = null;
     uploadError = null;
     if (formElement) formElement.reset();
-    Object.keys(formData).forEach((k) => {
-      if (k !== 'procedencia' && k !== 'tipoOperacion' && k !== 'tipoPropiedad') {
-        formData[k] = undefined;
-      }
-    });
-    formData.procedencia = 'MH';
-    formData.idCompaniaCaptadora = 'Match Home';
-    formData.idContactoCaptador = 'pinned-mh';
-    formData.nombreContactoCaptador = 'Match Home';
-    formData.companiaCaptadora = 'Match Home';
-    formData.telefonoContactoCaptador = '';
-    formData.tipoOperacion = 'Venta';
-    formData.tipoPropiedad = 'Casa';
-    formData.amenidades = [];
+    formData = {
+      procedencia: 'MH',
+      idCompaniaCaptadora: 'Match Home',
+      idContactoCaptador: 'pinned-mh',
+      nombreContactoCaptador: 'Match Home',
+      companiaCaptadora: 'Match Home',
+      telefonoContactoCaptador: '',
+      tipoOperacion: 'Venta',
+      tipoPropiedad: 'Casa',
+      amenidades: []
+    };
     selectedImages = [];
+  }
+
+  function compressImage(file: File, maxDim = 900, quality = 0.72): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target!.result as string);
+          reader.readAsDataURL(file);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target!.result as string);
+        reader.readAsDataURL(file);
+      };
+      img.src = url;
+    });
   }
 
   async function handleSubmit(e: Event) {
@@ -308,22 +525,44 @@
       uploadStatus = 'Generando clave con procedencia...';
       const idCompaniaCaptadora = formData.idCompaniaCaptadora ? String(formData.idCompaniaCaptadora).trim() : '';
       const idContactoCaptador = formData.idContactoCaptador ? String(formData.idContactoCaptador).trim() : '';
-      const telefonoContactoCaptador = formData.telefonoContactoCaptador ? String(formData.telefonoContactoCaptador).trim() : '';
+      const telefonoContactoCaptador = formData.telefonoContactoCaptador ? String(formData.telefonoContactoCaptador).replace(/\D/g, '').trim() : '';
       const nombreContactoCaptador = formData.nombreContactoCaptador ? String(formData.nombreContactoCaptador).trim() : '';
       const companiaCaptadora = formData.companiaCaptadora ? String(formData.companiaCaptadora).trim() : idCompaniaCaptadora;
       const clavePropiedad = await generatePropertyKey(procedenciaCode);
 
       const imageUrls: string[] = [];
       if (selectedImages.length > 0) {
-        if (!storage) throw new Error('Firebase Storage no está disponible');
-        uploadStatus = `Subiendo imágenes (0/${selectedImages.length})...`;
-        for (let i = 0; i < selectedImages.length; i++) {
-          const file = selectedImages[i];
-          const fileRef = ref(storage, `properties/${Date.now()}_${file.name}`);
-          const snapshot = await uploadBytes(fileRef, file);
-          const url = await getDownloadURL(snapshot.ref);
-          imageUrls.push(url);
-          uploadStatus = `Subiendo imágenes (${i + 1}/${selectedImages.length})...`;
+        let uploadedToStorage = false;
+        const imageStorage = prodStorage || storage;
+
+        // Si no estamos en sandbox, intentar primero Firebase Storage
+        if (!isSandbox && imageStorage) {
+          try {
+            uploadStatus = `Subiendo imágenes a Firebase Storage (0/${selectedImages.length})...`;
+            for (let i = 0; i < selectedImages.length; i++) {
+              const file = selectedImages[i];
+              const fileRef = ref(imageStorage, `properties/${Date.now()}_${file.name}`);
+              const snapshot = await uploadBytes(fileRef, file);
+              const url = await getDownloadURL(snapshot.ref);
+              imageUrls.push(url);
+              uploadStatus = `Subiendo imágenes (${i + 1}/${selectedImages.length})...`;
+            }
+            uploadedToStorage = true;
+          } catch (storageErr) {
+            console.warn('Firebase Storage no disponible o rechazado, optimizando directamente:', storageErr);
+            imageUrls.length = 0;
+          }
+        }
+
+        // Si es Sandbox o si Storage rechazó (ej. reglas sin permisos), optimizar imágenes y guardarlas directamente
+        if (!uploadedToStorage) {
+          uploadStatus = `Optimizando imágenes para el catálogo (0/${selectedImages.length})...`;
+          for (let i = 0; i < selectedImages.length; i++) {
+            const file = selectedImages[i];
+            const dataUrl = await compressImage(file, 900, 0.72);
+            imageUrls.push(dataUrl);
+            uploadStatus = `Optimizando imágenes (${i + 1}/${selectedImages.length})...`;
+          }
         }
       }
 
@@ -333,107 +572,205 @@
       const numPrice = formData.precio ? Number(formData.precio) : null;
       const cur = formData.moneda || 'MXN';
 
-      uploadStatus = 'Guardando datos de la propiedad...';
-      await addDoc(collection(db, 'properties'), {
-        ...formData,
-        clavePropiedad,
-        public_id: clavePropiedad,
-        easybroker_id: null,
-        source: isSynergy ? 'synergy' : 'manual',
-        sourceName: isSynergy ? `Sinergia (${procedenciaCode}) - ${companiaCaptadora || nombreContactoCaptador}` : 'Match Home (Captura Manual)',
+      if (isEditMode && editingDocId) {
+        uploadStatus = 'Actualizando cambios de la propiedad...';
+        const finalImages = [...existingImages, ...imageUrls];
+        const primaryImg = finalImages[0] ?? '';
 
-        procedencia: procedenciaCode,
-        procedenciaNombre,
-        idCompaniaCaptadora,
-        companiaCaptadora,
-        idContactoCaptador,
-        nombreContactoCaptador,
-        telefonoContactoCaptador,
-        contactId: idContactoCaptador,
+        await updateDoc(doc(db, 'properties', editingDocId), {
+          ...formData,
+          procedencia: procedenciaCode,
+          procedenciaNombre,
+          idCompaniaCaptadora,
+          companiaCaptadora,
+          idContactoCaptador,
+          nombreContactoCaptador,
+          telefonoContactoCaptador,
+          contactId: idContactoCaptador,
 
-        title: formData.titulo ?? '',
-        description: formData.descripcion ?? '',
-        property_type: formData.tipoPropiedad ?? '',
-        operation_type: isSale ? 'sale' : 'rental',
-        operations: numPrice ? [{
-          type: isSale ? 'sale' : 'rental',
-          amount: numPrice,
+          title: formData.titulo ?? '',
+          description: formData.descripcion ?? '',
+          property_type: formData.tipoPropiedad ?? '',
+          operation_type: isSale ? 'sale' : 'rental',
+          operations: numPrice ? [{
+            type: isSale ? 'sale' : 'rental',
+            amount: numPrice,
+            currency: cur,
+            formatted_amount: `$${numPrice.toLocaleString('es-MX')} ${cur}`,
+            unit: 'total'
+          }] : [],
+          operaciones: numPrice ? [{
+            type: isSale ? 'sale' : 'rental',
+            amount: numPrice,
+            currency: cur,
+            formatted_amount: `$${numPrice.toLocaleString('es-MX')} ${cur}`,
+            unit: 'total'
+          }] : [],
+
+          bedrooms: formData.recamaras ? Number(formData.recamaras) : null,
+          bathrooms: formData.banos ? Number(formData.banos) : null,
+          half_bathrooms: formData.mediosBanos ? Number(formData.mediosBanos) : null,
+          parking_spaces: formData.estacionamientos ? Number(formData.estacionamientos) : null,
+          lot_size: formData.terreno ? Number(formData.terreno) : null,
+          construction_size: formData.construccion ? Number(formData.construccion) : null,
+
+          price: numPrice,
           currency: cur,
-          formatted_amount: `$${numPrice.toLocaleString('es-MX')} ${cur}`,
-          unit: 'total'
-        }] : [],
-        operaciones: numPrice ? [{
-          type: isSale ? 'sale' : 'rental',
-          amount: numPrice,
-          currency: cur,
-          formatted_amount: `$${numPrice.toLocaleString('es-MX')} ${cur}`,
-          unit: 'total'
-        }] : [],
+          precioFormateado: numPrice ? `$${numPrice.toLocaleString('es-MX')} ${cur}` : '',
 
-        bedrooms: formData.recamaras ? Number(formData.recamaras) : null,
-        bathrooms: formData.banos ? Number(formData.banos) : null,
-        half_bathrooms: formData.mediosBanos ? Number(formData.mediosBanos) : null,
-        parking_spaces: formData.estacionamientos ? Number(formData.estacionamientos) : null,
-        lot_size: formData.terreno ? Number(formData.terreno) : null,
-        construction_size: formData.construccion ? Number(formData.construccion) : null,
+          location: formData.colonia ? { name: formData.colonia } : '',
+          colonia: formData.colonia ?? '',
+          ubicacion: formData.ubicacion ?? '',
+          zona: formData.ubicacion ?? '',
+          locaProperty: formData.ubicacion ? [formData.ubicacion] : [],
 
-        price: numPrice,
-        currency: cur,
-        precioFormateado: numPrice ? `$${numPrice.toLocaleString('es-MX')} ${cur}` : '',
+          imagenPrincipal: primaryImg,
+          imagenMiniatura: primaryImg,
+          title_image_full: primaryImg,
+          title_image_thumb: primaryImg,
+          images: finalImages,
+          property_images: finalImages.map(url => ({ title: '', url })),
 
-        location: formData.colonia ? { name: formData.colonia } : '',
-        colonia: formData.colonia ?? '',
-        ubicacion: formData.ubicacion ?? formData.colonia ?? '',
+          tags: formData.ubicacion ? [...(formData.amenidades ?? []), formData.ubicacion] : (formData.amenidades ?? []),
+          features: formData.amenidades ?? [],
 
-        imagenPrincipal: primaryImg,
-        imagenMiniatura: primaryImg,
-        title_image_full: primaryImg,
-        title_image_thumb: primaryImg,
-        images: imageUrls,
-        property_images: imageUrls.map(url => ({ title: '', url })),
+          updatedAt: serverTimestamp(),
+          updated_at: Date.now(),
+        });
 
-        tags: formData.amenidades ?? [],
-        features: formData.amenidades ?? [],
-
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        syncedAt: serverTimestamp(),
-      });
-
-      // Si el contacto existe en Firestore y se capturó teléfono, enriquecer el contacto
-      if (idContactoCaptador && !idContactoCaptador.startsWith('pinned-') && telefonoContactoCaptador) {
-        try {
-          const contactRef = doc(db, 'contacts', idContactoCaptador);
-          await updateDoc(contactRef, {
-            telephon: telefonoContactoCaptador,
-            telefono: telefonoContactoCaptador,
-            updatedAt: serverTimestamp()
-          });
-        } catch (e) {
-          console.warn('No se pudo actualizar el teléfono en el contacto:', e);
+        // Si el contacto existe en Firestore y se capturó teléfono, enriquecer el contacto
+        if (idContactoCaptador && !idContactoCaptador.startsWith('pinned-') && telefonoContactoCaptador) {
+          try {
+            const contactRef = doc(db, 'contacts', idContactoCaptador);
+            await updateDoc(contactRef, {
+              telephon: telefonoContactoCaptador,
+              telefono: telefonoContactoCaptador,
+              updatedAt: serverTimestamp()
+            });
+          } catch (e) {
+            console.warn('No se pudo actualizar el teléfono en el contacto:', e);
+          }
         }
+
+        existingImages = finalImages;
+        selectedImages = [];
+        lastSavedProperty = {
+          clavePropiedad: editingClave || 'Propiedad',
+          titulo: formData.titulo || 'Sin título',
+          procedenciaNombre,
+          idCompaniaCaptadora: companiaCaptadora || idCompaniaCaptadora,
+          telefonoContactoCaptador,
+        };
+        uploadStatus = `¡Propiedad ${editingClave} actualizada exitosamente!`;
+      } else {
+        uploadStatus = 'Guardando datos de la propiedad...';
+        await addDoc(collection(db, 'properties'), {
+          ...formData,
+          clavePropiedad,
+          public_id: clavePropiedad,
+          easybroker_id: null,
+          source: isSynergy ? 'synergy' : 'manual',
+          sourceName: isSynergy ? `Sinergia (${procedenciaCode}) - ${companiaCaptadora || nombreContactoCaptador}` : 'Match Home (Captura Manual)',
+
+          procedencia: procedenciaCode,
+          procedenciaNombre,
+          idCompaniaCaptadora,
+          companiaCaptadora,
+          idContactoCaptador,
+          nombreContactoCaptador,
+          telefonoContactoCaptador,
+          contactId: idContactoCaptador,
+
+          title: formData.titulo ?? '',
+          description: formData.descripcion ?? '',
+          property_type: formData.tipoPropiedad ?? '',
+          operation_type: isSale ? 'sale' : 'rental',
+          operations: numPrice ? [{
+            type: isSale ? 'sale' : 'rental',
+            amount: numPrice,
+            currency: cur,
+            formatted_amount: `$${numPrice.toLocaleString('es-MX')} ${cur}`,
+            unit: 'total'
+          }] : [],
+          operaciones: numPrice ? [{
+            type: isSale ? 'sale' : 'rental',
+            amount: numPrice,
+            currency: cur,
+            formatted_amount: `$${numPrice.toLocaleString('es-MX')} ${cur}`,
+            unit: 'total'
+          }] : [],
+
+          bedrooms: formData.recamaras ? Number(formData.recamaras) : null,
+          bathrooms: formData.banos ? Number(formData.banos) : null,
+          half_bathrooms: formData.mediosBanos ? Number(formData.mediosBanos) : null,
+          parking_spaces: formData.estacionamientos ? Number(formData.estacionamientos) : null,
+          lot_size: formData.terreno ? Number(formData.terreno) : null,
+          construction_size: formData.construccion ? Number(formData.construccion) : null,
+
+          price: numPrice,
+          currency: cur,
+          precioFormateado: numPrice ? `$${numPrice.toLocaleString('es-MX')} ${cur}` : '',
+
+          location: formData.colonia ? { name: formData.colonia } : '',
+          colonia: formData.colonia ?? '',
+          ubicacion: formData.ubicacion ?? '',
+          zona: formData.ubicacion ?? '',
+          locaProperty: formData.ubicacion ? [formData.ubicacion] : [],
+
+          imagenPrincipal: primaryImg,
+          imagenMiniatura: primaryImg,
+          title_image_full: primaryImg,
+          title_image_thumb: primaryImg,
+          images: imageUrls,
+          property_images: imageUrls.map(url => ({ title: '', url })),
+
+          tags: formData.ubicacion ? [...(formData.amenidades ?? []), formData.ubicacion] : (formData.amenidades ?? []),
+          features: formData.amenidades ?? [],
+
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          syncedAt: serverTimestamp(),
+        });
+
+        // Si el contacto existe en Firestore y se capturó teléfono, enriquecer el contacto
+        if (idContactoCaptador && !idContactoCaptador.startsWith('pinned-') && telefonoContactoCaptador) {
+          try {
+            const contactRef = doc(db, 'contacts', idContactoCaptador);
+            await updateDoc(contactRef, {
+              telephon: telefonoContactoCaptador,
+              telefono: telefonoContactoCaptador,
+              updatedAt: serverTimestamp()
+            });
+          } catch (e) {
+            console.warn('No se pudo actualizar el teléfono en el contacto:', e);
+          }
+        }
+
+        lastSavedProperty = {
+          clavePropiedad,
+          titulo: formData.titulo || 'Sin título',
+          procedenciaNombre,
+          idCompaniaCaptadora: companiaCaptadora || idCompaniaCaptadora,
+          telefonoContactoCaptador,
+        };
+        uploadStatus = `¡Propiedad subida exitosamente! Clave: ${clavePropiedad}`;
+
+        if (formElement) formElement.reset();
+        formData = {
+          procedencia: 'MH',
+          idCompaniaCaptadora: 'Match Home',
+          idContactoCaptador: 'pinned-mh',
+          nombreContactoCaptador: 'Match Home',
+          companiaCaptadora: 'Match Home',
+          telefonoContactoCaptador: '',
+          tipoOperacion: 'Venta',
+          tipoPropiedad: 'Casa',
+          amenidades: []
+        };
+        selectedImages = [];
       }
-
-      lastSavedProperty = {
-        clavePropiedad,
-        titulo: formData.titulo || 'Sin título',
-        procedenciaNombre,
-        idCompaniaCaptadora: companiaCaptadora || idCompaniaCaptadora,
-        telefonoContactoCaptador,
-      };
-      uploadStatus = `¡Propiedad subida exitosamente! Clave: ${clavePropiedad}`;
-
-      if (formElement) formElement.reset();
-      Object.keys(formData).forEach((k) => {
-        if (k !== 'procedencia' && k !== 'tipoOperacion' && k !== 'tipoPropiedad') {
-          formData[k] = undefined;
-        }
-      });
-      formData.procedencia = procedenciaCode;
-      formData.tipoOperacion = 'Venta';
-      formData.tipoPropiedad = 'Casa';
-      formData.amenidades = [];
-      selectedImages = [];
     } catch (err: any) {
       console.error(err);
       uploadError = 'Error: ' + err.message;
@@ -445,8 +782,8 @@
 </script>
 
 <svelte:head>
-  <title>Subir Propiedad – ATAIR SGI</title>
-  <meta name="description" content="Sube una nueva propiedad manualmente al catálogo de ATAIR CRM." />
+  <title>{isEditMode ? `Editar Propiedad (${editingClave || ''})` : 'Subir Propiedad'} – ATAIR SGI</title>
+  <meta name="description" content="Sube o edita propiedades manualmente en el catálogo de ATAIR CRM." />
 </svelte:head>
 
 <div class="page-container">
@@ -457,9 +794,18 @@
         {#if isSandbox}
           <span class="sandbox-tag">🧪 Entorno de Pruebas (Sandbox)</span>
         {/if}
+        {#if isEditMode}
+          <span class="edit-tag">✏️ Modo Edición ({editingClave})</span>
+          <a href="/property/{encodeURIComponent(editingClave || '')}" class="btn-cancel-edit">✕ Cancelar edición</a>
+        {/if}
       </div>
-      <h1>Subir Nueva Propiedad</h1>
-      <p>Completa los datos del inmueble para registrarlo en el catálogo y vincularlo con clientes de ATAIR.</p>
+      {#if isEditMode}
+        <h1>Editar Propiedad ({editingClave})</h1>
+        <p>Modifica los datos y fotografías del inmueble registrado en ATAIR CRM.</p>
+      {:else}
+        <h1>Subir Nueva Propiedad</h1>
+        <p>Completa los datos del inmueble para registrarlo en el catálogo y vincularlo con clientes de ATAIR.</p>
+      {/if}
     </div>
 
     <PropertyNavActions current="subir-propiedad" />
@@ -566,6 +912,7 @@
                     <input
                       type="checkbox"
                       value={option.value}
+                      checked={Array.isArray(formData[field.name]) && formData[field.name].includes(option.value)}
                       on:change={(e) => handleCheckboxChange(field.name, option.value, e)}
                     />
                     <span>{option.label}</span>
@@ -579,6 +926,76 @@
 
       <div class="divider"></div>
 
+      {#if existingImages.length > 0}
+        <div class="existing-images-section">
+          <div class="existing-header">
+            <h3>Fotos Actuales de la Propiedad ({existingImages.length})</h3>
+            <span class="existing-hint">Arrastra las imágenes para reordenarlas o usa las flechas · La primera es la <strong>Foto Principal</strong></span>
+          </div>
+          <div class="existing-grid">
+            {#each existingImages as imgUrl, idx (imgUrl)}
+              <!-- svelte-ignore a11y-no-static-element-interactions -->
+              <div
+                class="existing-item {existingDraggingIndex === idx ? 'dragging-item' : ''} {existingDragOverIndex === idx && existingDraggingIndex !== idx ? 'drop-target' : ''}"
+                draggable="true"
+                on:dragstart={(e) => handleExistingDragStart(e, idx)}
+                on:dragenter={(e) => handleExistingDragEnter(e, idx)}
+                on:dragover={(e) => handleExistingDragOver(e, idx)}
+                on:dragleave={(e) => handleExistingDragLeave(e, idx)}
+                on:drop={(e) => handleExistingDrop(e, idx)}
+                on:dragend={handleExistingDragEnd}
+              >
+                <img src={imgUrl} alt="Foto {idx + 1}" draggable="false" />
+                {#if idx === 0}
+                  <span class="badge-principal">⭐ Principal</span>
+                {/if}
+
+                <!-- Quick Move Controls on Hover -->
+                <div class="quick-reorder-bar">
+                  {#if idx > 0}
+                    <button
+                      type="button"
+                      class="btn-nav-img"
+                      title="Mover a la izquierda"
+                      on:click|stopPropagation={() => moveExistingImage(idx, idx - 1)}
+                    >
+                      ◀
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-nav-img star-btn"
+                      title="Hacer foto principal"
+                      on:click|stopPropagation={() => moveExistingImage(idx, 0)}
+                    >
+                      ⭐
+                    </button>
+                  {/if}
+                  {#if idx < existingImages.length - 1}
+                    <button
+                      type="button"
+                      class="btn-nav-img"
+                      title="Mover a la derecha"
+                      on:click|stopPropagation={() => moveExistingImage(idx, idx + 1)}
+                    >
+                      ▶
+                    </button>
+                  {/if}
+                </div>
+
+                <button
+                  type="button"
+                  class="btn-remove-existing"
+                  on:click|stopPropagation={() => existingImages = existingImages.filter((_, i) => i !== idx)}
+                  title="Eliminar esta foto"
+                >
+                  ✕
+                </button>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
       <ImageUploader bind:files={selectedImages} />
 
       {#if uploadError}
@@ -590,8 +1007,8 @@
           <div class="success-header">
             <span class="success-icon">🎉</span>
             <div>
-              <h3>¡Propiedad publicada con éxito!</h3>
-              <p class="success-subtitle">Registrada correctamente en la base de datos de ATAIR CRM.</p>
+              <h3>{isEditMode ? '¡Propiedad actualizada con éxito!' : '¡Propiedad publicada con éxito!'}</h3>
+              <p class="success-subtitle">{isEditMode ? 'Los cambios se han guardado correctamente en la base de datos.' : 'Registrada correctamente en la base de datos de ATAIR CRM.'}</p>
             </div>
           </div>
 
@@ -610,6 +1027,11 @@
           </div>
 
           <div class="success-actions">
+            {#if isEditMode && lastSavedProperty}
+              <a href="/property/{encodeURIComponent(lastSavedProperty.clavePropiedad)}" class="btn-primary">
+                👁️ Ver Propiedad Editada
+              </a>
+            {/if}
             <a href="/properties" class="btn-secondary">
               📊 Ver en Catálogo de Propiedades
             </a>
@@ -624,9 +1046,9 @@
         <button type="submit" class="btn-primary" disabled={isSubmitting}>
           {#if isSubmitting}
             <span class="btn-spinner"></span>
-            Subiendo a Firebase...
+            {isEditMode ? 'Guardando cambios...' : 'Subiendo a Firebase...'}
           {:else}
-            🚀 Publicar Propiedad en CRM
+            {isEditMode ? '💾 Guardar Cambios en Propiedad' : '🚀 Publicar Propiedad en CRM'}
           {/if}
         </button>
       </div>
@@ -669,6 +1091,203 @@
     border: 1px solid rgba(245, 158, 11, 0.3);
     padding: 0.15rem 0.5rem;
     border-radius: 0.25rem;
+  }
+
+  .edit-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.15rem 0.55rem;
+    border-radius: 0.25rem;
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+  }
+
+  .btn-cancel-edit {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.15rem 0.55rem;
+    border-radius: 0.25rem;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-cancel-edit:hover {
+    background: rgba(239, 68, 68, 0.25);
+  }
+
+  .existing-images-section {
+    margin-bottom: 1.5rem;
+    padding: 1.25rem;
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+  }
+
+  .existing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .existing-header h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+    margin: 0;
+  }
+
+  .existing-hint {
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+
+  .existing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.85rem;
+  }
+
+  .existing-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: #0f172a;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    cursor: grab;
+    transition: transform 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+    user-select: none;
+  }
+
+  .existing-item:hover {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+  }
+
+  .existing-item:active {
+    cursor: grabbing;
+  }
+
+  .existing-item.dragging-item {
+    opacity: 0.35;
+    transform: scale(0.96);
+    border-color: #6366f1;
+  }
+
+  .existing-item.drop-target {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6), 0 0 20px rgba(99, 102, 241, 0.4);
+    transform: scale(1.06);
+  }
+
+  .existing-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .existing-item .badge-principal {
+    position: absolute;
+    top: 0.3rem;
+    left: 0.3rem;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 0.18rem 0.45rem;
+    border-radius: 0.3rem;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    z-index: 5;
+  }
+
+  .existing-item .quick-reorder-bar {
+    position: absolute;
+    bottom: 0.35rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.18rem 0.35rem;
+    border-radius: 9999px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+  }
+
+  .existing-item:hover .quick-reorder-bar {
+    opacity: 1;
+  }
+
+  .existing-item .btn-nav-img {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f1f5f9;
+    border: none;
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .existing-item .btn-nav-img:hover {
+    background: #6366f1;
+    color: #ffffff;
+    transform: scale(1.15);
+  }
+
+  .existing-item .btn-nav-img.star-btn {
+    font-size: 0.72rem;
+  }
+
+  .existing-item .btn-nav-img.star-btn:hover {
+    background: #eab308;
+  }
+
+  .btn-remove-existing {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.3rem;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    z-index: 10;
+  }
+
+  .btn-remove-existing:hover {
+    background-color: #ef4444;
+    transform: scale(1.1);
   }
 
   .page-header-row {
@@ -767,8 +1386,24 @@
   }
 
   input::placeholder, textarea::placeholder {
-    color: #94a3b8;
-    opacity: 0.85;
+    color: rgba(148, 163, 184, 0.38);
+    font-weight: 300;
+    opacity: 1;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  textarea:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #1e1e35 inset !important;
+    box-shadow: 0 0 0 1000px #1e1e35 inset !important;
+    -webkit-text-fill-color: #f1f5f9 !important;
+    caret-color: #f1f5f9 !important;
+    transition: background-color 5000s ease-in-out 0s;
   }
 
   .checkbox-group {

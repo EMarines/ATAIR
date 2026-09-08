@@ -1,5 +1,6 @@
 import type { Property } from '$lib/types';
 import { getProposalUrl } from './urlUtils';
+import { formatZona, tagToUbicacion } from './tagConverters';
 
 /**
  * Normaliza cualquier formato de documento de propiedad de Firestore (inglés o español)
@@ -35,20 +36,26 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 		price = Number(raw.budget) || 0;
 	}
 
-	// Ubicación / Colonia / Dirección
+	// Zona Geográfica (Centronorte, Centrosur, Norte, etc.)
+	const zonaGeografica = formatZona(raw) || '';
+	const locaProperty = Array.isArray(raw.locaProperty) && raw.locaProperty.length > 0
+		? raw.locaProperty
+		: (zonaGeografica ? [zonaGeografica] : []);
+
+	// Ubicación / Colonia / Dirección física
 	let location: string = 'Sin Dirección';
-	if (typeof raw.location === 'string' && raw.location.trim() !== '') {
+	if (typeof raw.colonia === 'string' && raw.colonia.trim() !== '') {
+		location = raw.colonia;
+	} else if (typeof raw.location === 'string' && raw.location.trim() !== '') {
 		location = raw.location;
 	} else if (raw.location && typeof raw.location === 'object' && raw.location.name) {
 		location = raw.location.name;
-	} else if (typeof raw.colonia === 'string' && raw.colonia.trim() !== '') {
-		location = raw.colonia;
-	} else if (typeof raw.ubicacion === 'string' && raw.ubicacion.trim() !== '') {
-		location = raw.ubicacion;
 	} else if (typeof raw.direccion === 'string' && raw.direccion.trim() !== '') {
 		location = raw.direccion;
-	} else if (Array.isArray(raw.locaProperty) && raw.locaProperty.length > 0) {
-		location = raw.locaProperty[0];
+	} else if (typeof raw.ubicacion === 'string' && raw.ubicacion.trim() !== '' && !tagToUbicacion(raw.ubicacion)) {
+		location = raw.ubicacion;
+	} else if (zonaGeografica) {
+		location = zonaGeografica;
 	}
 
 	// Imagen Principal
@@ -120,12 +127,18 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 	const agent = raw.agent || raw.agente || '';
 
 	// Fechas
-	let created_at = Date.now();
-	const rawCreated = raw.created_at ?? raw.createdAt ?? raw.fechaCreacion;
+	let created_at = 0;
+	const rawCreated = raw.created_at ?? raw.createdAt ?? raw.fechaCreacion ?? raw.syncedAt;
 	if (rawCreated) {
 		if (typeof rawCreated === 'number') {
 			created_at = rawCreated;
-		} else {
+		} else if (typeof rawCreated.toMillis === 'function') {
+			created_at = rawCreated.toMillis();
+		} else if (typeof rawCreated.toDate === 'function') {
+			created_at = rawCreated.toDate().getTime();
+		} else if (typeof rawCreated.seconds === 'number') {
+			created_at = rawCreated.seconds * 1000 + Math.round((rawCreated.nanoseconds || 0) / 1e6);
+		} else if (typeof rawCreated === 'string') {
 			const parsedTime = new Date(rawCreated).getTime();
 			if (!isNaN(parsedTime)) {
 				created_at = parsedTime;
@@ -133,7 +146,21 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 		}
 	}
 
-	const updated_at = raw.updated_at || raw.updatedAt || new Date().toISOString();
+	let updated_at: any = new Date().toISOString();
+	const rawUpdated = raw.updated_at ?? raw.updatedAt;
+	if (rawUpdated) {
+		if (typeof rawUpdated === 'number') {
+			updated_at = rawUpdated;
+		} else if (typeof rawUpdated.toMillis === 'function') {
+			updated_at = rawUpdated.toMillis();
+		} else if (typeof rawUpdated.toDate === 'function') {
+			updated_at = rawUpdated.toDate().getTime();
+		} else if (typeof rawUpdated.seconds === 'number') {
+			updated_at = rawUpdated.seconds * 1000;
+		} else if (typeof rawUpdated === 'string') {
+			updated_at = rawUpdated;
+		}
+	}
 
 	// Origen / Fuente de la propiedad
 	const rawKey = String(public_id || raw.clavePropiedad || raw.claveEB || '');
@@ -160,6 +187,10 @@ export function normalizeProperty(raw: any, docId?: string): Property {
 		price,
 		budget: price,
 		location,
+		colonia: location,
+		zona: zonaGeografica,
+		ubicacion: zonaGeografica || location,
+		locaProperty,
 		title_image_thumb,
 		bedrooms,
 		bathrooms,

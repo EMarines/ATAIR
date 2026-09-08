@@ -77,6 +77,28 @@ try {
 
 const propertiesDb = db;
 
-export { app, db, auth, storage, propertiesDb };
+// Storage siempre apunta a PRODUCCIÓN para subir imágenes de propiedades
+// (El sandbox curso-svelte-58c5d tiene reglas restrictivas sin auth)
+let prodStorage: ReturnType<typeof getStorage> | null = null;
+try {
+  if (isSandbox) {
+    // En sandbox: usar la app de prod para Storage de imágenes
+    const prodApps = getApps().filter(a => a.name === 'prod-storage');
+    let prodApp: ReturnType<typeof initializeApp>;
+    if (prodApps.length > 0) {
+      prodApp = prodApps[0] as ReturnType<typeof initializeApp>;
+    } else {
+      prodApp = initializeApp(prodConfig, 'prod-storage');
+    }
+    prodStorage = getStorage(prodApp, `gs://${prodConfig.storageBucket}`);
+  } else {
+    prodStorage = storage;
+  }
+} catch (e) {
+  console.warn('[Firebase] prodStorage fallback a storage principal:', e);
+  prodStorage = storage;
+}
+
+export { app, db, auth, storage, propertiesDb, prodStorage };
 
 

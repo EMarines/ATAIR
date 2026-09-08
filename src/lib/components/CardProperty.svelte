@@ -19,27 +19,30 @@
 	}
 
 	// Función para formatear la ubicación y limitar su longitud
-	const formatLocation = (location: string | { name?: string } | undefined | null) => {
-		if (!location) return 'Sin dirección';
-		const locationStr = typeof location === 'string' ? location : location?.name || '';
+	const formatLocation = (locInput?: any) => {
+		let locationStr = '';
+		if (typeof locInput === 'string' && locInput.trim() !== '') {
+			locationStr = locInput;
+		} else if (locInput && typeof locInput === 'object') {
+			locationStr = locInput.name || locInput.colonia || locInput.ubicacion || locInput.direccion || '';
+		}
+
+		if (!locationStr) {
+			locationStr = property?.colonia || property?.ubicacion || property?.direccion || '';
+		}
+
 		if (!locationStr || typeof locationStr !== 'string') return 'Sin dirección';
+
 		let formattedLocation = locationStr
-			.replace('Chihuahua, Chihuahua', '')
-			.replaceAll(',', '')
-			.replace('I, ', '')
-			.replace('II', '')
-			.replace('III', '')
-			.replace('IV', '')
-			.replace(' V ', '')
-			.replaceAll(' Y ', '')
-			.replace('Fraccionamiento', '')
-			.replace('Residencial', '')
-			.replace('Etapa', '')
+			.replace(/,?\s*Chihuahua,?\s*Chihuahua/gi, '')
+			.replace(/,?\s*Chihuahua/gi, '')
+			.replaceAll(',', ', ')
+			.replace(/\s+/g, ' ')
 			.trim();
 
-		// Limitar la longitud absoluta para evitar desbordamiento
-		return formattedLocation.length > 25
-			? formattedLocation.substring(0, 22) + '...'
+		// Limitar la longitud absoluta para evitar desbordamiento en la tarjeta
+		return formattedLocation.length > 28
+			? formattedLocation.substring(0, 25) + '...'
 			: formattedLocation || 'Sin dirección';
 	};
 
@@ -68,8 +71,8 @@
 		<div class="info__cont">
 			<div class="card__info">
 				<div class="location-container">
-					<span class="capitalize">
-						{formatLocation(property?.location)}
+					<span class="capitalize" title={typeof property?.location === 'string' ? property.location : property?.location?.name || property?.colonia || property?.ubicacion || ''}>
+						{formatLocation(property?.location || property?.colonia || property?.ubicacion)}
 					</span>
 				</div>
 				<span class="price">$ {toComaSep(Number(property.price || 0))}</span>

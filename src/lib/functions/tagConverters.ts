@@ -1,52 +1,88 @@
-// c:\Users\Propietario\OneDrive\AB GrupoUrbania\OneDrive\Escritorio\Web Projects\ATAIR\src\lib\functions\tagConverters.ts
+export const CANONICAL_UBICACIONES = [
+    'norte', 'noreste', 'noroeste', 'oeste', 'este',
+    'centronorte', 'centrosur', 'sureste', 'suroeste', 'sur'
+];
 
-export function tagToUbicacion(input: string | string[]) {
-    // ... (sin cambios, ya devuelve lowercase o null)
-    const ubicaciones = [
-        'norte', 'noreste', 'noroeste', 'oeste', 'este',
-        'centronorte', 'centrosur', 'sureste', 'suroeste'
-    ];
+export function tagToUbicacion(input: any): string | null {
+    if (!input) return null;
 
-    if (!input) return null; // Añadir chequeo por si input es null/undefined
+    // Si es un objeto complejo (ej. objeto Property)
+    if (typeof input === 'object' && !Array.isArray(input)) {
+        if (input.ubicacion && typeof input.ubicacion === 'string') {
+            const z = tagToUbicacion(input.ubicacion);
+            if (z) return z;
+        }
+        if (input.zona && typeof input.zona === 'string') {
+            const z = tagToUbicacion(input.zona);
+            if (z) return z;
+        }
+        if (Array.isArray(input.locaProperty) && input.locaProperty.length > 0) {
+            const z = tagToUbicacion(input.locaProperty);
+            if (z) return z;
+        }
+        if (Array.isArray(input.tags) && input.tags.length > 0) {
+            const z = tagToUbicacion(input.tags);
+            if (z) return z;
+        }
+        if (typeof input.location === 'string') {
+            const z = tagToUbicacion(input.location);
+            if (z) return z;
+        }
+        return null;
+    }
 
-    const zonas = Array.isArray(input)
-        ? input.map(zona => zona?.toLowerCase().trim() ?? '') // Usar optional chaining y nullish coalescing
-        : typeof input === 'string' ? input.toLowerCase().trim().split(/\s+/) : []; // Asegurar que es string
+    // Si es un array
+    if (Array.isArray(input)) {
+        for (const item of input) {
+            const z = tagToUbicacion(item);
+            if (z) return z;
+        }
+        return null;
+    }
 
-    for (const zona of zonas) {
-        if (zona && ubicaciones.includes(zona)) { // Chequear que zona no sea empty string
-            return zona;
+    // Si es un string
+    if (typeof input === 'string') {
+        const clean = input.toLowerCase().trim();
+        const norm = clean.replace(/[\s\-_]+/g, '');
+        if (CANONICAL_UBICACIONES.includes(norm)) {
+            return norm;
+        }
+        for (const u of CANONICAL_UBICACIONES) {
+            if (norm.includes(u)) {
+                return u;
+            }
         }
     }
 
     return null;
 }
 
-export function tagToFeatures(arr: string[] | null | undefined): string[] { // Devolver siempre array (puede ser vacío)
-    const predefinedTags = [ // Renombrar para claridad y poner en minúsculas para comparación directa
-        'fracc. privado', 'frente a parque', 'una planta', 'recamara en p.b.',
-        'patio amplio', 'lista para habitarse', 'nueva', 'alberca'
-    ];
+export function formatZona(zonaOrProp: any): string {
+    const rawZona = tagToUbicacion(zonaOrProp);
+    if (!rawZona) return '';
 
-    const resultados: string[] = [];
-
-    if (!Array.isArray(arr)) { // Si la entrada no es un array, devolver vacío
-        return resultados;
-    }
-
-    for (const item of arr) {
-        if (item) { // Asegurarse que el item existe
-            const valorNormalizado = item.toLowerCase().trim();
-            // Comprobar si el valor normalizado existe en nuestra lista de tags predefinidos (ya en minúsculas)
-            if (predefinedTags.includes(valorNormalizado) && !resultados.includes(valorNormalizado)) {
-                // Guardamos la versión normalizada (minúsculas)
-                resultados.push(valorNormalizado);
-            }
-        }
-    }
-    // Eliminar el console.log dentro del bucle
-    // console.log(tag); // <--- ELIMINAR ESTO
-
-    // Devolver siempre un array (vacío si no hay coincidencias)
-    return resultados;
+    const map: Record<string, string> = {
+        'centronorte': 'Centronorte',
+        'centrosur': 'Centrosur',
+        'norte': 'Norte',
+        'sur': 'Sur',
+        'noreste': 'Noreste',
+        'noroeste': 'Noroeste',
+        'este': 'Este',
+        'oeste': 'Oeste',
+        'sureste': 'Sureste',
+        'suroeste': 'Suroeste'
+    };
+    return map[rawZona.toLowerCase()] || (rawZona.charAt(0).toUpperCase() + rawZona.slice(1));
 }
+
+export function tagToFeatures(arr: string[] | null | undefined): string[] {
+    if (!Array.isArray(arr)) return [];
+
+    return arr.filter(item => {
+        if (!item || typeof item !== 'string') return false;
+        const norm = item.toLowerCase().trim().replace(/[\s\-_]+/g, '');
+        return !CANONICAL_UBICACIONES.includes(norm);
+    });
+}
+
