@@ -1731,4 +1731,82 @@
     gap: 0.75rem;
     margin-top: 0.25rem;
   }
+
+  /* Responsive / Mobile Viewport Fixes */
+  @media (max-width: 768px) {
+    .page-container {
+      padding: 1.25rem 0.75rem;
+      width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
+    }
+
+    .page-header {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .page-header h1 {
+      font-size: 1.5rem;
+    }
+
+    .form-wrapper {
+      padding: 1.25rem 0.85rem;
+      border-radius: 0.85rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .form-grid {
+      gap: 1.1rem;
+      width: 100%;
+    }
+
+    .form-group {
+      grid-template-columns: 1fr;
+      gap: 0.4rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    label {
+      font-size: 0.85rem;
+      word-break: break-word;
+    }
+
+    input[type="text"], input[type="number"], textarea {
+      font-size: 0.88rem;
+      padding: 0.65rem 0.85rem;
+    }
+
+    .submit-actions {
+      flex-direction: column;
+    }
+
+    .btn-primary {
+      width: 100%;
+      text-align: center;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .page-container {
+      padding: 1rem 0.4rem;
+    }
+
+    .form-wrapper {
+      padding: 1rem 0.6rem;
+      border-radius: 0.75rem;
+    }
+
+    .existing-images-section {
+      padding: 0.75rem 0.5rem;
+    }
+
+    .existing-grid {
+      grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+      gap: 0.5rem;
+    }
+  }
 </style>

@@ -812,16 +812,21 @@
   .contact-selector-container {
     position: relative;
     width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .selected-display {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.65rem;
     padding: 0.65rem 0.85rem;
     background-color: #1e1e35;
     border: 1px solid var(--border-color, rgba(99, 102, 241, 0.2));
     border-radius: var(--radius-sm, 0.5rem);
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -921,6 +926,9 @@
     border: 1px solid rgba(99, 102, 241, 0.25);
     border-radius: var(--radius-sm, 0.45rem);
     padding: 0.45rem 0.75rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -945,12 +953,14 @@
 
   .phone-input {
     flex: 1;
+    min-width: 100px;
     background: transparent;
     border: none;
     outline: none;
     color: var(--text-primary, #f1f5f9);
     font-size: 0.9rem;
     font-family: inherit;
+    box-sizing: border-box;
   }
 
   .phone-input::placeholder {
@@ -960,15 +970,16 @@
   }
 
   .whatsapp-preview-link {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     color: #22c55e;
     background: rgba(34, 197, 94, 0.12);
     border: 1px solid rgba(34, 197, 94, 0.25);
-    padding: 0.2rem 0.55rem;
+    padding: 0.2rem 0.5rem;
     border-radius: 9999px;
     text-decoration: none;
     font-weight: 600;
     white-space: nowrap;
+    flex-shrink: 0;
     transition: background 0.15s ease, transform 0.15s ease;
   }
 
@@ -990,6 +1001,9 @@
     background-color: #1e1e35;
     border: 1px solid var(--border-color, rgba(99, 102, 241, 0.2));
     border-radius: var(--radius-sm, 0.5rem);
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     cursor: text;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }

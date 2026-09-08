@@ -65,6 +65,8 @@
   .dropdown-container {
     position: relative;
     width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .dropdown-button {
@@ -80,6 +82,8 @@
     font-size: 0.95rem;
     text-align: left;
     cursor: pointer;
+    box-sizing: border-box;
+    min-width: 0;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -97,12 +101,19 @@
   .label-text {
     color: var(--text-primary, #f1f5f9);
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
 
   .label-text.is-placeholder {
     color: rgba(148, 163, 184, 0.38);
     font-weight: 300;
     opacity: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .chevron {
