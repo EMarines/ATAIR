@@ -2,6 +2,8 @@ import type { PageLoad } from './$types';
 import { db } from '$lib/firebase_toggle';
 import { doc, getDoc } from 'firebase/firestore';
 import { error, redirect } from '@sveltejs/kit';
+import { contactsStore } from '$lib/stores/dataStore';
+import { get } from 'svelte/store';
 
 export const load: PageLoad = async ({ params }) => {
     try {
@@ -9,6 +11,19 @@ export const load: PageLoad = async ({ params }) => {
         if (!params.id || params.id.trim() === '') {
             console.error('Error: ID de contacto no proporcionado o inválido');
             throw redirect(303, '/contacts');
+        }
+
+        // 1. Verificación instantánea en memoria (0ms latencia para contactos recién creados o en catálogo)
+        const localContacts = get(contactsStore);
+        const contactFromStore = Array.isArray(localContacts)
+            ? localContacts.find((c) => c && c.id === params.id)
+            : null;
+
+        if (contactFromStore && contactFromStore.name) {
+            console.log('⚡ Contacto cargado instantáneamente desde el store local:', contactFromStore.id);
+            return {
+                contact: contactFromStore
+            };
         }
 
         const docRef = doc(db, 'contacts', params.id);

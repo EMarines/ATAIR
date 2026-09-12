@@ -30,7 +30,7 @@
 	import type { Property, Contact, AddContactEvents } from '$lib/types';
 	import { ranPrice } from '$lib/functions/rangeValue';
 	import { convertOperationEbFb } from '$lib/functions/converterEb-Fb';
-	import { getProposalUrl } from '$lib/functions/urlUtils';
+	import { getProposalUrl, ensureContactInProposalUrl } from '$lib/functions/urlUtils';
 	import { onMount, onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
 
@@ -90,18 +90,19 @@
 			showNotification = false;
 		}, 1500);
 	} // Variables para n8n webhook configuration
-	// Auto-detección de entorno
+	// Auto-detección de entorno (Sandbox dev vs Producción)
 	const isLocalhost =
 		typeof window !== 'undefined' &&
 		(window.location.hostname === 'localhost' ||
 			window.location.hostname === '127.0.0.1' ||
 			window.location.hostname.includes('localhost'));
-	const environment = isLocalhost ? 'TEST' : 'PRODUCTION';
-	const useTestMode = isLocalhost; // true para localhost (test), false para producción
+	const isSandbox = import.meta.env.VITE_FIREBASE_ENV === 'dev' || isLocalhost;
+	const environment = isSandbox ? 'TEST' : 'PRODUCTION';
+	const useTestMode = isSandbox; // true para Sandbox / dev (test), false para producción
 
 	const webhookUrlBase =
 		import.meta.env.VITE_N8N_WEBHOOK_BASE ||
-		'https://n8n-n8n.wjj5il.easypanel.host/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+		'https://n8n-atair.duckdns.org/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
 	const webhookUrlTest = webhookUrlBase + '?test=true';
 	const webhookUrlProd = webhookUrlBase;
 
@@ -109,13 +110,14 @@
 	export let existingContact: Contact | null = null;
 
 	// Función para enviar datos del contacto a n8n para sincronización con Google Contacts
-	async function sendToN8n(contactData: Contact) {
+	async function sendToN8n(contactData: Contact, propData: Property | null = null) {
 		const startTime = Date.now();
-		const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
+		const webhookUrl = webhookUrlProd;
 
 		try {
 			// Preparar el paquete de datos para n8n (siguiendo el patrón exitoso de propiedades)
 			const dataPackage = {
+				isSandbox: isSandbox,
 				contact: {
 					id: contactData.id,
 					name: contactData.name,
@@ -128,15 +130,25 @@
 					contactMode: contactData.selecMC || '',
 					budget: contactData.budget || 0,
 					propertyType: contactData.selecTP || '',
-					contactStage: contactData.contactStage || ''
+					contactStage: contactData.contactStage || '',
+					propCont: contactData.propCont || ''
 				},
+				property: propData ? {
+					id: propData.public_id || propData.id || '',
+					clave: propData.clavePropiedad || propData.claveEB || propData.claveMH || propData.public_id || '',
+					colonia: propData.colonia || (typeof propData.location === 'object' ? propData.location?.name : propData.location) || '',
+					nombreContactoCaptador: propData.nombreContactoCaptador || propData.agent || propData.propietario || '',
+					companiaCaptadora: propData.companiaCaptadora || propData.idCompaniaCaptadora || '',
+					procedencia: propData.procedencia || '',
+					sourceName: propData.sourceName || ''
+				} : null,
 				metadata: {
 					timestamp: Date.now(),
 					timestampISO: new Date().toISOString(),
 					source: 'ATAIR_APP',
 					action: 'CREATE_CONTACT',
 					requestedBy: 'AddContact_Component',
-					testMode: useTestMode,
+					testMode: isSandbox,
 					version: '1.0',
 					environment: environment
 				},
@@ -168,91 +180,53 @@
 				}
 			};
 
-			console.log('📦 PAQUETE COMPLETO A ENVIAR:', JSON.stringify(dataPackage, null, 2));
+			console.log('📦 PAQUETE COMPLETO A ENVIAR A N8N:', JSON.stringify(dataPackage, null, 2));
 
-			// DEBUG: Verificar serialización
 			const jsonString = JSON.stringify(dataPackage);
-			console.log('🔍 JSON STRING LENGTH:', jsonString.length);
-			console.log('🔍 JSON STRING PREVIEW:', jsonString.substring(0, 100) + '...');
-			console.log(
-				'🔍 JSON IS VALID:',
-				(() => {
-					try {
-						JSON.parse(jsonString);
-						return true;
-					} catch {
-						return false;
-					}
-				})()
-			);
+			const bodyToSend = jsonString;
 
-			// ASEGURAR que el body sea una cadena JSON válida
-			const bodyToSend = jsonString; // Usar la cadena ya serializada
-			console.log('🔍 BODY TYPE:', typeof bodyToSend);
-			console.log('🔍 BODY IS STRING:', typeof bodyToSend === 'string');
-			console.log('🔍 ENVIRONMENT:', import.meta.env.MODE);
-			console.log('🔍 IS PRODUCTION BUILD:', import.meta.env.PROD);
-			console.log(
-				'🔍 VERCEL ENV:',
-				typeof window !== 'undefined' ? window.location.hostname : 'SSR'
-			);
+			console.log('🔗 Sincronizando con Google Contacts vía /api/contacts/google-sync...');
 
-			console.log('🔗 URL del webhook:', webhookUrl);
-
-			// Crear AbortController para timeout
+			// Crear AbortController para timeout (30s para dar margen a la API de Google Contacts)
 			const controller = new AbortController();
-			// Timeout más corto para modo test (3s vs 30s)
-			const timeoutMs = useTestMode ? 3000 : 30000;
+			const timeoutMs = 30000;
 			const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-			console.log(`⏱️ Timeout configurado a ${timeoutMs}ms (${timeoutMs / 1000}s)`);
-			console.log('📤 Headers a enviar:', {
-				'Content-Type': 'application/json',
-				Accept: 'application/json',
-				'X-Requested-With': 'XMLHttpRequest'
-			});
-
-			// Función para enviar con modo específico
-			const sendWithMode = async (mode) => {
-				return await fetch(webhookUrl, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Accept: 'application/json',
-						'X-Requested-With': 'XMLHttpRequest'
-					},
-					body: bodyToSend, // Usar la cadena ya serializada
-					signal: controller.signal,
-					mode: mode
-				});
-			};
 
 			try {
 				let response;
 
-				// En modo test, usar directamente no-cors
-				if (useTestMode) {
-					console.log('🧪 Modo TEST: usando no-cors directamente');
-					response = await sendWithMode('no-cors');
-				} else {
-					// En producción, intentar primero con CORS, si falla usar no-cors
-					console.log('🚀 Modo PRODUCCIÓN: intentando con CORS primero');
-					try {
-						response = await sendWithMode('cors');
-						console.log('✅ CORS exitoso en producción');
-					} catch (corsError) {
-						console.log('⚠️ CORS falló, intentando con no-cors como fallback');
-						console.log('Error CORS:', corsError.message);
-						response = await sendWithMode('no-cors');
-						console.log('✅ Fallback no-cors exitoso');
-					}
+				// Intentar primero a través de la ruta interna de SvelteKit /api/contacts/google-sync para evitar CORS
+				try {
+					response = await fetch('/api/contacts/google-sync', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Accept: 'application/json'
+						},
+						body: bodyToSend,
+						signal: controller.signal,
+						keepalive: true
+					});
+					console.log('✅ Conexión con /api/contacts/google-sync completada');
+				} catch (apiError) {
+					console.warn('⚠️ Fallback a webhook directo n8n:', apiError);
+					response = await fetch(webhookUrl, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Accept: 'application/json'
+						},
+						body: bodyToSend,
+						signal: controller.signal,
+						keepalive: true
+					});
 				}
 
-				clearTimeout(timeoutId); // Cancelar timeout si la respuesta llega
+				clearTimeout(timeoutId);
 
 				const duration = Date.now() - startTime;
 				console.log(`⏱️ Tiempo de respuesta: ${duration}ms`);
-				console.log('📡 Respuesta de n8n - Status:', response.status);
+				console.log('📡 Respuesta - Status:', response.status);
 				console.log('📡 Respuesta de n8n - StatusText:', response.statusText);
 				console.log(
 					'📡 Respuesta de n8n - Headers:',
@@ -286,32 +260,55 @@
 
 					console.log('✅ ÉXITO: Contacto enviado a n8n:', result);
 
-					// 🔥 NUEVO: Capturar googleContactId si está presente
-					if (result && result.googleContactId) {
-						console.log('🆔 Google Contact ID recibido:', result.googleContactId);
+					// 🔥 Capturar googleContactId y notas/frase generadas
+					const gId = result?.googleContactId || result?.resourceName || null;
+					const generatedPhrase = result?.phrase || '';
+					const generatedNotes = result?.notes || generatedPhrase;
 
-						// Actualizar el contacto en Firebase con el googleContactId
+					if (gId || generatedNotes) {
+						console.log('🆔 Google Contact ID recibido:', gId);
+						console.log('📝 Frase/Notas generadas recibidas:', generatedNotes);
+
+						// Actualizar el contacto en Firebase con el googleContactId y la frase/notas generadas
 						try {
+							const existingNotes = contactData.notes ? contactData.notes.trim() : '';
+							let updatedNotes = existingNotes;
+							if (generatedNotes) {
+								if (!existingNotes) {
+									updatedNotes = generatedNotes;
+								} else if (!existingNotes.includes(generatedPhrase)) {
+									updatedNotes = `${generatedNotes}\n${existingNotes}`;
+								}
+							}
+
 							const updatedContactData = {
 								...contactData,
-								googleContactId: result.googleContactId,
-								googleSyncedAt: Date.now()
+								...(gId ? { googleContactId: gId, googleSyncedAt: Date.now() } : {}),
+								notes: updatedNotes
 							};
 
-							console.log('💾 Actualizando contacto con Google ID...');
+							console.log('💾 Actualizando contacto con Google ID y notas generadas...');
 							const updateResult = await contactsStore.update(updatedContactData);
 
 							if (updateResult.success) {
-								console.log('✅ Google Contact ID guardado en Firebase');
+								console.log('✅ Google Contact ID y Notas guardados en Firebase');
+								return {
+									success: true,
+									googleContactId: gId,
+									notes: updatedNotes,
+									phrase: generatedPhrase
+								};
 							} else {
-								console.error('❌ Error guardando Google Contact ID:', updateResult.error);
+								console.error('❌ Error guardando Google Contact ID y Notas:', updateResult.error);
 							}
 						} catch (updateError) {
-							console.error('❌ Error actualizando contacto con Google ID:', updateError);
+							console.error('❌ Error actualizando contacto con Google ID y notas:', updateError);
 						}
 					} else {
-						console.log('⚠️ No se recibió googleContactId en la respuesta');
+						console.log('⚠️ No se recibió googleContactId ni notas en la respuesta');
 					}
+
+					return result;
 				} else {
 					// Intentar obtener el cuerpo de la respuesta de error
 					let errorBody = '';
@@ -382,6 +379,11 @@
 
 	// 🔄 FUNCIÓN PARA ACTUALIZAR CONTACTO EN GOOGLE CONTACTS
 	async function updateContactInGoogle(contactData: Contact) {
+		if (isSandbox) {
+			console.log('🧪 [Sandbox] Actualización Google Contacts en modo simulación');
+			return { success: true, simulated: true };
+		}
+
 		if (!contactData.googleContactId) {
 			console.log('⚠️ No se puede actualizar: contacto sin googleContactId');
 			return { success: false, error: 'No Google Contact ID' };
@@ -480,6 +482,11 @@
 
 	// 🗑️ FUNCIÓN PARA ELIMINAR CONTACTO DE GOOGLE CONTACTS
 	async function deleteContactFromGoogle(contactData: Contact) {
+		if (isSandbox) {
+			console.log('🧪 [Sandbox] Eliminación Google Contacts en modo simulación');
+			return { success: true, simulated: true };
+		}
+
 		if (!contactData.googleContactId) {
 			console.log('⚠️ No se puede eliminar: contacto sin googleContactId');
 			return { success: false, error: 'No Google Contact ID' };
@@ -545,6 +552,11 @@
 	// 🚀 AUTOMATIZACIÓN WHATSAPP (PHASE 1)
 	async function triggerWhatsAppAutomation(contactData: Contact, propertyData: Property | null, isNew: boolean = false) {
 		if (!contactData.telephon) return;
+
+		if (isSandbox) {
+			console.log('🧪 [Sandbox] Automatización WhatsApp en modo simulación (sin peticiones externas a Meta)');
+			return;
+		}
 
 		console.log('🚀 Triggering WhatsApp Automation...');
 		try {
@@ -771,7 +783,17 @@
 				contMode: contact.contMode || '',
 				notes: contact.notes || '',
 				propCont: contact.propCont || '',
-				publicUrl: contact.publicUrl || (contact.propCont ? getProposalUrl(contact.propCont, existingContact ? (existingContact.id || contact.id) : (contact.name || contact.id)) : ''),
+				publicUrl: contact.publicUrl
+					? ensureContactInProposalUrl(contact.publicUrl, {
+							...contact,
+							id: existingContact ? (existingContact.id || contact.id) : '',
+							isNew: !existingContact
+					  }, contact.telephon)
+					: (contact.propCont ? getProposalUrl(contact.propCont, {
+							...contact,
+							id: existingContact ? (existingContact.id || contact.id) : '',
+							isNew: !existingContact
+					  }, contact.telephon) : ''),
 				// selecTO: contact.selecTO || '',
 				// selecTO: convertOperationEbFb($propertyStore.selecTO) || '',
 
@@ -882,30 +904,42 @@
 			console.log('🔍 Es contacto REALMENTE nuevo (por Firebase)?', isNewContact);
 			console.log('🔍 Es contacto ACTUALIZADO?', isUpdatedContact);
 
+			// Sincronizaciones externas en segundo plano (NO BLOQUEANTES):
+			// Se ejecutan de manera asíncrona sin congelar la interfaz ni retrasar la navegación al contacto
 			if (isNewContact) {
-				console.log('✅ Enviando contacto NUEVO a n8n...');
+				console.log('🚀 Sincronizando con n8n y Google Contacts...');
+				const currentProp = get(propertyStore);
 				try {
-					await sendToN8n(cleanContactData);
+					const syncResult = await sendToN8n(cleanContactData, currentProp);
+					if (syncResult && syncResult.notes) {
+						cleanContactData.notes = syncResult.notes;
+					}
+					if (syncResult && syncResult.googleContactId) {
+						cleanContactData.googleContactId = syncResult.googleContactId;
+					}
+					// Refrescar store con las notas y Google ID enriquecidos
+					const currentContacts = get(contactsStore);
+					const idx = currentContacts.findIndex((c) => c.id === cleanContactData.id);
+					if (idx >= 0) {
+						currentContacts[idx] = { ...cleanContactData };
+						contactsStore.set([...currentContacts]);
+					}
 				} catch (n8nError) {
-					console.error('❌ Error enviando a n8n:', n8nError);
-					// No bloqueamos el flujo si n8n falla
+					console.error('⚠️ Error en sincronización n8n:', n8nError);
 				}
-				// 🚀 TRIGGER WHATSAPP AUTOMATION
+
 				try {
-					const currentProp = get(propertyStore);
-					// Solo enviar si hay propiedad seleccionada o al menos intentar
-					triggerWhatsAppAutomation(cleanContactData, currentProp, isNewContact);
+					triggerWhatsAppAutomation(cleanContactData, currentProp, isNewContact).catch((waError) => {
+						console.error('⚠️ Error triggering WhatsApp en segundo plano:', waError);
+					});
 				} catch (waError) {
 					console.error('❌ Error triggering WhatsApp:', waError);
 				}
 			} else if (isUpdatedContact && cleanContactData.googleContactId) {
-				console.log('📝 Actualizando contacto EXISTENTE en Google...');
-				try {
-					await updateContactInGoogle(cleanContactData);
-				} catch (updateError) {
-					console.error('❌ Error actualizando en Google:', updateError);
-					// No bloqueamos el flujo si la actualización falla
-				}
+				console.log('📝 Actualizando contacto EXISTENTE en Google en segundo plano...');
+				updateContactInGoogle(cleanContactData).catch((updateError) => {
+					console.error('⚠️ Error actualizando en Google en segundo plano:', updateError);
+				});
 			} else {
 				console.log('⏭️ SALTANDO sincronización - sin googleContactId o error de guardado');
 			}
@@ -1117,8 +1151,11 @@
 										isSelected={contact.propCont === property.public_id}
 										onSelect={() => {
 											contact.propCont = property.public_id;
-											const contactIdentifier = existingContact ? (existingContact.id || contact.id) : (contact.name || contact.id);
-											contact.publicUrl = getProposalUrl(property.public_id, contactIdentifier);
+											contact.publicUrl = getProposalUrl(property.public_id, {
+												...contact,
+												id: existingContact ? (existingContact.id || contact.id) : '',
+												isNew: !existingContact
+											}, contact.telephon);
 											contact.selecTP = property.property_type || '';
 											(contact.typeContact = convertOperationEbFb(property.selecTO) || ''),
 												(contact.rangeProp = property.price ? ranPrice(property.price) : '');

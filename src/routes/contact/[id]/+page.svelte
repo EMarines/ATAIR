@@ -359,7 +359,7 @@
 			faltanProp = propCheck.length - (sig + 1);
 			let msg =
 				propCheck[sig] && propCheck[sig].public_id
-					? getProposalUrl(propCheck[sig].public_id, contact.id || contact.name)
+					? getProposalUrl(propCheck[sig].public_id, contact)
 					: (propCheck[sig]?.public_url || 'No hay URL pública disponible para esta propiedad');
 			sendWhatsApp(tel, msg);
 
@@ -500,18 +500,21 @@
 
 		// Cargar el mensaje unificado en el textarea
 		if ($systStatus === 'addContact') {
+			const fullName = `${contact.name || ''} ${contact.lastname || ''}`.trim() || contact.name || '';
+			const contactPhone = contact.telephon || '';
+
 			let propUrl = '';
 			if (contact.publicUrl) {
-				propUrl = ensureContactInProposalUrl(contact.publicUrl, contact.id || contact.name);
+				propUrl = ensureContactInProposalUrl(contact.publicUrl, contact);
 			} else if (property && (property.public_id || property.public_url)) {
 				propUrl = property.public_id
-					? getProposalUrl(property.public_id, contact.id || contact.name)
+					? getProposalUrl(property.public_id, contact)
 					: (property.public_url || '');
 			} else {
 				const unsubscribe = propertyStore.subscribe((selectedProperty) => {
 					if (selectedProperty) {
 						propUrl = selectedProperty.public_id
-							? getProposalUrl(selectedProperty.public_id, contact.id || contact.name)
+							? getProposalUrl(selectedProperty.public_id, contact)
 							: (selectedProperty.public_url || '');
 					}
 				});
