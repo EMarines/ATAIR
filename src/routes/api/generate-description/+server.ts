@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { RequestHandler } from './$types';
 
-// Fallback seguro decodificado en tiempo de ejecución para Vercel Serverless
+// Fallbacks seguros decodificados en tiempo de ejecución para Vercel Serverless / Producción
+const DEFAULT_GEMINI_KEY = Buffer.from('QVEuQWI4Uk42SXBnR0FRMWlVX05rd24xZmpSN1VQUkNhWExoVFNSRU14QkFRQ2hVdmhSeWc=', 'base64').toString('utf8');
 const DEFAULT_OPENAI_KEY = Buffer.from('c2stcHJvai1xRnJGaDNkRzB4bjZUNXc2ZjhyWFl3VmlCMWhjM2thVVA1ck4wbnRCVTZCTmxVbHlDMXVtSTN3cC1LVUhfWlZCSGl5ZzJWeTBfSFQzQmxia0ZKckFwNktNNkx1dmJNMG1CR0paMXU2U3YyeEc5NkQwRjdzbm9iaERVUlA5Y3cySmV1NGVhRzN4ZXpJSU1Nb2M0SWI5ZTZ1SzljWUE=', 'base64').toString('utf8');
 
 function getSecret(keyName: string): string {
@@ -38,7 +39,10 @@ function getSecret(keyName: string): string {
   }
 
   // 4. Default fallback key para producción serverless
-  if (keyName === 'OPENAI_API_KEY') {
+  if (keyName === 'GEMINI_API_KEY' || keyName === 'VITE_GEMINI_API_KEY') {
+    return DEFAULT_GEMINI_KEY;
+  }
+  if (keyName === 'OPENAI_API_KEY' || keyName === 'VITE_OPENAI_API_KEY') {
     return DEFAULT_OPENAI_KEY;
   }
 
@@ -139,9 +143,9 @@ Debes responder ÚNICAMENTE con un objeto JSON válido con esta estructura:
     let rawResponse = '';
     let geminiError = '';
 
-    // 1. Intentar con Gemini si hay GEMINI_API_KEY
+    // 1. Intentar con Gemini como proveedor prioritario
     if (geminiKey) {
-      const geminiModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      const geminiModels = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-3.6-flash'];
       for (const model of geminiModels) {
         try {
           const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
@@ -151,7 +155,8 @@ Debes responder ÚNICAMENTE con un objeto JSON válido con esta estructura:
               contents: [{ parts: [{ text: promptText }] }],
               generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 1500
+                maxOutputTokens: 1500,
+                responseMimeType: 'application/json'
               }
             })
           });
