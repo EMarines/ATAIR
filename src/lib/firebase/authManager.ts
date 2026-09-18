@@ -25,44 +25,27 @@ function getInitialProfile() {
   }
 }
 
+const initialProfile = getInitialProfile();
+
 // Store para el estado del usuario
 export const userStore = writable<User | null>(null);
-export const userProfile = writable<any>(getInitialProfile());
-export const authInitialized = writable(false);
-export const authLoading = writable(true);
+export const userProfile = writable<any>(initialProfile);
+export const authInitialized = writable(initialProfile ? true : false);
+export const authLoading = writable(initialProfile ? false : true);
 
 // Listener para el perfil del usuario
 let profileUnsubscribe: (() => void) | null = null;
 
 /**
- * Inicializa el gestor de autenticación
- * Firebase automáticamente restaura sesiones gracias a browserLocalPersistence
+ * Carga o crea el perfil del usuario en Firestore de forma no bloqueante
  */
-/**
- * Carga o crea el perfil del usuario en Firestore
- */
-async function handleUserProfile(user: User) {
+function handleUserProfile(user: User) {
   try {
     if (!db) return;
 
     const userDocRef = doc(db, 'users', user.uid);
-    const userDocSnap = await getDoc(userDocRef);
 
-    if (!userDocSnap.exists()) {
-      const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com'; 
-      const newProfile = {
-        email: user.email,
-        role: isAdmin ? 'admin' : 'user',
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
-        uid: user.uid
-      };
-      await setDoc(userDocRef, newProfile);
-    } else {
-      await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-    }
-
-    // Suscribirse a cambios en el perfil
+    // 1. Escucha en tiempo real (lee instantáneamente de IndexedDB cache en 0ms)
     if (profileUnsubscribe) profileUnsubscribe();
     profileUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -76,12 +59,32 @@ async function handleUserProfile(user: User) {
           }
         }
       }
+    }, (error) => {
+      console.warn('Error en onSnapshot de user profile:', error);
     });
+
+    // 2. Actualizar lastLogin o crear perfil en segundo plano (fire-and-forget)
+    getDoc(userDocRef).then((userDocSnap) => {
+      if (!userDocSnap.exists()) {
+        const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com'; 
+        const newProfile = {
+          email: user.email,
+          role: isAdmin ? 'admin' : 'user',
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+          uid: user.uid
+        };
+        setDoc(userDocRef, newProfile).catch(console.error);
+      } else {
+        setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true }).catch(console.error);
+      }
+    }).catch(console.error);
 
   } catch (error) {
     console.error('Error en handleUserProfile:', error);
-    // Fallback preventivo
-    userProfile.set({ role: 'user', email: user.email });
+    if (!get(userProfile)) {
+      userProfile.set({ role: 'user', email: user.email });
+    }
   }
 }
 
@@ -89,7 +92,7 @@ async function handleUserProfile(user: User) {
  * Inicializa el gestor de autenticación
  */
 export async function initializeAuthManager() {
-  if (get(authInitialized) || !browser) return;
+  if (!browser) return;
 
   if (!auth) {
     console.error('initializeAuthManager: Auth no disponible');
@@ -98,9 +101,16 @@ export async function initializeAuthManager() {
     return;
   }
 
-  // Inicializando listener...
+  // Timeout de seguridad: nunca dejar la pantalla trabada en "Cargando sesión..."
+  setTimeout(() => {
+    if (get(authLoading)) {
+      console.log('⚡ [AuthManager] Timeout de seguridad: liberando UI');
+      authLoading.set(false);
+      authInitialized.set(true);
+    }
+  }, 1000);
 
-  onAuthStateChanged(auth, async (user) => {
+  onAuthStateChanged(auth, (user) => {
     console.log('🔥 [AuthManager] Estado cambiado:', user ? `Usuario: ${user.email}` : 'Sin usuario');
     
     if (profileUnsubscribe) {
@@ -109,9 +119,17 @@ export async function initializeAuthManager() {
     }
 
     if (user) {
-      console.log('🔥 [AuthManager] Usuario detectado, actualizando stores...');
       userStore.set(user);
-      await handleUserProfile(user);
+      const currentProfile = get(userProfile);
+      if (!currentProfile) {
+        const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com';
+        const quickProfile = { email: user.email, role: isAdmin ? 'admin' : 'user', uid: user.uid };
+        userProfile.set(quickProfile);
+        if (browser) {
+          try { localStorage.setItem('atair_cached_profile', JSON.stringify(quickProfile)); } catch {}
+        }
+      }
+      handleUserProfile(user);
     } else {
       console.log('🔥 [AuthManager] Usuario nulo (logout o inicial)');
       userStore.set(null);

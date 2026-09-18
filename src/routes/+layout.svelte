@@ -25,20 +25,22 @@
 	// Función para obtener la instancia de Firestore
 	const getDb = () => db;
 
+	let currentSetupRole: string | null = null;
+
 	// Inicializar el gestor de autenticación al cargar la app
-	// Firebase automáticamente restaura sesiones persistentes vía onAuthStateChanged
 	onMount(async () => {
 		await initializeAuthManager();
 	});
 
-	// Esperar a que la autenticación esté inicializada Y el usuario esté autenticado
-	$: if ($authInitialized && $userStore) {
-		// Pasar el perfil a setupFirestoreListeners para filtrar suscripciones por rol
-		if ($userProfile) {
+	// Si tenemos perfil (desde caché local o autenticado), inicializar listeners de inmediato sin esperar
+	$: if ($userProfile) {
+		const role = $userProfile?.role || 'user';
+		if (currentSetupRole !== role) {
+			currentSetupRole = role;
 			setupFirestoreListeners($userProfile);
 		}
 	} else if ($authInitialized && !$userStore) {
-		// Limpiar listeners si el usuario se desconecta
+		currentSetupRole = null;
 		cleanupListeners();
 	}
 
@@ -182,7 +184,7 @@
 <div class="app-container">
 	<NotificationContainer />
 
-	{#if $authLoading}
+	{#if $authLoading && !$userProfile}
 		<div class="loading-overlay">
 			<div class="spinner"></div>
 			<p>Cargando sesión...</p>
