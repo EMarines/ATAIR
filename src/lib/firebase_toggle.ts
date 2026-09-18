@@ -3,7 +3,7 @@
 
 import { browser } from '$app/environment';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore } from 'firebase/firestore';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
@@ -46,7 +46,22 @@ try {
         app = initializeApp(firebaseConfig);
     }
     
-    db = getFirestore(app);
+    if (browser && app) {
+        try {
+            db = initializeFirestore(app, {
+                localCache: persistentLocalCache({
+                    tabManager: persistentMultipleTabManager()
+                })
+            });
+            console.log('⚡ [Firebase] Persistencia IndexedDB (Multi-pestaña) activada con éxito');
+        } catch (cacheErr) {
+            console.warn('⚠️ [Firebase] Fallback a getFirestore:', cacheErr);
+            db = getFirestore(app);
+        }
+    } else if (app) {
+        db = getFirestore(app);
+    }
+
     auth = getAuth(app);
     if (app) {
         storage = getStorage(app);

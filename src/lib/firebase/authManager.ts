@@ -15,9 +15,19 @@ import { writable, get } from 'svelte/store';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 
+function getInitialProfile() {
+  if (!browser) return null;
+  try {
+    const raw = localStorage.getItem('atair_cached_profile');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 // Store para el estado del usuario
 export const userStore = writable<User | null>(null);
-export const userProfile = writable<any>(null);
+export const userProfile = writable<any>(getInitialProfile());
 export const authInitialized = writable(false);
 export const authLoading = writable(true);
 
@@ -58,6 +68,13 @@ async function handleUserProfile(user: User) {
       if (docSnap.exists()) {
         const data = docSnap.data();
         userProfile.set(data);
+        if (browser) {
+          try {
+            localStorage.setItem('atair_cached_profile', JSON.stringify(data));
+          } catch (e) {
+            console.warn('Error guardando perfil en localStorage:', e);
+          }
+        }
       }
     });
 
@@ -99,6 +116,11 @@ export async function initializeAuthManager() {
       console.log('🔥 [AuthManager] Usuario nulo (logout o inicial)');
       userStore.set(null);
       userProfile.set(null);
+      if (browser) {
+        try {
+          localStorage.removeItem('atair_cached_profile');
+        } catch {}
+      }
     }
     
     authLoading.set(false);
@@ -130,6 +152,11 @@ export async function ensureValidToken() {
  */
 export async function handleLogout() {
   try {
+    if (browser) {
+      try {
+        localStorage.removeItem('atair_cached_profile');
+      } catch {}
+    }
     await signOut(auth);
     // Redirigir al login
     goto('/login');
@@ -138,6 +165,12 @@ export async function handleLogout() {
     
     // Forzar limpieza manual si falla el signOut
     userStore.set(null);
+    userProfile.set(null);
+    if (browser) {
+      try {
+        localStorage.removeItem('atair_cached_profile');
+      } catch {}
+    }
     goto('/login');
   }
 }
