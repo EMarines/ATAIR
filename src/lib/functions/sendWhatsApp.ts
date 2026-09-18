@@ -1,18 +1,14 @@
-// c:\Users\Propietario\OneDrive\AB GrupoUrbania\OneDrive\Escritorio\Web Projects\ATAIR\src\lib\functions\sendWhatsApp.ts
+import { isSandbox } from '$lib/firebase_toggle';
 
 // Variable para almacenar referencia a la ventana/tab abierta
 let whatsappWindow: Window | null = null;
 
 /**
  * Envía un mensaje a un número de WhatsApp usando la URL universal wa.me/.
- * Intenta abrir WhatsApp en una nueva ventana popup (escritorio/móvil).
- * El sistema operativo/navegador decidirá qué app de WhatsApp usar si hay varias.
- * Si la apertura falla con un error, intenta redirigir la pestaña actual como fallback.
- * Si la apertura es bloqueada (window.open devuelve null), informa en consola.
- *
+ * En modo Sandbox (pruebas/localhost), simula el envío en consola sin abrir ventanas de WhatsApp.
  * @param fullTel Número de teléfono COMPLETO (con código de país).
  * @param msg Mensaje a enviar.
- * @returns Un objeto con un método `close` para intentar cerrar la ventana/tab de WhatsApp abierta (útil en escritorio).
+ * @returns Un objeto con un método `close` para intentar cerrar la ventana/tab de WhatsApp abierta.
  */
 export function sendWhatsApp(fullTel: string, msg: string) {
   // 1. Verificar entorno de navegador
@@ -53,6 +49,12 @@ export function sendWhatsApp(fullTel: string, msg: string) {
       // Número con formato no reconocido, agregar 52 por defecto
       cleanNumber = '52' + cleanNumber;
     }
+  }
+
+  // 🧪 En Sandbox no se abre ventana ni se envía enlace, solo se simula
+  if (isSandbox) {
+    console.log(`🧪 [Sandbox] Simulación sendWhatsApp para ${cleanNumber}: "${msg}" (sin abrir ventana)`);
+    return { close: () => {} };
   }
 
   console.log(`sendWhatsApp: Número normalizado de "${fullTel}" a "${cleanNumber}"`);

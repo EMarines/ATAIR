@@ -27,7 +27,8 @@
 		contStage,
 		range
 	} from '$lib/parameters';
-	import type { Property, Contact, AddContactEvents } from '$lib/types';
+	import type { Property, Contact, AddContactEvents, Todo } from '$lib/types';
+	import { firebase } from '$lib/stores/firebaseStores';
 	import { ranPrice } from '$lib/functions/rangeValue';
 	import { convertOperationEbFb } from '$lib/functions/converterEb-Fb';
 	import { getProposalUrl, ensureContactInProposalUrl } from '$lib/functions/urlUtils';
@@ -379,23 +380,17 @@
 
 	// 🔄 FUNCIÓN PARA ACTUALIZAR CONTACTO EN GOOGLE CONTACTS
 	async function updateContactInGoogle(contactData: Contact) {
-		if (isSandbox) {
-			console.log('🧪 [Sandbox] Actualización Google Contacts en modo simulación');
-			return { success: true, simulated: true };
-		}
-
 		if (!contactData.googleContactId) {
-			console.log('⚠️ No se puede actualizar: contacto sin googleContactId');
-			return { success: false, error: 'No Google Contact ID' };
+			console.log('⚠️ Contacto sin googleContactId previo, enviando como creación a Google Contacts...');
+			const currentProp = get(propertyStore);
+			return await sendToN8n(contactData, currentProp);
 		}
 
 		console.log('🔄 INICIANDO ACTUALIZACIÓN EN GOOGLE CONTACTS');
 		console.log('🆔 Google Contact ID:', contactData.googleContactId);
 
 		const startTime = Date.now();
-
-		// Configurar URLs según el modo
-		const webhookUrl = useTestMode ? webhookUrlTest : webhookUrlProd;
+		const currentProp = get(propertyStore);
 
 		const dataPackage = {
 			action: 'UPDATE',
@@ -414,6 +409,15 @@
 				propertyType: contactData.selecTP || '',
 				contactStage: contactData.contactStage || ''
 			},
+			property: currentProp ? {
+				id: currentProp.public_id || currentProp.id || '',
+				clave: currentProp.clavePropiedad || currentProp.claveEB || currentProp.claveMH || currentProp.public_id || '',
+				colonia: currentProp.colonia || (typeof currentProp.location === 'object' ? currentProp.location?.name : currentProp.location) || '',
+				nombreContactoCaptador: currentProp.nombreContactoCaptador || currentProp.agent || currentProp.propietario || '',
+				companiaCaptadora: currentProp.companiaCaptadora || currentProp.idCompaniaCaptadora || '',
+				procedencia: currentProp.procedencia || '',
+				sourceName: currentProp.sourceName || ''
+			} : null,
 			googleContactsData: {
 				displayName: contactData.name,
 				givenName: contactData.name.split(' ')[0] || contactData.name,
@@ -445,7 +449,7 @@
 				source: 'ATAIR_APP',
 				action: 'UPDATE_CONTACT',
 				requestedBy: 'AddContact_Component',
-				testMode: useTestMode,
+				testMode: isSandbox,
 				version: '1.0',
 				environment: environment
 			}
@@ -453,30 +457,54 @@
 
 		try {
 			const controller = new AbortController();
-			const timeoutMs = useTestMode ? 3000 : 30000;
+			const timeoutMs = 30000;
 			const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-			console.log('📦 PAQUETE UPDATE A ENVIAR:', JSON.stringify(dataPackage, null, 2));
+			console.log('📦 PAQUETE UPDATE A ENVIAR A N8N:', JSON.stringify(dataPackage, null, 2));
 
-			const response = await fetch(webhookUrl, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(dataPackage),
-				signal: controller.signal,
-				mode: useTestMode ? 'no-cors' : 'cors'
-			});
+			let response;
+			try {
+				response = await fetch('/api/contacts/google-sync', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'application/json'
+					},
+					body: JSON.stringify(dataPackage),
+					signal: controller.signal,
+					keepalive: true
+				});
+				console.log('✅ Conexión UPDATE con /api/contacts/google-sync completada');
+			} catch (apiError) {
+				console.warn('⚠️ Fallback UPDATE a webhook directo n8n:', apiError);
+				response = await fetch(webhookUrlProd, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'application/json'
+					},
+					body: JSON.stringify(dataPackage),
+					signal: controller.signal,
+					keepalive: true
+				});
+			}
 
 			clearTimeout(timeoutId);
 			const duration = Date.now() - startTime;
 
-			console.log(`✅ UPDATE enviado exitosamente en ${duration}ms`);
-			return { success: true, duration };
+			if (response.ok) {
+				const result = await response.json();
+				console.log(`✅ UPDATE en Google Contacts exitoso en ${duration}ms:`, result);
+				return { success: true, ...result, duration };
+			} else {
+				const errorText = await response.text();
+				console.error('❌ Error response en UPDATE Google:', response.status, errorText);
+				return { success: false, error: errorText, duration };
+			}
 		} catch (error) {
 			const duration = Date.now() - startTime;
 			console.error('❌ Error actualizando en Google:', error);
-			return { success: false, error: error.message, duration };
+			return { success: false, error: (error as Error).message, duration };
 		}
 	}
 
@@ -522,30 +550,108 @@
 
 		try {
 			const controller = new AbortController();
-			const timeoutMs = useTestMode ? 3000 : 30000;
+			const timeoutMs = 30000;
 			const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-			console.log('📦 PAQUETE DELETE A ENVIAR:', JSON.stringify(dataPackage, null, 2));
+			console.log('📦 PAQUETE DELETE A ENVIAR A N8N:', JSON.stringify(dataPackage, null, 2));
 
-			const response = await fetch(webhookUrl, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(dataPackage),
-				signal: controller.signal,
-				mode: useTestMode ? 'no-cors' : 'cors'
-			});
+			let response;
+			try {
+				response = await fetch('/api/contacts/google-sync', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'application/json'
+					},
+					body: JSON.stringify(dataPackage),
+					signal: controller.signal,
+					keepalive: true
+				});
+			} catch (apiError) {
+				response = await fetch(webhookUrlProd, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'application/json'
+					},
+					body: JSON.stringify(dataPackage),
+					signal: controller.signal,
+					keepalive: true
+				});
+			}
 
 			clearTimeout(timeoutId);
 			const duration = Date.now() - startTime;
 
-			console.log(`✅ DELETE enviado exitosamente en ${duration}ms`);
+			console.log(`✅ DELETE procesado en ${duration}ms`);
 			return { success: true, duration };
 		} catch (error) {
 			const duration = Date.now() - startTime;
 			console.error('❌ Error eliminando de Google:', error);
-			return { success: false, error: error.message, duration };
+			return { success: false, error: (error as Error).message, duration };
+		}
+	}
+
+	// 📅 CÁLCULO DEL SIGUIENTE DÍA HÁBIL (Saltando fines de semana al lunes)
+	function getNextBusinessDayTimestamp(baseTimestamp?: number): number {
+		const baseDate = baseTimestamp ? new Date(baseTimestamp) : new Date();
+		const dayOfWeek = baseDate.getDay(); // 0: Dom, 1: Lun, 2: Mar, 3: Mié, 4: Jue, 5: Vie, 6: Sáb
+		let daysToAdd = 1;
+		if (dayOfWeek === 5) {
+			// Viernes -> Lunes (+3 días)
+			daysToAdd = 3;
+		} else if (dayOfWeek === 6) {
+			// Sábado -> Lunes (+2 días)
+			daysToAdd = 2;
+		} else if (dayOfWeek === 0) {
+			// Domingo -> Lunes (+1 día)
+			daysToAdd = 1;
+		}
+		const dueDate = new Date(baseDate);
+		dueDate.setDate(dueDate.getDate() + daysToAdd);
+		dueDate.setHours(10, 0, 0, 0); // Fijar a las 10:00 AM para el recordatorio
+		return dueDate.getTime();
+	}
+
+	// 📅 CREAR TAREA AUTOMÁTICA DE SEGUIMIENTO (ETAPA 1) EN FIRESTORE Y AGENDA ATAIR
+	async function createFollowUpTask(contactData: Contact, propData: Property | null, googleTaskId?: string) {
+		try {
+			const nextBusinessDay = getNextBusinessDayTimestamp(contactData.createdAt);
+			const fullName = `${contactData.name} ${contactData.lastname || ''}`.trim();
+			const propInfo = propData
+				? `${propData.clavePropiedad || propData.claveEB || propData.public_id || ''} ${propData.colonia ? '- ' + propData.colonia : ''}`.trim()
+				: (contactData.propCont || '');
+
+			const notesLines = [
+				`Llamada de seguimiento inicial (Etapa 1) para perfilar búsqueda.`,
+				`Teléfono: ${contactData.telephon || 'Sin teléfono'}`,
+				propInfo ? `Propiedad de interés: ${propInfo}` : '',
+				contactData.notes ? `Notas: ${contactData.notes}` : ''
+			].filter(Boolean).join('\n');
+
+			const taskId = generateUUID();
+			const todoData: any = {
+				id: taskId,
+				task: `Seguimiento: ${fullName} (Etapa 1)`,
+				endTask: nextBusinessDay,
+				timeTask: '10:00',
+				notes: notesLines,
+				isCompleted: false,
+				createdAt: Date.now(),
+				contactId: contactData.id,
+				type: 'Seguimiento Etapa 1',
+				...(googleTaskId ? { googleTaskId } : {})
+			};
+
+			console.log('📅 Creando tarea automática de Seguimiento Etapa 1 en ATAIR/Firestore:', todoData);
+			const taskResult = await firebase.addWithId('todos', taskId, todoData);
+			if (taskResult.success) {
+				console.log('✅ Tarea de Etapa 2 creada exitosamente en Firestore (ID:', taskId, ')');
+			} else {
+				console.error('❌ Error guardando tarea en Firestore:', taskResult.error);
+			}
+		} catch (taskErr) {
+			console.error('⚠️ Excepción al crear tarea automática:', taskErr);
 		}
 	}
 
@@ -907,8 +1013,10 @@
 			// Sincronizaciones externas en segundo plano (NO BLOQUEANTES):
 			// Se ejecutan de manera asíncrona sin congelar la interfaz ni retrasar la navegación al contacto
 			if (isNewContact) {
-				console.log('🚀 Sincronizando con n8n y Google Contacts...');
+				console.log('🚀 Sincronizando con n8n y Google Contacts & Tasks...');
 				const currentProp = get(propertyStore);
+				let returnedGoogleTaskId: string | undefined = undefined;
+
 				try {
 					const syncResult = await sendToN8n(cleanContactData, currentProp);
 					if (syncResult && syncResult.notes) {
@@ -916,6 +1024,10 @@
 					}
 					if (syncResult && syncResult.googleContactId) {
 						cleanContactData.googleContactId = syncResult.googleContactId;
+					}
+					if (syncResult && syncResult.googleTaskId) {
+						returnedGoogleTaskId = syncResult.googleTaskId;
+						console.log('📋 Google Task ID recibido:', returnedGoogleTaskId);
 					}
 					// Refrescar store con las notas y Google ID enriquecidos
 					const currentContacts = get(contactsStore);
@@ -927,6 +1039,11 @@
 				} catch (n8nError) {
 					console.error('⚠️ Error en sincronización n8n:', n8nError);
 				}
+
+				// 📅 Crear automáticamente la tarea de seguimiento Etapa 1 en ATAIR/Firestore
+				createFollowUpTask(cleanContactData, currentProp, returnedGoogleTaskId).catch((taskError) => {
+					console.error('⚠️ Error creando tarea automática de Seguimiento Etapa 1:', taskError);
+				});
 
 				try {
 					triggerWhatsAppAutomation(cleanContactData, currentProp, isNewContact).catch((waError) => {

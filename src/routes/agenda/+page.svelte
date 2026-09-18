@@ -15,6 +15,7 @@
       createdAt?: number; // Keep original timestamp if editing
       type?: string;
       user?: string;
+      googleTaskId?: string;
   }
   
   let todos: Todo[] = [];
@@ -187,6 +188,32 @@
       // --- *** FIN DEFINICIÓN DE todoData *** ---
 
 
+      // --- Sincronización con Google Tasks ---
+      async function syncTaskWithGoogle(action: 'CREATE' | 'UPDATE' | 'DELETE', taskPayload: {
+          todoId?: string;
+          googleTaskId?: string;
+          title?: string;
+          notes?: string;
+          dueDate?: string;
+          status?: string;
+          isCompleted?: boolean;
+      }) {
+          try {
+              const res = await fetch('/api/tasks/google-sync', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action, ...taskPayload }),
+                  keepalive: true
+              });
+              if (res.ok) {
+                  return await res.json();
+              }
+          } catch (e) {
+              console.warn('[Agenda Google Tasks Sync] Error de conexión:', e);
+          }
+          return null;
+      }
+
       // --- Bloque Try/Catch para guardar/actualizar ---
       try {
           let result;
@@ -194,9 +221,32 @@
 
           if ($systStatus === "editing" && todo.id) {
               editedTodoId = todo.id; // Guarda el ID antes de la operación
-              // Ahora todoData SÍ está definido
+              
+              // 1. Actualizar en Firestore
               result = await firebase.update('todos', todo.id, todoData);
               if (!result.success) throw new Error(result.error as string || 'Error al actualizar');
+
+              // 2. Sincronizar edición con Google Tasks
+              if (todo.googleTaskId) {
+                  syncTaskWithGoogle('UPDATE', {
+                      googleTaskId: todo.googleTaskId,
+                      title: todoData.task,
+                      notes: todoData.notes,
+                      dueDate: localDate.toISOString(),
+                      isCompleted: todoData.isCompleted
+                  });
+              } else {
+                  // Si no tenía googleTaskId previo, crearlo en Google Tasks y guardar el ID
+                  const gRes = await syncTaskWithGoogle('CREATE', {
+                      title: todoData.task,
+                      notes: todoData.notes,
+                      dueDate: localDate.toISOString(),
+                      isCompleted: todoData.isCompleted
+                  });
+                  if (gRes?.googleTaskId) {
+                      await firebase.update('todos', todo.id, { googleTaskId: gRes.googleTaskId });
+                  }
+              }
 
               // Ocultar iconos después de editar exitosamente
               if (editedTodoId) {
@@ -206,9 +256,21 @@
               }
 
           } else {
-              // Ahora todoData SÍ está definido
+              // 1. Crear en Google Tasks primero para obtener googleTaskId
+              const gRes = await syncTaskWithGoogle('CREATE', {
+                  title: todoData.task,
+                  notes: todoData.notes,
+                  dueDate: localDate.toISOString(),
+                  isCompleted: false
+              });
+
+              if (gRes?.googleTaskId) {
+                  (todoData as any).googleTaskId = gRes.googleTaskId;
+              }
+
+              // 2. Guardar en Firestore con el googleTaskId asignado
               result = await firebase.add('todos', todoData);
-               if (!result.success) throw new Error(result.error as string || 'Error al añadir');
+              if (!result.success) throw new Error(result.error as string || 'Error al añadir');
           }
 
           // --- Limpieza y recarga ---
@@ -230,41 +292,49 @@
       if (!confirm('¿Estás seguro de eliminar esta tarea?')) return;
 
       try {
+          const todoToDelete = todos.find(t => t.id === id);
+          if ((todoToDelete as any)?.googleTaskId) {
+              syncTaskWithGoogle('DELETE', {
+                  googleTaskId: (todoToDelete as any).googleTaskId
+              });
+          }
+
           const result = await firebase.delete('todos', id);
           if (!result.success) throw new Error(result.error as string);
           // Optimistic UI update: remove immediately
           todos = todos.filter(t => t.id !== id);
-          // O recargar si prefieres: await loadTodos();
       } catch (err: any) {
           alert('Error al eliminar la tarea: ' + err.message);
-          // Opcional: recargar si falla la eliminación para asegurar consistencia
           await loadTodos();
       }
   }
 
-    // Función para actualizar estado completado (MODIFICADA para ocultar iconos post-update)
+    // Función para actualizar estado completado (MODIFICADA para sincronizar con Google Tasks)
     async function handleUpdateTodo(todoToUpdate: Todo) {
       const result = await firebase.update('todos', todoToUpdate.id, { isCompleted: todoToUpdate.isCompleted });
       if (result.success) {
+          if ((todoToUpdate as any)?.googleTaskId) {
+              syncTaskWithGoogle('UPDATE', {
+                  googleTaskId: (todoToUpdate as any).googleTaskId,
+                  isCompleted: todoToUpdate.isCompleted,
+                  status: todoToUpdate.isCompleted ? 'completed' : 'needsAction'
+              });
+          }
+
           // Actualizar localmente para reflejo inmediato
           const index = todos.findIndex(t => t.id === todoToUpdate.id);
           if (index !== -1) {
               todos[index] = { ...todos[index], isCompleted: todoToUpdate.isCompleted };
               todos = todos; // Trigger reactivity
 
-              // *** NUEVO: Ocultar iconos después de actualizar estado exitosamente ***
               const newMap = new Map(activeActions);
-              newMap.delete(todoToUpdate.id); // Elimina la entrada para este ID
-              activeActions = newMap; // Actualiza el Map reactivo
-              // *** FIN NUEVO ***
-
+              newMap.delete(todoToUpdate.id);
+              activeActions = newMap;
           } else {
-              await loadTodos(); // Recargar si no se encontró (raro)
+              await loadTodos();
           }
       } else {
           alert('Error al actualizar estado: ' + result.error);
-          // Opcional: revertir el cambio visual si falla la actualización
-          // Si revierte, NO deberías ocultar los iconos aquí.
       }
   }
 
@@ -273,21 +343,19 @@
     // --- INICIO: Función para poblar el formulario al editar (MODIFICADA para usar timeString) ---
     function editTodo(todoToEdit: Todo) {
       const endTaskString = formatTimestampToLocalDateInputString(todoToEdit.endTask);
-
-      // *** NUEVO: Usar el timeString guardado (si existe) para el input timeTask ***
-      const timeTaskString = todoToEdit.timeString || ''; // Usa el guardado, o '' si no existe
-      // *** FIN NUEVO ***
+      const timeTaskString = todoToEdit.timeString || '';
 
       todo = {
           id: todoToEdit.id,
           task: todoToEdit.task,
           endTask: endTaskString,
-          timeTask: timeTaskString, // Usar el timeString recuperado
+          timeTask: timeTaskString,
           notes: todoToEdit.notes,
           isCompleted: todoToEdit.isCompleted,
           createdAt: todoToEdit.createdAt,
           type: todoToEdit.type,
-          user: todoToEdit.user
+          user: todoToEdit.user,
+          googleTaskId: (todoToEdit as any).googleTaskId || ''
       };
 
       $systStatus = "editing";

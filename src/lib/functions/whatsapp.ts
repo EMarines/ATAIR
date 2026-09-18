@@ -1,8 +1,11 @@
+import { isSandbox } from '$lib/firebase_toggle';
+
 /**
- * Abre WhatsApp Web con un número y mensaje específicos
+ * Abre WhatsApp Web con un número y mensaje específicos.
+ * En modo Sandbox (pruebas/localhost), simula el envío en consola sin abrir ventanas de WhatsApp.
  * @param tel - Número de teléfono
  * @param msg - Mensaje a enviar
- * @returns Instancia de la ventana abierta
+ * @returns Instancia de la ventana abierta o mock seguro en Sandbox
  */
 export function sendWhatsApp(tel: string, msg: string) {
     if (!tel) {
@@ -21,6 +24,17 @@ export function sendWhatsApp(tel: string, msg: string) {
     // Crear la URL de WhatsApp (preferimos wa.me por ser más corto y directo)
     const url = `https://wa.me/${finalTel}?text=${encodeURIComponent(msg)}`;
     
+    // 🧪 En Sandbox no se abre ventana ni se envía enlace, solo se simula
+    if (isSandbox) {
+        console.log(`🧪 [Sandbox] Simulación de envío WhatsApp a: ${finalTel}`);
+        console.log(`💬 [Sandbox] Mensaje que se enviaría: ${msg}`);
+        return {
+            close: () => {},
+            closed: false,
+            focus: () => {}
+        } as unknown as Window;
+    }
+
     console.log(`📱 Abriendo WhatsApp para: ${finalTel}`);
     
     // Abrir en una nueva ventana
@@ -29,3 +43,4 @@ export function sendWhatsApp(tel: string, msg: string) {
     
     return newWindow;
 }
+
