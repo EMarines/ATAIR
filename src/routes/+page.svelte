@@ -1369,6 +1369,12 @@
     margin-bottom: 1.5rem;
   }
 
+  @media (max-width: 768px) {
+    .quick-nav-section {
+      display: none !important;
+    }
+  }
+
   .section-title-row {
     display: flex;
     align-items: center;
