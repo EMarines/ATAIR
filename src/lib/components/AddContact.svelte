@@ -688,6 +688,63 @@
 		}
 	}
 
+	// ⚡ FUNCIÓN DE SINCRONIZACIÓN EN SEGUNDO PLANO (NON-BLOCKING)
+	async function runBackgroundSync(
+		savedContact: Contact,
+		propData: Property | null,
+		isNew: boolean,
+		isUpdated: boolean
+	) {
+		if (isNew) {
+			console.log('🚀 [Background Sync] Sincronizando con n8n y Google Contacts & Tasks en segundo plano...');
+			let returnedGoogleTaskId: string | undefined = undefined;
+
+			try {
+				const syncResult = await sendToN8n(savedContact, propData);
+				if (syncResult && syncResult.notes) {
+					savedContact.notes = syncResult.notes;
+				}
+				if (syncResult && syncResult.googleContactId) {
+					savedContact.googleContactId = syncResult.googleContactId;
+				}
+				if (syncResult && syncResult.googleTaskId) {
+					returnedGoogleTaskId = syncResult.googleTaskId;
+					console.log('📋 Google Task ID recibido en background:', returnedGoogleTaskId);
+				}
+				// Refrescar store reactivo con las notas y Google IDs enriquecidos
+				const currentContacts = get(contactsStore);
+				const idx = currentContacts.findIndex((c) => c.id === savedContact.id);
+				if (idx >= 0) {
+					currentContacts[idx] = { ...savedContact };
+					contactsStore.set([...currentContacts]);
+				}
+			} catch (n8nError) {
+				console.error('⚠️ Error en sincronización n8n (segundo plano):', n8nError);
+			}
+
+			// 📅 Crear automáticamente la tarea de seguimiento Etapa 1 en ATAIR/Firestore
+			try {
+				await createFollowUpTask(savedContact, propData, returnedGoogleTaskId);
+			} catch (taskError) {
+				console.error('⚠️ Error creando tarea automática de Seguimiento Etapa 1:', taskError);
+			}
+
+			// WhatsApp automation si aplica
+			try {
+				await triggerWhatsAppAutomation(savedContact, propData, isNew);
+			} catch (waError) {
+				console.error('⚠️ Error triggering WhatsApp en segundo plano:', waError);
+			}
+		} else if (isUpdated && savedContact.googleContactId) {
+			console.log('📝 [Background Sync] Actualizando contacto EXISTENTE en Google en segundo plano...');
+			try {
+				await updateContactInGoogle(savedContact);
+			} catch (updateError) {
+				console.error('⚠️ Error actualizando en Google en segundo plano:', updateError);
+			}
+		}
+	}
+
 	function normalizeTypeContact(raw?: string): string {
 		if (!raw) return '';
 		const r = raw.trim();
@@ -1010,68 +1067,22 @@
 			console.log('🔍 Es contacto REALMENTE nuevo (por Firebase)?', isNewContact);
 			console.log('🔍 Es contacto ACTUALIZADO?', isUpdatedContact);
 
-			// Sincronizaciones externas en segundo plano (NO BLOQUEANTES):
-			// Se ejecutan de manera asíncrona sin congelar la interfaz ni retrasar la navegación al contacto
-			if (isNewContact) {
-				console.log('🚀 Sincronizando con n8n y Google Contacts & Tasks...');
-				const currentProp = get(propertyStore);
-				let returnedGoogleTaskId: string | undefined = undefined;
+			// ⚡ Sincronizaciones externas en segundo plano (TOTALMENTE NO BLOQUEANTES):
+			// Se ejecutan de manera asíncrona sin congelar la interfaz ni retrasar la navegación
+			const currentProp = get(propertyStore);
+			runBackgroundSync({ ...cleanContactData }, currentProp, isNewContact, isUpdatedContact).catch((syncErr) => {
+				console.error('⚠️ Error en runBackgroundSync:', syncErr);
+			});
 
-				try {
-					const syncResult = await sendToN8n(cleanContactData, currentProp);
-					if (syncResult && syncResult.notes) {
-						cleanContactData.notes = syncResult.notes;
-					}
-					if (syncResult && syncResult.googleContactId) {
-						cleanContactData.googleContactId = syncResult.googleContactId;
-					}
-					if (syncResult && syncResult.googleTaskId) {
-						returnedGoogleTaskId = syncResult.googleTaskId;
-						console.log('📋 Google Task ID recibido:', returnedGoogleTaskId);
-					}
-					// Refrescar store con las notas y Google ID enriquecidos
-					const currentContacts = get(contactsStore);
-					const idx = currentContacts.findIndex((c) => c.id === cleanContactData.id);
-					if (idx >= 0) {
-						currentContacts[idx] = { ...cleanContactData };
-						contactsStore.set([...currentContacts]);
-					}
-				} catch (n8nError) {
-					console.error('⚠️ Error en sincronización n8n:', n8nError);
-				}
-
-				// 📅 Crear automáticamente la tarea de seguimiento Etapa 1 en ATAIR/Firestore
-				createFollowUpTask(cleanContactData, currentProp, returnedGoogleTaskId).catch((taskError) => {
-					console.error('⚠️ Error creando tarea automática de Seguimiento Etapa 1:', taskError);
-				});
-
-				try {
-					triggerWhatsAppAutomation(cleanContactData, currentProp, isNewContact).catch((waError) => {
-						console.error('⚠️ Error triggering WhatsApp en segundo plano:', waError);
-					});
-				} catch (waError) {
-					console.error('❌ Error triggering WhatsApp:', waError);
-				}
-			} else if (isUpdatedContact && cleanContactData.googleContactId) {
-				console.log('📝 Actualizando contacto EXISTENTE en Google en segundo plano...');
-				updateContactInGoogle(cleanContactData).catch((updateError) => {
-					console.error('⚠️ Error actualizando en Google en segundo plano:', updateError);
-				});
-			} else {
-				console.log('⏭️ SALTANDO sincronización - sin googleContactId o error de guardado');
-			}
-
-			// Emitir evento de éxito
+			// Emitir evento de éxito de inmediato
 			dispatch('success', { contact: cleanContactData });
 
 			// Verificar nuevamente que el ID sea válido antes de redirigir
 			if (cleanContactData.id && cleanContactData.id.trim() !== '') {
-				// console.log('ID válido para redirección:', cleanContactData.id);
-
 				// Establecer el estado del sistema para activar la sección de comentarios en la página de detalles
 				$systStatus = 'addContact';
 
-				// Redirigir a la página de detalles del contacto
+				// Redirigir de inmediato a la página de detalles del contacto
 				goto(`/contact/${cleanContactData.id}`);
 			} else {
 				console.error('Error: ID inválido después de guardar', cleanContactData);
