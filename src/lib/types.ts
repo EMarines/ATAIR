@@ -17,6 +17,7 @@ export interface Contact {
   modePay: string;
   name: string;
   notes?: string;
+  procedencia?: string;
   numBaths: string | number;
   numBeds: string | number;
   numParks: string | number;

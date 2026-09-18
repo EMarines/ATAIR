@@ -140,6 +140,32 @@
   // Cámbialo a:
   // <td>{formatDateTime(currentTodo)}</td>
 
+  // --- Sincronización con Google Tasks ---
+  async function syncTaskWithGoogle(action: 'CREATE' | 'UPDATE' | 'DELETE', taskPayload: {
+      todoId?: string;
+      googleTaskId?: string;
+      title?: string;
+      notes?: string;
+      dueDate?: string;
+      status?: string;
+      isCompleted?: boolean;
+  }) {
+      try {
+          const res = await fetch('/api/tasks/google-sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action, ...taskPayload }),
+              keepalive: true
+          });
+          if (res.ok) {
+              return await res.json();
+          }
+      } catch (e) {
+          console.warn('[Agenda Google Tasks Sync] Error de conexión:', e);
+      }
+      return null;
+  }
+
    // --- INICIO: Función para agregar/editar todo (CORREGIDA Y COMPLETA) ---
    async function handleAddTodo() {
       // --- Validaciones iniciales ---
@@ -187,32 +213,6 @@
       }
       // --- *** FIN DEFINICIÓN DE todoData *** ---
 
-
-      // --- Sincronización con Google Tasks ---
-      async function syncTaskWithGoogle(action: 'CREATE' | 'UPDATE' | 'DELETE', taskPayload: {
-          todoId?: string;
-          googleTaskId?: string;
-          title?: string;
-          notes?: string;
-          dueDate?: string;
-          status?: string;
-          isCompleted?: boolean;
-      }) {
-          try {
-              const res = await fetch('/api/tasks/google-sync', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action, ...taskPayload }),
-                  keepalive: true
-              });
-              if (res.ok) {
-                  return await res.json();
-              }
-          } catch (e) {
-              console.warn('[Agenda Google Tasks Sync] Error de conexión:', e);
-          }
-          return null;
-      }
 
       // --- Bloque Try/Catch para guardar/actualizar ---
       try {

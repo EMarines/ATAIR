@@ -40,6 +40,7 @@ export interface Contact {
     googleContactId?: string;
     publicUrl?: string;
     notes?: string;
+    procedencia?: string;
     googleSyncedAt?: number;
     lastResponse?: number;
 }
