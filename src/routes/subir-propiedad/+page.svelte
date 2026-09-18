@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { db, storage, prodStorage, isSandbox } from '$lib/firebase_toggle';
   import {
@@ -661,10 +662,14 @@
           idCompaniaCaptadora: companiaCaptadora || idCompaniaCaptadora,
           telefonoContactoCaptador,
         };
-        uploadStatus = `¡Propiedad ${editingClave} actualizada exitosamente!`;
+        uploadStatus = `¡Propiedad ${editingClave} actualizada exitosamente! Redirigiendo al detalle...`;
+        const redirectKey = editingClave || editingDocId;
+        setTimeout(() => {
+          goto(`/property/${encodeURIComponent(redirectKey)}`);
+        }, 500);
       } else {
         uploadStatus = 'Guardando datos de la propiedad...';
-        await addDoc(collection(db, 'properties'), {
+        const newDocRef = await addDoc(collection(db, 'properties'), {
           ...formData,
           clavePropiedad,
           public_id: clavePropiedad,
@@ -755,7 +760,7 @@
           idCompaniaCaptadora: companiaCaptadora || idCompaniaCaptadora,
           telefonoContactoCaptador,
         };
-        uploadStatus = `¡Propiedad subida exitosamente! Clave: ${clavePropiedad}`;
+        uploadStatus = `¡Propiedad subida exitosamente! Clave: ${clavePropiedad}. Redirigiendo al detalle...`;
 
         if (formElement) formElement.reset();
         formData = {
@@ -770,6 +775,11 @@
           amenidades: []
         };
         selectedImages = [];
+
+        const redirectKey = clavePropiedad || newDocRef.id;
+        setTimeout(() => {
+          goto(`/property/${encodeURIComponent(redirectKey)}`);
+        }, 500);
       }
     } catch (err: any) {
       console.error(err);
