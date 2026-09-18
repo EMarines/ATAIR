@@ -89,10 +89,7 @@
 
 		<ul class={nav__links} id="menu" role="menu">
 			{#if $isAuthenticated}
-				<li role="menuitem"><a href="/" on:click={handleLinkClick}>Home</a></li>
-				<li role="menuitem">
-					<a href="/dashboard" class="nav__link" on:click={handleLinkClick}>Dashboard</a>
-				</li>
+				<li role="menuitem"><a href="/" class="nav__link" on:click={handleLinkClick}>Dashboard</a></li>
 				{#if !$userProfile || $userProfile.role === 'admin'}
 					<li role="menuitem">
 						<a href="/contacts" class="nav__link" on:click={handleLinkClick}>Contacto</a>
