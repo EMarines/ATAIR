@@ -3,9 +3,10 @@
 	import {
 		loginWithEmailPassword,
 		registerWithEmailPassword,
-		userStore
+		userStore,
+		userProfile,
+		authLoading
 	} from '$lib/firebase/authManager';
-	import { auth } from '$lib/firebase_toggle';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
@@ -13,7 +14,7 @@
 	let email = '';
 	let password = '';
 	let isLoading = false;
-	let error = null;
+	let error: { message: string } | null = null;
 	let isRegisterMode = false;
 	let rememberMe = true; // Por defecto habilitado para recordar sesión
 
@@ -25,15 +26,15 @@
 			email = savedEmail;
 		}
 
-		// Suscribirse al store de usuario para redirigir si ya hay sesión
-		const unsubscribe = userStore.subscribe((user) => {
-			if (user && user.uid) {
-				goto('/');
-			}
-		});
-
-		return unsubscribe;
+		if ($userStore || $userProfile) {
+			goto('/');
+		}
 	});
+
+	// Suscribirse reactivamente para redirigir si el usuario ya está autenticado
+	$: if ($userStore) {
+		goto('/');
+	}
 
 	// Función para resetear los campos del formulario
 	function resetForm() {
@@ -42,7 +43,7 @@
 	}
 
 	// Función para manejar tanto el login como el registro
-	async function handleAuth(emailValue, passwordValue) {
+	async function handleAuth(emailValue: string, passwordValue: string) {
 		// Verificación básica
 		if (!emailValue || !passwordValue) {
 			error = { message: 'Por favor ingresa email y contraseña' };
@@ -53,30 +54,20 @@
 			isLoading = true;
 			error = null;
 
-			let result;
 			if (isRegisterMode) {
 				// --- Lógica de Registro ---
-				result = await registerWithEmailPassword(emailValue, passwordValue);
+				const result = await registerWithEmailPassword(emailValue, passwordValue);
 				if (result.success) {
-					// Firebase automáticamente actualiza el estado via onAuthStateChanged
-					// Solo esperamos un momento para que el estado se actualice
-					setTimeout(async () => {
-						try {
-							await goto('/');
-						} catch (navErr) {
-							console.error('Error en redirección:', navErr);
-							window.location.href = '/';
-						}
-					}, 300);
+					await goto('/');
 				} else {
 					error = {
-						message: getErrorMessage(result.code) || `Error de registro: ${result.message}`
+						message: getErrorMessage(result.code || '') || `Error de registro: ${result.message}`
 					};
 					resetForm();
 				}
 			} else {
 				// --- Lógica de Login ---
-				result = await loginWithEmailPassword(emailValue, passwordValue);
+				const result = await loginWithEmailPassword(emailValue, passwordValue);
 				if (result.success) {
 					// Guardar email si el usuario quiere recordar
 					if (rememberMe) {
@@ -85,24 +76,16 @@
 						localStorage.removeItem('savedEmail');
 					}
 
-					// Firebase automáticamente actualiza el estado via onAuthStateChanged
-					// Solo esperamos un momento para que el estado se actualice
-					setTimeout(async () => {
-						try {
-							await goto('/');
-						} catch (navErr) {
-							console.error('Error en redirección:', navErr);
-							window.location.href = '/';
-						}
-					}, 300);
+					// Redirección inmediata sin esperas artificiales
+					await goto('/');
 				} else {
-					error = { message: getErrorMessage(result.code) || `Error de login: ${result.message}` };
+					error = { message: getErrorMessage(result.code || '') || `Error de login: ${result.message}` };
 					resetForm();
 				}
 			}
-		} catch (err) {
-			console.error('Error general:', err.message);
-			error = { message: `Error inesperado: ${err.message}` };
+		} catch (err: any) {
+			console.error('Error general:', err?.message);
+			error = { message: `Error inesperado: ${err?.message}` };
 			resetForm();
 		} finally {
 			isLoading = false;
@@ -137,6 +120,7 @@
 	}
 </script>
 
+{#if !$userStore && (!$userProfile || !$authLoading)}
 <div class="container">
 	<div class="authContainer">
 		<form on:submit|preventDefault={() => handleAuth(email, password)}>
@@ -200,6 +184,7 @@
 		</div>
 	</div>
 </div>
+{/if}
 
 <!-- Estilos (sin cambios) -->
 <style>

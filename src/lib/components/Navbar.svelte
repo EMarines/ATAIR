@@ -11,10 +11,7 @@
 	let nav__links = 'wide';
 	let menuOpen = false;
 	let logoutLoading = false;
-
-	const isAuthenticated = derived(userStore, ($u) => !!$u);
-
-	// Función de logout mejorada
+	const isAuthenticated = derived([userStore, userProfile], ([$u, $p]) => !!$u || !!$p);
 	async function logout() {
 		logoutLoading = true;
 		try {

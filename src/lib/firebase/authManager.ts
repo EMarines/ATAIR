@@ -30,8 +30,11 @@ const initialProfile = getInitialProfile();
 // Store para el estado del usuario
 export const userStore = writable<User | null>(null);
 export const userProfile = writable<any>(initialProfile);
-export const authInitialized = writable(initialProfile ? true : false);
-export const authLoading = writable(initialProfile ? false : true);
+export const authInitialized = writable(false);
+export const authLoading = writable(true);
+
+// Variable para asegurar que el listener se registra una sola vez
+let authListenerAttached = false;
 
 // Listener para el perfil del usuario
 let profileUnsubscribe: (() => void) | null = null;
@@ -93,6 +96,9 @@ function handleUserProfile(user: User) {
  */
 export async function initializeAuthManager() {
   if (!browser) return;
+
+  if (authListenerAttached) return;
+  authListenerAttached = true;
 
   if (!auth) {
     console.error('initializeAuthManager: Auth no disponible');
@@ -257,6 +263,19 @@ export async function loginWithEmailPassword(email: string, password: string) {
 
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         console.log('✅ Login exitoso');
+        const user = userCredential.user;
+        if (user) {
+            userStore.set(user);
+            const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com';
+            const quickProfile = { email: user.email, role: isAdmin ? 'admin' : 'user', uid: user.uid };
+            userProfile.set(quickProfile);
+            if (browser) {
+                try { localStorage.setItem('atair_cached_profile', JSON.stringify(quickProfile)); } catch {}
+            }
+            authLoading.set(false);
+            authInitialized.set(true);
+            handleUserProfile(user);
+        }
         return { success: true, user: userCredential.user, error: null, code: null, message: null };
     } catch (error: any) {
         console.error('❌ Error en login:', error);
@@ -282,6 +301,19 @@ export async function registerWithEmailPassword(email: string, password: string)
 
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         console.log('✅ Registro exitoso');
+        const user = userCredential.user;
+        if (user) {
+            userStore.set(user);
+            const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com';
+            const quickProfile = { email: user.email, role: isAdmin ? 'admin' : 'user', uid: user.uid };
+            userProfile.set(quickProfile);
+            if (browser) {
+                try { localStorage.setItem('atair_cached_profile', JSON.stringify(quickProfile)); } catch {}
+            }
+            authLoading.set(false);
+            authInitialized.set(true);
+            handleUserProfile(user);
+        }
         return { success: true, user: userCredential.user, error: null, code: null, message: null };
     } catch (error: any) {
         console.error('❌ Error en registro:', error);
