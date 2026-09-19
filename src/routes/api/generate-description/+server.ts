@@ -99,7 +99,6 @@ export const POST: RequestHandler = async ({ request }) => {
       terreno ? `Terreno: ${terreno} m²` : null,
       condicion ? `Estado de conservación: ${condicion}` : null,
       amenidadesList ? `Amenidades / Tags seleccionadas: ${amenidadesList}` : null,
-      companiaCaptadora ? `Captada por: ${companiaCaptadora}` : null,
       descripcionPrevia ? `Notas o borrador previo ingresado por el asesor:\n"${descripcionPrevia}"` : null
     ].filter(Boolean).join('\n');
 
@@ -124,10 +123,14 @@ REGLAS PARA LA DESCRIPCIÓN:
    - Distribución de espacios interiores y exteriores.
    - Equipamiento y amenidades destacadas.
    - Ventajas del entorno y conectividad de la colonia.
-   - Llamado a la acción (CTA) para coordinar cita.
+   - Llamado a la acción (CTA) neutro para coordinar cita.
 3. CONSERVA NOTAS PREVIAS:
-   - Incluye cualquier detalle o especificación dada en el borrador previo del asesor.
-4. FORMATO Y LÍMITE DE CARACTERES (OBLIGATORIO):
+   - Incluye cualquier especificación arquitectónica dada en el borrador previo del asesor.
+4. PROHIBICIÓN ESTRICTA (SIN INMOBILIARIAS NI AGENTES):
+   - Queda TERMINANTEMENTE PROHIBIDO mencionar nombres de inmobiliarias, agencias, marcas o franquicias (ej. nunca menciones 'Match Home', 'Century 21', 'Remax', 'Keller Williams', 'JGCapital', etc.).
+   - Queda TERMINANTEMENTE PROHIBIDO mencionar nombres propios de asesores, agentes, teléfonos, correos o comisiones.
+   - La redacción debe centrarse 100% de forma pura en la propiedad, la arquitectura y el estilo de vida.
+5. FORMATO Y LÍMITE DE CARACTERES (OBLIGATORIO):
    - Tono sofisticado, profesional y vendedor.
    - Usa saltos de línea y viñetas para lectura ágil.
    - LÍMITE ESTRICTO: La descripción DEBE tener entre 1,100 y 1,350 caracteres en total (incluyendo espacios). NUNCA debes superar los 1,400 caracteres para asegurar que quepa holgadamente en el límite de los portales inmobiliarios y no sufra recortes.
@@ -190,7 +193,7 @@ Debes responder ÚNICAMENTE con un objeto JSON válido con esta estructura:
             messages: [
               {
                 role: 'system',
-                content: 'Eres un redactor inmobiliario profesional de élite en Chihuahua, México. Respondes exclusivamente en JSON con { title, description }.'
+                content: 'Eres un redactor inmobiliario profesional de élite en Chihuahua, México. Redactas con enfoque exclusivo en el inmueble, sin mencionar jamás nombres de agencias, inmobiliarias ni agentes. Respondes exclusivamente en JSON con { title, description }.'
               },
               {
                 role: 'user',

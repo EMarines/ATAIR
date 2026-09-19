@@ -68,12 +68,6 @@
       <div class="title-action-row">
         <h1 class="title">Propiedades</h1>
         <div class="header-actions-group">
-          <a href="/dashboard" class="btn-secondary-action" title="Ver analíticas y métricas de inventario">
-            📊 Dashboard
-          </a>
-          <a href="/subir-link" class="btn-secondary-action" title="Ingestar propiedad pegando enlace">
-            🔗 Por Link
-          </a>
           <a href="/subir-propiedad" class="btn-subir-propiedad">
             <span class="plus-icon">+</span> Subir Propiedad
           </a>
@@ -186,28 +180,6 @@
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
-}
-
-.btn-secondary-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary, #ffffff);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
-  padding: 0.55rem 0.95rem;
-  border-radius: 0.5rem;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 0.85rem;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary-action:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(99, 102, 241, 0.4);
-  color: #ffffff;
-  transform: translateY(-1px);
 }
 
 .btn-subir-propiedad {

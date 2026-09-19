@@ -9,7 +9,11 @@
 	export let isSelected = false;
 
 	let imgError = false;
-	$: imgSrc = property?.title_image_thumb || '/placeholder-property.png';
+	$: rawImg = property?.title_image_thumb || property?.title_image_full || property?.imagenPrincipal || property?.imagenMiniatura || (Array.isArray(property?.images) && property?.images[0]) || (Array.isArray(property?.property_images) && (typeof property?.property_images[0] === 'string' ? property?.property_images[0] : property?.property_images[0]?.url)) || '';
+	$: imgSrc = rawImg && typeof rawImg === 'string' && rawImg.trim() !== '' ? rawImg : '/placeholder-property.png';
+	$: if (rawImg) {
+		imgError = false;
+	}
 	$: propertyCode = property?.clavePropiedad || property?.public_id || property?.id || '';
 
 	// Función para manejar errores de carga de imagen

@@ -8,7 +8,7 @@
   export let contactPhone: string = '';
   export let contactName: string = '';
   export let companyName: string = '';
-  export let procedencia: string = 'MH';
+  export let procedencia: string = '';
   export let placeholder: string = 'Buscar agente o inmobiliaria...';
   export let onSelectContact: ((contact: any) => void) | undefined = undefined;
   export let onSelectProcedencia: ((proc: string) => void) | undefined = undefined;
@@ -488,45 +488,6 @@
         ✕
       </button>
     </div>
-
-    <!-- Input / Editor de teléfono del captador -->
-    <div class="selected-phone-editor">
-      <div class="phone-label-row">
-        <span class="phone-label-text">
-          Teléfono / WhatsApp del captador:
-          {#if isSynergyMode}
-            <span class="phone-required-tag">* Obligatorio para {procedencia}</span>
-          {/if}
-        </span>
-      </div>
-      <div class="phone-input-box" class:has-error={isSynergyMode && (!contactPhone || !contactPhone.trim())}>
-        <span class="phone-addon" title="Teléfono">
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-          </svg>
-        </span>
-        <input
-          type="tel"
-          class="phone-input"
-          placeholder="Ingresa número de teléfono (ej. 6141234567)..."
-          bind:value={contactPhone}
-        />
-        {#if contactPhone && contactPhone.trim()}
-          <a
-            href="https://wa.me/52{String(contactPhone).replace(/\D/g, '')}"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="whatsapp-preview-link"
-            title="Abrir chat de WhatsApp para verificar"
-          >
-            💬 Probar WhatsApp
-          </a>
-        {/if}
-      </div>
-      {#if isSynergyMode && (!contactPhone || !contactPhone.trim())}
-        <span class="phone-error-msg">⚠️ Debes registrar un teléfono o WhatsApp para contactar a este captador de sinergia.</span>
-      {/if}
-    </div>
   {:else}
     <!-- Input buscador -->
     <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -892,107 +853,6 @@
     background: rgba(248, 113, 113, 0.1);
   }
 
-  .selected-phone-editor {
-    margin-top: 0.6rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .phone-label-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .phone-label-text {
-    font-size: 0.78rem;
-    color: var(--text-secondary, #94a3b8);
-    font-weight: 500;
-  }
-
-  .phone-required-tag {
-    color: #f59e0b;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-left: 0.35rem;
-  }
-
-  .phone-input-box {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #18182b;
-    border: 1px solid rgba(99, 102, 241, 0.25);
-    border-radius: var(--radius-sm, 0.45rem);
-    padding: 0.45rem 0.75rem;
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .phone-input-box:focus-within {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-  }
-
-  .phone-input-box.has-error {
-    border-color: #ef4444;
-    background: rgba(239, 68, 68, 0.05);
-  }
-
-  .phone-addon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #ef4444; /* Ícono de teléfono en rojo */
-    flex-shrink: 0;
-    user-select: none;
-  }
-
-  .phone-input {
-    flex: 1;
-    min-width: 100px;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text-primary, #f1f5f9);
-    font-size: 0.9rem;
-    font-family: inherit;
-    box-sizing: border-box;
-  }
-
-  .phone-input::placeholder {
-    color: rgba(148, 163, 184, 0.38);
-    font-weight: 300;
-    opacity: 1;
-  }
-
-  .whatsapp-preview-link {
-    font-size: 0.75rem;
-    color: #22c55e;
-    background: rgba(34, 197, 94, 0.12);
-    border: 1px solid rgba(34, 197, 94, 0.25);
-    padding: 0.2rem 0.5rem;
-    border-radius: 9999px;
-    text-decoration: none;
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: background 0.15s ease, transform 0.15s ease;
-  }
-
-  .whatsapp-preview-link:hover {
-    background: rgba(34, 197, 94, 0.25);
-    transform: translateY(-1px);
-  }
-
-  .phone-error-msg {
-    font-size: 0.74rem;
-    color: #f87171;
-    line-height: 1.3;
-  }
 
   .selector-box {
     display: flex;

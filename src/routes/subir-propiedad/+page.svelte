@@ -6,6 +6,7 @@
   import {
     collection,
     addDoc,
+    setDoc,
     serverTimestamp,
     query,
     where,
@@ -21,6 +22,7 @@
   import ContactSelector from '$lib/components/ContactSelector.svelte';
   import PropertyNavActions from '$lib/components/PropertyNavActions.svelte';
   import { formatZona, tagToUbicacion, tagToFeatures } from '$lib/functions/tagConverters';
+  import { detectCatalogAmenities } from '$lib/parameters';
 
   let isSubmitting = false;
   let uploadStatus: string | null = null;
@@ -107,15 +109,78 @@
   let aiGenerationStatus: string | null = null;
   let aiError: string | null = null;
 
+  // Estados para Ingesta Rápida (Tabs: 'whatsapp', 'easybroker' o 'link')
+  let activeIngestaTab: 'whatsapp' | 'easybroker' | 'link' = 'whatsapp';
+  let rawWhatsAppText = '';
+  let isParsingWhatsApp = false;
+  let waParseError: string | null = null;
+  let waParseSuccess: string | null = null;
+
+  // Estados para Importación por Clave EasyBroker (EB-)
+  let easybrokerKey = '';
+  let isFetchingEB = false;
+  let ebError: string | null = null;
+  let ebSuccess: string | null = null;
+  let importedEbId: string | null = null;
+
+  // Estados para Ingesta por Enlace Externo (Robot n8n)
+  let linkUrl = '';
+  let isSendingLink = false;
+  let linkError: string | null = null;
+  let linkSuccess: string | null = null;
+  let lastSentLink = '';
+
+  // Estados para Modal de Ingesta Asistida
+  let activeModal: 'texto' | 'easybroker' | 'link' | null = null;
+  let modalPhotos: File[] = [];
+  let isModalDragging = false;
+
+  function openIngestaModal(method: 'texto' | 'easybroker' | 'link') {
+    activeModal = method;
+    activeIngestaTab = method === 'texto' ? 'whatsapp' : method;
+  }
+
+  function closeIngestaModal() {
+    activeModal = null;
+    isModalDragging = false;
+  }
+
+  function handleModalDropPhotos(e: DragEvent) {
+    isModalDragging = false;
+    if (!e.dataTransfer) return;
+
+    // Si se arrastró texto, volcarlo al input de WhatsApp
+    const draggedText = e.dataTransfer.getData('text/plain');
+    if (draggedText && !rawWhatsAppText) {
+      rawWhatsAppText = draggedText;
+    }
+
+    // Si se arrastraron fotos
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      if (files.length > 0) {
+        modalPhotos = [...modalPhotos, ...files];
+      }
+    }
+  }
+
+  function handleModalFileSelect(e: Event) {
+    const target = e.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+      const files = Array.from(target.files).filter(f => f.type.startsWith('image/'));
+      modalPhotos = [...modalPhotos, ...files];
+    }
+  }
+
   let formData: Record<string, any> = {
-    procedencia: 'MH',
-    idCompaniaCaptadora: 'Match Home',
-    idContactoCaptador: 'pinned-mh',
-    nombreContactoCaptador: 'Match Home',
-    companiaCaptadora: 'Match Home',
+    procedencia: '',
+    idCompaniaCaptadora: '',
+    idContactoCaptador: '',
+    nombreContactoCaptador: '',
+    companiaCaptadora: '',
     telefonoContactoCaptador: '',
-    tipoOperacion: 'Venta',
-    tipoPropiedad: 'Casa',
+    tipoOperacion: '',
+    tipoPropiedad: '',
     amenidades: []
   };
 
@@ -210,7 +275,7 @@
           { label: 'Para remodelar', value: 'Para remodelar' },
         ],
       },
-      { name: 'colonia', label: 'Colonia', type: 'text' },
+      { name: 'colonia', label: 'Colonia', type: 'text', required: false },
       { name: 'codigoPostal', label: 'Código postal', type: 'text', required: false },
       {
         name: 'amenidades',
@@ -234,6 +299,7 @@
         name: 'ubicacion',
         label: 'Zona de la Ciudad',
         type: 'radio',
+        required: false,
         options: [
           { label: 'Norte', value: 'Norte' },
           { label: 'Noroeste', value: 'Noroeste' },
@@ -318,6 +384,13 @@
         formData.titulo = result.title;
       }
       formData.descripcion = result.description;
+
+      // Auto-enriquecer checkboxes de amenidades si la descripción o título generados contienen amenidades del catálogo
+      formData.amenidades = detectCatalogAmenities(
+        `${formData.titulo || ''} ${formData.descripcion || ''}`,
+        formData.amenidades || []
+      );
+
       aiGenerationStatus = '¡Título y descripción generados exitosamente con investigación de colonia!';
       setTimeout(() => {
         aiGenerationStatus = null;
@@ -405,7 +478,10 @@
           condicion: foundDoc.condicion ?? '',
           colonia: foundDoc.colonia || (typeof foundDoc.location === 'object' ? foundDoc.location?.name : (typeof foundDoc.location === 'string' && !tagToUbicacion(foundDoc.location) ? foundDoc.location : '')),
           ubicacion: formatZona(foundDoc) || foundDoc.ubicacion || foundDoc.zona || '',
-          amenidades: tagToFeatures(Array.isArray(foundDoc.tags) ? foundDoc.tags : (Array.isArray(foundDoc.features) ? foundDoc.features : (Array.isArray(foundDoc.amenidades) ? foundDoc.amenidades : []))),
+          amenidades: detectCatalogAmenities(
+            `${foundDoc.title || foundDoc.titulo || ''} ${foundDoc.description || foundDoc.descripcion || ''}`,
+            tagToFeatures(Array.isArray(foundDoc.tags) ? foundDoc.tags : (Array.isArray(foundDoc.features) ? foundDoc.features : (Array.isArray(foundDoc.amenidades) ? foundDoc.amenidades : [])))
+          ),
           titulo: foundDoc.title || foundDoc.titulo || '',
           descripcion: foundDoc.description || foundDoc.descripcion || ''
         };
@@ -422,10 +498,304 @@
     }
   }
 
+  async function fetchEasyBrokerProperty() {
+    ebError = null;
+    ebSuccess = null;
+    const raw = easybrokerKey.trim();
+    if (!raw) {
+      ebError = 'Ingresa una clave válida de EasyBroker (ej. EB-C0123) o enlace del inmueble.';
+      return;
+    }
+
+    // Si pegaron un enlace completo de EasyBroker, redirigir al extractor inteligente
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      rawWhatsAppText = raw;
+      activeIngestaTab = 'whatsapp';
+      await parseWhatsAppText();
+      return;
+    }
+
+    // Sanitizar clave asegurando prefijo EB-
+    let cleanKey = raw.toUpperCase();
+    if (!cleanKey.startsWith('EB-')) {
+      if (cleanKey.startsWith('EB')) {
+        cleanKey = 'EB-' + cleanKey.slice(2);
+      } else {
+        cleanKey = 'EB-' + cleanKey;
+      }
+    }
+    easybrokerKey = cleanKey;
+
+    isFetchingEB = true;
+    try {
+      const res = await fetch(`/api/properties/${encodeURIComponent(cleanKey)}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        if (errData.error) {
+          throw new Error(errData.error);
+        }
+        if (res.status === 404) {
+          throw new Error(`La clave "${cleanKey}" no se encuentra en tu cuenta directa de EasyBroker. Si es una propiedad compartida/MLS de otra inmobiliaria, pega el enlace web del inmueble (ej. easybroker.com/listing/...) para descargarla automáticamente con fotos.`);
+        }
+        throw new Error(`Error al consultar EasyBroker (${res.status})`);
+      }
+
+      const data = await res.json();
+      importedEbId = data.public_id || cleanKey;
+
+      // Volcar Título y Descripción (permitiendo mejorarla luego con el botón IA)
+      formData.titulo = data.title || '';
+      formData.descripcion = data.description || '';
+
+      // Volcar Operación y Precio
+      if (Array.isArray(data.operations) && data.operations.length > 0) {
+        const op = data.operations[0];
+        formData.tipoOperacion = op.type === 'rental' ? 'Renta' : 'Venta';
+        formData.precio = op.amount ? Number(op.amount) : '';
+        formData.moneda = op.currency || 'MXN';
+      }
+
+      // Normalizar Tipo de Propiedad al catálogo de ATAIR
+      const rawType = (data.property_type || '').toLowerCase();
+      if (rawType.includes('casa') && !rawType.includes('campo')) formData.tipoPropiedad = 'Casa';
+      else if (rawType.includes('departamento') || rawType.includes('apartment') || rawType.includes('depto')) formData.tipoPropiedad = 'Departamento';
+      else if (rawType.includes('terreno') || rawType.includes('land') || rawType.includes('lote')) formData.tipoPropiedad = 'Terreno';
+      else if (rawType.includes('local') || rawType.includes('comercial')) formData.tipoPropiedad = 'Local Comercial';
+      else if (rawType.includes('oficina') || rawType.includes('office')) formData.tipoPropiedad = 'Oficina';
+      else if (rawType.includes('bodega') || rawType.includes('warehouse') || rawType.includes('nave')) formData.tipoPropiedad = 'Bodega';
+      else if (rawType.includes('edificio') || rawType.includes('building')) formData.tipoPropiedad = 'Edificio';
+      else if (rawType.includes('campo') || rawType.includes('quinta')) formData.tipoPropiedad = 'Casa de Campo';
+      else if (rawType.includes('rancho')) formData.tipoPropiedad = 'Rancho';
+      else if (rawType.includes('huerta')) formData.tipoPropiedad = 'Huerta';
+      else formData.tipoPropiedad = data.property_type || 'Casa';
+
+      // Recámaras, Baños, Medios Baños, Estacionamientos
+      formData.recamaras = data.bedrooms ? Math.min(Number(data.bedrooms), 6) : '';
+      formData.banos = data.bathrooms ? Math.min(Number(data.bathrooms), 6) : '';
+      formData.mediosBanos = data.half_bathrooms ? Math.min(Number(data.half_bathrooms), 6) : '';
+      formData.estacionamientos = data.parking_spaces ? Math.min(Number(data.parking_spaces), 6) : '';
+
+      // Metros de Construcción y Terreno
+      formData.construccion = data.construction_size ? Number(data.construction_size) : '';
+      formData.terreno = data.lot_size ? Number(data.lot_size) : '';
+
+      // Colonia
+      let col = (typeof data.location === 'object' ? data.location?.name : data.location) || '';
+      col = col
+        .replace(/\b(I|II|III|IV|V|VI|VII|VIII|IX|X)(,?\s?y?\s?(I|II|III|IV|V|VI|VII|VIII|IX|X))*\b/gi, '')
+        .replace(/Chihuahua,?\s*Chihuahua/gi, '')
+        .replace(/,\s*Chihuahua/gi, '')
+        .replace(/,\s*$/, '')
+        .trim();
+      formData.colonia = col;
+
+      // Zona de la ciudad detectada
+      const detectedZona = tagToUbicacion(data.tags || data.features || col);
+      if (detectedZona) {
+        formData.ubicacion = detectedZona;
+      }
+
+      // Detección automática de amenidades desde título, descripción, características y etiquetas
+      const allEbText = `${data.title || ''} ${data.description || ''} ${(data.features || []).join(' ')} ${(data.tags || []).join(' ')}`;
+      formData.amenidades = detectCatalogAmenities(allEbText, formData.amenidades || []);
+
+      // Fotos de la galería precargadas en el visor interactivo
+      if (Array.isArray(data.property_images) && data.property_images.length > 0) {
+        existingImages = data.property_images
+          .map((img: any) => (typeof img === 'string' ? img : img?.url))
+          .filter((u: any): u is string => typeof u === 'string' && u.trim() !== '');
+      } else if (data.title_image_full) {
+        existingImages = [data.title_image_full];
+      }
+
+      const numFotos = existingImages.length;
+      ebSuccess = `¡Propiedad ${cleanKey} descargada con éxito! Se precargaron ${numFotos} foto${numFotos === 1 ? '' : 's'} y todos los campos técnicos. Puedes revisar y mejorar los datos abajo.`;
+
+      // Desplazamiento suave al formulario
+      setTimeout(() => {
+        const formEl = document.querySelector('.form-wrapper');
+        if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 250);
+
+    } catch (err: any) {
+      console.error('Error al descargar propiedad EB:', err);
+      ebError = err.message || 'Error al conectar con EasyBroker';
+    } finally {
+      isFetchingEB = false;
+    }
+  }
+
+  async function submitPropertyLink() {
+    linkError = null;
+    linkSuccess = null;
+    const cleanUrl = (linkUrl || '').trim();
+    if (!cleanUrl) {
+      linkError = 'Por favor ingresa la URL de la propiedad a importar.';
+      return;
+    }
+
+    const n8nWebhook = import.meta.env.VITE_N8N_WEBHOOK_LINK ?? '';
+    isSendingLink = true;
+    lastSentLink = cleanUrl;
+
+    try {
+      if (!n8nWebhook) {
+        throw new Error('El webhook de n8n no está configurado en las variables de entorno (VITE_N8N_WEBHOOK_LINK).');
+      }
+
+      const res = await fetch(n8nWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: cleanUrl })
+      });
+
+      if (!res.ok) throw new Error(`Error del servidor extractor: ${res.status} ${res.statusText}`);
+
+      linkSuccess = `¡Enlace enviado al robot extractor n8n con éxito! El sistema procesará el inmueble y lo registrará automáticamente en el catálogo.`;
+      linkUrl = '';
+    } catch (err: any) {
+      console.error('Error al enviar enlace a n8n:', err);
+      linkError = err.message || 'Error al conectar con el webhook extractor de n8n';
+    } finally {
+      isSendingLink = false;
+    }
+  }
+
+  async function parseWhatsAppText() {
+    waParseError = null;
+    waParseSuccess = null;
+    const cleanText = (rawWhatsAppText || '').trim();
+    if (!cleanText) {
+      waParseError = 'Por favor pega el texto de la propiedad copiado de WhatsApp o redes.';
+      return;
+    }
+
+    isParsingWhatsApp = true;
+    try {
+      const res = await fetch('/api/parse-property-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawText: cleanText })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `Error al procesar el texto (${res.status})`);
+      }
+
+      const p = data.data;
+
+      // Volcar Título y Descripción
+      if (p.titulo) formData.titulo = p.titulo;
+      if (p.descripcion) formData.descripcion = p.descripcion;
+
+      // Volcar Tipo de Operación y Precio
+      if (p.tipoOperacion) formData.tipoOperacion = p.tipoOperacion;
+      if (p.precio) formData.precio = Number(p.precio);
+      if (p.moneda) formData.moneda = p.moneda;
+
+      // Volcar Tipo de Propiedad
+      if (p.tipoPropiedad) formData.tipoPropiedad = p.tipoPropiedad;
+
+      // Volcar Recámaras, Baños, Medios Baños, Estacionamientos
+      if (p.recamaras !== null && p.recamaras !== undefined && p.recamaras !== '') {
+        formData.recamaras = Math.min(Number(p.recamaras), 6);
+      }
+      if (p.banos !== null && p.banos !== undefined && p.banos !== '') {
+        formData.banos = Math.min(Number(p.banos), 6);
+      }
+      if (p.mediosBanos !== null && p.mediosBanos !== undefined && p.mediosBanos !== '') {
+        formData.mediosBanos = Math.min(Number(p.mediosBanos), 6);
+      }
+      if (p.estacionamientos !== null && p.estacionamientos !== undefined && p.estacionamientos !== '') {
+        formData.estacionamientos = Math.min(Number(p.estacionamientos), 6);
+      }
+
+      // Volcar Metros de Construcción y Terreno
+      if (p.construccion) formData.construccion = Number(p.construccion);
+      if (p.terreno) formData.terreno = Number(p.terreno);
+
+      // Volcar Colonia y Ubicación/Zona
+      if (p.colonia) formData.colonia = p.colonia;
+      if (p.ubicacion) {
+        formData.ubicacion = p.ubicacion;
+      } else if (p.colonia) {
+        const detectedZona = tagToUbicacion(p.colonia);
+        if (detectedZona) formData.ubicacion = detectedZona;
+      }
+
+      // Volcar Amenidades detectadas y enriquecerlas desde el texto crudo, título y descripción
+      const combinedWaText = `${p.titulo || ''} ${p.descripcion || ''} ${cleanText}`;
+      formData.amenidades = detectCatalogAmenities(
+        combinedWaText,
+        Array.isArray(p.amenidades) ? p.amenidades : (formData.amenidades || [])
+      );
+
+      // Si la extracción incluyó fotografías de alta resolución (ej. enlace de EasyBroker)
+      if (Array.isArray(p.fotos) && p.fotos.length > 0) {
+        existingImages = p.fotos;
+      }
+
+      if (p.easybrokerId) {
+        importedEbId = p.easybrokerId;
+      }
+
+      // Contacto o inmobiliaria sugerida si viene en el texto/enlace
+      if (p.contactoTelefono && !formData.telefonoContactoCaptador) {
+        formData.telefonoContactoCaptador = String(p.contactoTelefono).replace(/\D/g, '').trim();
+      }
+      if (p.contactoNombre && (!formData.nombreContactoCaptador || formData.nombreContactoCaptador === 'Match Home')) {
+        formData.nombreContactoCaptador = p.contactoNombre;
+      }
+      if (p.companiaCaptadora && (!formData.companiaCaptadora || formData.companiaCaptadora === 'Match Home')) {
+        formData.companiaCaptadora = p.companiaCaptadora;
+        formData.idCompaniaCaptadora = p.companiaCaptadora;
+      }
+
+      const numFotosDescargadas = Array.isArray(p.fotos) && p.fotos.length > 0 ? p.fotos.length : 0;
+      const fotosMsg = numFotosDescargadas > 0
+        ? ` Además se descargaron ${numFotosDescargadas} fotos originales listas en la galería.`
+        : ' Revisa los campos y arrastra las fotos abajo.';
+
+      waParseSuccess = `¡Datos extraídos con éxito! Se autollenaron: ${p.tipoPropiedad || 'Propiedad'} en ${p.tipoOperacion || 'Venta'}, Col. ${p.colonia || 'N/D'}${p.precio ? `, $${Number(p.precio).toLocaleString('es-MX')} ${p.moneda || 'MXN'}` : ''}.${fotosMsg}`;
+
+      // Transferir fotos cargadas en el modal si existen
+      if (modalPhotos.length > 0) {
+        selectedImages = [...selectedImages, ...modalPhotos];
+        modalPhotos = [];
+      }
+      activeModal = null;
+
+      // Desplazamiento suave al formulario
+      setTimeout(() => {
+        const formEl = document.querySelector('.form-wrapper');
+        if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 250);
+
+    } catch (err: any) {
+      console.error('Error al parsear texto de WhatsApp:', err);
+      waParseError = err.message || 'Error al procesar el texto con la IA';
+    } finally {
+      isParsingWhatsApp = false;
+    }
+  }
+
   onMount(() => {
     const editId = $page.url.searchParams.get('edit');
     if (editId) {
       loadPropertyToEdit(editId);
+    }
+
+    const importParam = $page.url.searchParams.get('import');
+    if (importParam === 'easybroker' || importParam === 'eb') {
+      activeModal = 'easybroker';
+      activeIngestaTab = 'easybroker';
+    } else if (importParam === 'whatsapp' || importParam === 'wa' || importParam === 'texto') {
+      activeModal = 'texto';
+      activeIngestaTab = 'whatsapp';
+    } else if (importParam === 'link' || importParam === 'url') {
+      activeModal = 'link';
+      activeIngestaTab = 'link';
     }
   });
 
@@ -437,16 +807,26 @@
     lastSavedProperty = null;
     uploadStatus = null;
     uploadError = null;
+    easybrokerKey = '';
+    importedEbId = null;
+    ebError = null;
+    ebSuccess = null;
+    linkUrl = '';
+    linkError = null;
+    linkSuccess = null;
+    rawWhatsAppText = '';
+    waParseError = null;
+    waParseSuccess = null;
     if (formElement) formElement.reset();
     formData = {
-      procedencia: 'MH',
-      idCompaniaCaptadora: 'Match Home',
-      idContactoCaptador: 'pinned-mh',
-      nombreContactoCaptador: 'Match Home',
-      companiaCaptadora: 'Match Home',
+      procedencia: '',
+      idCompaniaCaptadora: '',
+      idContactoCaptador: '',
+      nombreContactoCaptador: '',
+      companiaCaptadora: '',
       telefonoContactoCaptador: '',
-      tipoOperacion: 'Venta',
-      tipoPropiedad: 'Casa',
+      tipoOperacion: '',
+      tipoPropiedad: '',
       amenidades: []
     };
     selectedImages = [];
@@ -491,6 +871,37 @@
     });
   }
 
+  function scrollToForm() {
+    const formEl = document.querySelector('.form-wrapper');
+    if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function submitDirectly() {
+    if (formElement) {
+      if (typeof formElement.requestSubmit === 'function') {
+        formElement.requestSubmit();
+      } else {
+        formElement.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }
+    }
+  }
+
+  function sanitizeForFirestore(obj: any): any {
+    if (obj === undefined) return null;
+    if (obj === null || typeof obj !== 'object') return obj;
+    if (obj instanceof Date || typeof obj.toMillis === 'function') return obj;
+    if (Array.isArray(obj)) {
+      return obj.map(sanitizeForFirestore).filter((item) => item !== undefined);
+    }
+    const clean: Record<string, any> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (val !== undefined) {
+        clean[key] = sanitizeForFirestore(val);
+      }
+    }
+    return clean;
+  }
+
   async function handleSubmit(e: Event) {
     e.preventDefault();
     if (!db) {
@@ -503,9 +914,12 @@
     uploadError = null;
 
     try {
-      const procedenciaCode = formData.procedencia || 'MH';
+      const procedenciaCode = (importedEbId && importedEbId.toUpperCase().startsWith('EB-'))
+        ? 'EB'
+        : (formData.procedencia || 'MH');
       const procedenciaLabels: Record<string, string> = {
         'MH': 'Match Home (MH)',
+        'EB': 'EasyBroker (EB)',
         'S1': 'Sinergia 1 (S1)',
         'S2': 'Sinergia 2 (S2)',
         'S3': 'Sinergia 3 (S3)',
@@ -529,7 +943,13 @@
       const telefonoContactoCaptador = formData.telefonoContactoCaptador ? String(formData.telefonoContactoCaptador).replace(/\D/g, '').trim() : '';
       const nombreContactoCaptador = formData.nombreContactoCaptador ? String(formData.nombreContactoCaptador).trim() : '';
       const companiaCaptadora = formData.companiaCaptadora ? String(formData.companiaCaptadora).trim() : idCompaniaCaptadora;
-      const clavePropiedad = await generatePropertyKey(procedenciaCode);
+      
+      let clavePropiedad = '';
+      if (importedEbId && importedEbId.toUpperCase().startsWith('EB-')) {
+        clavePropiedad = importedEbId.toUpperCase().trim();
+      } else {
+        clavePropiedad = await generatePropertyKey(procedenciaCode);
+      }
 
       const imageUrls: string[] = [];
       if (selectedImages.length > 0) {
@@ -567,7 +987,7 @@
         }
       }
 
-      const primaryImg = imageUrls[0] ?? '';
+      const primaryImg = imageUrls[0] ?? (existingImages[0] ?? '');
       const opType = formData.tipoOperacion ?? 'Venta';
       const isSale = String(opType).toLowerCase().includes('venta') || String(opType).toLowerCase() === 'sale';
       const numPrice = formData.precio ? Number(formData.precio) : null;
@@ -578,7 +998,7 @@
         const finalImages = [...existingImages, ...imageUrls];
         const primaryImg = finalImages[0] ?? '';
 
-        await updateDoc(doc(db, 'properties', editingDocId), {
+        const rawUpdateData = {
           ...formData,
           procedencia: procedenciaCode,
           procedenciaNombre,
@@ -637,7 +1057,9 @@
 
           updatedAt: serverTimestamp(),
           updated_at: Date.now(),
-        });
+        };
+
+        await updateDoc(doc(db, 'properties', editingDocId), sanitizeForFirestore(rawUpdateData));
 
         // Si el contacto existe en Firestore y se capturó teléfono, enriquecer el contacto
         if (idContactoCaptador && !idContactoCaptador.startsWith('pinned-') && telefonoContactoCaptador) {
@@ -669,13 +1091,18 @@
         }, 500);
       } else {
         uploadStatus = 'Guardando datos de la propiedad...';
-        const newDocRef = await addDoc(collection(db, 'properties'), {
+        const finalImages = [...existingImages, ...imageUrls];
+        const primaryImg = finalImages[0] ?? '';
+
+        const rawDocData = {
           ...formData,
           clavePropiedad,
           public_id: clavePropiedad,
-          easybroker_id: null,
-          source: isSynergy ? 'synergy' : 'manual',
-          sourceName: isSynergy ? `Sinergia (${procedenciaCode}) - ${companiaCaptadora || nombreContactoCaptador}` : 'Match Home (Captura Manual)',
+          easybroker_id: importedEbId || null,
+          source: importedEbId ? 'easybroker' : (isSynergy ? 'synergy' : 'manual'),
+          sourceName: importedEbId
+            ? `Match Home (EasyBroker ${importedEbId})`
+            : (isSynergy ? `Sinergia (${procedenciaCode}) - ${companiaCaptadora || nombreContactoCaptador}` : 'Match Home (Captura Manual)'),
 
           procedencia: procedenciaCode,
           procedenciaNombre,
@@ -726,8 +1153,8 @@
           imagenMiniatura: primaryImg,
           title_image_full: primaryImg,
           title_image_thumb: primaryImg,
-          images: imageUrls,
-          property_images: imageUrls.map(url => ({ title: '', url })),
+          images: finalImages,
+          property_images: finalImages.map(url => ({ title: '', url })),
 
           tags: formData.ubicacion ? [...(formData.amenidades ?? []), formData.ubicacion] : (formData.amenidades ?? []),
           features: formData.amenidades ?? [],
@@ -737,7 +1164,17 @@
           created_at: Date.now(),
           updated_at: Date.now(),
           syncedAt: serverTimestamp(),
-        });
+        };
+
+        const cleanDocData = sanitizeForFirestore(rawDocData);
+
+        let savedDocId = clavePropiedad;
+        if (clavePropiedad.toUpperCase().startsWith('EB-')) {
+          await setDoc(doc(db, 'properties', clavePropiedad), cleanDocData);
+        } else {
+          const newDocRef = await addDoc(collection(db, 'properties'), cleanDocData);
+          savedDocId = newDocRef.id;
+        }
 
         // Si el contacto existe en Firestore y se capturó teléfono, enriquecer el contacto
         if (idContactoCaptador && !idContactoCaptador.startsWith('pinned-') && telefonoContactoCaptador) {
@@ -775,11 +1212,14 @@
           amenidades: []
         };
         selectedImages = [];
+        existingImages = [];
+        importedEbId = null;
+        easybrokerKey = '';
 
-        const redirectKey = clavePropiedad || newDocRef.id;
+        const redirectKey = clavePropiedad || savedDocId;
         setTimeout(() => {
           goto(`/property/${encodeURIComponent(redirectKey)}`);
-        }, 500);
+        }, 800);
       }
     } catch (err: any) {
       console.error(err);
@@ -818,8 +1258,327 @@
       {/if}
     </div>
 
-    <PropertyNavActions current="subir-propiedad" />
+    <PropertyNavActions current="subir-propiedad" onOpenModal={openIngestaModal} />
   </div>
+
+  {#if uploadStatus}
+    <div class="top-alert-banner info glass">
+      <span class="btn-spinner"></span>
+      <span>{uploadStatus}</span>
+    </div>
+  {/if}
+
+  {#if uploadError}
+    <div class="top-alert-banner error glass">
+      <div class="alert-content-row">
+        <span>❌ {uploadError}</span>
+        <button type="button" class="alert-close" on:click={() => uploadError = null}>✕</button>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Modal Interactivo de Ingesta Asistida -->
+  {#if activeModal && !isEditMode}
+    <div
+      class="modal-backdrop"
+      on:click={closeIngestaModal}
+      on:keydown={(e) => e.key === 'Escape' && closeIngestaModal()}
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
+      <div class="modal-dialog glass" on:click|stopPropagation>
+        <!-- Cabecera del Modal -->
+        <div class="modal-dialog-header">
+          <div class="modal-dialog-title">
+            <span class="modal-header-icon {activeModal}">
+              {#if activeModal === 'texto'}💬{:else if activeModal === 'easybroker'}🔑{:else}🔗{/if}
+            </span>
+            <div>
+              <h3>
+                {#if activeModal === 'texto'}
+                  Subir con Texto y Fotos (WhatsApp / Redes)
+                {:else if activeModal === 'easybroker'}
+                  Subir Por Clave EasyBroker (EB-)
+                {:else}
+                  Subir Por Enlace Externo (Robot n8n)
+                {/if}
+              </h3>
+              <p>
+                {#if activeModal === 'texto'}
+                  Pega el mensaje de WhatsApp y/o arrastra fotos. La IA extraerá los datos técnicos automáticamente.
+                {:else if activeModal === 'easybroker'}
+                  Ingresa la clave EB para descargar la ficha técnica y fotos originales desde la API de EasyBroker.
+                {:else}
+                  Pega el enlace de la propiedad para que el robot extractor de n8n la procese automáticamente.
+                {/if}
+              </p>
+            </div>
+          </div>
+          <button type="button" class="btn-modal-close" on:click={closeIngestaModal} aria-label="Cerrar modal">✕</button>
+        </div>
+
+        <!-- Selector de Métodos / Pestañas dentro del Modal -->
+        <div class="modal-method-tabs">
+          <button
+            type="button"
+            class="modal-method-tab tab-wa"
+            class:active={activeModal === 'texto'}
+            on:click={() => activeModal = 'texto'}
+          >
+            <span>💬 Texto y Fotos</span>
+            <span class="badge-ia">⚡ IA</span>
+          </button>
+
+          <button
+            type="button"
+            class="modal-method-tab tab-eb"
+            class:active={activeModal === 'easybroker'}
+            on:click={() => activeModal = 'easybroker'}
+          >
+            <span>🔑 Clave EB</span>
+          </button>
+
+          <button
+            type="button"
+            class="modal-method-tab tab-link"
+            class:active={activeModal === 'link'}
+            on:click={() => activeModal = 'link'}
+          >
+            <span>🔗 Por Link</span>
+            <span class="badge-n8n">🤖 n8n</span>
+          </button>
+        </div>
+
+        <!-- Contenido según Método Activo -->
+        <div class="modal-dialog-body">
+          <!-- Panel 1: Arrastrar Texto y Fotos -->
+          {#if activeModal === 'texto'}
+            <div class="modal-tab-content" id="whatsapp-parser-section">
+              <div class="wa-textarea-wrapper">
+                <textarea
+                  id="whatsapp-text-input"
+                  rows="4"
+                  bind:value={rawWhatsAppText}
+                  placeholder="Pega o arrastra aquí el mensaje del grupo de WhatsApp (ej: 'En venta bonita casa en Col. Las Granjas, 3 recámaras, 2 baños, 120m² terreno, $1,900,000...')..."
+                  disabled={isParsingWhatsApp}
+                  on:dragover|preventDefault
+                  on:drop|preventDefault={(e) => {
+                    const txt = e.dataTransfer?.getData('text/plain');
+                    if (txt) rawWhatsAppText = txt;
+                  }}
+                ></textarea>
+              </div>
+
+              <!-- Dropzone de Fotografías en el Modal -->
+              <div
+                class="modal-dropzone"
+                class:dragging={isModalDragging}
+                on:dragenter|preventDefault|stopPropagation={() => isModalDragging = true}
+                on:dragover|preventDefault|stopPropagation={() => isModalDragging = true}
+                on:dragleave|preventDefault|stopPropagation={() => isModalDragging = false}
+                on:drop|preventDefault|stopPropagation={handleModalDropPhotos}
+              >
+                {#if modalPhotos.length === 0}
+                  <div class="dropzone-empty">
+                    <span class="dropzone-icon">📷</span>
+                    <p>Arrastra fotos de la propiedad aquí o <label class="file-browse-link">selecciona archivos<input type="file" multiple accept="image/*" on:change={handleModalFileSelect} hidden /></label></p>
+                    <span class="dropzone-hint">Opcional: puedes arrastrarlas ahora o agregarlas en el formulario</span>
+                  </div>
+                {:else}
+                  <div class="dropzone-filled">
+                    <div class="dropzone-filled-header">
+                      <span>📷 {modalPhotos.length} foto{modalPhotos.length === 1 ? '' : 's'} lista{modalPhotos.length === 1 ? '' : 's'} para cargar</span>
+                      <button type="button" class="btn-clear-modal-photos" on:click={() => modalPhotos = []}>Limpiar fotos</button>
+                    </div>
+                    <div class="modal-photos-strip">
+                      {#each modalPhotos as file, i}
+                        <div class="modal-thumb-item">
+                          <img src={URL.createObjectURL(file)} alt="Foto {i + 1}" />
+                          <button type="button" class="btn-remove-thumb" on:click={() => modalPhotos = modalPhotos.filter((_, idx) => idx !== i)}>✕</button>
+                        </div>
+                      {/each}
+                      <label class="modal-add-more-thumb" title="Agregar más fotos">
+                        <span>+</span>
+                        <input type="file" multiple accept="image/*" on:change={handleModalFileSelect} hidden />
+                      </label>
+                    </div>
+                  </div>
+                {/if}
+              </div>
+
+              <div class="wa-actions-row">
+                <button
+                  type="button"
+                  class="btn-parse-wa"
+                  on:click={parseWhatsAppText}
+                  disabled={isParsingWhatsApp || (!rawWhatsAppText.trim() && modalPhotos.length === 0)}
+                >
+                  {#if isParsingWhatsApp}
+                    <span class="btn-spinner"></span>
+                    <span>Analizando con IA y Cargando Datos...</span>
+                  {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+                    </svg>
+                    <span>⚡ Autollenar Formulario con IA {modalPhotos.length > 0 ? `y ${modalPhotos.length} Fotos` : ''}</span>
+                  {/if}
+                </button>
+
+                {#if rawWhatsAppText || modalPhotos.length > 0}
+                  <button
+                    type="button"
+                    class="btn-clear-wa"
+                    on:click={() => { rawWhatsAppText = ''; modalPhotos = []; waParseError = null; }}
+                    disabled={isParsingWhatsApp}
+                  >
+                    Limpiar
+                  </button>
+                {/if}
+              </div>
+
+              {#if waParseError}
+                <div class="eb-alert error">
+                  <span>❌ {waParseError}</span>
+                  <button type="button" class="alert-close" on:click={() => waParseError = null}>✕</button>
+                </div>
+              {/if}
+
+              {#if waParseSuccess}
+                <div class="eb-alert success">
+                  <span>✅ {waParseSuccess}</span>
+                  <button type="button" class="alert-close" on:click={() => waParseSuccess = null}>✕</button>
+                </div>
+              {/if}
+            </div>
+          {/if}
+
+          <!-- Panel 2: Subir Por Clave EasyBroker (EB-) -->
+          {#if activeModal === 'easybroker'}
+            <div class="modal-tab-content" id="easybroker-key-section">
+              <div class="eb-input-row">
+                <div class="eb-input-wrapper">
+                  <span class="eb-prefix">EB-</span>
+                  <input
+                    type="text"
+                    id="easybroker-key-input"
+                    bind:value={easybrokerKey}
+                    placeholder="XA5895 (o clave completa EB-XA5895)"
+                    disabled={isFetchingEB}
+                    on:keydown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        fetchEasyBrokerProperty();
+                      }
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="btn-fetch-eb"
+                  on:click={fetchEasyBrokerProperty}
+                  disabled={isFetchingEB || !easybrokerKey.trim()}
+                >
+                  {#if isFetchingEB}
+                    <span class="btn-spinner"></span>
+                    <span>Descargando...</span>
+                  {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    <span>Descargar y Llenar</span>
+                  {/if}
+                </button>
+              </div>
+
+              {#if ebError}
+                <div class="eb-alert error">
+                  <span>❌ {ebError}</span>
+                  <button type="button" class="alert-close" on:click={() => ebError = null}>✕</button>
+                </div>
+              {/if}
+
+              {#if ebSuccess}
+                <div class="eb-alert success enhanced-alert">
+                  <div class="alert-content-block">
+                    <span class="alert-text">✅ {ebSuccess}</span>
+                    <div class="alert-actions-row">
+                      <button type="button" class="btn-alert-publish" on:click={submitDirectly} disabled={isSubmitting}>
+                        {#if isSubmitting}
+                          <span class="btn-spinner"></span>
+                          Publicando en CRM...
+                        {:else}
+                          🚀 Publicar en Sandbox Ahora
+                        {/if}
+                      </button>
+                      <button type="button" class="btn-alert-scroll" on:click={() => { activeModal = null; scrollToForm(); }}>
+                        ✏️ Revisar / Editar Campos Abajo ↓
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" class="alert-close" on:click={() => ebSuccess = null}>✕</button>
+                </div>
+              {/if}
+            </div>
+          {/if}
+
+          <!-- Panel 3: Subir Por Link / URL con n8n -->
+          {#if activeModal === 'link'}
+            <div class="modal-tab-content" id="link-parser-section">
+              <div class="eb-input-row">
+                <div class="eb-input-wrapper">
+                  <span class="eb-prefix">🔗</span>
+                  <input
+                    type="url"
+                    id="property-link-input"
+                    bind:value={linkUrl}
+                    placeholder="https://www.inmuebles24.com/propiedades/..."
+                    disabled={isSendingLink}
+                    on:keydown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        submitPropertyLink();
+                      }
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="btn-fetch-eb btn-fetch-link"
+                  on:click={submitPropertyLink}
+                  disabled={isSendingLink || !linkUrl.trim()}
+                >
+                  {#if isSendingLink}
+                    <span class="btn-spinner"></span>
+                    <span>Enviando a n8n...</span>
+                  {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                    </svg>
+                    <span>Importar con n8n</span>
+                  {/if}
+                </button>
+              </div>
+
+              {#if linkError}
+                <div class="eb-alert error">
+                  <span>❌ {linkError}</span>
+                  <button type="button" class="alert-close" on:click={() => linkError = null}>✕</button>
+                </div>
+              {/if}
+
+              {#if linkSuccess}
+                <div class="eb-alert success">
+                  <span>✅ {linkSuccess}</span>
+                  <button type="button" class="alert-close" on:click={() => linkSuccess = null}>✕</button>
+                </div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <div class="form-wrapper glass">
     <form bind:this={formElement} on:submit={handleSubmit}>
@@ -1735,11 +2494,654 @@
     margin: 0;
   }
 
-  .success-actions {
+  /* Modal Interactivo de Ingesta Asistida */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9999;
     display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    animation: fadeInModal 0.2s ease-out;
+  }
+
+  @keyframes fadeInModal {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes zoomInModal {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-dialog {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 1.25rem;
+    width: 100%;
+    max-width: 680px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85), 0 0 40px rgba(99, 102, 241, 0.2);
+    animation: zoomInModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  .modal-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 1rem;
+  }
+
+  .modal-dialog-title {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+  }
+
+  .modal-header-icon {
+    font-size: 1.7rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+  }
+
+  .modal-dialog-title h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+
+  .modal-dialog-title p {
+    margin: 0.2rem 0 0 0;
+    font-size: 0.85rem;
+    color: #94a3b8;
+  }
+
+  .btn-modal-close {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #cbd5e1;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .btn-modal-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+  }
+
+  .modal-method-tabs {
+    display: flex;
+    gap: 0.6rem;
     flex-wrap: wrap;
+    background: rgba(15, 23, 42, 0.6);
+    padding: 0.35rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .modal-method-tab {
+    flex: 1;
+    min-width: 140px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid transparent;
+    padding: 0.55rem 0.9rem;
+    border-radius: 0.55rem;
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .modal-method-tab:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #f8fafc;
+  }
+
+  .modal-method-tab.tab-wa.active {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.45);
+    color: #34d399;
+  }
+
+  .modal-method-tab.tab-eb.active {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #fbbf24;
+  }
+
+  .modal-method-tab.tab-link.active {
+    background: rgba(99, 102, 241, 0.22);
+    border-color: rgba(99, 102, 241, 0.5);
+    color: #a5b4fc;
+  }
+
+  .modal-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Dropzone de fotos en el Modal */
+  .modal-dropzone {
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 0.75rem;
+    padding: 1.1rem;
+    background: rgba(15, 23, 42, 0.5);
+    transition: all 0.2s ease;
+  }
+
+  .modal-dropzone.dragging {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+  }
+
+  .dropzone-empty {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .dropzone-icon {
+    font-size: 1.8rem;
+  }
+
+  .dropzone-empty p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #cbd5e1;
+  }
+
+  .file-browse-link {
+    color: #38bdf8;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .dropzone-hint {
+    font-size: 0.76rem;
+    color: #64748b;
+  }
+
+  .dropzone-filled-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #34d399;
+  }
+
+  .btn-clear-modal-photos {
+    background: transparent;
+    border: none;
+    color: #ef4444;
+    font-size: 0.78rem;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .modal-photos-strip {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.3rem 0;
+  }
+
+  .modal-thumb-item {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border-radius: 0.45rem;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .modal-thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .btn-remove-thumb {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.65rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-add-more-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 0.45rem;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: #94a3b8;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+  }
+
+  .modal-add-more-thumb:hover {
+    border-color: #38bdf8;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+  }
+
+  .badge-ia {
+    font-size: 0.7rem;
+    background: rgba(16, 185, 129, 0.25);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    padding: 0.15rem 0.45rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .badge-n8n {
+    font-size: 0.7rem;
+    background: rgba(147, 51, 234, 0.25);
+    color: #c084fc;
+    border: 1px solid rgba(147, 51, 234, 0.4);
+    padding: 0.15rem 0.45rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .ingesta-tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    animation: fadeIn 0.25s ease;
+  }
+
+  .ingesta-header {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+  }
+
+  .wa-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.65rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  }
+
+  .eb-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.65rem;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  }
+
+  .link-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.65rem;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+
+  .btn-fetch-link {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
+  }
+
+  .btn-fetch-link:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5) !important;
+  }
+
+
+  .wa-textarea-wrapper {
+    width: 100%;
+  }
+
+  .wa-textarea-wrapper textarea {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0.65rem;
+    padding: 0.75rem 1rem;
+    color: #f8fafc;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    outline: none;
+    resize: vertical;
+    min-height: 90px;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+  }
+
+  .wa-textarea-wrapper textarea:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  }
+
+  .wa-actions-row {
+    display: flex;
+    align-items: center;
     gap: 0.75rem;
-    margin-top: 0.25rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-parse-wa {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.4rem;
+    border-radius: 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .btn-parse-wa:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    filter: brightness(1.1);
+  }
+
+  .btn-parse-wa:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-clear-wa {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #cbd5e1;
+    padding: 0.75rem 1rem;
+    border-radius: 0.6rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-clear-wa:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+  }
+
+  .eb-input-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .eb-input-wrapper {
+    flex: 1;
+    min-width: 240px;
+    display: flex;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0.6rem;
+    padding: 0 0.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .eb-input-wrapper:focus-within {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+  }
+
+  .eb-input-wrapper input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #f8fafc;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.75rem 0.5rem;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-fetch-eb {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.4rem;
+    border-radius: 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .btn-fetch-eb:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+    filter: brightness(1.1);
+  }
+
+  .btn-fetch-eb:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .eb-alert {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .eb-alert.error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+  }
+
+  .eb-alert.success {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #6ee7b7;
+  }
+
+  .top-alert-banner {
+    padding: 0.9rem 1.25rem;
+    border-radius: 0.65rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  }
+
+  .top-alert-banner.info {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #93c5fd;
+  }
+
+  .top-alert-banner.error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+  }
+
+  .top-alert-banner .alert-content-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .eb-alert.enhanced-alert {
+    align-items: flex-start;
+    padding: 1rem 1.1rem;
+  }
+
+  .alert-content-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex: 1;
+  }
+
+  .alert-text {
+    line-height: 1.45;
+  }
+
+  .alert-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-alert-publish {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: white;
+    border: none;
+    padding: 0.55rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(99, 102, 241, 0.35);
+    transition: all 0.2s ease;
+  }
+
+  .btn-alert-publish:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(99, 102, 241, 0.5);
+    filter: brightness(1.1);
+  }
+
+  .btn-alert-publish:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .btn-alert-scroll {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 0.55rem 0.9rem;
+    border-radius: 0.5rem;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-alert-scroll:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
+
+  .alert-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    opacity: 0.8;
+  }
+
+  .alert-close:hover {
+    opacity: 1;
   }
 
   /* Responsive / Mobile Viewport Fixes */
