@@ -1587,6 +1587,17 @@
           <button type="button" class="btn-alert-scroll" on:click={() => { ebSuccess = null; waParseSuccess = null; linkSuccess = null; }}>
             ✏️ Revisar / Continuar editando campos abajo
           </button>
+          {#if importedEbId}
+            <a
+              href="https://www.easybroker.com/account/mls?query={encodeURIComponent(importedEbId)}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn-alert-eb-link"
+              title="Buscar ficha del colega captador en EasyBroker MLS"
+            >
+              🔍 Ver Captador en Bolsa EB ({importedEbId}) ↗
+            </a>
+          {/if}
         </div>
       </div>
       <button type="button" class="alert-close" on:click={() => { ebSuccess = null; waParseSuccess = null; linkSuccess = null; }}>✕</button>
@@ -1604,6 +1615,21 @@
             <label for={field.name} class:required={field.required !== false}>{field.label}</label>
 
             {#if field.type === 'contact-select'}
+              {#if importedEbId}
+                <div class="eb-colleague-bar">
+                  <div class="eb-colleague-info">
+                    <span>🔑 Clave EasyBroker: <strong>{importedEbId}</strong></span>
+                  </div>
+                  <a
+                    href="https://www.easybroker.com/account/mls?query={encodeURIComponent(importedEbId)}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn-eb-colleague"
+                  >
+                    🔍 Ver Captador Original en Bolsa EB ↗
+                  </a>
+                </div>
+              {/if}
               <ContactSelector
                 bind:value={formData[field.name]}
                 bind:contactId={formData.idContactoCaptador}
@@ -3147,6 +3173,69 @@
   .btn-alert-scroll:hover {
     background: rgba(255, 255, 255, 0.15);
     color: white;
+  }
+
+  .btn-alert-eb-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(245, 158, 11, 0.18);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    padding: 0.55rem 0.95rem;
+    border-radius: 0.5rem;
+    font-size: 0.83rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .btn-alert-eb-link:hover {
+    background: rgba(245, 158, 11, 0.3);
+    color: #fff;
+    border-color: #f59e0b;
+    transform: translateY(-1px);
+  }
+
+  .eb-colleague-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px dashed rgba(245, 158, 11, 0.35);
+    padding: 0.55rem 0.85rem;
+    border-radius: 0.55rem;
+    margin-bottom: 0.65rem;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .eb-colleague-info {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.84rem;
+    color: #fef3c7;
+  }
+
+  .btn-eb-colleague {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: #f59e0b;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.4rem;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .btn-eb-colleague:hover {
+    background: #d97706;
+    color: #fff;
+    transform: translateY(-1px);
   }
 
   .alert-close {

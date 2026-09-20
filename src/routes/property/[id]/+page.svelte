@@ -526,6 +526,18 @@
 									📞 {property.telefonoContactoCaptador} (WhatsApp)
 								</a>
 							{/if}
+							{#if property.easybroker_id || property.public_id?.startsWith('EB-') || property.claveEB}
+								{@const ebId = property.easybroker_id || property.public_id || property.claveEB}
+								<a
+									href="https://www.easybroker.com/account/mls?query={encodeURIComponent(ebId)}"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="badge-eb-mls-link"
+									title="Ver ficha del colega captador en EasyBroker MLS"
+								>
+									🔍 Bolsa EB ({ebId}) ↗
+								</a>
+							{/if}
 						</div>
 					{:else if property.source === 'direct' || (!property.public_id?.startsWith('EB-') && property.source !== 'easybroker')}
 						<div class="prop__captador_row">
@@ -1533,6 +1545,24 @@
 	.badge-phone-link:hover {
 		background: rgba(56, 189, 248, 0.25);
 		color: #0369a1;
+	}
+
+	.badge-eb-mls-link {
+		background: rgba(245, 158, 11, 0.15);
+		color: #d97706;
+		border: 1px solid rgba(245, 158, 11, 0.35);
+		font-size: 0.8rem;
+		font-weight: 600;
+		padding: 0.2rem 0.55rem;
+		border-radius: 4px;
+		text-decoration: none;
+		transition: all 0.2s ease;
+	}
+
+	.badge-eb-mls-link:hover {
+		background: rgba(245, 158, 11, 0.25);
+		color: #b45309;
+		border-color: #d97706;
 	}
 
 	.badge-direct-tag {
