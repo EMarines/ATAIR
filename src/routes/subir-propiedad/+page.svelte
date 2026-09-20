@@ -1589,7 +1589,7 @@
           </button>
           {#if importedEbId}
             <a
-              href="https://www.easybroker.com/account/mls?query={encodeURIComponent(importedEbId)}"
+              href="https://www.easybroker.com/agent/mls_properties?query={encodeURIComponent(importedEbId)}"
               target="_blank"
               rel="noopener noreferrer"
               class="btn-alert-eb-link"
@@ -1621,7 +1621,7 @@
                     <span>🔑 Clave EasyBroker: <strong>{importedEbId}</strong></span>
                   </div>
                   <a
-                    href="https://www.easybroker.com/account/mls?query={encodeURIComponent(importedEbId)}"
+                    href="https://www.easybroker.com/agent/mls_properties?query={encodeURIComponent(importedEbId)}"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="btn-eb-colleague"

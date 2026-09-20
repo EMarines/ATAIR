@@ -529,7 +529,7 @@
 							{#if property.easybroker_id || property.public_id?.startsWith('EB-') || property.claveEB}
 								{@const ebId = property.easybroker_id || property.public_id || property.claveEB}
 								<a
-									href="https://www.easybroker.com/account/mls?query={encodeURIComponent(ebId)}"
+									href="https://www.easybroker.com/agent/mls_properties?query={encodeURIComponent(ebId)}"
 									target="_blank"
 									rel="noopener noreferrer"
 									class="badge-eb-mls-link"
