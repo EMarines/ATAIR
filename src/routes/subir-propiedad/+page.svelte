@@ -611,17 +611,78 @@
       const numFotos = existingImages.length;
       ebSuccess = `¡Propiedad ${cleanKey} descargada con éxito! Se precargaron ${numFotos} foto${numFotos === 1 ? '' : 's'} y todos los campos técnicos. Puedes revisar y mejorar los datos abajo.`;
 
+      // Cerrar modal automáticamente y enviar al formulario lleno
+      activeModal = null;
+
       // Desplazamiento suave al formulario
       setTimeout(() => {
         const formEl = document.querySelector('.form-wrapper');
         if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 250);
+      }, 100);
 
     } catch (err: any) {
       console.error('Error al descargar propiedad EB:', err);
       ebError = err.message || 'Error al conectar con EasyBroker';
     } finally {
       isFetchingEB = false;
+    }
+  }
+
+  function applyExtractedPropertyData(p: any, rawSource: string) {
+    if (p.titulo) formData.titulo = p.titulo;
+    if (p.descripcion) formData.descripcion = p.descripcion;
+    if (p.tipoOperacion) formData.tipoOperacion = p.tipoOperacion;
+    if (p.precio) formData.precio = Number(p.precio);
+    if (p.moneda) formData.moneda = p.moneda;
+    if (p.tipoPropiedad) formData.tipoPropiedad = p.tipoPropiedad;
+
+    if (p.recamaras !== null && p.recamaras !== undefined && p.recamaras !== '') {
+      formData.recamaras = Math.min(Number(p.recamaras), 6);
+    }
+    if (p.banos !== null && p.banos !== undefined && p.banos !== '') {
+      formData.banos = Math.min(Number(p.banos), 6);
+    }
+    if (p.mediosBanos !== null && p.mediosBanos !== undefined && p.mediosBanos !== '') {
+      formData.mediosBanos = Math.min(Number(p.mediosBanos), 6);
+    }
+    if (p.estacionamientos !== null && p.estacionamientos !== undefined && p.estacionamientos !== '') {
+      formData.estacionamientos = Math.min(Number(p.estacionamientos), 6);
+    }
+
+    if (p.construccion) formData.construccion = Number(p.construccion);
+    if (p.terreno) formData.terreno = Number(p.terreno);
+
+    if (p.colonia) formData.colonia = p.colonia;
+    if (p.ubicacion) {
+      formData.ubicacion = p.ubicacion;
+    } else if (p.colonia) {
+      const detectedZona = tagToUbicacion(p.colonia);
+      if (detectedZona) formData.ubicacion = detectedZona;
+    }
+
+    const combinedText = `${p.titulo || ''} ${p.descripcion || ''} ${rawSource}`;
+    formData.amenidades = detectCatalogAmenities(
+      combinedText,
+      Array.isArray(p.amenidades) ? p.amenidades : (formData.amenidades || [])
+    );
+
+    if (Array.isArray(p.fotos) && p.fotos.length > 0) {
+      existingImages = p.fotos;
+    }
+
+    if (p.easybrokerId) {
+      importedEbId = p.easybrokerId;
+    }
+
+    if (p.contactoTelefono && !formData.telefonoContactoCaptador) {
+      formData.telefonoContactoCaptador = String(p.contactoTelefono).replace(/\D/g, '').trim();
+    }
+    if (p.contactoNombre && (!formData.nombreContactoCaptador || formData.nombreContactoCaptador === 'Match Home')) {
+      formData.nombreContactoCaptador = p.contactoNombre;
+    }
+    if (p.companiaCaptadora && (!formData.companiaCaptadora || formData.companiaCaptadora === 'Match Home')) {
+      formData.companiaCaptadora = p.companiaCaptadora;
+      formData.idCompaniaCaptadora = p.companiaCaptadora;
     }
   }
 
@@ -634,28 +695,56 @@
       return;
     }
 
-    const n8nWebhook = import.meta.env.VITE_N8N_WEBHOOK_LINK ?? '';
     isSendingLink = true;
     lastSentLink = cleanUrl;
 
     try {
-      if (!n8nWebhook) {
-        throw new Error('El webhook de n8n no está configurado en las variables de entorno (VITE_N8N_WEBHOOK_LINK).');
+      // 1. Extracción directa inteligente con el parser de ATAIR (soporta enlaces de EasyBroker y portales)
+      const parseRes = await fetch('/api/parse-property-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawText: cleanUrl })
+      });
+
+      const parseData = await parseRes.json().catch(() => ({}));
+
+      if (parseRes.ok && parseData.success && parseData.data) {
+        applyExtractedPropertyData(parseData.data, cleanUrl);
+        const numFotos = existingImages.length;
+        const fotosMsg = numFotos > 0 ? ` Se precargaron ${numFotos} fotos originales.` : '';
+        linkSuccess = `¡Propiedad extraída con éxito desde el enlace!${fotosMsg} Puedes revisar los datos abajo.`;
+        linkUrl = '';
+        activeModal = null;
+
+        setTimeout(() => {
+          const formEl = document.querySelector('.form-wrapper');
+          if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+        return;
       }
 
+      // 2. Si no es enlace directo procesable por el parser nativo, enviar a n8n
+      const n8nWebhook = import.meta.env.VITE_N8N_WEBHOOK_LINK || 'https://n8n-atair.duckdns.org/webhook/ingest-property';
       const res = await fetch(n8nWebhook, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: cleanUrl })
+        body: JSON.stringify({ url: cleanUrl, link: cleanUrl })
       });
 
-      if (!res.ok) throw new Error(`Error del servidor extractor: ${res.status} ${res.statusText}`);
+      if (!res.ok) throw new Error(`El robot extractor n8n respondió con código ${res.status}`);
 
-      linkSuccess = `¡Enlace enviado al robot extractor n8n con éxito! El sistema procesará el inmueble y lo registrará automáticamente en el catálogo.`;
+      linkSuccess = `¡Enlace enviado al robot extractor n8n con éxito! Se procesará en segundo plano.`;
       linkUrl = '';
+      activeModal = null;
+
+      setTimeout(() => {
+        const formEl = document.querySelector('.form-wrapper');
+        if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+
     } catch (err: any) {
-      console.error('Error al enviar enlace a n8n:', err);
-      linkError = err.message || 'Error al conectar con el webhook extractor de n8n';
+      console.error('Error al procesar enlace de propiedad:', err);
+      linkError = err.message || 'Error al procesar el enlace de la propiedad';
     } finally {
       isSendingLink = false;
     }
@@ -684,73 +773,7 @@
       }
 
       const p = data.data;
-
-      // Volcar Título y Descripción
-      if (p.titulo) formData.titulo = p.titulo;
-      if (p.descripcion) formData.descripcion = p.descripcion;
-
-      // Volcar Tipo de Operación y Precio
-      if (p.tipoOperacion) formData.tipoOperacion = p.tipoOperacion;
-      if (p.precio) formData.precio = Number(p.precio);
-      if (p.moneda) formData.moneda = p.moneda;
-
-      // Volcar Tipo de Propiedad
-      if (p.tipoPropiedad) formData.tipoPropiedad = p.tipoPropiedad;
-
-      // Volcar Recámaras, Baños, Medios Baños, Estacionamientos
-      if (p.recamaras !== null && p.recamaras !== undefined && p.recamaras !== '') {
-        formData.recamaras = Math.min(Number(p.recamaras), 6);
-      }
-      if (p.banos !== null && p.banos !== undefined && p.banos !== '') {
-        formData.banos = Math.min(Number(p.banos), 6);
-      }
-      if (p.mediosBanos !== null && p.mediosBanos !== undefined && p.mediosBanos !== '') {
-        formData.mediosBanos = Math.min(Number(p.mediosBanos), 6);
-      }
-      if (p.estacionamientos !== null && p.estacionamientos !== undefined && p.estacionamientos !== '') {
-        formData.estacionamientos = Math.min(Number(p.estacionamientos), 6);
-      }
-
-      // Volcar Metros de Construcción y Terreno
-      if (p.construccion) formData.construccion = Number(p.construccion);
-      if (p.terreno) formData.terreno = Number(p.terreno);
-
-      // Volcar Colonia y Ubicación/Zona
-      if (p.colonia) formData.colonia = p.colonia;
-      if (p.ubicacion) {
-        formData.ubicacion = p.ubicacion;
-      } else if (p.colonia) {
-        const detectedZona = tagToUbicacion(p.colonia);
-        if (detectedZona) formData.ubicacion = detectedZona;
-      }
-
-      // Volcar Amenidades detectadas y enriquecerlas desde el texto crudo, título y descripción
-      const combinedWaText = `${p.titulo || ''} ${p.descripcion || ''} ${cleanText}`;
-      formData.amenidades = detectCatalogAmenities(
-        combinedWaText,
-        Array.isArray(p.amenidades) ? p.amenidades : (formData.amenidades || [])
-      );
-
-      // Si la extracción incluyó fotografías de alta resolución (ej. enlace de EasyBroker)
-      if (Array.isArray(p.fotos) && p.fotos.length > 0) {
-        existingImages = p.fotos;
-      }
-
-      if (p.easybrokerId) {
-        importedEbId = p.easybrokerId;
-      }
-
-      // Contacto o inmobiliaria sugerida si viene en el texto/enlace
-      if (p.contactoTelefono && !formData.telefonoContactoCaptador) {
-        formData.telefonoContactoCaptador = String(p.contactoTelefono).replace(/\D/g, '').trim();
-      }
-      if (p.contactoNombre && (!formData.nombreContactoCaptador || formData.nombreContactoCaptador === 'Match Home')) {
-        formData.nombreContactoCaptador = p.contactoNombre;
-      }
-      if (p.companiaCaptadora && (!formData.companiaCaptadora || formData.companiaCaptadora === 'Match Home')) {
-        formData.companiaCaptadora = p.companiaCaptadora;
-        formData.idCompaniaCaptadora = p.companiaCaptadora;
-      }
+      applyExtractedPropertyData(p, cleanText);
 
       const numFotosDescargadas = Array.isArray(p.fotos) && p.fotos.length > 0 ? p.fotos.length : 0;
       const fotosMsg = numFotosDescargadas > 0
@@ -770,7 +793,7 @@
       setTimeout(() => {
         const formEl = document.querySelector('.form-wrapper');
         if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 250);
+      }, 100);
 
     } catch (err: any) {
       console.error('Error al parsear texto de WhatsApp:', err);
@@ -1443,13 +1466,6 @@
                   <button type="button" class="alert-close" on:click={() => waParseError = null}>✕</button>
                 </div>
               {/if}
-
-              {#if waParseSuccess}
-                <div class="eb-alert success">
-                  <span>✅ {waParseSuccess}</span>
-                  <button type="button" class="alert-close" on:click={() => waParseSuccess = null}>✕</button>
-                </div>
-              {/if}
             </div>
           {/if}
 
@@ -1458,12 +1474,11 @@
             <div class="modal-tab-content" id="easybroker-key-section">
               <div class="eb-input-row">
                 <div class="eb-input-wrapper">
-                  <span class="eb-prefix">EB-</span>
                   <input
                     type="text"
                     id="easybroker-key-input"
                     bind:value={easybrokerKey}
-                    placeholder="XA5895 (o clave completa EB-XA5895)"
+                    placeholder="EB-XA5895 (o clave directa ej. EB-GW0942)"
                     disabled={isFetchingEB}
                     on:keydown={(e) => {
                       if (e.key === 'Enter') {
@@ -1497,28 +1512,6 @@
                   <button type="button" class="alert-close" on:click={() => ebError = null}>✕</button>
                 </div>
               {/if}
-
-              {#if ebSuccess}
-                <div class="eb-alert success enhanced-alert">
-                  <div class="alert-content-block">
-                    <span class="alert-text">✅ {ebSuccess}</span>
-                    <div class="alert-actions-row">
-                      <button type="button" class="btn-alert-publish" on:click={submitDirectly} disabled={isSubmitting}>
-                        {#if isSubmitting}
-                          <span class="btn-spinner"></span>
-                          Publicando en CRM...
-                        {:else}
-                          🚀 Publicar en Sandbox Ahora
-                        {/if}
-                      </button>
-                      <button type="button" class="btn-alert-scroll" on:click={() => { activeModal = null; scrollToForm(); }}>
-                        ✏️ Revisar / Editar Campos Abajo ↓
-                      </button>
-                    </div>
-                  </div>
-                  <button type="button" class="alert-close" on:click={() => ebSuccess = null}>✕</button>
-                </div>
-              {/if}
             </div>
           {/if}
 
@@ -1532,7 +1525,7 @@
                     type="url"
                     id="property-link-input"
                     bind:value={linkUrl}
-                    placeholder="https://www.inmuebles24.com/propiedades/..."
+                    placeholder="https://easybroker.com/listing/... o enlace de portal"
                     disabled={isSendingLink}
                     on:keydown={(e) => {
                       if (e.key === 'Enter') {
@@ -1550,12 +1543,12 @@
                 >
                   {#if isSendingLink}
                     <span class="btn-spinner"></span>
-                    <span>Enviando a n8n...</span>
+                    <span>Extrayendo datos...</span>
                   {:else}
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                     </svg>
-                    <span>Importar con n8n</span>
+                    <span>Extraer y Llenar</span>
                   {/if}
                 </button>
               </div>
@@ -1566,17 +1559,37 @@
                   <button type="button" class="alert-close" on:click={() => linkError = null}>✕</button>
                 </div>
               {/if}
-
-              {#if linkSuccess}
-                <div class="eb-alert success">
-                  <span>✅ {linkSuccess}</span>
-                  <button type="button" class="alert-close" on:click={() => linkSuccess = null}>✕</button>
-                </div>
-              {/if}
             </div>
           {/if}
         </div>
       </div>
+    </div>
+  {/if}
+
+  {#if ebSuccess || waParseSuccess || linkSuccess}
+    <div class="eb-alert success enhanced-alert form-top-banner">
+      <div class="alert-content-block">
+        <span class="alert-text">
+          {#if ebSuccess}✅ {ebSuccess}
+          {:else if waParseSuccess}✅ {waParseSuccess}
+          {:else if linkSuccess}✅ {linkSuccess}
+          {/if}
+        </span>
+        <div class="alert-actions-row">
+          <button type="button" class="btn-alert-publish" on:click={submitDirectly} disabled={isSubmitting}>
+            {#if isSubmitting}
+              <span class="btn-spinner"></span>
+              Publicando en CRM...
+            {:else}
+              🚀 Publicar en Sandbox Ahora
+            {/if}
+          </button>
+          <button type="button" class="btn-alert-scroll" on:click={() => { ebSuccess = null; waParseSuccess = null; linkSuccess = null; }}>
+            ✏️ Revisar / Continuar editando campos abajo
+          </button>
+        </div>
+      </div>
+      <button type="button" class="alert-close" on:click={() => { ebSuccess = null; waParseSuccess = null; linkSuccess = null; }}>✕</button>
     </div>
   {/if}
 
@@ -3063,6 +3076,12 @@
   .eb-alert.enhanced-alert {
     align-items: flex-start;
     padding: 1rem 1.1rem;
+  }
+
+  .form-top-banner {
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.18);
+    border-radius: 0.75rem;
   }
 
   .alert-content-block {
