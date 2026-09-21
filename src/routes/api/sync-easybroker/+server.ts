@@ -24,38 +24,71 @@ async function fetchWithRetry(url: string, headers: any, retries = 3, delay = 35
   return null;
 }
 
+function getApiKeys(): { account: string; key: string }[] {
+  const pEnv = env as Record<string, string>;
+  const procEnv = (typeof process !== 'undefined' ? process.env : {}) as Record<string, string>;
+
+  const key1 =
+    pEnv.EASYBROKER_API_KEY ||
+    pEnv.VITE_EASYBROKER_API_KEY ||
+    procEnv.EASYBROKER_API_KEY ||
+    procEnv.VITE_EASYBROKER_API_KEY ||
+    'pqnjps13ry7iaudododsi455mg22mt';
+
+  const key2 =
+    pEnv.EASYBROKER_API_KEY_2 ||
+    pEnv.VITE_EASYBROKER_API_KEY_2 ||
+    procEnv.EASYBROKER_API_KEY_2 ||
+    procEnv.VITE_EASYBROKER_API_KEY_2 ||
+    'x0lk7kyxiuobh016le9znt24222uil';
+
+  const accounts: { account: string; key: string }[] = [];
+  if (key1) accounts.push({ account: 'JGCapital', key: key1 });
+  if (key2 && key2 !== key1) accounts.push({ account: 'MatchHome Personal', key: key2 });
+
+  return accounts;
+}
+
 export const GET: RequestHandler = async () => {
   try {
-    const easyBrokerApiKey = env.EASYBROKER_API_KEY || 
-      env.VITE_EASYBROKER_API_KEY || 
-      process.env.EASYBROKER_API_KEY || 
-      process.env.VITE_EASYBROKER_API_KEY || 
-      'pqnjps13ry7iaudododsi455mg22mt';
+    const accounts = getApiKeys();
 
-    if (!easyBrokerApiKey) {
-      return json({ error: 'API key de EasyBroker no configurada en el servidor.' }, { status: 500 });
+    if (accounts.length === 0) {
+      return json({ error: 'API keys de EasyBroker no configuradas en el servidor.' }, { status: 500 });
     }
 
-    const headers = {
-      'X-Authorization': easyBrokerApiKey,
-      'accept': 'application/json',
-    };
-
+    const statusesQuery = 'search[statuses][]=published&search[statuses][]=not_published&search[statuses][]=suspended';
     const rawList: any[] = [];
-    let page = 1;
-    let hasMore = true;
+    const seenIds = new Set<string>();
 
-    // 1. Fetch all property summaries from list endpoint
-    while (hasMore) {
-      const data = await fetchWithRetry(`${EB_BASE}?limit=${LIMIT}&page=${page}`, headers);
-      if (!data) break;
+    for (const acc of accounts) {
+      const headers = {
+        'X-Authorization': acc.key,
+        'accept': 'application/json',
+      };
 
-      rawList.push(...(data.content ?? []));
+      let page = 1;
+      let hasMore = true;
 
-      if (data.pagination?.next_page) {
-        page++;
-      } else {
-        hasMore = false;
+      // 1. Fetch property summaries from list endpoint
+      while (hasMore) {
+        const data = await fetchWithRetry(`${EB_BASE}?limit=${LIMIT}&page=${page}&${statusesQuery}`, headers);
+        if (!data) break;
+
+        for (const item of (data.content ?? [])) {
+          if (item.public_id && !seenIds.has(item.public_id)) {
+            seenIds.add(item.public_id);
+            item._eb_account = acc.account;
+            item._eb_key = acc.key;
+            rawList.push(item);
+          }
+        }
+
+        if (data.pagination?.next_page) {
+          page++;
+        } else {
+          hasMore = false;
+        }
       }
     }
 
@@ -68,6 +101,11 @@ export const GET: RequestHandler = async () => {
         enrichedProperties.push(item);
         continue;
       }
+
+      const headers = {
+        'X-Authorization': item._eb_key || accounts[0].key,
+        'accept': 'application/json',
+      };
 
       const detailData = await fetchWithRetry(`${EB_BASE}/${item.public_id}`, headers);
       if (detailData && (detailData.property_images || detailData.images)) {
