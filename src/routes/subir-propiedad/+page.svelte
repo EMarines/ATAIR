@@ -498,6 +498,16 @@
     }
   }
 
+  function cleanNumber(val: any): number | '' {
+    if (val === null || val === undefined || val === '') return '';
+    if (typeof val === 'number') return isNaN(val) ? '' : val;
+    const str = String(val).replace(/,/g, '').trim();
+    const match = str.match(/[\d]+(\.[\d]+)?/);
+    if (!match) return '';
+    const num = parseFloat(match[0]);
+    return isNaN(num) ? '' : num;
+  }
+
   async function fetchEasyBrokerProperty() {
     ebError = null;
     ebSuccess = null;
@@ -551,7 +561,7 @@
       if (Array.isArray(data.operations) && data.operations.length > 0) {
         const op = data.operations[0];
         formData.tipoOperacion = op.type === 'rental' ? 'Renta' : 'Venta';
-        formData.precio = op.amount ? Number(op.amount) : '';
+        formData.precio = cleanNumber(op.amount);
         formData.moneda = op.currency || 'MXN';
       }
 
@@ -576,8 +586,8 @@
       formData.estacionamientos = data.parking_spaces ? Math.min(Number(data.parking_spaces), 6) : '';
 
       // Metros de Construcción y Terreno
-      formData.construccion = data.construction_size ? Number(data.construction_size) : '';
-      formData.terreno = data.lot_size ? Number(data.lot_size) : '';
+      formData.construccion = cleanNumber(data.construction_size);
+      formData.terreno = cleanNumber(data.lot_size);
 
       // Colonia
       let col = (typeof data.location === 'object' ? data.location?.name : data.location) || '';
@@ -632,7 +642,7 @@
     if (p.titulo) formData.titulo = p.titulo;
     if (p.descripcion) formData.descripcion = p.descripcion;
     if (p.tipoOperacion) formData.tipoOperacion = p.tipoOperacion;
-    if (p.precio) formData.precio = Number(p.precio);
+    if (p.precio !== undefined && p.precio !== null && p.precio !== '') formData.precio = cleanNumber(p.precio);
     if (p.moneda) formData.moneda = p.moneda;
     if (p.tipoPropiedad) formData.tipoPropiedad = p.tipoPropiedad;
 
@@ -649,8 +659,8 @@
       formData.estacionamientos = Math.min(Number(p.estacionamientos), 6);
     }
 
-    if (p.construccion) formData.construccion = Number(p.construccion);
-    if (p.terreno) formData.terreno = Number(p.terreno);
+    if (p.construccion !== undefined && p.construccion !== null && p.construccion !== '') formData.construccion = cleanNumber(p.construccion);
+    if (p.terreno !== undefined && p.terreno !== null && p.terreno !== '') formData.terreno = cleanNumber(p.terreno);
 
     if (p.colonia) formData.colonia = p.colonia;
     if (p.ubicacion) {
@@ -929,6 +939,19 @@
     e.preventDefault();
     if (!db) {
       uploadError = 'Error: Base de datos no conectada.';
+      return;
+    }
+
+    if (!formData.tipoOperacion) {
+      uploadError = 'Por favor selecciona el tipo de operación (Venta o Renta).';
+      return;
+    }
+    if (!formData.tipoPropiedad) {
+      uploadError = 'Por favor selecciona el tipo de propiedad.';
+      return;
+    }
+    if (!formData.titulo || !formData.titulo.trim()) {
+      uploadError = 'Por favor ingresa un título para la propiedad.';
       return;
     }
 
@@ -1605,7 +1628,7 @@
   {/if}
 
   <div class="form-wrapper glass">
-    <form bind:this={formElement} on:submit={handleSubmit}>
+    <form bind:this={formElement} on:submit={handleSubmit} novalidate>
       <div class="form-grid">
         {#each formSchema.fields as field}
           <div
@@ -1648,6 +1671,8 @@
                 id={field.name}
                 bind:value={formData[field.name]}
                 placeholder={field.label}
+                step={field.name === 'anioConstruccion' ? '1' : 'any'}
+                min="0"
                 required={field.required !== false}
               />
             {:else if field.type === 'text'}
