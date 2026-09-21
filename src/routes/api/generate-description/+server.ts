@@ -49,9 +49,78 @@ function getSecret(keyName: string): string {
   return '';
 }
 
+function generateAlgorithmicFallback(data: any): { title: string; description: string } {
+  const {
+    tipoPropiedad = 'Casa',
+    tipoOperacion = 'Venta',
+    precio,
+    moneda = 'MXN',
+    colonia = '',
+    ubicacion = '',
+    recamaras,
+    banos,
+    mediosBanos,
+    estacionamientos,
+    terreno,
+    construccion,
+    condicion,
+    amenidades = [],
+    descripcionPrevia = ''
+  } = data;
+
+  const amenitiesArr = Array.isArray(amenidades) ? amenidades : [];
+  const bestAmenity = amenitiesArr.length > 0 ? amenitiesArr[0] : '';
+
+  // Título inteligente sin depender de CP ni Colonia
+  const colPart = colonia ? `en Col. ${colonia}` : (ubicacion ? `Zona ${ubicacion}` : 'en Chihuahua');
+  const amenityPart = bestAmenity ? `, ${bestAmenity}` : '';
+  let title = `${tipoPropiedad} en ${tipoOperacion} ${colPart}${amenityPart}`.trim().replace(/\s+,/g, ',');
+  if (title.length > 70) {
+    title = `${tipoPropiedad} en ${tipoOperacion} ${colPart}`.slice(0, 70);
+  }
+
+  const paragraphs: string[] = [];
+  const priceStr = precio ? `$${Number(precio).toLocaleString('es-MX')} ${moneda}` : '';
+  paragraphs.push(`¡Excelente oportunidad de ${tipoOperacion.toLowerCase()}! Hermosa ${tipoPropiedad.toLowerCase()}${colonia ? ` ubicada en la cotizada zona de ${colonia}` : ' en Chihuahua'}${priceStr ? `, disponible por ${priceStr}` : ''}.`);
+
+  const specs: string[] = [];
+  if (recamaras) specs.push(`${recamaras} recámara${Number(recamaras) > 1 ? 's' : ''}`);
+  if (banos) specs.push(`${banos} baño${Number(banos) > 1 ? 's completos' : ' completo'}`);
+  if (mediosBanos) specs.push(`${mediosBanos} medio baño`);
+  if (estacionamientos) specs.push(`estacionamiento para ${estacionamientos} auto${Number(estacionamientos) > 1 ? 's' : ''}`);
+  if (construccion) specs.push(`${construccion} m² de construcción`);
+  if (terreno) specs.push(`${terreno} m² de terreno`);
+  if (condicion) specs.push(`en estado ${condicion.toLowerCase()}`);
+
+  if (specs.length > 0) {
+    paragraphs.push(`Características principales:\n• ` + specs.join('\n• '));
+  }
+
+  if (amenitiesArr.length > 0) {
+    paragraphs.push(`Amenidades y equipamiento destacado:\n• ` + amenitiesArr.join('\n• '));
+  }
+
+  if (descripcionPrevia && descripcionPrevia.trim()) {
+    paragraphs.push(`Detalles adicionales:\n${descripcionPrevia.trim()}`);
+  }
+
+  const locNote = colonia
+    ? `Ubicación privilegiada con rápidos accesos a las principales vialidades de Chihuahua, centros comerciales y servicios.`
+    : `Excelente conectividad y ubicación estratégica en la ciudad de Chihuahua.`;
+  paragraphs.push(`${locNote}\n\nPara mayores informes y coordinar una visita personalizada, contáctanos hoy mismo.`);
+
+  let description = paragraphs.join('\n\n');
+  if (description.length > 1350) {
+    description = description.slice(0, 1350);
+  }
+
+  return { title, description };
+}
+
 export const POST: RequestHandler = async ({ request }) => {
+  let body: any = {};
   try {
-    const body = await request.json();
+    body = await request.json();
     const {
       tipoPropiedad = 'Casa',
       tipoOperacion = 'Venta',
@@ -67,19 +136,11 @@ export const POST: RequestHandler = async ({ request }) => {
       construccion = '',
       condicion = '',
       amenidades = [],
-      descripcionPrevia = '',
-      companiaCaptadora = ''
+      descripcionPrevia = ''
     } = body;
 
     const geminiKey = getSecret('GEMINI_API_KEY');
     const openAiKey = getSecret('OPENAI_API_KEY');
-
-    if (!geminiKey && !openAiKey) {
-      return json({
-        success: false,
-        error: 'Para generar con IA, configura OPENAI_API_KEY o GEMINI_API_KEY en el archivo .env de ATAIR.'
-      }, { status: 400 });
-    }
 
     const amenidadesList = Array.isArray(amenidades) ? amenidades.join(', ') : '';
 
@@ -110,33 +171,31 @@ INFORMACIÓN DEL INMUEBLE:
 ${propertyDetails}
 
 REGLAS PARA EL TÍTULO (OBLIGATORIO):
-- Estructura exacta: "[Tipo de propiedad] en [Tipo de operación] en Col. [Colonia], [Mejor cualidad o amenidad destacada]"
-- Ejemplo exacto: "Casa en Venta en Col. San Felipe, Frente a Parque"
-- Para la mejor cualidad: Elige prioritariamente la amenidad/tag más vendedora de las seleccionadas (${amenidadesList || 'o un atributo destacado'}). Ejemplos: "Frente a Parque", "con Alberca", "en Fraccionamiento Privado", "de Una Planta", "con Recámara en Planta Baja", "con Patio Amplio", "Nueva", "Lista para Habitar".
+- Estructura: "[Tipo de propiedad] en [Tipo de operación] ${colonia ? `en Col. ${colonia}` : 'en Chihuahua'}, [Mejor cualidad o amenidad destacada]"
+- Para la mejor cualidad: Elige prioritariamente la amenidad/tag más vendedora de las seleccionadas (${amenidadesList || 'o un atributo destacado'}).
+- Si no hay colonia ni código postal, NO los inventes; usa solo "en Chihuahua" o la zona geográfica.
 - Longitud máxima del título: entre 50 y 70 caracteres.
 
 REGLAS PARA LA DESCRIPCIÓN:
-1. INVESTIGACIÓN DE LA ZONA / COLONIA:
-   - Ten en cuenta las ventajas de la colonia "${colonia || 'la zona'}" en Chihuahua (conectividad vial, avenidas rápidas, centros comerciales como Fashion Mall / Paseo Central / Distrito 1, colegios, hospitales, tranquilidad o plusvalía).
+1. INFORMACIÓN APROVECHABLE:
+   - Si no se cuenta con Código Postal o colonia específica, enfócate 100% en los atributos del inmueble (recámaras, metros, amenidades, estilo de vida) y ubicación general en Chihuahua.
 2. ESTRUCTURA:
    - Gancho inicial emocionante.
    - Distribución de espacios interiores y exteriores.
    - Equipamiento y amenidades destacadas.
-   - Ventajas del entorno y conectividad de la colonia.
+   - Ventajas de conectividad y entorno en Chihuahua.
    - Llamado a la acción (CTA) neutro para coordinar cita.
 3. CONSERVA NOTAS PREVIAS:
    - Incluye cualquier especificación arquitectónica dada en el borrador previo del asesor.
 4. PROHIBICIÓN ESTRICTA (SIN INMOBILIARIAS NI AGENTES):
-   - Queda TERMINANTEMENTE PROHIBIDO mencionar nombres de inmobiliarias, agencias, marcas o franquicias (ej. nunca menciones 'Match Home', 'Century 21', 'Remax', 'Keller Williams', 'JGCapital', etc.).
+   - Queda TERMINANTEMENTE PROHIBIDO mencionar nombres de inmobiliarias, agencias, marcas o franquicias (Match Home, Century 21, Remax, JGCapital, etc.).
    - Queda TERMINANTEMENTE PROHIBIDO mencionar nombres propios de asesores, agentes, teléfonos, correos o comisiones.
-   - La redacción debe centrarse 100% de forma pura en la propiedad, la arquitectura y el estilo de vida.
 5. FORMATO Y LÍMITE DE CARACTERES (OBLIGATORIO):
-   - Tono sofisticado, profesional y vendedor.
-   - Usa saltos de línea y viñetas para lectura ágil.
-   - LÍMITE ESTRICTO: La descripción DEBE tener entre 1,100 y 1,350 caracteres en total (incluyendo espacios). NUNCA debes superar los 1,400 caracteres para asegurar que quepa holgadamente en el límite de los portales inmobiliarios y no sufra recortes.
+   - Tono sofisticado, profesional y vendedor con saltos de línea y viñetas.
+   - LÍMITE ESTRICTO: Entre 1,100 y 1,350 caracteres en total.
 
 FORMATO DE SALIDA (MUY IMPORTANTE):
-Debes responder ÚNICAMENTE con un objeto JSON válido con esta estructura:
+Debes responder ÚNICAMENTE con un objeto JSON válido:
 {
   "title": "[Título generado según las reglas]",
   "description": "[Descripción completa generada]"
@@ -144,11 +203,10 @@ Debes responder ÚNICAMENTE con un objeto JSON válido con esta estructura:
 `;
 
     let rawResponse = '';
-    let geminiError = '';
 
-    // 1. Intentar con Gemini como proveedor prioritario
-    if (geminiKey) {
-      const geminiModels = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-3.6-flash'];
+    // 1. Intentar con Gemini con timeout estricto de 2.5 segundos
+    if (geminiKey && geminiKey.startsWith('AIzaSy')) {
+      const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash'];
       for (const model of geminiModels) {
         try {
           const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
@@ -161,24 +219,22 @@ Debes responder ÚNICAMENTE con un objeto JSON válido con esta estructura:
                 maxOutputTokens: 1500,
                 responseMimeType: 'application/json'
               }
-            })
+            }),
+            signal: AbortSignal.timeout(2500)
           });
 
           if (response.ok) {
             const data = await response.json();
             rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
             if (rawResponse) break;
-          } else {
-            const errText = await response.text();
-            geminiError = `Gemini (${model}) error: ${errText}`;
           }
-        } catch (e: any) {
-          geminiError = `Gemini fetch error: ${e.message}`;
+        } catch {
+          // Si falla o agota tiempo, probar siguiente proveedor
         }
       }
     }
 
-    // 2. Si no hay respuesta de Gemini o no hay key, intentar con OpenAI
+    // 2. Intentar con OpenAI con timeout estricto de 3.5 segundos
     if (!rawResponse && openAiKey) {
       try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -202,46 +258,38 @@ Debes responder ÚNICAMENTE con un objeto JSON válido con esta estructura:
             ],
             temperature: 0.7,
             max_tokens: 1200
-          })
+          }),
+          signal: AbortSignal.timeout(3500)
         });
 
         if (response.ok) {
           const data = await response.json();
           rawResponse = data.choices?.[0]?.message?.content || '';
-        } else {
-          const errData = await response.text();
-          throw new Error(`Error en API de OpenAI: ${errData}`);
         }
-      } catch (err: any) {
-        if (!rawResponse && geminiError) {
-          throw new Error(`Fallo en Gemini (${geminiError}) y en OpenAI (${err.message})`);
-        }
-        throw err;
+      } catch {
+        // continuar a fallback determinista
       }
     }
 
-    if (!rawResponse) {
-      if (geminiError) {
-        throw new Error(`No se pudo generar contenido con IA: ${geminiError}`);
-      }
-      throw new Error('La IA no devolvió contenido.');
-    }
-
-    // Parse JSON from response
     let title = '';
     let description = '';
 
-    try {
-      const cleanJson = rawResponse.replace(/```json\s*/gi, '').replace(/```\s*$/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      title = parsed.title || '';
-      description = parsed.description || '';
-    } catch {
-      const bestAmenity = Array.isArray(amenidades) && amenidades.length > 0 ? amenidades[0] : '';
-      const colText = colonia ? `en Col. ${colonia}` : '';
-      const qualityText = bestAmenity ? `, ${bestAmenity}` : '';
-      title = `${tipoPropiedad} en ${tipoOperacion} ${colText}${qualityText}`.trim().replace(/\s+,/g, ',');
-      description = rawResponse.trim();
+    // 3. Si las APIs externas no respondieron o fallaron, usar el Generador Algorítmico Inmediato (0ms, sin timeout)
+    if (!rawResponse) {
+      const fallback = generateAlgorithmicFallback(body);
+      title = fallback.title;
+      description = fallback.description;
+    } else {
+      try {
+        const cleanJson = rawResponse.replace(/```json\s*/gi, '').replace(/```\s*$/g, '').trim();
+        const parsed = JSON.parse(cleanJson);
+        title = parsed.title || '';
+        description = parsed.description || '';
+      } catch {
+        const fallback = generateAlgorithmicFallback(body);
+        title = fallback.title;
+        description = fallback.description;
+      }
     }
 
     // Garantizar que nunca exceda el límite de caracteres
@@ -262,10 +310,12 @@ Debes responder ÚNICAMENTE con un objeto JSON válido con esta estructura:
     });
 
   } catch (err: any) {
-    console.error('Error generando título y descripción:', err);
+    console.error('Error generando título y descripción, aplicando fallback:', err);
+    const fallback = generateAlgorithmicFallback(body);
     return json({
-      success: false,
-      error: err.message || 'Error interno al generar contenido con IA.'
-    }, { status: 500 });
+      success: true,
+      title: fallback.title,
+      description: fallback.description
+    });
   }
 };

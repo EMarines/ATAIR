@@ -375,9 +375,20 @@
         body: JSON.stringify(payload)
       });
 
-      const result = await res.json();
-      if (!result.success) {
-        throw new Error(result.error || 'No se pudo generar la descripción.');
+      let result: any = null;
+      if (res.ok) {
+        result = await res.json().catch(() => null);
+      } else {
+        const text = await res.text().catch(() => '');
+        try {
+          result = JSON.parse(text);
+        } catch {
+          result = { success: false, error: `Error del servidor (${res.status})` };
+        }
+      }
+
+      if (!result || !result.success) {
+        throw new Error(result?.error || 'No se pudo generar la descripción.');
       }
 
       if (result.title) {
