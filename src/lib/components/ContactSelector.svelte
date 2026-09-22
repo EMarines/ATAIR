@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { db } from '$lib/firebase_toggle';
-  import { collection, addDoc, getDocs } from 'firebase/firestore';
+  import { db, isSandbox } from '$lib/firebase_toggle';
+  import { collection, addDoc, getDocs, doc, updateDoc } from 'firebase/firestore';
   import { onMount, tick } from 'svelte';
 
   export let value: string = '';
@@ -246,7 +246,7 @@
         newId = 'local-' + Date.now();
       }
 
-      const fullCreatedContact = {
+      const fullCreatedContact: any = {
         id: newId,
         ...newContactData,
         _fullName: fullName,
@@ -256,6 +256,72 @@
         _procedencia: modalSynergy,
         _isAgent: true
       };
+
+      // 🚀 Sincronizar de inmediato con Google Contacts & Tasks vía /api/contacts/google-sync
+      try {
+        const syncPackage = {
+          isSandbox,
+          contact: {
+            id: newId,
+            name: cleanName,
+            lastname: cleanLastname,
+            fullName,
+            phone: cleanPhone,
+            telephon: cleanPhone,
+            telefono: cleanPhone,
+            typeContact: 'Agente Inmobiliario',
+            company: cleanCompany,
+            inmobiliaria: cleanCompany,
+            procedencia: modalSynergy,
+            notes: notes
+          },
+          property: null,
+          metadata: {
+            source: 'ATAIR_APP',
+            action: 'CREATE_CONTACT',
+            requestedBy: 'ContactSelector_Modal',
+            environment: isSandbox ? 'TEST' : 'PRODUCTION'
+          }
+        };
+
+        console.log('🚀 [ContactSelector] Sincronizando agente con Google Contacts vía /api/contacts/google-sync...');
+        let syncRes: Response | null = null;
+        try {
+          syncRes = await fetch('/api/contacts/google-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(syncPackage),
+            keepalive: true
+          });
+        } catch (fetchErr) {
+          const fallbackWebhook =
+            (import.meta.env.VITE_N8N_WEBHOOK_BASE as string) ||
+            'https://n8n-atair.duckdns.org/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+          syncRes = await fetch(fallbackWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(syncPackage),
+            keepalive: true
+          });
+        }
+
+        if (syncRes && syncRes.ok) {
+          const syncData = await syncRes.json();
+          console.log('✅ [ContactSelector] Agente sincronizado exitosamente con Google Contacts:', syncData);
+          if (syncData.googleContactId) {
+            fullCreatedContact.googleContactId = syncData.googleContactId;
+            if (db && newId && !newId.startsWith('local-')) {
+              const updates: any = { googleContactId: syncData.googleContactId };
+              if (syncData.notes) updates.notes = syncData.notes;
+              await updateDoc(doc(db, 'contacts', newId), updates);
+            }
+          }
+        } else {
+          console.warn('⚠️ [ContactSelector] Respuesta no exitosa de google-sync:', syncRes?.status);
+        }
+      } catch (syncError) {
+        console.error('⚠️ [ContactSelector] Error al sincronizar nuevo agente con Google Contacts:', syncError);
+      }
 
       // Agregar a la lista local de contactos
       contacts = [fullCreatedContact, ...contacts];

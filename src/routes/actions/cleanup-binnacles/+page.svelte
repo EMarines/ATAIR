@@ -100,11 +100,15 @@
 			validBinnacles = [];
 
 			for (const binnacle of binnacles) {
-				// Verificar si el campo 'to' de la binnacle existe en contacts
-				// El campo 'to' contiene el ID del contacto asociado
-				if (binnacle.to && contactIds.has(binnacle.to)) {
+				const target = (binnacle.to || binnacle.contactId || '').trim();
+				// Si está asociado a un contacto existente, es válida
+				if (target && contactIds.has(target)) {
 					validBinnacles.push(binnacle);
-				} else {
+				} else if (target.startsWith('Tel:') || target.startsWith('+') || /^\d{10}$/.test(target)) {
+					// Envío directo a teléfono sin contacto registrado (preservar)
+					validBinnacles.push(binnacle);
+				} else if (target) {
+					// Tiene un ID de contacto que ya no existe en contacts (huérfana real)
 					orphanedBinnacles.push(binnacle);
 				}
 			}

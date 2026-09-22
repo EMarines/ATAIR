@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { db, auth } from '$lib/firebase_toggle'; // Import the default export
-	import { doc, deleteDoc } from 'firebase/firestore';
+	import { doc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 	import { goto } from '$app/navigation';
 	import type { Contact, Binnacle, Property } from '$types';
 	import {
@@ -180,7 +180,7 @@
 		}
 	}
 
-	// Delete contact
+	// Delete contact con borrado en cascada (Bitácoras + Tareas + Google Contacts)
 	async function deleContact(contactId: string) {
 		if (!contactId || contactId.trim() === '') {
 			console.error('No se puede eliminar: ID de contacto no disponible o vacío');
@@ -188,23 +188,51 @@
 			return;
 		}
 
-		if (confirm('¿Deseas eliminar definitivamente al contacto?')) {
+		if (confirm('¿Deseas eliminar definitivamente al contacto y todo su historial de bitácora?')) {
 			try {
-				// 🔥 NUEVO: Primero eliminar de Google Contacts si tiene googleContactId
+				// 1. Eliminar de Google Contacts si tiene googleContactId
 				if (contact && contact.googleContactId) {
 					console.log('🔄 Eliminando de Google Contacts primero...');
 					await deleteContactFromGoogle(contact);
 				}
 
-				// Crear referencia al documento
-				const contactRef = doc(db, 'contacts', contactId);
-				// Eliminar de Firebase usando deleteDoc
-				await deleteDoc(contactRef);
-				// Si deleteDoc no lanza error, la eliminación fue exitosa
-				console.log('✅ Contacto eliminado completamente (Firebase + Google)');
+				// 2. Buscar bitácoras asociadas al contacto (campo 'to' o 'contactId')
+				console.log(`🔍 Buscando historial asociado al contacto ${contactId}...`);
+				const binnRef = collection(db, 'binnacles');
+				const [snapTo, snapContactId] = await Promise.all([
+					getDocs(query(binnRef, where('to', '==', contactId))),
+					getDocs(query(binnRef, where('contactId', '==', contactId)))
+				]);
+
+				// 3. Buscar tareas asociadas (todos)
+				const todosRef = collection(db, 'todos');
+				const snapTodos = await getDocs(query(todosRef, where('contactId', '==', contactId)));
+
+				const binnacleDocs = new Map();
+				snapTo.docs.forEach((d) => binnacleDocs.set(d.id, d.ref));
+				snapContactId.docs.forEach((d) => binnacleDocs.set(d.id, d.ref));
+
+				console.log(`🧹 Eliminando en cascada: 1 contacto, ${binnacleDocs.size} bitácoras, ${snapTodos.size} tareas`);
+
+				// 4. Batch delete (en bloques de hasta 400 por límite de Firestore)
+				const allRefsToDelete = [
+					doc(db, 'contacts', contactId),
+					...Array.from(binnacleDocs.values()),
+					...snapTodos.docs.map((d) => d.ref)
+				];
+
+				const CHUNK_SIZE = 400;
+				for (let i = 0; i < allRefsToDelete.length; i += CHUNK_SIZE) {
+					const chunk = allRefsToDelete.slice(i, i + CHUNK_SIZE);
+					const batch = writeBatch(db);
+					chunk.forEach((ref) => batch.delete(ref));
+					await batch.commit();
+				}
+
+				console.log('✅ Contacto y su historial eliminados completamente (Firebase + Google)');
 				goto('/contacts');
 			} catch (error) {
-				console.error('Error al eliminar el contacto:', error);
+				console.error('Error al eliminar el contacto y su historial:', error);
 				alert('Error al eliminar el contacto: ' + error);
 			}
 		}

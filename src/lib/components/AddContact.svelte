@@ -1067,14 +1067,20 @@
 			console.log('🔍 Es contacto REALMENTE nuevo (por Firebase)?', isNewContact);
 			console.log('🔍 Es contacto ACTUALIZADO?', isUpdatedContact);
 
-			// ⚡ Sincronizaciones externas en segundo plano (TOTALMENTE NO BLOQUEANTES):
-			// Se ejecutan de manera asíncrona sin congelar la interfaz ni retrasar la navegación
+			// ⚡ Sincronización con Google Contacts & Tasks:
+			// Esperamos la llamada a Google Sync con un timeout defensivo de 3.5s antes de la redirección
+			// para garantizar que la conexión HTTP no sea cancelada al desmontar la vista.
 			const currentProp = get(propertyStore);
-			runBackgroundSync({ ...cleanContactData }, currentProp, isNewContact, isUpdatedContact).catch((syncErr) => {
+			try {
+				await Promise.race([
+					runBackgroundSync({ ...cleanContactData }, currentProp, isNewContact, isUpdatedContact),
+					new Promise((resolve) => setTimeout(resolve, 3500))
+				]);
+			} catch (syncErr) {
 				console.error('⚠️ Error en runBackgroundSync:', syncErr);
-			});
+			}
 
-			// Emitir evento de éxito de inmediato
+			// Emitir evento de éxito
 			dispatch('success', { contact: cleanContactData });
 
 			// Verificar nuevamente que el ID sea válido antes de redirigir
