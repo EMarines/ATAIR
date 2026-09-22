@@ -124,6 +124,7 @@
   let modalPhone = '';
   let modalCompany = '';
   let modalSynergy = 'S1'; // 'S1' | 'S2' | 'S3' | 'MH'
+  let syncToGoogleContacts = true;
   let isSavingAgent = false;
   let modalError = '';
 
@@ -135,6 +136,7 @@
     await tick();    // Esperar ciclo de render, evita race con blur
 
     modalError = '';
+    syncToGoogleContacts = true;
     if (clean) {
       const parts = clean.split(/\s+/);
       if (parts.length > 1) {
@@ -257,94 +259,98 @@
         _isAgent: true
       };
 
-      // 🚀 Sincronizar de inmediato con Google Contacts & Tasks vía /api/contacts/google-sync
-      try {
-        const contactInfo = {
-          id: newId,
-          name: cleanName,
-          lastname: cleanLastname,
-          fullName,
-          phone: cleanPhone,
-          telephon: cleanPhone,
-          telefono: cleanPhone,
-          typeContact: 'Agente Inmobiliario',
-          company: cleanCompany,
-          inmobiliaria: cleanCompany,
-          procedencia: modalSynergy,
-          notes: notes
-        };
-
-        const syncPackage = {
-          isSandbox,
-          contact: contactInfo,
-          contactData: contactInfo,
-          property: null,
-          metadata: {
-            timestamp: Date.now(),
-            timestampISO: new Date().toISOString(),
-            source: 'ATAIR_APP',
-            action: 'CREATE_CONTACT',
-            requestedBy: 'ContactSelector_Modal',
-            testMode: isSandbox,
-            version: '1.0',
-            environment: isSandbox ? 'TEST' : 'PRODUCTION'
-          },
-          googleContactsData: {
-            displayName: fullName,
-            givenName: cleanName,
-            familyName: cleanLastname,
-            phoneNumbers: [
-              {
-                value: cleanPhone,
-                type: 'mobile'
-              }
-            ],
-            organizations: [
-              {
-                name: cleanCompany || 'Agente Inmobiliario ATAIR',
-                title: 'Agente Inmobiliario'
-              }
-            ]
-          }
-        };
-
-        console.log('🚀 [ContactSelector] Sincronizando agente con Google Contacts vía /api/contacts/google-sync...');
-        let syncRes: Response | null = null;
+      // 🚀 Sincronizar con Google Contacts & Tasks vía /api/contacts/google-sync (solo si el checkbox está activo)
+      if (syncToGoogleContacts) {
         try {
-          syncRes = await fetch('/api/contacts/google-sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(syncPackage),
-            keepalive: true
-          });
-        } catch (fetchErr) {
-          const fallbackWebhook =
-            (import.meta.env.VITE_N8N_WEBHOOK_BASE as string) ||
-            'https://n8n-atair.duckdns.org/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
-          syncRes = await fetch(fallbackWebhook, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(syncPackage),
-            keepalive: true
-          });
-        }
+          const contactInfo = {
+            id: newId,
+            name: cleanName,
+            lastname: cleanLastname,
+            fullName,
+            phone: cleanPhone,
+            telephon: cleanPhone,
+            telefono: cleanPhone,
+            typeContact: 'Agente Inmobiliario',
+            company: cleanCompany,
+            inmobiliaria: cleanCompany,
+            procedencia: modalSynergy,
+            notes: notes
+          };
 
-        if (syncRes && syncRes.ok) {
-          const syncData = await syncRes.json();
-          console.log('✅ [ContactSelector] Agente sincronizado exitosamente con Google Contacts:', syncData);
-          if (syncData.googleContactId) {
-            fullCreatedContact.googleContactId = syncData.googleContactId;
-            if (db && newId && !newId.startsWith('local-')) {
-              const updates: any = { googleContactId: syncData.googleContactId };
-              if (syncData.notes) updates.notes = syncData.notes;
-              await updateDoc(doc(db, 'contacts', newId), updates);
+          const syncPackage = {
+            isSandbox,
+            contact: contactInfo,
+            contactData: contactInfo,
+            property: null,
+            metadata: {
+              timestamp: Date.now(),
+              timestampISO: new Date().toISOString(),
+              source: 'ATAIR_APP',
+              action: 'CREATE_CONTACT',
+              requestedBy: 'ContactSelector_Modal',
+              testMode: isSandbox,
+              version: '1.0',
+              environment: isSandbox ? 'TEST' : 'PRODUCTION'
+            },
+            googleContactsData: {
+              displayName: fullName,
+              givenName: cleanName,
+              familyName: cleanLastname,
+              phoneNumbers: [
+                {
+                  value: cleanPhone,
+                  type: 'mobile'
+                }
+              ],
+              organizations: [
+                {
+                  name: cleanCompany || 'Agente Inmobiliario ATAIR',
+                  title: 'Agente Inmobiliario'
+                }
+              ]
             }
+          };
+
+          console.log('🚀 [ContactSelector] Sincronizando agente con Google Contacts vía /api/contacts/google-sync...');
+          let syncRes: Response | null = null;
+          try {
+            syncRes = await fetch('/api/contacts/google-sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify(syncPackage),
+              keepalive: true
+            });
+          } catch (fetchErr) {
+            const fallbackWebhook =
+              (import.meta.env.VITE_N8N_WEBHOOK_BASE as string) ||
+              'https://n8n-atair.duckdns.org/webhook/12c11a13-4b9f-416e-99c7-7e9cb5806fd5';
+            syncRes = await fetch(fallbackWebhook, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify(syncPackage),
+              keepalive: true
+            });
           }
-        } else {
-          console.warn('⚠️ [ContactSelector] Respuesta no exitosa de google-sync:', syncRes?.status);
+
+          if (syncRes && syncRes.ok) {
+            const syncData = await syncRes.json();
+            console.log('✅ [ContactSelector] Agente sincronizado exitosamente con Google Contacts:', syncData);
+            if (syncData.googleContactId) {
+              fullCreatedContact.googleContactId = syncData.googleContactId;
+              if (db && newId && !newId.startsWith('local-')) {
+                const updates: any = { googleContactId: syncData.googleContactId };
+                if (syncData.notes) updates.notes = syncData.notes;
+                await updateDoc(doc(db, 'contacts', newId), updates);
+              }
+            }
+          } else {
+            console.warn('⚠️ [ContactSelector] Respuesta no exitosa de google-sync:', syncRes?.status);
+          }
+        } catch (syncError) {
+          console.error('⚠️ [ContactSelector] Error al sincronizar nuevo agente con Google Contacts:', syncError);
         }
-      } catch (syncError) {
-        console.error('⚠️ [ContactSelector] Error al sincronizar nuevo agente con Google Contacts:', syncError);
+      } else {
+        console.log('ℹ️ [ContactSelector] Sincronización con Google Contacts desactivada por el usuario en el modal.');
       }
 
       // Agregar a la lista local de contactos
@@ -822,6 +828,24 @@
                   <span class="synergy-pill-text">Directa Match Home</span>
                 </label>
               </div>
+            </div>
+
+            <!-- Opción Sincronizar a Google Contacts -->
+            <div class="modal-field full-row">
+              <label class="google-sync-checkbox-wrap" class:active={syncToGoogleContacts}>
+                <input
+                  type="checkbox"
+                  bind:checked={syncToGoogleContacts}
+                  disabled={isSavingAgent}
+                />
+                <span class="checkbox-custom-box">
+                  {#if syncToGoogleContacts}✓{/if}
+                </span>
+                <span class="checkbox-label-text">
+                  <span>📲 Sincronizar / Verificar en Google Contacts</span>
+                  <span class="checkbox-hint">Si ya existe por teléfono se consulta/vincula; si no, lo registra en Google Contacts.</span>
+                </span>
+              </label>
             </div>
           </div>
 
@@ -1645,8 +1669,74 @@
     width: 14px;
     height: 14px;
     border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #ffffff;
     border-radius: 50%;
+    border-top-color: #ffffff;
     animation: spin 0.7s linear infinite;
+  }
+
+  /* Google Sync Checkbox */
+  .google-sync-checkbox-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+    padding: 0.65rem 0.85rem;
+    background: rgba(99, 102, 241, 0.06);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: var(--radius-sm, 0.45rem);
+    transition: all 0.2s ease;
+  }
+
+  .google-sync-checkbox-wrap:hover {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+
+  .google-sync-checkbox-wrap.active {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.35);
+  }
+
+  .google-sync-checkbox-wrap input[type='checkbox'] {
+    display: none;
+  }
+
+  .checkbox-custom-box {
+    width: 20px;
+    height: 20px;
+    border-radius: 0.3rem;
+    border: 1.5px solid rgba(99, 102, 241, 0.5);
+    background: #101322;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #ffffff;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+
+  .google-sync-checkbox-wrap input[type='checkbox']:checked + .checkbox-custom-box {
+    background: #6366f1;
+    border-color: #6366f1;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+  }
+
+  .checkbox-label-text {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .checkbox-hint {
+    font-size: 0.74rem;
+    font-weight: 400;
+    color: var(--text-muted, #94a3b8);
+    line-height: 1.25;
   }
 </style>
