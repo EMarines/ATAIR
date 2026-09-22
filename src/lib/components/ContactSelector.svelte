@@ -259,28 +259,52 @@
 
       // 🚀 Sincronizar de inmediato con Google Contacts & Tasks vía /api/contacts/google-sync
       try {
+        const contactInfo = {
+          id: newId,
+          name: cleanName,
+          lastname: cleanLastname,
+          fullName,
+          phone: cleanPhone,
+          telephon: cleanPhone,
+          telefono: cleanPhone,
+          typeContact: 'Agente Inmobiliario',
+          company: cleanCompany,
+          inmobiliaria: cleanCompany,
+          procedencia: modalSynergy,
+          notes: notes
+        };
+
         const syncPackage = {
           isSandbox,
-          contact: {
-            id: newId,
-            name: cleanName,
-            lastname: cleanLastname,
-            fullName,
-            phone: cleanPhone,
-            telephon: cleanPhone,
-            telefono: cleanPhone,
-            typeContact: 'Agente Inmobiliario',
-            company: cleanCompany,
-            inmobiliaria: cleanCompany,
-            procedencia: modalSynergy,
-            notes: notes
-          },
+          contact: contactInfo,
+          contactData: contactInfo,
           property: null,
           metadata: {
+            timestamp: Date.now(),
+            timestampISO: new Date().toISOString(),
             source: 'ATAIR_APP',
             action: 'CREATE_CONTACT',
             requestedBy: 'ContactSelector_Modal',
+            testMode: isSandbox,
+            version: '1.0',
             environment: isSandbox ? 'TEST' : 'PRODUCTION'
+          },
+          googleContactsData: {
+            displayName: fullName,
+            givenName: cleanName,
+            familyName: cleanLastname,
+            phoneNumbers: [
+              {
+                value: cleanPhone,
+                type: 'mobile'
+              }
+            ],
+            organizations: [
+              {
+                name: cleanCompany || 'Agente Inmobiliario ATAIR',
+                title: 'Agente Inmobiliario'
+              }
+            ]
           }
         };
 

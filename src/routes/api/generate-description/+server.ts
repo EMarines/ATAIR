@@ -100,10 +100,6 @@ function generateAlgorithmicFallback(data: any): { title: string; description: s
     paragraphs.push(`Amenidades y equipamiento destacado:\n• ` + amenitiesArr.join('\n• '));
   }
 
-  if (descripcionPrevia && descripcionPrevia.trim()) {
-    paragraphs.push(`Detalles adicionales:\n${descripcionPrevia.trim()}`);
-  }
-
   const locNote = colonia
     ? `Ubicación privilegiada con rápidos accesos a las principales vialidades de Chihuahua, centros comerciales y servicios.`
     : `Excelente conectividad y ubicación estratégica en la ciudad de Chihuahua.`;
@@ -136,6 +132,7 @@ export const POST: RequestHandler = async ({ request }) => {
       construccion = '',
       condicion = '',
       amenidades = [],
+      tituloPrevio = '',
       descripcionPrevia = ''
     } = body;
 
@@ -160,6 +157,7 @@ export const POST: RequestHandler = async ({ request }) => {
       terreno ? `Terreno: ${terreno} m²` : null,
       condicion ? `Estado de conservación: ${condicion}` : null,
       amenidadesList ? `Amenidades / Tags seleccionadas: ${amenidadesList}` : null,
+      tituloPrevio ? `Título previo/borrador ingresado por el asesor:\n"${tituloPrevio}"` : null,
       descripcionPrevia ? `Notas o borrador previo ingresado por el asesor:\n"${descripcionPrevia}"` : null
     ].filter(Boolean).join('\n');
 
@@ -185,14 +183,15 @@ REGLAS PARA LA DESCRIPCIÓN:
    - Equipamiento y amenidades destacadas.
    - Ventajas de conectividad y entorno en Chihuahua.
    - Llamado a la acción (CTA) neutro para coordinar cita.
-3. CONSERVA NOTAS PREVIAS:
-   - Incluye cualquier especificación arquitectónica dada en el borrador previo del asesor.
-4. PROHIBICIÓN ESTRICTA (SIN INMOBILIARIAS NI AGENTES):
-   - Queda TERMINANTEMENTE PROHIBIDO mencionar nombres de inmobiliarias, agencias, marcas o franquicias (Match Home, Century 21, Remax, JGCapital, etc.).
-   - Queda TERMINANTEMENTE PROHIBIDO mencionar nombres propios de asesores, agentes, teléfonos, correos o comisiones.
-5. FORMATO Y LÍMITE DE CARACTERES (OBLIGATORIO):
-   - Tono sofisticado, profesional y vendedor con saltos de línea y viñetas.
-   - LÍMITE ESTRICTO: Entre 1,100 y 1,350 caracteres en total.
+ 3. SINTETIZA NOTAS PREVIAS (SIN REPETIR NI DUPLICAR):
+   - Si se proporcionan notas o borrador previo del asesor, integra sus detalles técnicos u organizativos de forma limpia y fluida dentro del texto general.
+   - PROHIBIDO copiar y pegar bloques enteros del borrador previo o adjuntarlos al final bajo "Detalles adicionales". La nueva propuesta debe reemplazar por completo el texto anterior.
+ 4. PROHIBICIÓN ESTRICTA (SIN INMOBILIARIAS NI AGENTES):
+    - Queda TERMINANTEMENTE PROHIBIDO mencionar nombres de inmobiliarias, agencias, marcas o franquicias (Match Home, Century 21, Remax, JGCapital, etc.).
+    - Queda TERMINANTEMENTE PROHIBIDO mencionar nombres propios de asesores, agentes, teléfonos, correos o comisiones.
+ 5. FORMATO Y LÍMITE DE CARACTERES (OBLIGATORIO):
+    - Tono sofisticado, profesional y vendedor con saltos de línea y viñetas.
+    - LÍMITE ESTRICTO: Entre 1,100 y 1,350 caracteres en total.
 
 FORMATO DE SALIDA (MUY IMPORTANTE):
 Debes responder ÚNICAMENTE con un objeto JSON válido:
@@ -204,9 +203,9 @@ Debes responder ÚNICAMENTE con un objeto JSON válido:
 
     let rawResponse = '';
 
-    // 1. Intentar con Gemini con timeout estricto de 2.5 segundos
+    // 1. Intentar con Gemini con timeout estricto de 6 segundos
     if (geminiKey && geminiKey.startsWith('AIzaSy')) {
-      const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+      const geminiModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.5-flash-lite'];
       for (const model of geminiModels) {
         try {
           const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
@@ -220,7 +219,7 @@ Debes responder ÚNICAMENTE con un objeto JSON válido:
                 responseMimeType: 'application/json'
               }
             }),
-            signal: AbortSignal.timeout(2500)
+            signal: AbortSignal.timeout(6000)
           });
 
           if (response.ok) {
@@ -234,7 +233,7 @@ Debes responder ÚNICAMENTE con un objeto JSON válido:
       }
     }
 
-    // 2. Intentar con OpenAI con timeout estricto de 3.5 segundos
+    // 2. Intentar con OpenAI con timeout estricto de 6 segundos
     if (!rawResponse && openAiKey) {
       try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -259,7 +258,7 @@ Debes responder ÚNICAMENTE con un objeto JSON válido:
             temperature: 0.7,
             max_tokens: 1200
           }),
-          signal: AbortSignal.timeout(3500)
+          signal: AbortSignal.timeout(6000)
         });
 
         if (response.ok) {

@@ -365,6 +365,7 @@
         construccion: formData.construccion || '',
         condicion: formData.condicion || '',
         amenidades: Array.isArray(formData.amenidades) ? formData.amenidades : [],
+        tituloPrevio: formData.titulo || '',
         descripcionPrevia: formData.descripcion || '',
         companiaCaptadora: formData.idCompaniaCaptadora || ''
       };
