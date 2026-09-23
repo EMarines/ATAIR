@@ -1355,11 +1355,11 @@
             <div>
               <h3>
                 {#if activeModal === 'texto'}
-                  Subir con Texto y Fotos (WhatsApp / Redes)
+                  Subir con Texto y Fotos
                 {:else if activeModal === 'easybroker'}
-                  Subir Por Clave EasyBroker (EB-)
+                  Subir Por Clave EasyBroker
                 {:else}
-                  Subir Por Enlace Externo (Robot n8n)
+                  Subir Por Enlace Externo
                 {/if}
               </h3>
               <p>
@@ -1374,38 +1374,6 @@
             </div>
           </div>
           <button type="button" class="btn-modal-close" on:click={closeIngestaModal} aria-label="Cerrar modal">✕</button>
-        </div>
-
-        <!-- Selector de Métodos / Pestañas dentro del Modal -->
-        <div class="modal-method-tabs">
-          <button
-            type="button"
-            class="modal-method-tab tab-wa"
-            class:active={activeModal === 'texto'}
-            on:click={() => activeModal = 'texto'}
-          >
-            <span>💬 Texto y Fotos</span>
-            <span class="badge-ia">⚡ IA</span>
-          </button>
-
-          <button
-            type="button"
-            class="modal-method-tab tab-eb"
-            class:active={activeModal === 'easybroker'}
-            on:click={() => activeModal = 'easybroker'}
-          >
-            <span>🔑 Clave EB</span>
-          </button>
-
-          <button
-            type="button"
-            class="modal-method-tab tab-link"
-            class:active={activeModal === 'link'}
-            on:click={() => activeModal = 'link'}
-          >
-            <span>🔗 Por Link</span>
-            <span class="badge-n8n">🤖 n8n</span>
-          </button>
         </div>
 
         <!-- Contenido según Método Activo -->
