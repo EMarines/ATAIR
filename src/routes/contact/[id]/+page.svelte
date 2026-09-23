@@ -60,6 +60,7 @@
 	$: property = $propertyStore;
 	$: isAgentContact = Boolean(
 		(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('agente') ||
+		(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('constructor') ||
 		(contact?.procedencia && (contact.procedencia.startsWith('S') || contact.procedencia === 'MH')) ||
 		(getContactProcedencia(contact) && getContactProcedencia(contact).startsWith('S'))
 	);
@@ -633,7 +634,11 @@
 						<span>Alta el: {formatDate(contact.createdAt)}</span>
 						<span class="stage-info">
 							{#if isAgentContact}
-								<span class="agent-role-badge">🤝 Agente Inmobiliario</span>
+								{#if (contact?.typeContact || contact?.contactType || '').toLowerCase().includes('constructor')}
+									<span class="agent-role-badge">🏗️ Constructor</span>
+								{:else}
+									<span class="agent-role-badge">🤝 Agente Inmobiliario</span>
+								{/if}
 								{#if getContactProcedencia(contact)}
 									<span class="proc-badge proc-{getContactProcedencia(contact).toLowerCase()}">
 										{getContactProcedencia(contact)}

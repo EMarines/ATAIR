@@ -56,11 +56,13 @@
 
     const isAgent = (
       type.includes('agente') ||
+      type.includes('constructor') ||
       type.includes('inmobiliaria') ||
       type.includes('colaborador') ||
       type.includes('asesor') ||
       notes.includes('sinergia') ||
       notes.includes('agente') ||
+      notes.includes('constructor') ||
       notes.includes('inmobiliaria') ||
       Boolean(cont.procedencia)
     );
@@ -75,12 +77,14 @@
         else code = 'S1';
       }
 
+      const roleLabel = type.includes('constructor') ? 'Constructor' : 'Agente Inmobiliario';
+
       switch (code) {
-        case 'S1': return { isAgent: true, shape: 'square', text: 'S1', color: '#10b981', tooltip: 'Agente Inmobiliario - Sinergia 1 (S1)' }; // Verde esmeralda S1
-        case 'S2': return { isAgent: true, shape: 'square', text: 'S2', color: '#06b6d4', tooltip: 'Agente Inmobiliario - Sinergia 2 (S2)' }; // Cian S2
-        case 'S3': return { isAgent: true, shape: 'square', text: 'S3', color: '#f59e0b', tooltip: 'Agente Inmobiliario - Sinergia 3 (S3)' }; // Ámbar S3
-        case 'MH': return { isAgent: true, shape: 'square', text: 'MH', color: '#6366f1', tooltip: 'Agente Inmobiliario - Directa Match Home' }; // Índigo MH
-        default: return { isAgent: true, shape: 'square', text: code || 'S1', color: '#10b981', tooltip: 'Agente Inmobiliario' };
+        case 'S1': return { isAgent: true, shape: 'square', text: 'S1', color: '#10b981', tooltip: `${roleLabel} - Sinergia 1 (S1)` }; // Verde esmeralda S1
+        case 'S2': return { isAgent: true, shape: 'square', text: 'S2', color: '#06b6d4', tooltip: `${roleLabel} - Sinergia 2 (S2)` }; // Cian S2
+        case 'S3': return { isAgent: true, shape: 'square', text: 'S3', color: '#f59e0b', tooltip: `${roleLabel} - Sinergia 3 (S3)` }; // Ámbar S3
+        case 'MH': return { isAgent: true, shape: 'square', text: 'MH', color: '#6366f1', tooltip: `${roleLabel} - Directa Match Home` }; // Índigo MH
+        default: return { isAgent: true, shape: 'square', text: code || 'S1', color: '#10b981', tooltip: roleLabel };
       }
     }
 

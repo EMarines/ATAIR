@@ -803,6 +803,7 @@
 	$: isAgentType = Boolean(
 		contact.typeContact &&
 		(contact.typeContact.toLowerCase().includes('agente') ||
+		 contact.typeContact.toLowerCase().includes('constructor') ||
 		 contact.typeContact.toLowerCase().includes('inmobiliaria') ||
 		 contact.typeContact.toLowerCase().includes('colaborador') ||
 		 contact.typeContact.toLowerCase().includes('asesor'))
@@ -903,8 +904,11 @@
 			}
 
 			if (isAgentType) {
+				const isConstructor = (contact.typeContact || '').toLowerCase().includes('constructor');
 				if (!contact.company || !contact.company.trim()) {
-					errorMessage = 'La Empresa / Inmobiliaria es obligatoria para un Agente Inmobiliario';
+					errorMessage = isConstructor
+						? 'La Empresa / Constructora es obligatoria para un Constructor'
+						: 'La Empresa / Inmobiliaria es obligatoria para un Agente Inmobiliario';
 					showAutoNotification(errorMessage, 'error');
 					return;
 				}
@@ -1286,7 +1290,7 @@
 					on:change={(e) => {
 						contact.typeContact = e.detail;
 						const t = (e.detail || '').toLowerCase();
-						if ((t.includes('agente') || t.includes('inmobiliaria') || t.includes('colaborador') || t.includes('asesor')) && !contact.procedencia) {
+						if ((t.includes('agente') || t.includes('constructor') || t.includes('inmobiliaria') || t.includes('colaborador') || t.includes('asesor')) && !contact.procedencia) {
 							contact.procedencia = 'S1';
 						}
 					}}
@@ -1300,14 +1304,14 @@
 				/>
 			</div>
 
-			<!-- Si se selecciona Agente Inmobiliario, se despliegan Empresa y Tipo de Sinergia -->
+			<!-- Si se selecciona Agente Inmobiliario o Constructor, se despliegan Empresa y Tipo de Sinergia -->
 			{#if isAgentType}
 				<div class="agent-corporate-section" transition:slide={{ duration: 220 }}>
 					<div class="inp__lat">
 						<div class="input-group" style="width: 100%;">
 							<InputText
 								identifier="company"
-								name="Empresa / Inmobiliaria *"
+								name={(contact.typeContact || '').toLowerCase().includes('constructor') ? 'Empresa / Constructora *' : 'Empresa / Inmobiliaria *'}
 								bind:value={contact.company}
 							/>
 						</div>

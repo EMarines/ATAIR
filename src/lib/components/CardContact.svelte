@@ -31,11 +31,13 @@
 		const company = (raw.company || raw.inmobiliaria || '').toLowerCase();
 		return (
 			type.includes('agente') ||
+			type.includes('constructor') ||
 			type.includes('inmobiliaria') ||
 			type.includes('colaborador') ||
 			type.includes('asesor') ||
 			notes.includes('sinergia') ||
 			notes.includes('agente') ||
+			notes.includes('constructor') ||
 			notes.includes('inmobiliaria') ||
 			Boolean(cont.procedencia)
 		);
@@ -47,10 +49,10 @@
 		if (raw.company && String(raw.company).trim()) return String(raw.company).trim();
 		if (raw.inmobiliaria && String(raw.inmobiliaria).trim()) return String(raw.inmobiliaria).trim();
 
-		// Respaldo inteligente: si se capturó en las notas (ej. "Inmobiliaria: CituHaus", "Empresa: ...")
+		// Respaldo inteligente: si se capturó en las notas (ej. "Constructora: ...", "Inmobiliaria: CituHaus", "Empresa: ...")
 		const rawNotes = String(cont.notes || raw.comContact || raw.notas || '').trim();
 		if (rawNotes) {
-			const match = rawNotes.match(/(?:inmobiliaria|empresa|agencia|broker)\s*[:=-]?\s*([^\n,\.]+)/i);
+			const match = rawNotes.match(/(?:constructora|inmobiliaria|empresa|agencia|broker)\s*[:=-]?\s*([^\n,\.]+)/i);
 			if (match && match[1]?.trim()) {
 				return match[1].trim();
 			}

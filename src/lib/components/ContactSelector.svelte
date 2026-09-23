@@ -437,11 +437,13 @@
 
     return (
       type.includes('agente') ||
+      type.includes('constructor') ||
       type.includes('inmobiliaria') ||
       type.includes('colaborador') ||
       type.includes('asesor') ||
       notes.includes('sinergia') ||
       notes.includes('agente') ||
+      notes.includes('constructor') ||
       notes.includes('inmobiliaria') ||
       company.length > 0 ||
       Boolean(data.id && data.id.startsWith('pinned-'))
