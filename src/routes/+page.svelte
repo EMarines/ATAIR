@@ -268,8 +268,18 @@
         endTask: Number(d.data().endTask)
       })) as AgendaTodo[];
 
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrowEnd = new Date(today);
+      tomorrowEnd.setDate(tomorrowEnd.getDate() + 2); // Inicio del día después de mañana (00:00:00)
+
       pendingTodos = list
-        .filter((t) => !t.isCompleted && t.task)
+        .filter((t) => {
+          if (t.isCompleted || !t.task) return false;
+          if (!t.endTask || isNaN(Number(t.endTask))) return true;
+          const itemDate = new Date(Number(t.endTask));
+          return itemDate.getTime() < tomorrowEnd.getTime();
+        })
         .sort((a, b) => {
           const dA = Number(a.endTask) || 0;
           const dB = Number(b.endTask) || 0;

@@ -46,6 +46,57 @@
     return 1; // Valor por defecto
   }
 
+  // Función para determinar el distintivo (Etapa E1-E5 o Sinergia S1-S3/MH) y su forma (Cuadrado para Agente, Círculo para Etapa)
+  function getContactBadgeInfo(cont: Contact): { isAgent: boolean; shape: 'circle' | 'square'; text: string; color: string; tooltip: string } {
+    if (!cont) return { isAgent: false, shape: 'circle', text: 'E1', color: '#ff4444', tooltip: 'Etapa 1' };
+    const raw = cont as any;
+    const type = (cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
+    const notes = (cont.notes || raw.comContact || raw.notas || '').toLowerCase();
+    const company = (raw.company || raw.inmobiliaria || '').toLowerCase();
+
+    const isAgent = (
+      type.includes('agente') ||
+      type.includes('inmobiliaria') ||
+      type.includes('colaborador') ||
+      type.includes('asesor') ||
+      notes.includes('sinergia') ||
+      notes.includes('agente') ||
+      notes.includes('inmobiliaria') ||
+      Boolean(cont.procedencia)
+    );
+
+    if (isAgent) {
+      let code = (cont.procedencia || '').toUpperCase();
+      if (!['S1', 'S2', 'S3', 'MH'].includes(code)) {
+        if (notes.includes('sinergia 1') || /\b(s1)\b/i.test(notes)) code = 'S1';
+        else if (notes.includes('sinergia 2') || /\b(s2)\b/i.test(notes)) code = 'S2';
+        else if (notes.includes('sinergia 3') || /\b(s3)\b/i.test(notes)) code = 'S3';
+        else if (notes.includes('match home') || /\b(mh)\b/i.test(notes)) code = 'MH';
+        else code = 'S1';
+      }
+
+      switch (code) {
+        case 'S1': return { isAgent: true, shape: 'square', text: 'S1', color: '#10b981', tooltip: 'Agente Inmobiliario - Sinergia 1 (S1)' }; // Verde esmeralda S1
+        case 'S2': return { isAgent: true, shape: 'square', text: 'S2', color: '#06b6d4', tooltip: 'Agente Inmobiliario - Sinergia 2 (S2)' }; // Cian S2
+        case 'S3': return { isAgent: true, shape: 'square', text: 'S3', color: '#f59e0b', tooltip: 'Agente Inmobiliario - Sinergia 3 (S3)' }; // Ámbar S3
+        case 'MH': return { isAgent: true, shape: 'square', text: 'MH', color: '#6366f1', tooltip: 'Agente Inmobiliario - Directa Match Home' }; // Índigo MH
+        default: return { isAgent: true, shape: 'square', text: code || 'S1', color: '#10b981', tooltip: 'Agente Inmobiliario' };
+      }
+    }
+
+    const normalizedStage = normalizeStage(cont.contactStage);
+    if (normalizedStage === 'NA') {
+      return { isAgent: false, shape: 'circle', text: 'NA', color: '#808080', tooltip: 'Sin etapa asignada' };
+    }
+    switch(normalizedStage) {
+      case 2: return { isAgent: false, shape: 'circle', text: 'E2', color: '#ff8844', tooltip: 'Etapa 2' }; // Naranja
+      case 3: return { isAgent: false, shape: 'circle', text: 'E3', color: '#ffcc44', tooltip: 'Etapa 3' }; // Amarillo
+      case 4: return { isAgent: false, shape: 'circle', text: 'E4', color: '#44cc44', tooltip: 'Etapa 4' }; // Verde
+      case 5: return { isAgent: false, shape: 'circle', text: 'E5', color: '#8844cc', tooltip: 'Etapa 5' }; // Púrpura
+      default: return { isAgent: false, shape: 'circle', text: `E${normalizedStage}`, color: '#ff4444', tooltip: 'Etapa 1' }; // Rojo E1
+    }
+  }
+
 
   // Función para generar un UUID
   function generateUUID() {
@@ -205,6 +256,7 @@
       
         <div class="cards__container">
           {#each contacts as cont}
+            {@const badge = getContactBadgeInfo(cont)}
             <div 
               class="card__container" 
               role="button"
@@ -216,35 +268,33 @@
                 }
               }}
             >
-
-<!-- Etapa del contacto - Siempre mostrar, con E1 por defecto -->
-<div class="stage-indicator" style="position: absolute; top: 5px; right: 5px; width: 30px; height: 30px; border-radius: 50%; background-color: {
-  (() => {
-    const normalizedStage = normalizeStage(cont.contactStage);
-    if (normalizedStage === 'NA') {
-      return '#808080'; // Gris para NA, por ejemplo
-    }
-    // Si es un número, procede como antes
-    switch(normalizedStage) {
-      case 2: return '#ff8844'; // Naranja
-      case 3: return '#ffcc44'; // Amarillo
-      case 4: return '#44cc44'; // Verde
-      case 5: return '#8844cc'; // Púrpura
-      default: return '#ff4444'; // Rojo para E1 o desconocido
-    }
-  })()
-}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; font-family: 'Segoe UI', Arial, sans-serif; font-size: 0.85rem; letter-spacing: 0.5px; z-index: 9999; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: 2px solid white;">
-  {
-    (() => {
-      const normalizedStage = normalizeStage(cont.contactStage);
-      if (normalizedStage === 'NA') {
-        return 'NA';
-      }
-      // Si es un número, muestra "E" seguido del número
-      return `E${normalizedStage}`;
-    })()
-  }
-</div>
+              <!-- Distintivo en la esquina superior derecha: CUADRADO para Agentes (S1/S2/S3/MH) y CÍRCULO para Clientes (E1-E5) -->
+              <div
+                class="stage-indicator"
+                title={badge.tooltip}
+                style="
+                  position: absolute;
+                  top: 5px;
+                  right: 5px;
+                  width: 32px;
+                  height: 32px;
+                  border-radius: {badge.shape === 'square' ? '6px' : '50%'};
+                  background-color: {badge.color};
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: white;
+                  font-weight: 700;
+                  font-family: 'Segoe UI', Arial, sans-serif;
+                  font-size: 0.82rem;
+                  letter-spacing: 0.5px;
+                  z-index: 9999;
+                  box-shadow: 0 3px 6px rgba(0,0,0,0.35);
+                  border: 2px solid white;
+                "
+              >
+                {badge.text}
+              </div>
 
 
               <CardContact {cont} />

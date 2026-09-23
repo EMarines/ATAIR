@@ -6,28 +6,52 @@
 	import { contactsStore } from '$lib/stores/dataStore';
 
 	export let cont: Contact;
-	// Validación del contacto
 	let isValidContact = false;
 
-	// Función para validar el contacto
 	function validateContact() {
-		// Verificar que el contacto exista y tenga un ID válido
 		if (!cont || !cont.id || typeof cont.id !== 'string' || cont.id.trim() === '') {
 			console.error('Error: Contacto inválido o sin ID válido', cont);
 			isValidContact = false;
 			return;
 		}
-
-		// Contacto válido
 		isValidContact = true;
 	}
 
-	// Validar el contacto cuando cambie
 	$: {
 		if (cont) {
 			validateContact();
 		}
 	}
+
+	$: isAgent = (() => {
+		if (!cont) return false;
+		const raw = cont as any;
+		const type = (cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
+		const notes = (cont.notes || raw.comContact || raw.notas || '').toLowerCase();
+		const company = (raw.company || raw.inmobiliaria || '').toLowerCase();
+		return (
+			type.includes('agente') ||
+			type.includes('inmobiliaria') ||
+			type.includes('colaborador') ||
+			type.includes('asesor') ||
+			notes.includes('sinergia') ||
+			notes.includes('agente') ||
+			notes.includes('inmobiliaria') ||
+			Boolean(cont.procedencia)
+		);
+	})();
+
+	$: agentCompany = (() => {
+		if (!cont) return '';
+		const raw = cont as any;
+		return raw.company || raw.inmobiliaria || '';
+	})();
+
+	$: rangeProp = (() => {
+		if (!cont) return '';
+		const raw = cont as any;
+		return raw.rangeProp || '';
+	})();
 
 	onMount(() => {
 		validateContact();
@@ -35,13 +59,17 @@
 </script>
 
 {#if isValidContact}
-	<div class="card">
-		<!-- <div class="card__info"> -->
+	<div class="card" class:card--agent={isAgent}>
 		<div class="card__infoHead">
 			<span class="date">Alta: {formatDate(cont.createdAt)}</span>
 		</div>
 
-		<span class="card__Title">{cont.name} {cont.lastname}</span>
+		<div class="card__TitleWrap">
+			<span class="card__Title">{cont.name} {cont.lastname}</span>
+			{#if isAgent && agentCompany}
+				<span class="card__SubCompany">🏢 {agentCompany}</span>
+			{/if}
+		</div>
 
 		<div class="info__cont">
 			{#if cont.telephon}
@@ -50,12 +78,14 @@
 			{#if cont.email}
 				<span title={cont.email}> <i class="fa-regular fa-envelope"></i></span>
 			{/if}
-			{#if cont.budget}
-				<span
-					><i class="fa-solid fa-money-check-dollar"></i> $ {toComaSep(Number(cont.budget))}.</span
-				>
-			{:else}
-				<span> <i class="fa-solid fa-money-check-dollar"></i> Pres: {cont.rangeProp}</span>
+			{#if !isAgent}
+				{#if cont.budget}
+					<span
+						><i class="fa-solid fa-money-check-dollar"></i> $ {toComaSep(Number(cont.budget))}.</span
+					>
+				{:else if rangeProp}
+					<span> <i class="fa-solid fa-money-check-dollar"></i> Pres: {rangeProp}</span>
+				{/if}
 			{/if}
 		</div>
 
@@ -96,7 +126,7 @@
 		color: var(--color, #ffffff);
 		border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
 		border-radius: 8px;
-		padding: 0.5em;
+		padding: 0.65em;
 		margin: 0;
 		gap: 0.8rem;
 		transition: transform 0.25s, box-shadow 0.25s, background 0.25s, border-color 0.25s;
@@ -112,6 +142,10 @@
 		border-color: var(--border-hover, rgba(255, 255, 255, 0.25));
 	}
 
+	.card--agent {
+		border-left: 3px solid #6366f1;
+	}
+
 	.card--invalid {
 		background-color: #553333;
 		border: 1px solid #aa5555;
@@ -121,17 +155,35 @@
 		display: flex;
 		width: 100%;
 		font-size: 0.8rem;
-		justify-content: left;
-		/* padding: .5em; */
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.card__TitleWrap {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		gap: 0.2rem;
 	}
 
 	.card__Title {
 		display: flex;
-		font-size: 1.3em;
+		font-size: 1.2em;
 		width: 100%;
 		justify-content: center;
 		font-weight: 600;
 		text-transform: capitalize;
+		text-align: center;
+	}
+
+	.card__SubCompany {
+		font-size: 0.82rem;
+		font-weight: 500;
+		color: var(--text-muted, #cbd5e1);
+		opacity: 0.9;
 	}
 
 	.info__cont {
