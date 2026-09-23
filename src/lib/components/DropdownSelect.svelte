@@ -24,7 +24,7 @@
     isOpen = false;
   }
 
-  $: selectedLabel = options.find((o) => `${o.value}` === `${value}`)?.label || placeholder;
+  $: selectedLabel = options.find((o) => `${o.value}` === `${value}`)?.label || (value !== undefined && value !== null && `${value}`.trim() !== '' ? `${value}` : placeholder);
 </script>
 
 <svelte:window on:click={handleClickOutside} />

@@ -18,6 +18,8 @@ export interface Contact {
   name: string;
   notes?: string;
   procedencia?: string;
+  company?: string;
+  inmobiliaria?: string;
   numBaths: string | number;
   numBeds: string | number;
   numParks: string | number;

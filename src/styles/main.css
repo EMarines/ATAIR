@@ -293,32 +293,86 @@ h1.name {
   }
 
 
-/* iconos */
+/* =========================================================
+   SISTEMA CENTRALIZADO DE ICONOS Y BOTONES DE ACCIÓN (ATAIR)
+   ========================================================= */
 
-.fa-pen-to-square {
-  font-size: 1em;
-  color: blue;
-  opacity: 40%;
+.action-icon,
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(125, 125, 125, 0.08);
+  border: 1px solid rgba(125, 125, 125, 0.12);
   cursor: pointer;
+  padding: 0 !important;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 
-.fa-trash-can {
-  font-size:1em;
-  color: red;
-  opacity: 40%;
-  cursor: pointer;
+:root[data-theme="dark"] .action-icon,
+:root[data-theme="dark"] .action-btn,
+[data-theme="dark"] .action-icon,
+[data-theme="dark"] .action-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Colores Base */
+.fa-pen-to-square,
+.edit-icon,
+.action-btn.edit-btn,
+.action-icon.edit-icon {
+  color: #2563eb !important;
+}
+
+.fa-trash-can,
+.delete-icon,
+.action-btn.delete-btn,
+.action-icon.delete-icon {
+  color: #ef4444 !important;
 }
 
 .fa-square-check {
   font-size: 1em;
-  color: darkgreen;
-  opacity: 40%;
+  color: #16a34a !important;
   cursor: pointer;
 }
 
-i:hover {
-  color: yellow;
-  opacity: 100%;
+/* Efecto Hover: Aluce en Amarillo Luminoso con fondo y sombra resplandeciente */
+.action-icon:hover,
+.action-btn:hover,
+.action-icon.edit-icon:hover,
+.action-btn.edit-btn:hover,
+.action-icon.delete-icon:hover,
+.action-btn.delete-btn:hover,
+.fa-pen-to-square:hover,
+.fa-trash-can:hover,
+i.fa-pen-to-square:hover,
+i.fa-trash-can:hover {
+  color: #eab308 !important;
+  background: rgba(234, 179, 8, 0.18) !important;
+  border-color: rgba(234, 179, 8, 0.45) !important;
+  transform: scale(1.12);
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.45) !important;
+}
+
+.action-btn i,
+.action-icon i {
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  pointer-events: none;
 }
 
 /* Iconos de acciones */

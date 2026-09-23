@@ -514,7 +514,7 @@
 					{#if property.source === 'synergy' || property.procedencia?.startsWith('S') || property.companiaCaptadora || property.idCompaniaCaptadora}
 						<div class="prop__captador_row">
 							<span class="badge-syn-tag">
-								🤝 Sinergia {property.procedencia || ''}: {property.companiaCaptadora || property.idCompaniaCaptadora || 'Aliada'}{property.nombreContactoCaptador && property.nombreContactoCaptador !== (property.companiaCaptadora || property.idCompaniaCaptadora) ? ` (${property.nombreContactoCaptador})` : ''}
+								🤝 Sinergia {property.procedencia || ''}: {property.nombreContactoCaptador || property.companiaCaptadora || property.idCompaniaCaptadora || 'Aliada'}{property.nombreContactoCaptador && (property.companiaCaptadora || property.idCompaniaCaptadora) && property.nombreContactoCaptador !== (property.companiaCaptadora || property.idCompaniaCaptadora) ? ` (${property.companiaCaptadora || property.idCompaniaCaptadora})` : ''}
 							</span>
 							{#if property.telefonoContactoCaptador}
 								<a
@@ -603,21 +603,23 @@
 				</div>
 				<div class="actions">
 					<i
-						class="fa-regular fa-pen-to-square"
+						class="fa-regular fa-pen-to-square action-icon edit-icon"
 						on:click={() => editProp(property.public_id)}
 						on:keydown={() => {}}
 						role="button"
 						tabindex="0"
 						aria-label="Editar propiedad"
+						title="Editar propiedad"
 					></i>
 
 					<i
-						class="fa-regular fa-trash-can"
+						class="fa-regular fa-trash-can action-icon delete-icon"
 						on:click={() => deleProperty(property.public_id)}
 						on:keydown={() => {}}
 						role="button"
 						tabindex="0"
 						aria-label="Eliminar propiedad"
+						title="Eliminar propiedad"
 					></i>
 				</div>
 			</div>
@@ -1282,7 +1284,8 @@
 		width: 100%;
 		height: 10%;
 		justify-content: space-around;
-		font-size: 1.5rem;
+		align-items: center;
+		gap: 1rem;
 	}
 
 	.btn__options {

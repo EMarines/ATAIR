@@ -1244,8 +1244,8 @@
               </div>
               {#if selectedProperty.nombreContactoCaptador || selectedProperty.companiaCaptadora || selectedProperty.idCompaniaCaptadora}
                 <div class="detail-box">
-                  <span class="detail-label">Inmobiliaria / Captador</span>
-                  <span class="detail-val" style="color: #fbbf24;">{selectedProperty.companiaCaptadora || selectedProperty.idCompaniaCaptadora} {selectedProperty.nombreContactoCaptador ? `(${selectedProperty.nombreContactoCaptador})` : ''}</span>
+                  <span class="detail-label">Contacto / Inmobiliaria</span>
+                  <span class="detail-val" style="color: #fbbf24;">{selectedProperty.nombreContactoCaptador || selectedProperty.companiaCaptadora || selectedProperty.idCompaniaCaptadora}{selectedProperty.nombreContactoCaptador && (selectedProperty.companiaCaptadora || selectedProperty.idCompaniaCaptadora) && selectedProperty.nombreContactoCaptador !== (selectedProperty.companiaCaptadora || selectedProperty.idCompaniaCaptadora) ? ` (${selectedProperty.companiaCaptadora || selectedProperty.idCompaniaCaptadora})` : ''}</span>
                 </div>
               {/if}
               {#if selectedProperty.telefonoContactoCaptador}

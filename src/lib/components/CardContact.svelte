@@ -44,7 +44,18 @@
 	$: agentCompany = (() => {
 		if (!cont) return '';
 		const raw = cont as any;
-		return raw.company || raw.inmobiliaria || '';
+		if (raw.company && String(raw.company).trim()) return String(raw.company).trim();
+		if (raw.inmobiliaria && String(raw.inmobiliaria).trim()) return String(raw.inmobiliaria).trim();
+
+		// Respaldo inteligente: si se capturó en las notas (ej. "Inmobiliaria: CituHaus", "Empresa: ...")
+		const rawNotes = String(cont.notes || raw.comContact || raw.notas || '').trim();
+		if (rawNotes) {
+			const match = rawNotes.match(/(?:inmobiliaria|empresa|agencia|broker)\s*[:=-]?\s*([^\n,\.]+)/i);
+			if (match && match[1]?.trim()) {
+				return match[1].trim();
+			}
+		}
+		return '';
 	})();
 
 	$: rangeProp = (() => {
@@ -124,7 +135,8 @@
 		width: 100%;
 		background: var(--surface-card, rgb(56, 56, 56));
 		color: var(--color, #ffffff);
-		border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+		border: 1px solid #cbd5e1;
+		border-left: 3.5px solid #eab308;
 		border-radius: 8px;
 		padding: 0.65em;
 		margin: 0;
@@ -137,13 +149,13 @@
 
 	.card:hover {
 		transform: translateY(-5px);
-		box-shadow: var(--card-shadow-hover, 0 8px 20px rgba(0, 0, 0, 0.35));
+		box-shadow: var(--card-shadow-hover, 0 8px 20px rgba(0, 0, 0, 0.35)), 0 0 10px rgba(203, 213, 225, 0.25);
 		background: var(--surface-card-hover, rgb(76, 76, 76));
-		border-color: var(--border-hover, rgba(255, 255, 255, 0.25));
+		border-color: #f8fafc;
 	}
 
 	.card--agent {
-		border-left: 3px solid #6366f1;
+		border-left: 3.5px solid #8b5cf6;
 	}
 
 	.card--invalid {

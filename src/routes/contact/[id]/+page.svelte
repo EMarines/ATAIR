@@ -623,6 +623,11 @@
 							{contact.name}
 							{contact.lastname}
 						</h1>
+						{#if contact.company || contact.inmobiliaria}
+							<div class="contact-company-subtitle">
+								🏢 {contact.company || contact.inmobiliaria}
+							</div>
+						{/if}
 					</div>
 					<div class="rigth__title">
 						<span>Alta el: {formatDate(contact.createdAt)}</span>
@@ -752,19 +757,21 @@
 								editContact();
 							}}
 							on:keydown={() => {}}
-							class="fa-regular fa-pen-to-square action-icon"
+							class="fa-regular fa-pen-to-square action-icon edit-icon"
 							role="button"
 							tabindex="0"
 							aria-label="Edit Contact"
+							title="Editar contacto"
 						></i>
 
 						<i
 							on:click={() => deleContact(contact.id)}
 							on:keydown={() => {}}
-							class="fa-regular fa-trash-can action-icon"
+							class="fa-regular fa-trash-can action-icon delete-icon"
 							role="button"
 							tabindex="0"
 							aria-label="Delete Contact"
+							title="Eliminar contacto"
 						></i>
 					</div>
 				</div>
@@ -878,9 +885,9 @@
 		display: flex;
 		flex-direction: column;
 		margin-top: 10px;
-		border: 1px solid rgb(56, 56, 56);
+		border: 1px solid #cbd5e1;
 		border-radius: 8px;
-		box-shadow: 1px 2px rgba(255, 255, 255, 0.5);
+		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 		background: rgb(56, 56, 56);
 		height: 60vh; /* Cambiar a auto para permitir que se ajuste al contenido */
 		flex: 1; /* Ambos contenedores crecerán para llenar el espacio disponible */
@@ -1240,6 +1247,13 @@
 		margin-bottom: 10px;
 	}
 
+	.contact-company-subtitle {
+		font-size: 0.95rem;
+		color: #38bdf8;
+		font-weight: 500;
+		margin-top: 3px;
+	}
+
 	.notes {
 		display: flex;
 		padding: 5px;
@@ -1291,36 +1305,7 @@
 		color: white;
 	}
 
-	.fa-pen-to-square,
-	.fa-trash-can {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 1.2rem;
-		cursor: pointer;
-		padding: 8px;
-		margin: 0;
-	}
 
-	.action-icon {
-		background-color: rgba(255, 247, 238, 0.15);
-		border-radius: 50%;
-		width: 32px;
-		height: 32px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0;
-		transition: all 0.2s ease;
-		color: rgb(255, 247, 238);
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-	}
-
-	.action-icon:hover {
-		background-color: rgba(255, 247, 238, 0.3);
-		transform: scale(1.05);
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-	}
 
 	.btn__common {
 		display: flex;

@@ -41,6 +41,8 @@ export interface Contact {
     publicUrl?: string;
     notes?: string;
     procedencia?: string;
+    company?: string;
+    inmobiliaria?: string;
     googleSyncedAt?: number;
     lastResponse?: number;
 }

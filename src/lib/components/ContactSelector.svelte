@@ -460,10 +460,10 @@
 
   function getContactLabel(contact: any) {
     if (!contact) return '';
-    if (contact._company && contact._fullName && contact._company !== contact._fullName) {
-      return `${contact._company} (${contact._fullName})`;
+    if (contact._fullName && contact._company && contact._company !== contact._fullName) {
+      return `${contact._fullName} (${contact._company})`;
     }
-    return contact._company || contact._fullName || '';
+    return contact._fullName || contact._company || '';
   }
 
   function selectContact(contact: any) {

@@ -45,16 +45,19 @@ function getSecret(keyName: string): string {
 }
 
 async function scrapeEasyBrokerListing(url: string) {
-  const res = await fetch(url, {
+  const mainRes = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
     }
   });
-  if (!res.ok) throw new Error(`EasyBroker respondió con status ${res.status}`);
-  const html = await res.text();
+  if (!mainRes.ok) throw new Error(`EasyBroker respondió con status ${mainRes.status}`);
+  
+  const rawCookies = (mainRes.headers as any).getSetCookie ? (mainRes.headers as any).getSetCookie() : [mainRes.headers.get('set-cookie')];
+  const cookieHeader = (rawCookies || []).map((c: any) => (c ? String(c).split(';')[0] : '')).filter(Boolean).join('; ');
+  const html = await mainRes.text();
 
-  // 1. Extraer JSON de tracking
+  // 1. Extraer JSON de tracking de EasyBroker
   let trackData: any = {};
   const trackMatch = html.match(/data-track-custom-properties="([^"]+)"/);
   if (trackMatch) {
@@ -64,28 +67,39 @@ async function scrapeEasyBrokerListing(url: string) {
   }
 
   // 2. Extraer Título
-  const titleMatch = html.match(/<meta content="([^"]+)" property="og:title">/) || html.match(/<title>([^<]+)<\/title>/);
-  const title = titleMatch ? titleMatch[1].replace(/ \| EasyBroker.*$/i, '').trim() : '';
+  const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ||
+                       html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+  const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  
+  let title = '';
+  if (ogTitleMatch && ogTitleMatch[1]) {
+    title = ogTitleMatch[1];
+  } else if (h1Match && h1Match[1]) {
+    title = h1Match[1].replace(/<[^>]+>/g, '').trim();
+  } else if (titleTagMatch && titleTagMatch[1]) {
+    title = titleTagMatch[1];
+  }
+  title = title.replace(/\s*\|\s*EasyBroker.*$/i, '').trim();
 
-  // 3. Extraer Descripción
+  // 3. Extraer Descripción completa
   let description = '';
   const descMatch = html.match(/<p class="text-description">\s*([\s\S]*?)\s*<\/p>/);
   if (descMatch) {
     description = descMatch[1]
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   } else {
-    const ogDesc = html.match(/<meta content="([^"]+)" property="og:description">/);
+    const ogDesc = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) ||
+                   html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i);
     if (ogDesc) description = ogDesc[1].trim();
-  }
-
-  // Limpiar firmas de inmobiliarias, asesores o teléfonos residuales en la descripción
-  if (description) {
-    description = description
-      .replace(/(?:Anunciado por|Publicado por|Asesor(?:a)?|Inmobiliaria|Informes y citas:?|Para mayores informes:?|Contáctanos al:?|Agente:?).*$/is, '')
-      .trim();
   }
 
   // 4. Extraer Terreno
@@ -96,42 +110,166 @@ async function scrapeEasyBrokerListing(url: string) {
   }
 
   // 5. Extraer Construcción
-  let construccion: number | null = trackData['Area M2'] ? Number(trackData['Area M2']) : null;
-  if (!construccion) {
-    const constMatch = html.match(/([\d,.]+)\s*m²\s*de\s*construcci[oó]n/i);
-    if (constMatch) construccion = Number(constMatch[1].replace(/,/g, ''));
+  let construccion: number | null = null;
+  const constMatch = html.match(/([\d,.]+)\s*m²\s*de\s*construcci[oó]n/i);
+  if (constMatch) {
+    construccion = Number(constMatch[1].replace(/,/g, ''));
+  }
+  if (!construccion && trackData['Area M2'] && Number(trackData['Area M2']) > 1) {
+    construccion = Number(trackData['Area M2']);
   }
 
-  // 6. Extraer Imágenes de alta resolución del CDN de EasyBroker
-  const imgMatches = [...html.matchAll(/https:\/\/assets\.easybroker\.com\/property_images\/[^\s"'?]+/g)];
-  const uniqueImgs = [...new Set(imgMatches.map(m => m[0]))];
+  // 6. Extraer Características / Amenidades explícitas del HTML
+  const caracteristicasHtml: string[] = [];
+  const amenitiesListMatches = [...html.matchAll(/<ul class="amenities-list">([\s\S]*?)<\/ul>/gi)];
+  for (const aList of amenitiesListMatches) {
+    const items = [...aList[1].matchAll(/<span>([^<]+)<\/span>/gi)];
+    for (const it of items) {
+      const txt = it[1].trim();
+      if (txt) caracteristicasHtml.push(txt);
+    }
+  }
 
-  // 7. Normalizar Tipo de Propiedad al catálogo de ATAIR
-  let rawType = (trackData['Property Type'] || '').toLowerCase();
+  // 7. Extraer Todas las Fotos (Iniciales + Paginadas Turbo Stream)
+  const baseImgMatches = [...html.matchAll(/(https:\/\/assets\.easybroker\.com\/property_images\/[^"'\s<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s<>]+)?)/gi)];
+  const photoUrlMap = new Map<string, string>();
+
+  for (const m of baseImgMatches) {
+    const cleanUrl = m[1].replace(/&amp;/g, '&');
+    const baseKeyMatch = cleanUrl.match(/https:\/\/assets\.easybroker\.com\/property_images\/\d+\/\d+\/[^\?]+/i);
+    const key = baseKeyMatch ? baseKeyMatch[0] : cleanUrl;
+    if (!photoUrlMap.has(key)) {
+      photoUrlMap.set(key, cleanUrl);
+    }
+  }
+
+  const viewTokenMatch = html.match(/data-view-token="([^"]+)"/);
+  const viewToken = viewTokenMatch ? viewTokenMatch[1] : '';
+  const mediaUrlMatch = html.match(/data-property-media-url-value="([^"]+)"/);
+  const mediaPath = mediaUrlMatch ? mediaUrlMatch[1] : '';
+  const totalImagesCount = Number(trackData['Images Count']) || 0;
+
+  if (mediaPath && viewToken && totalImagesCount > photoUrlMap.size) {
+    const startIndex = photoUrlMap.size;
+    const fetchPromises: Promise<void>[] = [];
+    const pathParts = mediaPath.split('?');
+    const basePath = pathParts[0];
+    const queryPart = pathParts[1] ? `&${pathParts[1]}` : '';
+
+    for (let i = startIndex; i < totalImagesCount; i++) {
+      fetchPromises.push((async (idx: number) => {
+        try {
+          const turboUrl = `https://www.easybroker.com${basePath}/${idx}?view_token=${viewToken}${queryPart}`;
+
+          const turboRes = await fetch(turboUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml',
+              'Cookie': cookieHeader,
+              'Referer': url
+            }
+          });
+          if (turboRes.ok) {
+            const turboText = await turboRes.text();
+            const imgs = [...turboText.matchAll(/(https:\/\/assets\.easybroker\.com\/property_images\/[^"'\s<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s<>]+)?)/gi)];
+            for (const img of imgs) {
+              const cleanUrl = img[1].replace(/&amp;/g, '&');
+              const baseKeyMatch = cleanUrl.match(/https:\/\/assets\.easybroker\.com\/property_images\/\d+\/\d+\/[^\?]+/i);
+              const key = baseKeyMatch ? baseKeyMatch[0] : cleanUrl;
+              if (!photoUrlMap.has(key)) {
+                photoUrlMap.set(key, cleanUrl);
+              }
+            }
+          }
+        } catch (e) {
+          // Ignorar fallo en imagen individual
+        }
+      })(i));
+    }
+
+    await Promise.all(fetchPromises);
+  }
+
+  const allPhotos = [...photoUrlMap.values()];
+
+  // 8. Normalizar Tipo de Propiedad
+  const rawType = (trackData['Property Type'] || '').toLowerCase();
+  const fullTextForType = `${title} ${description}`.toLowerCase();
+  
   let tipoPropiedad = 'Casa';
-  if (rawType.includes('apartment') || rawType.includes('depto') || rawType.includes('departamento')) tipoPropiedad = 'Departamento';
-  else if (rawType.includes('land') || rawType.includes('terreno') || rawType.includes('lote')) tipoPropiedad = 'Terreno';
-  else if (rawType.includes('commercial') || rawType.includes('local')) tipoPropiedad = 'Local Comercial';
-  else if (rawType.includes('office') || rawType.includes('oficina')) tipoPropiedad = 'Oficina';
-  else if (rawType.includes('warehouse') || rawType.includes('bodega') || rawType.includes('nave')) tipoPropiedad = 'Bodega';
-  else if (rawType.includes('building') || rawType.includes('edificio')) tipoPropiedad = 'Edificio';
-  else if (rawType.includes('rancho')) tipoPropiedad = 'Rancho';
+  if (fullTextForType.includes('hotel') || fullTextForType.includes('hotel boutique')) tipoPropiedad = 'Local Comercial';
+  else if (rawType.includes('apartment') || rawType.includes('depto') || rawType.includes('departamento') || fullTextForType.includes('departamento')) tipoPropiedad = 'Departamento';
+  else if (rawType.includes('land') || rawType.includes('terreno') || rawType.includes('lote') || fullTextForType.includes('terreno')) tipoPropiedad = 'Terreno';
+  else if (rawType.includes('commercial') || rawType.includes('local') || fullTextForType.includes('local comercial')) tipoPropiedad = 'Local Comercial';
+  else if (rawType.includes('office') || rawType.includes('oficina') || fullTextForType.includes('oficina')) tipoPropiedad = 'Oficina';
+  else if (rawType.includes('warehouse') || rawType.includes('bodega') || rawType.includes('nave') || fullTextForType.includes('bodega')) tipoPropiedad = 'Bodega';
+  else if (rawType.includes('building') || rawType.includes('edificio') || fullTextForType.includes('edificio')) tipoPropiedad = 'Edificio';
+  else if (rawType.includes('rancho') || fullTextForType.includes('rancho')) tipoPropiedad = 'Rancho';
+  else if (fullTextForType.includes('casa de campo') || fullTextForType.includes('quinta') || fullTextForType.includes('granja')) tipoPropiedad = 'Casa de Campo';
+  else if (fullTextForType.includes('huerta')) tipoPropiedad = 'Huerta';
 
-  // 8. Extraer anunciante original (para sinergia)
+  // 9. Extraer Anunciante y Teléfonos
   let anuncianteNombre: string | null = null;
   let anuncianteInmobiliaria: string | null = null;
-  const agentMatch = html.match(/Anunciado por\s+([^<]+)/i);
+  let contactoTelefono: string | null = null;
+
+  const agentMatch = html.match(/Anunciado por\s+([^<]+)/i) || html.match(/class="author-name">([^<]+)<\/div>/i);
   if (agentMatch) anuncianteNombre = agentMatch[1].trim();
-  const orgMatch = html.match(/class="organization"><div>([^<]+)<\/div>/i);
+
+  const orgMatch = html.match(/class="organization"><div>([^<]+)<\/div>/i) || html.match(/class="org-name">([^<]+)<\/div>/i);
   if (orgMatch) anuncianteInmobiliaria = orgMatch[1].trim();
+
+  const phoneMatch = description.match(/(?:tel(?:[eé]fonos?)?|whatsapp|cel(?:ular)?|m[oó]vil|citas|informes)?:?\s*(\+?52\s*)?([1-9]\d{2}[\s.-]?\d{3}[\s.-]?\d{4})/i) ||
+                     html.match(/tel:(\+?[\d\s-]+)/i);
+  if (phoneMatch) {
+    const rawDigits = (phoneMatch[2] || phoneMatch[1] || phoneMatch[0]).replace(/\D/g, '');
+    if (rawDigits.length >= 10) contactoTelefono = rawDigits.slice(-10);
+  }
+
+  // 10. Ubicación detallada y Código Postal
+  let ubicacionFull = trackData['Property City'] || trackData['Property State'] || '';
+  const addrMatch = html.match(/<meta[^>]+content="([^"]+)"[^>]+itemprop="address"/i) ||
+                    html.match(/itemprop="address"[^>]*content="([^"]+)"/i) ||
+                    description.match(/Direcci[oó]n:\s*([^📍\n]+)/i);
+  if (addrMatch) {
+    ubicacionFull = addrMatch[1].trim();
+  }
+
+  let codigoPostal: string | null = null;
+  const cpMatch = description.match(/\b(22\d{3}|31\d{3}|\d{5})\b/) ||
+                  html.match(/(?:c[oó]digo\s*postal|c\.?p\.?)\s*:?\s*(\d{5})/i) ||
+                  html.match(/\bpostal[^\d]*(\d{5})/i);
+  if (cpMatch) {
+    codigoPostal = cpMatch[1];
+  } else if (trackData['Property Postal Code'] || trackData['Postal Code']) {
+    codigoPostal = String(trackData['Property Postal Code'] || trackData['Postal Code']).trim();
+  }
+
+  // 11. Año de construcción / Antigüedad
+  let anioConstruccion: number | null = null;
+  const yearMatch = description.match(/(?:a[ñn]o(?:\s*de\s*construcci[oó]n)?|construida\s*en)\s*:?\s*(\d{4})/i) ||
+                    html.match(/(\d{4})\s*de\s*construcci[oó]n/i);
+  if (yearMatch) {
+    anioConstruccion = Number(yearMatch[1]);
+  } else {
+    const ageMatch = description.match(/(\d+)\s*a[ñn]os?\s*(?:de\s*antig[üu]edad|de\s*edad)/i) ||
+                     html.match(/(\d+)\s*a[ñn]os?\s*de\s*antig[üu]edad/i);
+    if (ageMatch) {
+      anioConstruccion = new Date().getFullYear() - Number(ageMatch[1]);
+    }
+  }
+
+  const combinedAmenityText = `${title} ${description} ${caracteristicasHtml.join(' ')}`;
 
   return {
     tipoPropiedad,
     tipoOperacion: trackData['Operation Type'] === 'Rental' ? 'Renta' : 'Venta',
-    precio: trackData['Sale Price'] ? Number(trackData['Sale Price']) : null,
+    precio: trackData['Sale Price'] ? Number(trackData['Sale Price']) : (trackData['Rental Price'] ? Number(trackData['Rental Price']) : null),
     moneda: trackData['Currency'] || 'MXN',
     colonia: trackData['Property Neighborhood'] || '',
-    ubicacion: trackData['Property City'] || trackData['Property State'] || '',
+    ubicacion: ubicacionFull,
+    codigoPostal,
+    anioConstruccion,
     recamaras: trackData['Bedrooms'] ? Number(trackData['Bedrooms']) : null,
     banos: trackData['Bathrooms'] ? Number(trackData['Bathrooms']) : null,
     mediosBanos: null,
@@ -140,12 +278,121 @@ async function scrapeEasyBrokerListing(url: string) {
     construccion,
     titulo: title,
     descripcion: description,
-    amenidades: detectCatalogAmenities(`${title} ${description}`),
-    fotos: uniqueImgs,
+    amenidades: detectCatalogAmenities(combinedAmenityText),
+    caracteristicas: caracteristicasHtml,
+    fotos: allPhotos,
     easybrokerId: trackData['Property ID'] || null,
     contactoNombre: anuncianteNombre,
     companiaCaptadora: anuncianteInmobiliaria,
-    contactoTelefono: null
+    contactoTelefono
+  };
+}
+
+function extractImagesFromGenericHtml(html: string, baseUrl: string): string[] {
+  const images = new Set<string>();
+
+  // 1. JSON-LD images
+  const ldMatches = [...html.matchAll(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/gi)];
+  for (const ld of ldMatches) {
+    try {
+      const data = JSON.parse(ld[1].trim());
+      const findImgs = (obj: any) => {
+        if (!obj) return;
+        if (typeof obj === 'string' && obj.match(/^https?:\/\/.*\.(?:jpe?g|png|webp|avif)/i)) {
+          images.add(obj);
+        } else if (Array.isArray(obj)) {
+          obj.forEach(findImgs);
+        } else if (typeof obj === 'object') {
+          if (obj.image) findImgs(obj.image);
+          if (obj.photos) findImgs(obj.photos);
+          if (obj.contentUrl) findImgs(obj.contentUrl);
+        }
+      };
+      findImgs(data);
+    } catch (e) {}
+  }
+
+  // 2. OpenGraph & Twitter image
+  const ogImgMatches = [
+    ...html.matchAll(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["']/gi),
+    ...html.matchAll(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["']/gi)
+  ];
+  for (const m of ogImgMatches) {
+    if (m[1] && m[1].startsWith('http')) images.add(m[1]);
+  }
+
+  // 3. Img tags and data attributes
+  const imgTags = [...html.matchAll(/<img\s+[^>]*>/gi)];
+  for (const tag of imgTags) {
+    const srcMatch = tag[0].match(/(?:src|data-src|data-original|data-lazy|data-zoom-image|data-full)=["']([^"']+)["']/i);
+    if (srcMatch && srcMatch[1]) {
+      let src = srcMatch[1];
+      if (src.startsWith('//')) src = 'https:' + src;
+      else if (src.startsWith('/') && baseUrl) {
+        try {
+          src = new URL(src, baseUrl).toString();
+        } catch (e) {}
+      }
+
+      const isBad = src.includes('avatar') || src.includes('logo') || src.includes('icon') || 
+                    src.includes('.svg') || src.includes('tracker') || src.includes('pixel') ||
+                    src.includes('badge') || src.includes('1x1') || src.includes('button');
+      if (!isBad && src.match(/^https?:\/\/.*\.(?:jpe?g|png|webp|avif)/i)) {
+        images.add(src.replace(/&amp;/g, '&'));
+      }
+    }
+  }
+
+  // 4. Regex for direct image URLs from CDNs
+  const cdnMatches = [...html.matchAll(/https?:\/\/[^\s"'<>]+\.(?:jpe?g|png|webp)(?:\?[^\s"'<>]+)?/gi)];
+  for (const m of cdnMatches) {
+    const u = m[0].replace(/&amp;/g, '&');
+    const isBad = u.includes('avatar') || u.includes('logo') || u.includes('icon') || 
+                  u.includes('tracker') || u.includes('pixel') || u.includes('badge');
+    if (!isBad && (u.includes('property') || u.includes('inmueble') || u.includes('fotos') || u.includes('photos') || u.includes('uploads') || u.includes('cdn') || u.includes('cloudfront') || u.includes('s3') || u.includes('cloudinary') || u.includes('tokko') || u.includes('wiggot'))) {
+      images.add(u);
+    }
+  }
+
+  return [...images];
+}
+
+async function scrapeGenericUrl(url: string) {
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+    }
+  });
+  if (!res.ok) throw new Error(`El sitio web respondió con error HTTP ${res.status}`);
+  const html = await res.text();
+
+  const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ||
+                       html.match(/<title>([^<]+)<\/title>/i);
+  const title = ogTitleMatch ? ogTitleMatch[1].trim() : '';
+
+  const ogDescMatch = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i);
+  const ogDesc = ogDescMatch ? ogDescMatch[1].trim() : '';
+
+  const cleanBody = html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, '')
+    .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, '')
+    .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const photos = extractImagesFromGenericHtml(html, url);
+
+  return {
+    title,
+    ogDesc,
+    bodyText: cleanBody.substring(0, 4000),
+    photos
   };
 }
 
@@ -158,8 +405,9 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ success: false, error: 'Por favor pega el texto o enlace de la propiedad.' }, { status: 400 });
     }
 
-    // Detección automática de enlaces públicos de EasyBroker (Listing / MLS)
-    const ebUrlMatch = rawText.match(/https?:\/\/(?:www\.)?easybroker\.com\/(?:[a-z]{2}\/)?(?:listing|inmueble|inmuebles)\/[^\s"'>]+/i);
+    // 1. Detección automática de enlaces de EasyBroker (dominio principal, subdominios o micrositios)
+    const ebUrlMatch = rawText.match(/https?:\/\/(?:[a-zA-Z0-9_-]+\.)?easybroker\.com\/[^\s"'>]+/i) ||
+                       rawText.match(/https?:\/\/(?:www\.)?pincali\.com\/[^\s"'>]+/i);
     if (ebUrlMatch) {
       try {
         const scraped = await scrapeEasyBrokerListing(ebUrlMatch[0]);
@@ -169,7 +417,22 @@ export const POST: RequestHandler = async ({ request }) => {
           source: 'easybroker_link'
         });
       } catch (scrapeErr: any) {
-        console.warn('Fallo al scrapear enlace directo de EasyBroker, intentando con IA:', scrapeErr.message);
+        console.warn('Fallo al scrapear enlace directo de EasyBroker, intentando fallback:', scrapeErr.message);
+      }
+    }
+
+    // 2. Detección de cualquier otro enlace web (portales inmobiliarios genéricos, Tokko, Lamudi, etc.)
+    let genericScrapedPhotos: string[] = [];
+    let textToAnalyze = rawText;
+
+    const genericUrlMatch = rawText.match(/https?:\/\/[^\s"'>]+/i);
+    if (genericUrlMatch) {
+      try {
+        const genericData = await scrapeGenericUrl(genericUrlMatch[0]);
+        genericScrapedPhotos = genericData.photos || [];
+        textToAnalyze = `TÍTULO ENLACE: ${genericData.title}\nDESCRIPCIÓN META: ${genericData.ogDesc}\nCONTENIDO DEL SITIO:\n${genericData.bodyText}\n\nTEXTO ORIGINAL COPIADO:\n${rawText}`;
+      } catch (genErr: any) {
+        console.warn('Fallo al pre-scrapear enlace genérico:', genErr.message);
       }
     }
 
@@ -182,7 +445,7 @@ Analiza el siguiente texto crudo (copiado de un grupo de WhatsApp, mensaje o pub
 
 TEXTO COPIADO:
 """
-${rawText}
+${textToAnalyze}
 """
 
 REGLAS DE EXTRACCIÓN:
@@ -200,27 +463,27 @@ REGLAS DE EXTRACCIÓN:
 2. "tipoOperacion": "Venta" o "Renta". Si no lo especifica pero menciona un precio alto (ej. millones), asume "Venta". Si menciona renta mensual, asume "Renta".
 3. "precio": Número entero o decimal limpio sin signos $, ni comas, ni texto (ej. 2500000, 18500). Si no hay precio, null.
 4. "moneda": "MXN" o "USD". Por defecto "MXN" salvo que diga dólares, USD o Dlls.
-5. "colonia": Nombre limpio de la colonia o fraccionamiento en Chihuahua (ej. "Las Granjas", "San Felipe", "Lomas del Santuario", "Cumbres", "Cantera"). Quita palabras como "Colonia", "Fracc.", etc.
-6. "ubicacion": Zona de la ciudad de Chihuahua. Uno de estos valores: "Norte", "Centronorte", "Centro", "Centrosur", "Sur", "Sureste", "Suroeste", "Oriente", "Poniente", "Noroeste", o null si no se puede determinar.
-7. "recamaras": Número entero de recámaras/habitaciones (máximo 6), o null.
-8. "banos": Número entero o decimal de baños completos (máximo 6), o null.
-9. "mediosBanos": Número de medios baños (máximo 6), o null.
+5. "colonia": Nombre limpio de la colonia o fraccionamiento (ej. "Las Granjas", "San Felipe", "Lomas del Santuario", "Cumbres", "Ensenada Centro"). Quita palabras como "Colonia", "Fracc.", etc.
+6. "ubicacion": Ubicación o zona geográfica descriptiva.
+7. "recamaras": Número entero de recámaras/habitaciones (máximo 12), o null.
+8. "banos": Número entero o decimal de baños completos (máximo 12), o null.
+9. "mediosBanos": Número de medios baños, o null.
 10. "estacionamientos": Número de autos en cochera/estacionamiento, o null.
 11. "terreno": Metros cuadrados de terreno (número limpio), o null.
 12. "construccion": Metros cuadrados de construcción (número limpio), o null.
 13. "titulo": Título comercial vendedor formateado como: "[tipoPropiedad] en [tipoOperacion] Col. [colonia], [amenidad o cualidad más atractiva]". Longitud 50 a 70 caracteres. NUNCA menciones nombres de inmobiliarias ni agentes en el título.
 14. "descripcion": Redacción completa, vendedora y bien estructurada del inmueble, usando emojis sobrios, párrafos limpios, distribución y amenidades. Longitud recomendada entre 700 y 1,200 caracteres. PROHIBICIÓN ESTRICTA: Queda TERMINANTEMENTE PROHIBIDO mencionar nombres de agencias, inmobiliarias (ej. Match Home, Century 21, Remax, JGCapital, etc.) o nombres de agentes/asesores en la descripción. La redacción debe ser 100% de marca blanca, enfocada exclusivamente en el inmueble y su ubicación, con un llamado a la acción neutro.
 15. "amenidades": Array de strings evaluando obligatoriamente el título, descripción y características frente al catálogo de 10 amenidades oficiales. Si alguna está presente o implícita por sinónimos en el texto, INCLÚYELA en el array con su nombre EXACTO de la siguiente lista:
-   - "Una planta" (si dice 1 planta, un solo piso, un piso, planta única, etc.)
-   - "Recamara en planta baja" (si dice recámara pb, recámara abajo, cuarto en planta baja, etc.)
-   - "Frente a parque" (si dice frente a parque, frente al parque, vista al parque, área verde, etc.)
-   - "Fraccionamiento privado" (si dice fracc. privado, fracc privado, privada, cerrada, caseta de vigilancia, acceso controlado, seguridad 24/7, coto, etc.)
-   - "Nueva" (si dice a estrenar, nueva, nuevo, por estrenar, recién construida, preventa, etc.)
-   - "Lista para habitar" (si dice lista para mudarse, llave en mano, equipada y lista, para habitarse, etc.)
-   - "Oportunidad" (si dice gran oportunidad, remate, ganga, precio de oportunidad, por debajo de avalúo, etc.)
-   - "Alberca" (si dice alberca, piscina, pool, con alberca, etc.)
-   - "Sobre Avenida Principal" (si dice sobre avenida, sobre ave, sobre blvd, sobre boulevard, calle principal, etc.)
-   - "Patio amplio" (si dice patio grande, amplio patio, mucho patio, gran patio, patio espacioso, etc.)
+   - "Una planta"
+   - "Recamara en planta baja"
+   - "Frente a parque"
+   - "Fraccionamiento privado"
+   - "Nueva"
+   - "Lista para habitar"
+   - "Oportunidad"
+   - "Alberca"
+   - "Sobre Avenida Principal"
+   - "Patio amplio"
 16. "contactoNombre": Si en el texto se menciona el nombre del asesor, contacto o inmobiliaria que lo compartió (ej. "Lic. Juan Pérez"), string o null (para registro interno del contacto, NO para incluir en la descripción).
 17. "contactoTelefono": Si en el texto aparece un teléfono de contacto a 10 dígitos, extráelo limpio (solo dígitos), o null (para registro interno del contacto, NO para la descripción).
 
@@ -250,7 +513,7 @@ RESPONDE ÚNICAMENTE CON UN OBJETO JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA:
 
     // 1. Intentar con Gemini
     if (geminiKey) {
-      const geminiModels = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-3.6-flash'];
+      const geminiModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
       for (const model of geminiModels) {
         try {
           const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
@@ -312,9 +575,14 @@ RESPONDE ÚNICAMENTE CON UN OBJETO JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA:
 
     const parsed = JSON.parse(rawJson);
     parsed.amenidades = detectCatalogAmenities(
-      `${parsed.titulo || ''} ${parsed.descripcion || ''} ${rawText}`,
+      `${parsed.titulo || ''} ${parsed.descripcion || ''} ${textToAnalyze}`,
       Array.isArray(parsed.amenidades) ? parsed.amenidades : []
     );
+
+    if (genericScrapedPhotos.length > 0 && (!parsed.fotos || parsed.fotos.length === 0)) {
+      parsed.fotos = genericScrapedPhotos;
+    }
+
     return json({
       success: true,
       data: parsed

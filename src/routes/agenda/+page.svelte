@@ -1411,32 +1411,7 @@
   .actions-group {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-  }
-
-  .action-btn {
-    background: transparent;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.95rem;
-    color: var(--text-muted, #64748b);
-    transition: all 0.15s ease;
-  }
-
-  .action-btn.edit-btn:hover {
-    color: var(--brand, #6366f1);
-    background: rgba(99, 102, 241, 0.1);
-  }
-
-  .action-btn.delete-btn:hover {
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.1);
+    gap: 0.5rem;
   }
 
   /* ===== ESTADOS DE CARGA Y VACÍO ===== */

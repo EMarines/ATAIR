@@ -134,6 +134,7 @@
   let activeModal: 'texto' | 'easybroker' | 'link' | null = null;
   let modalPhotos: File[] = [];
   let isModalDragging = false;
+  let isImportedViaLink = false;
 
   function openIngestaModal(method: 'texto' | 'easybroker' | 'link') {
     activeModal = method;
@@ -172,6 +173,32 @@
     }
   }
 
+  function handleModalPastePhotos(e: ClipboardEvent) {
+    if (!e.clipboardData) return;
+    const imgFiles: File[] = [];
+    if (e.clipboardData.items && e.clipboardData.items.length > 0) {
+      for (const item of Array.from(e.clipboardData.items)) {
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file && (file.type.startsWith('image/') || /\.(jpe?g|png|webp|avif|gif|bmp|heic|tiff)$/i.test(file.name))) {
+            imgFiles.push(file);
+          }
+        }
+      }
+    }
+    if (imgFiles.length === 0 && e.clipboardData.files && e.clipboardData.files.length > 0) {
+      for (const file of Array.from(e.clipboardData.files)) {
+        if (file.type.startsWith('image/') || /\.(jpe?g|png|webp|avif|gif|bmp|heic|tiff)$/i.test(file.name)) {
+          imgFiles.push(file);
+        }
+      }
+    }
+    if (imgFiles.length > 0) {
+      e.preventDefault();
+      modalPhotos = [...modalPhotos, ...imgFiles];
+    }
+  }
+
   let formData: Record<string, any> = {
     procedencia: '',
     idCompaniaCaptadora: '',
@@ -188,7 +215,7 @@
     fields: [
       {
         name: 'idCompaniaCaptadora',
-        label: 'ID / Nombre de la Compañía Captadora',
+        label: 'Contacto / Inmobiliaria Captadora',
         type: 'contact-select',
         required: false,
         placeholder: 'Buscar agente o inmobiliaria...',
@@ -226,7 +253,9 @@
         required: false,
         options: [
           { label: '1', value: 1 }, { label: '2', value: 2 }, { label: '3', value: 3 },
-          { label: '4', value: 4 }, { label: '5', value: 5 }, { label: '+', value: 6 },
+          { label: '4', value: 4 }, { label: '5', value: 5 }, { label: '6', value: 6 },
+          { label: '7', value: 7 }, { label: '8', value: 8 }, { label: '9', value: 9 },
+          { label: '10+', value: 10 },
         ],
       },
       {
@@ -236,7 +265,9 @@
         required: false,
         options: [
           { label: '1', value: 1 }, { label: '2', value: 2 }, { label: '3', value: 3 },
-          { label: '4', value: 4 }, { label: '5', value: 5 }, { label: '+', value: 6 },
+          { label: '4', value: 4 }, { label: '5', value: 5 }, { label: '6', value: 6 },
+          { label: '7', value: 7 }, { label: '8', value: 8 }, { label: '9', value: 9 },
+          { label: '10+', value: 10 },
         ],
       },
       {
@@ -246,7 +277,7 @@
         required: false,
         options: [
           { label: '1', value: 1 }, { label: '2', value: 2 }, { label: '3', value: 3 },
-          { label: '4', value: 4 }, { label: '5', value: 5 }, { label: '+', value: 6 },
+          { label: '4', value: 4 }, { label: '5', value: 5 }, { label: '6+', value: 6 },
         ],
       },
       {
@@ -256,7 +287,9 @@
         required: false,
         options: [
           { label: '1', value: 1 }, { label: '2', value: 2 }, { label: '3', value: 3 },
-          { label: '4', value: 4 }, { label: '5', value: 5 }, { label: '+', value: 6 },
+          { label: '4', value: 4 }, { label: '5', value: 5 }, { label: '6', value: 6 },
+          { label: '7', value: 7 }, { label: '8', value: 8 }, { label: '9', value: 9 },
+          { label: '10+', value: 10 },
         ],
       },
       { name: 'construccion', label: 'Construcción (m²)', type: 'number', required: false },
@@ -650,7 +683,7 @@
     }
   }
 
-  function applyExtractedPropertyData(p: any, rawSource: string) {
+  function applyExtractedPropertyData(p: any, rawSource: string, isFromLink: boolean = false) {
     if (p.titulo) formData.titulo = p.titulo;
     if (p.descripcion) formData.descripcion = p.descripcion;
     if (p.tipoOperacion) formData.tipoOperacion = p.tipoOperacion;
@@ -659,22 +692,25 @@
     if (p.tipoPropiedad) formData.tipoPropiedad = p.tipoPropiedad;
 
     if (p.recamaras !== null && p.recamaras !== undefined && p.recamaras !== '') {
-      formData.recamaras = Math.min(Number(p.recamaras), 6);
+      formData.recamaras = Number(p.recamaras);
     }
     if (p.banos !== null && p.banos !== undefined && p.banos !== '') {
-      formData.banos = Math.min(Number(p.banos), 6);
+      formData.banos = Number(p.banos);
     }
     if (p.mediosBanos !== null && p.mediosBanos !== undefined && p.mediosBanos !== '') {
-      formData.mediosBanos = Math.min(Number(p.mediosBanos), 6);
+      formData.mediosBanos = Number(p.mediosBanos);
     }
     if (p.estacionamientos !== null && p.estacionamientos !== undefined && p.estacionamientos !== '') {
-      formData.estacionamientos = Math.min(Number(p.estacionamientos), 6);
+      formData.estacionamientos = Number(p.estacionamientos);
     }
 
     if (p.construccion !== undefined && p.construccion !== null && p.construccion !== '') formData.construccion = cleanNumber(p.construccion);
     if (p.terreno !== undefined && p.terreno !== null && p.terreno !== '') formData.terreno = cleanNumber(p.terreno);
+    if (p.anioConstruccion !== undefined && p.anioConstruccion !== null && p.anioConstruccion !== '') formData.anioConstruccion = cleanNumber(p.anioConstruccion);
+    else if (p.anoConstruccion !== undefined && p.anoConstruccion !== null && p.anoConstruccion !== '') formData.anioConstruccion = cleanNumber(p.anoConstruccion);
 
     if (p.colonia) formData.colonia = p.colonia;
+    if (p.codigoPostal) formData.codigoPostal = String(p.codigoPostal).trim();
     if (p.ubicacion) {
       formData.ubicacion = p.ubicacion;
     } else if (p.colonia) {
@@ -689,22 +725,18 @@
     );
 
     if (Array.isArray(p.fotos) && p.fotos.length > 0) {
-      existingImages = p.fotos;
+      existingImages = p.fotos.map((u: string) => String(u).replace(/&amp;/g, '&'));
     }
 
     if (p.easybrokerId) {
       importedEbId = p.easybrokerId;
     }
 
-    if (p.contactoTelefono && !formData.telefonoContactoCaptador) {
-      formData.telefonoContactoCaptador = String(p.contactoTelefono).replace(/\D/g, '').trim();
-    }
-    if (p.contactoNombre && (!formData.nombreContactoCaptador || formData.nombreContactoCaptador === 'Match Home')) {
-      formData.nombreContactoCaptador = p.contactoNombre;
-    }
-    if (p.companiaCaptadora && (!formData.companiaCaptadora || formData.companiaCaptadora === 'Match Home')) {
-      formData.companiaCaptadora = p.companiaCaptadora;
-      formData.idCompaniaCaptadora = p.companiaCaptadora;
+    if (isFromLink) {
+      isImportedViaLink = true;
+      formData.procedencia = ''; // El usuario selecciona manualmente el tipo de sinergia
+    } else {
+      isImportedViaLink = false;
     }
   }
 
@@ -731,10 +763,10 @@
       const parseData = await parseRes.json().catch(() => ({}));
 
       if (parseRes.ok && parseData.success && parseData.data) {
-        applyExtractedPropertyData(parseData.data, cleanUrl);
+        applyExtractedPropertyData(parseData.data, cleanUrl, true);
         const numFotos = existingImages.length;
         const fotosMsg = numFotos > 0 ? ` Se precargaron ${numFotos} fotos originales.` : '';
-        linkSuccess = `¡Propiedad extraída con éxito desde el enlace!${fotosMsg} Puedes revisar los datos abajo.`;
+        linkSuccess = `¡Propiedad extraída con éxito desde el enlace!${fotosMsg} Asigna el contacto captador y la sinergia abajo.`;
         linkUrl = '';
         activeModal = null;
 
@@ -781,6 +813,7 @@
       return;
     }
 
+    const isLinkSource = cleanText.startsWith('http://') || cleanText.startsWith('https://');
     isParsingWhatsApp = true;
     try {
       const res = await fetch('/api/parse-property-text', {
@@ -795,7 +828,7 @@
       }
 
       const p = data.data;
-      applyExtractedPropertyData(p, cleanText);
+      applyExtractedPropertyData(p, cleanText, isLinkSource);
 
       const numFotosDescargadas = Array.isArray(p.fotos) && p.fotos.length > 0 ? p.fotos.length : 0;
       const fotosMsg = numFotosDescargadas > 0
@@ -966,15 +999,19 @@
       uploadError = 'Por favor ingresa un título para la propiedad.';
       return;
     }
+    if (!formData.procedencia) {
+      uploadError = 'Por favor selecciona el Tipo de Procedencia / Sinergia (S1, S2, S3 o Directa MH).';
+      const formEl = document.querySelector('.form-wrapper');
+      if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
 
     isSubmitting = true;
     uploadStatus = 'Iniciando subida...';
     uploadError = null;
 
     try {
-      const procedenciaCode = (importedEbId && importedEbId.toUpperCase().startsWith('EB-'))
-        ? 'EB'
-        : (formData.procedencia || 'MH');
+      const procedenciaCode = formData.procedencia || 'S1';
       const procedenciaLabels: Record<string, string> = {
         'MH': 'Match Home (MH)',
         'EB': 'EasyBroker (EB)',
@@ -985,16 +1022,6 @@
       const procedenciaNombre = procedenciaLabels[procedenciaCode] ?? procedenciaCode;
       const isSynergy = procedenciaCode === 'S1' || procedenciaCode === 'S2' || procedenciaCode === 'S3';
 
-      // VALIDACIÓN ESTRICTA DE SINERGIA: Debe tener contacto registrado y teléfono
-      if (isSynergy) {
-        if (!formData.idContactoCaptador || formData.idContactoCaptador.startsWith('pinned-mh')) {
-          throw new Error(`Para una propiedad de sinergia (${procedenciaCode}), debes seleccionar un contacto o inmobiliaria registrada en el catálogo de Contactos.`);
-        }
-        if (!formData.telefonoContactoCaptador || String(formData.telefonoContactoCaptador).trim() === '') {
-          throw new Error(`El contacto o inmobiliaria seleccionada (${formData.idCompaniaCaptadora || formData.nombreContactoCaptador || 'Sinergia'}) no tiene registrado un número de teléfono. Por favor añade su teléfono en Contactos para poder asignarle la propiedad.`);
-        }
-      }
-
       uploadStatus = 'Generando clave con procedencia...';
       const idCompaniaCaptadora = formData.idCompaniaCaptadora ? String(formData.idCompaniaCaptadora).trim() : '';
       const idContactoCaptador = formData.idContactoCaptador ? String(formData.idContactoCaptador).trim() : '';
@@ -1003,7 +1030,7 @@
       const companiaCaptadora = formData.companiaCaptadora ? String(formData.companiaCaptadora).trim() : idCompaniaCaptadora;
       
       let clavePropiedad = '';
-      if (importedEbId && importedEbId.toUpperCase().startsWith('EB-')) {
+      if (importedEbId && importedEbId.toUpperCase().startsWith('EB-') && !isSynergy) {
         clavePropiedad = importedEbId.toUpperCase().trim();
       } else {
         clavePropiedad = await generatePropertyKey(procedenciaCode);
@@ -1400,16 +1427,20 @@
               <div
                 class="modal-dropzone"
                 class:dragging={isModalDragging}
+                tabindex="0"
+                role="region"
+                aria-label="Zona para arrastrar o pegar fotos"
                 on:dragenter|preventDefault|stopPropagation={() => isModalDragging = true}
                 on:dragover|preventDefault|stopPropagation={() => isModalDragging = true}
                 on:dragleave|preventDefault|stopPropagation={() => isModalDragging = false}
                 on:drop|preventDefault|stopPropagation={handleModalDropPhotos}
+                on:paste={handleModalPastePhotos}
               >
                 {#if modalPhotos.length === 0}
                   <div class="dropzone-empty">
                     <span class="dropzone-icon">📷</span>
-                    <p>Arrastra fotos de la propiedad aquí o <label class="file-browse-link">selecciona archivos<input type="file" multiple accept="image/*" on:change={handleModalFileSelect} hidden /></label></p>
-                    <span class="dropzone-hint">Opcional: puedes arrastrarlas ahora o agregarlas en el formulario</span>
+                    <p>Arrastra fotos de la propiedad aquí, <label class="file-browse-link">selecciona archivos<input type="file" multiple accept="image/*" on:change={handleModalFileSelect} hidden /></label> o pega con <kbd>Ctrl+V</kbd></p>
+                    <span class="dropzone-hint">Opcional: puedes copiarlas desde una carpeta y pegarlas directamente</span>
                   </div>
                 {:else}
                   <div class="dropzone-filled">
@@ -1590,17 +1621,6 @@
           <button type="button" class="btn-alert-scroll" on:click={() => { ebSuccess = null; waParseSuccess = null; linkSuccess = null; }}>
             ✏️ Revisar / Continuar editando campos abajo
           </button>
-          {#if importedEbId}
-            <a
-              href="https://www.easybroker.com/agent/mls_properties?query={encodeURIComponent(importedEbId)}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="btn-alert-eb-link"
-              title="Buscar ficha del colega captador en EasyBroker MLS"
-            >
-              🔍 Ver Captador en Bolsa EB ({importedEbId}) ↗
-            </a>
-          {/if}
         </div>
       </div>
       <button type="button" class="alert-close" on:click={() => { ebSuccess = null; waParseSuccess = null; linkSuccess = null; }}>✕</button>
@@ -1618,21 +1638,6 @@
             <label for={field.name} class:required={field.required !== false}>{field.label}</label>
 
             {#if field.type === 'contact-select'}
-              {#if importedEbId}
-                <div class="eb-colleague-bar">
-                  <div class="eb-colleague-info">
-                    <span>🔑 Clave EasyBroker: <strong>{importedEbId}</strong></span>
-                  </div>
-                  <a
-                    href="https://www.easybroker.com/agent/mls_properties?query={encodeURIComponent(importedEbId)}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="btn-eb-colleague"
-                  >
-                    🔍 Ver Captador Original en Bolsa EB ↗
-                  </a>
-                </div>
-              {/if}
               <ContactSelector
                 bind:value={formData[field.name]}
                 bind:contactId={formData.idContactoCaptador}
@@ -1759,18 +1764,29 @@
                 on:dragend={handleExistingDragEnd}
               >
                 <img src={imgUrl} alt="Foto {idx + 1}" draggable="false" />
+                <span class="badge-index">#{idx + 1}</span>
                 {#if idx === 0}
                   <span class="badge-principal">⭐ Principal</span>
                 {/if}
 
-                <!-- Quick Move Controls on Hover -->
-                <div class="quick-reorder-bar">
+                <!-- Quick Move Controls -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <div
+                  class="quick-reorder-bar"
+                  draggable="false"
+                  on:pointerdown|stopPropagation
+                  on:mousedown|stopPropagation
+                  on:click|stopPropagation
+                >
                   {#if idx > 0}
                     <button
                       type="button"
                       class="btn-nav-img"
                       title="Mover a la izquierda"
-                      on:click|stopPropagation={() => moveExistingImage(idx, idx - 1)}
+                      draggable="false"
+                      on:pointerdown|stopPropagation
+                      on:mousedown|stopPropagation
+                      on:click|stopPropagation|preventDefault={() => moveExistingImage(idx, idx - 1)}
                     >
                       ◀
                     </button>
@@ -1778,7 +1794,10 @@
                       type="button"
                       class="btn-nav-img star-btn"
                       title="Hacer foto principal"
-                      on:click|stopPropagation={() => moveExistingImage(idx, 0)}
+                      draggable="false"
+                      on:pointerdown|stopPropagation
+                      on:mousedown|stopPropagation
+                      on:click|stopPropagation|preventDefault={() => moveExistingImage(idx, 0)}
                     >
                       ⭐
                     </button>
@@ -1788,7 +1807,10 @@
                       type="button"
                       class="btn-nav-img"
                       title="Mover a la derecha"
-                      on:click|stopPropagation={() => moveExistingImage(idx, idx + 1)}
+                      draggable="false"
+                      on:pointerdown|stopPropagation
+                      on:mousedown|stopPropagation
+                      on:click|stopPropagation|preventDefault={() => moveExistingImage(idx, idx + 1)}
                     >
                       ▶
                     </button>
@@ -1798,8 +1820,12 @@
                 <button
                   type="button"
                   class="btn-remove-existing"
-                  on:click|stopPropagation={() => existingImages = existingImages.filter((_, i) => i !== idx)}
-                  title="Eliminar esta foto"
+                  aria-label="Eliminar foto"
+                  title="Eliminar foto"
+                  draggable="false"
+                  on:pointerdown|stopPropagation
+                  on:mousedown|stopPropagation
+                  on:click|stopPropagation|preventDefault={() => existingImages = existingImages.filter((_, i) => i !== idx)}
                 >
                   ✕
                 </button>
@@ -1856,6 +1882,19 @@
       {/if}
 
       <div class="submit-actions">
+        <button
+          type="button"
+          class="btn-cancel-form"
+          on:click={resetForm}
+          disabled={isSubmitting}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+          Limpiar Formulario
+        </button>
+
         <button type="submit" class="btn-primary" disabled={isSubmitting}>
           {#if isSubmitting}
             <span class="btn-spinner"></span>
@@ -2011,55 +2050,70 @@
     -webkit-user-drag: none;
   }
 
+  .existing-item .badge-index {
+    position: absolute;
+    bottom: 0.35rem;
+    left: 0.35rem;
+    background: rgba(0, 0, 0, 0.75);
+    color: #e2e8f0;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.25rem;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    z-index: 4;
+  }
+
   .existing-item .badge-principal {
     position: absolute;
-    top: 0.3rem;
-    left: 0.3rem;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white;
-    font-size: 0.62rem;
-    font-weight: 700;
-    padding: 0.18rem 0.45rem;
+    top: 0.35rem;
+    left: 0.35rem;
+    background: linear-gradient(135deg, #eab308, #ca8a04);
+    color: #111827;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.2rem 0.5rem;
     border-radius: 0.3rem;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
     pointer-events: none;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
     z-index: 5;
   }
 
   .existing-item .quick-reorder-bar {
     position: absolute;
     bottom: 0.35rem;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 0.35rem;
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    background: rgba(15, 23, 42, 0.88);
-    backdrop-filter: blur(6px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    padding: 0.18rem 0.35rem;
-    border-radius: 9999px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.2rem 0.35rem;
+    border-radius: 0.4rem;
+    opacity: 0.92;
+    transition: opacity 0.2s ease, transform 0.2s ease;
     z-index: 10;
   }
 
   .existing-item:hover .quick-reorder-bar {
     opacity: 1;
+    transform: scale(1.04);
   }
 
   .existing-item .btn-nav-img {
-    background: rgba(255, 255, 255, 0.12);
-    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.14);
+    color: #f8fafc;
     border: none;
-    border-radius: 4px;
-    width: 20px;
-    height: 20px;
+    border-radius: 3px;
+    width: 22px;
+    height: 22px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     cursor: pointer;
     transition: background-color 0.15s ease, transform 0.15s ease;
   }
@@ -2067,7 +2121,7 @@
   .existing-item .btn-nav-img:hover {
     background: #6366f1;
     color: #ffffff;
-    transform: scale(1.15);
+    transform: scale(1.18);
   }
 
   .existing-item .btn-nav-img.star-btn {
@@ -2080,27 +2134,30 @@
 
   .btn-remove-existing {
     position: absolute;
-    top: 0.3rem;
-    right: 0.3rem;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
-    border: none;
+    top: 0.35rem;
+    right: 0.35rem;
+    background-color: rgba(15, 23, 42, 0.82);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     line-height: 1;
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s ease;
+    transition: all 0.2s ease;
     z-index: 10;
+    backdrop-filter: blur(4px);
   }
 
   .btn-remove-existing:hover {
     background-color: #ef4444;
-    transform: scale(1.1);
+    color: #ffffff;
+    border-color: #ef4444;
+    transform: scale(1.15);
   }
 
   .page-header-row {
@@ -2255,8 +2312,39 @@
 
   .submit-actions {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
+    gap: 1rem;
     margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-cancel-form {
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    padding: 0.85rem 1.4rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-cancel-form:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  }
+
+  .btn-cancel-form:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .btn-primary {

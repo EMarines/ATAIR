@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import {
 		systStatus,
@@ -127,6 +128,9 @@
 					email: contactData.email || '',
 					phone: contactData.telephon || '',
 					notes: contactData.notes || '',
+					company: (contactData as any).company || (contactData as any).inmobiliaria || '',
+					inmobiliaria: (contactData as any).inmobiliaria || (contactData as any).company || '',
+					procedencia: contactData.procedencia || '',
 					typeContact: contactData.typeContact || '',
 					contactMode: contactData.selecMC || '',
 					budget: contactData.budget || 0,
@@ -759,10 +763,16 @@
 	let contact: Contact = existingContact
 		? {
 				...existingContact,
+				company: (existingContact as any).company || (existingContact as any).inmobiliaria || '',
+				inmobiliaria: (existingContact as any).inmobiliaria || (existingContact as any).company || '',
+				procedencia: existingContact.procedencia || '',
 				typeContact: normalizeTypeContact(existingContact.typeContact)
 		  }
 		: {
 				budget: 0, // Valor numérico por defecto
+				company: '',
+				inmobiliaria: '',
+				procedencia: '',
 				comContact: '',
 				contactStage: 'Etapa 1',
 				createdAt: Date.now(),
@@ -789,6 +799,14 @@
 
 	// Variable string para el input de presupuesto, inicializada desde el contact.budget actual (que ya considera existingContact)
 	let budgetStringForInput: string = String(contact.budget);
+
+	$: isAgentType = Boolean(
+		contact.typeContact &&
+		(contact.typeContact.toLowerCase().includes('agente') ||
+		 contact.typeContact.toLowerCase().includes('inmobiliaria') ||
+		 contact.typeContact.toLowerCase().includes('colaborador') ||
+		 contact.typeContact.toLowerCase().includes('asesor'))
+	);
 
 	onMount(() => {
 		if (typeof window !== 'undefined') {
@@ -880,7 +898,19 @@
 			// Validar que los campos requeridos estén presentes
 			if (!contact.name || !contact.telephon) {
 				errorMessage = 'Nombre y teléfono son campos obligatorios';
+				showAutoNotification(errorMessage, 'error');
 				return;
+			}
+
+			if (isAgentType) {
+				if (!contact.company || !contact.company.trim()) {
+					errorMessage = 'La Empresa / Inmobiliaria es obligatoria para un Agente Inmobiliario';
+					showAutoNotification(errorMessage, 'error');
+					return;
+				}
+				if (!contact.procedencia) {
+					contact.procedencia = 'S1';
+				}
 			}
 
 			// Parsear budgetStringForInput a número para guardar
@@ -942,6 +972,9 @@
 				typeContact: contact.typeContact || '',
 				// Propiedades opcionales - usar cadenas vacías para campos de texto
 				color: contact.color || '',
+				company: (contact as any).company || (contact as any).inmobiliaria || '',
+				inmobiliaria: (contact as any).inmobiliaria || (contact as any).company || '',
+				procedencia: contact.procedencia || '',
 				contactType: contact.contactType || '',
 				contMode: contact.contMode || '',
 				notes: contact.notes || '',
@@ -1250,7 +1283,13 @@
 					name="Tipo de Contacto"
 					choices={typeContacts}
 					value={contact.typeContact}
-					on:change={(e) => (contact.typeContact = e.detail)}
+					on:change={(e) => {
+						contact.typeContact = e.detail;
+						const t = (e.detail || '').toLowerCase();
+						if ((t.includes('agente') || t.includes('inmobiliaria') || t.includes('colaborador') || t.includes('asesor')) && !contact.procedencia) {
+							contact.procedencia = 'S1';
+						}
+					}}
 				/>
 				<InputOptions
 					identificador="selecMC"
@@ -1260,6 +1299,52 @@
 					on:change={(e) => (contact.selecMC = e.detail)}
 				/>
 			</div>
+
+			<!-- Si se selecciona Agente Inmobiliario, se despliegan Empresa y Tipo de Sinergia -->
+			{#if isAgentType}
+				<div class="agent-corporate-section" transition:slide={{ duration: 220 }}>
+					<div class="inp__lat">
+						<div class="input-group" style="width: 100%;">
+							<InputText
+								identifier="company"
+								name="Empresa / Inmobiliaria *"
+								bind:value={contact.company}
+							/>
+						</div>
+					</div>
+
+					<div class="inp__lat">
+						<div class="synergy-field-wrapper">
+							<span class="synergy-field-title">Tipo de Sinergia *:</span>
+							<div class="synergy-radio-pills">
+								<label class="synergy-pill" class:active={contact.procedencia === 'S1'}>
+									<input type="radio" bind:group={contact.procedencia} value="S1" />
+									<span class="synergy-pill-badge badge-s1">S1</span>
+									<span class="synergy-pill-text">Sinergia 1 (Compartida)</span>
+								</label>
+
+								<label class="synergy-pill" class:active={contact.procedencia === 'S2'}>
+									<input type="radio" bind:group={contact.procedencia} value="S2" />
+									<span class="synergy-pill-badge badge-s2">S2</span>
+									<span class="synergy-pill-text">Sinergia 2 (Red Externa)</span>
+								</label>
+
+								<label class="synergy-pill" class:active={contact.procedencia === 'S3'}>
+									<input type="radio" bind:group={contact.procedencia} value="S3" />
+									<span class="synergy-pill-badge badge-s3">S3</span>
+									<span class="synergy-pill-text">Sinergia 3 (Alianza)</span>
+								</label>
+
+								<label class="synergy-pill" class:active={contact.procedencia === 'MH'}>
+									<input type="radio" bind:group={contact.procedencia} value="MH" />
+									<span class="synergy-pill-badge badge-mh">MH</span>
+									<span class="synergy-pill-text">Directa Match Home</span>
+								</label>
+							</div>
+						</div>
+					</div>
+				</div>
+			{/if}
 
 			<div class="inp__lat">
 				<textarea class="notes" placeholder="Notas adicionales..." bind:value={contact.notes}
@@ -1654,5 +1739,105 @@
 		font-size: 14px;
 		line-height: 1.4;
 		white-space: nowrap;
+	}
+
+	/* Estilos para el contenedor y selector de Sinergia (Pills) */
+	.agent-corporate-section {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		gap: 12px;
+		background: rgba(99, 102, 241, 0.04);
+		border: 1px solid rgba(99, 102, 241, 0.15);
+		border-radius: 8px;
+		padding: 12px 14px;
+		margin: 4px 0 8px;
+		box-sizing: border-box;
+	}
+
+	.synergy-field-wrapper {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		gap: 0.45rem;
+		margin-top: 0.25rem;
+		margin-bottom: 0.25rem;
+	}
+
+	.synergy-field-title {
+		font-size: 0.82rem;
+		font-weight: 600;
+		color: var(--text-secondary, #cbd5e1);
+		margin-bottom: 0.15rem;
+	}
+
+	.synergy-radio-pills {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		align-items: center;
+		width: 100%;
+	}
+
+	.synergy-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.45rem 0.75rem;
+		background: rgba(16, 19, 34, 0.75);
+		border: 1px solid rgba(99, 102, 241, 0.25);
+		border-radius: 8px;
+		cursor: pointer;
+		transition: all 0.18s ease;
+		user-select: none;
+	}
+
+	.synergy-pill input[type="radio"] {
+		display: none;
+	}
+
+	.synergy-pill:hover {
+		border-color: rgba(99, 102, 241, 0.5);
+		background: rgba(99, 102, 241, 0.1);
+	}
+
+	.synergy-pill.active {
+		border-color: #6366f1;
+		background: rgba(99, 102, 241, 0.22);
+		box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.45);
+	}
+
+	.synergy-pill-badge {
+		font-size: 0.75rem;
+		font-weight: 700;
+		padding: 0.1rem 0.4rem;
+		border-radius: 4px;
+		flex-shrink: 0;
+	}
+
+	.badge-s1 {
+		background: rgba(16, 185, 129, 0.25);
+		color: #34d399;
+	}
+
+	.badge-s2 {
+		background: rgba(6, 182, 212, 0.25);
+		color: #22d3ee;
+	}
+
+	.badge-s3 {
+		background: rgba(245, 158, 11, 0.25);
+		color: #fbbf24;
+	}
+
+	.badge-mh {
+		background: rgba(99, 102, 241, 0.25);
+		color: #818cf8;
+	}
+
+	.synergy-pill-text {
+		font-size: 0.8rem;
+		color: var(--text-secondary, #cbd5e1);
+		font-weight: 500;
 	}
 </style>
