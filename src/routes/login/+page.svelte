@@ -5,7 +5,8 @@
 		registerWithEmailPassword,
 		userStore,
 		userProfile,
-		authLoading
+		authLoading,
+		authInitialized
 	} from '$lib/firebase/authManager';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -32,7 +33,7 @@
 	});
 
 	// Suscribirse reactivamente para redirigir si el usuario ya está autenticado
-	$: if ($userStore) {
+	$: if ($userStore || $userProfile) {
 		goto('/');
 	}
 
@@ -120,7 +121,7 @@
 	}
 </script>
 
-{#if !$userStore && (!$userProfile || !$authLoading)}
+{#if $authInitialized && !$userStore && !$userProfile}
 <div class="container">
 	<div class="authContainer">
 		<form on:submit|preventDefault={() => handleAuth(email, password)}>
@@ -184,11 +185,29 @@
 		</div>
 	</div>
 </div>
+{:else}
+<div class="container">
+	<div class="spinner"></div>
+</div>
 {/if}
 
-<!-- Estilos (sin cambios) -->
+<!-- Estilos -->
 <style>
-	/* ... tus estilos ... */
+	.spinner {
+		width: 40px;
+		height: 40px;
+		border: 4px solid rgba(255, 255, 255, 0.1);
+		border-left-color: #6b21a8;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
 	.container {
 		height: 100vh;
 		display: flex;

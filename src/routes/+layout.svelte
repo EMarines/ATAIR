@@ -32,14 +32,14 @@
 		await initializeAuthManager();
 	});
 
-	// Si tenemos perfil (desde caché local o autenticado), inicializar listeners de inmediato sin esperar
-	$: if ($userProfile) {
+	// Si tenemos perfil o usuario (desde caché local o autenticado), inicializar listeners de inmediato sin esperar
+	$: if ($userProfile || $userStore) {
 		const role = $userProfile?.role || 'user';
 		if (currentSetupRole !== role) {
 			currentSetupRole = role;
 			setupFirestoreListeners($userProfile);
 		}
-	} else if ($authInitialized && !$userStore) {
+	} else if ($authInitialized && !$userStore && !$userProfile) {
 		currentSetupRole = null;
 		cleanupListeners();
 	}
@@ -50,10 +50,11 @@
 	}
 
 	function handleRedirection(path: string, user: any, profile: any) {
+		if (!$authInitialized) return;
 		const isPublic = isPublicRoute(path);
 
 		// 1. Caso: Usuario NO autenticado
-		if (!user) {
+		if (!user && !profile) {
 			if (!isPublic) {
 				goto('/login');
 			}
@@ -184,7 +185,7 @@
 <div class="app-container">
 	<NotificationContainer />
 
-	{#if $authLoading && !$userProfile}
+	{#if $authLoading && !$userStore && !$userProfile}
 		<div class="loading-overlay">
 			<div class="spinner"></div>
 			<p>Cargando sesión...</p>

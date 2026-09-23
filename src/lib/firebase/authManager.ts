@@ -15,6 +15,16 @@ import { writable, get } from 'svelte/store';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 
+function getInitialUser() {
+  if (!browser) return null;
+  try {
+    const raw = localStorage.getItem('atair_cached_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 function getInitialProfile() {
   if (!browser) return null;
   try {
@@ -25,13 +35,14 @@ function getInitialProfile() {
   }
 }
 
+const initialUser = getInitialUser();
 const initialProfile = getInitialProfile();
 
-// Store para el estado del usuario
-export const userStore = writable<User | null>(null);
+// Store para el estado del usuario con carga instantánea de caché
+export const userStore = writable<User | any | null>(initialUser);
 export const userProfile = writable<any>(initialProfile);
 export const authInitialized = writable(false);
-export const authLoading = writable(true);
+export const authLoading = writable(!initialUser && !initialProfile);
 
 // Variable para asegurar que el listener se registra una sola vez
 let authListenerAttached = false;
@@ -107,16 +118,17 @@ export async function initializeAuthManager() {
     return;
   }
 
-  // Timeout de seguridad: nunca dejar la pantalla trabada en "Cargando sesión..."
-  setTimeout(() => {
-    if (get(authLoading)) {
-      console.log('⚡ [AuthManager] Timeout de seguridad: liberando UI');
+  // Timeout de seguridad preventivo solo si Firebase falla completamente
+  const timeoutId = setTimeout(() => {
+    if (!get(authInitialized)) {
+      console.log('⚡ [AuthManager] Timeout de seguridad de inicialización');
       authLoading.set(false);
       authInitialized.set(true);
     }
-  }, 1000);
+  }, 4000);
 
   onAuthStateChanged(auth, (user) => {
+    clearTimeout(timeoutId);
     console.log('🔥 [AuthManager] Estado cambiado:', user ? `Usuario: ${user.email}` : 'Sin usuario');
     
     if (profileUnsubscribe) {
@@ -126,6 +138,16 @@ export async function initializeAuthManager() {
 
     if (user) {
       userStore.set(user);
+      if (browser) {
+        try {
+          localStorage.setItem('atair_cached_user', JSON.stringify({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName
+          }));
+        } catch {}
+      }
+
       const currentProfile = get(userProfile);
       if (!currentProfile) {
         const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com';
@@ -142,6 +164,7 @@ export async function initializeAuthManager() {
       userProfile.set(null);
       if (browser) {
         try {
+          localStorage.removeItem('atair_cached_user');
           localStorage.removeItem('atair_cached_profile');
         } catch {}
       }
@@ -176,8 +199,11 @@ export async function ensureValidToken() {
  */
 export async function handleLogout() {
   try {
+    userStore.set(null);
+    userProfile.set(null);
     if (browser) {
       try {
+        localStorage.removeItem('atair_cached_user');
         localStorage.removeItem('atair_cached_profile');
       } catch {}
     }
@@ -192,6 +218,7 @@ export async function handleLogout() {
     userProfile.set(null);
     if (browser) {
       try {
+        localStorage.removeItem('atair_cached_user');
         localStorage.removeItem('atair_cached_profile');
       } catch {}
     }
@@ -270,7 +297,14 @@ export async function loginWithEmailPassword(email: string, password: string) {
             const quickProfile = { email: user.email, role: isAdmin ? 'admin' : 'user', uid: user.uid };
             userProfile.set(quickProfile);
             if (browser) {
-                try { localStorage.setItem('atair_cached_profile', JSON.stringify(quickProfile)); } catch {}
+                try {
+                    localStorage.setItem('atair_cached_user', JSON.stringify({
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName
+                    }));
+                    localStorage.setItem('atair_cached_profile', JSON.stringify(quickProfile));
+                } catch {}
             }
             authLoading.set(false);
             authInitialized.set(true);
@@ -308,7 +342,14 @@ export async function registerWithEmailPassword(email: string, password: string)
             const quickProfile = { email: user.email, role: isAdmin ? 'admin' : 'user', uid: user.uid };
             userProfile.set(quickProfile);
             if (browser) {
-                try { localStorage.setItem('atair_cached_profile', JSON.stringify(quickProfile)); } catch {}
+                try {
+                    localStorage.setItem('atair_cached_user', JSON.stringify({
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName
+                    }));
+                    localStorage.setItem('atair_cached_profile', JSON.stringify(quickProfile));
+                } catch {}
             }
             authLoading.set(false);
             authInitialized.set(true);
