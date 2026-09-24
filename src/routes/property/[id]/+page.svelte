@@ -512,8 +512,8 @@
 						<p class="alta__prop">Alta: {formatDate(Number(property.created_at))}</p>
 					</div>
 					{#if property.source === 'synergy' || property.procedencia?.startsWith('S') || property.companiaCaptadora || property.idCompaniaCaptadora}
+						{@const procLabel = (property.procedencia || '').replace(/^Sinergia\s*/i, '').trim()}
 						<div class="prop__captador_row">
-							{@const procLabel = (property.procedencia || '').replace(/^Sinergia\s*/i, '').trim()}
 							<span class="badge-syn-tag">
 								🤝 {procLabel ? `${procLabel}: ` : ''}{property.nombreContactoCaptador || property.companiaCaptadora || property.idCompaniaCaptadora || 'Aliada'}{property.nombreContactoCaptador && (property.companiaCaptadora || property.idCompaniaCaptadora) && property.nombreContactoCaptador !== (property.companiaCaptadora || property.idCompaniaCaptadora) ? ` (${property.companiaCaptadora || property.idCompaniaCaptadora})` : ''}
 							</span>
