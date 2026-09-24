@@ -20,23 +20,6 @@
 
   const navActions: NavAction[] = [
     {
-      id: 'properties',
-      path: '/properties',
-      icon: 'fa-solid fa-house',
-      title: 'Propiedades',
-      description: 'Catálogo y fichas',
-      color: '#6366f1'
-    },
-    {
-      id: 'subir-propiedad',
-      path: '/subir-propiedad',
-      icon: 'fa-solid fa-plus-circle',
-      title: 'Subir Propiedad',
-      description: 'Alta manual con fotos',
-      color: '#10b981',
-      adminOnly: true
-    },
-    {
       id: 'contacts',
       path: '/contacts',
       icon: 'fa-solid fa-users',
@@ -44,6 +27,14 @@
       description: 'Leads y agentes',
       color: '#8b5cf6',
       adminOnly: true
+    },
+    {
+      id: 'properties',
+      path: '/properties',
+      icon: 'fa-solid fa-house',
+      title: 'Propiedades',
+      description: 'Catálogo y fichas',
+      color: '#6366f1'
     },
     {
       id: 'agenda',

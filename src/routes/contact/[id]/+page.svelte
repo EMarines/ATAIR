@@ -1291,9 +1291,19 @@
 		flex-wrap: wrap;
 	}
 
-	i {
-		font-size: 1.5rem;
-		padding: 5px 10px 5px 0;
+	button i,
+	.btn__common i {
+		font-size: 1rem;
+		padding: 0 6px 0 0;
+	}
+
+	:global(.action-icon) {
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		padding: 0 !important;
+		margin: 0 !important;
+		box-sizing: border-box !important;
 	}
 
 	.to__show {
@@ -1404,8 +1414,9 @@
 		textarea {
 			width: 100%;
 		}
-		i {
-			padding-right: 25px;
+		button i,
+		.btn__common i {
+			padding-right: 6px;
 		}
 		.waSave {
 			flex-direction: column;

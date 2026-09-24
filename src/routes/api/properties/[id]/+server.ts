@@ -57,32 +57,6 @@ export const GET: RequestHandler = async ({ params }) => {
 		}
 	}
 
-	// 2. Si no se encontró en ninguna cuenta propia (404), intentar en la Bolsa Inmobiliaria (MLS)
-	for (const acc of accounts) {
-		try {
-			const headers = {
-				'X-Authorization': acc.key,
-				'Content-Type': 'application/json',
-				'Accept': 'application/json'
-			};
-			const mlsResponse = await fetch(`https://api.easybroker.com/v1/mls_properties/${cleanId}`, { headers });
-			if (mlsResponse.ok) {
-				const property = await mlsResponse.json();
-				property._eb_account = 'MLS';
-				return json(property);
-			}
-			if (mlsResponse.status === 403) {
-				lastStatus = 403;
-			}
-		} catch {}
-	}
-
-	if (lastStatus === 403) {
-		return json({
-			error: `La clave "${cleanId}" pertenece a otra inmobiliaria externa de EasyBroker. Tu cuenta no tiene activo el add-on API de Bolsa Inmobiliaria (MLS). Para registrarla fácilmente, copia y pega el texto en la herramienta "Pegar Texto de WhatsApp" abajo.`
-		}, { status: 403 });
-	}
-
 	return json({
 		error: `La clave "${cleanId}" no fue encontrada en ninguna de tus 2 cuentas de EasyBroker (JGCapital ni MatchHome Personal). Puedes capturarla pegando su texto en la herramienta "Pegar Texto de WhatsApp" abajo.`
 	}, { status: 404 });

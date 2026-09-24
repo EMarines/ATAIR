@@ -513,8 +513,9 @@
 					</div>
 					{#if property.source === 'synergy' || property.procedencia?.startsWith('S') || property.companiaCaptadora || property.idCompaniaCaptadora}
 						<div class="prop__captador_row">
+							{@const procLabel = (property.procedencia || '').replace(/^Sinergia\s*/i, '').trim()}
 							<span class="badge-syn-tag">
-								🤝 Sinergia {property.procedencia || ''}: {property.nombreContactoCaptador || property.companiaCaptadora || property.idCompaniaCaptadora || 'Aliada'}{property.nombreContactoCaptador && (property.companiaCaptadora || property.idCompaniaCaptadora) && property.nombreContactoCaptador !== (property.companiaCaptadora || property.idCompaniaCaptadora) ? ` (${property.companiaCaptadora || property.idCompaniaCaptadora})` : ''}
+								🤝 {procLabel ? `${procLabel}: ` : ''}{property.nombreContactoCaptador || property.companiaCaptadora || property.idCompaniaCaptadora || 'Aliada'}{property.nombreContactoCaptador && (property.companiaCaptadora || property.idCompaniaCaptadora) && property.nombreContactoCaptador !== (property.companiaCaptadora || property.idCompaniaCaptadora) ? ` (${property.companiaCaptadora || property.idCompaniaCaptadora})` : ''}
 							</span>
 							{#if property.telefonoContactoCaptador}
 								<a
@@ -524,18 +525,6 @@
 									class="badge-phone-link"
 								>
 									📞 {property.telefonoContactoCaptador} (WhatsApp)
-								</a>
-							{/if}
-							{#if property.easybroker_id || property.public_id?.startsWith('EB-') || property.claveEB}
-								{@const ebId = property.easybroker_id || property.public_id || property.claveEB}
-								<a
-									href="https://www.easybroker.com/agent/mls_properties?query={encodeURIComponent(ebId)}"
-									target="_blank"
-									rel="noopener noreferrer"
-									class="badge-eb-mls-link"
-									title="Ver ficha del colega captador en EasyBroker MLS"
-								>
-									🔍 Bolsa EB ({ebId}) ↗
 								</a>
 							{/if}
 						</div>
@@ -1550,23 +1539,6 @@
 		color: #0369a1;
 	}
 
-	.badge-eb-mls-link {
-		background: rgba(245, 158, 11, 0.15);
-		color: #d97706;
-		border: 1px solid rgba(245, 158, 11, 0.35);
-		font-size: 0.8rem;
-		font-weight: 600;
-		padding: 0.2rem 0.55rem;
-		border-radius: 4px;
-		text-decoration: none;
-		transition: all 0.2s ease;
-	}
-
-	.badge-eb-mls-link:hover {
-		background: rgba(245, 158, 11, 0.25);
-		color: #b45309;
-		border-color: #d97706;
-	}
 
 	.badge-direct-tag {
 		background: rgba(147, 51, 234, 0.15);
