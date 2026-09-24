@@ -22,7 +22,8 @@
 		sendWhatsApp,
 		sortBinnacle,
 		getProposalUrl,
-		ensureContactInProposalUrl
+		ensureContactInProposalUrl,
+		getContactBadgeInfo
 	} from '$lib/functions';
 	import { empresa } from '$lib/config/empresa';
 
@@ -64,6 +65,29 @@
 		(contact?.procedencia && (contact.procedencia.startsWith('S') || contact.procedencia === 'MH')) ||
 		(getContactProcedencia(contact) && getContactProcedencia(contact).startsWith('S'))
 	);
+	$: isArrendatarioContact = Boolean(
+		!isAgentContact && (
+			(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('arrendatario') ||
+			(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('inquilino') ||
+			(contact as any)?.tipoOperacion === 'Renta' ||
+			(contact as any)?.typeOperation === 'Renta' ||
+			(contact?.notes || '').toLowerCase().includes('arrendatario') ||
+			(contact?.notes || '').toLowerCase().includes('interesado por un local')
+		)
+	);
+
+	function getArrendatarioStageLabel(c: Contact): string {
+		const s = String(c?.contactStage || '').toUpperCase().trim();
+		if (s.includes('A2') || s.includes('SINERGIA') || s === '4' || s === 'ETAPA 4') {
+			return 'A2: Búsqueda con Sinergias';
+		}
+		if (s.includes('A1') || s === '1' || s === 'ETAPA 1') {
+			return 'A1: Primer Contacto';
+		}
+		if (s.startsWith('A')) return s;
+		return 'A1: Primer Contacto';
+	}
+	$: contactBadge = getContactBadgeInfo(contact);
 
 	// Verificar que el contacto tenga un ID válido
 	let contactData = data.contact as Contact;
@@ -639,19 +663,31 @@
 								{:else}
 									<span class="agent-role-badge">🤝 Agente Inmobiliario</span>
 								{/if}
-								{#if getContactProcedencia(contact)}
-									<span class="proc-badge proc-{getContactProcedencia(contact).toLowerCase()}">
-										{getContactProcedencia(contact)}
-									</span>
-								{/if}
-							{:else}
-								{contact.contactStage || 'Etapa 1'}
-								{#if getContactProcedencia(contact)}
-									<span class="proc-badge proc-{getContactProcedencia(contact).toLowerCase()}">
-										{getContactProcedencia(contact)}
-									</span>
-								{/if}
 							{/if}
+
+							<div
+								class="stage-indicator-badge"
+								title={contactBadge.tooltip}
+								style="
+									width: 32px;
+									height: 32px;
+									border-radius: {contactBadge.shape === 'square' ? '6px' : '50%'};
+									background-color: {contactBadge.color};
+									display: inline-flex;
+									align-items: center;
+									justify-content: center;
+									color: white;
+									font-weight: 700;
+									font-family: 'Segoe UI', Arial, sans-serif;
+									font-size: 0.82rem;
+									letter-spacing: 0.5px;
+									box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+									border: 2px solid white;
+									flex-shrink: 0;
+								"
+							>
+								{contactBadge.text}
+							</div>
 						</span>
 					</div>
 				</div>
@@ -1013,6 +1049,17 @@
 		background: rgba(255, 255, 255, 0.08);
 		color: #e2e8f0;
 		border: 1px solid rgba(255, 255, 255, 0.15);
+	}
+
+	.arrendatario-stage-badge {
+		font-size: 0.76rem;
+		font-weight: 700;
+		padding: 2px 8px;
+		border-radius: 6px;
+		letter-spacing: 0.03em;
+		background: rgba(2, 132, 199, 0.2);
+		color: #38bdf8;
+		border: 1px solid rgba(2, 132, 199, 0.45);
 	}
 
 	.proc-badge {

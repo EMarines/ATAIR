@@ -43,6 +43,21 @@
 		);
 	})();
 
+	$: isArrendatario = (() => {
+		if (!cont || isAgent) return false;
+		const raw = cont as any;
+		const type = (cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
+		const notes = (cont.notes || raw.comContact || raw.notas || '').toLowerCase();
+		return (
+			type.includes('arrendatario') ||
+			type.includes('inquilino') ||
+			raw.tipoOperacion === 'Renta' ||
+			raw.typeOperation === 'Renta' ||
+			notes.includes('arrendatario') ||
+			notes.includes('interesado por un local')
+		);
+	})();
+
 	$: agentCompany = (() => {
 		if (!cont) return '';
 		const raw = cont as any;
@@ -72,7 +87,7 @@
 </script>
 
 {#if isValidContact}
-	<div class="card" class:card--agent={isAgent}>
+	<div class="card" class:card--agent={isAgent} class:card--arrendatario={isArrendatario}>
 		<div class="card__infoHead">
 			<span class="date">Alta: {formatDate(cont.createdAt)}</span>
 		</div>
@@ -158,6 +173,10 @@
 
 	.card--agent {
 		border-left: 3.5px solid #8b5cf6;
+	}
+
+	.card--arrendatario {
+		border-left: 3.5px solid #0284c7;
 	}
 
 	.card--invalid {

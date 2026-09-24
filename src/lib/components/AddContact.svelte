@@ -26,6 +26,7 @@
 		oneToFour,
 		oneToThree,
 		contStage,
+		arrendatarioStages,
 		range
 	} from '$lib/parameters';
 	import type { Property, Contact, AddContactEvents, Todo } from '$lib/types';
@@ -1293,6 +1294,14 @@
 						if ((t.includes('agente') || t.includes('constructor') || t.includes('inmobiliaria') || t.includes('colaborador') || t.includes('asesor')) && !contact.procedencia) {
 							contact.procedencia = 'S1';
 						}
+						if (t.includes('arrendatario')) {
+							const currentStage = String(contact.contactStage || '').toUpperCase();
+							if (currentStage.includes('4') || currentStage.includes('A2')) {
+								contact.contactStage = 'A2';
+							} else if (!currentStage.startsWith('A')) {
+								contact.contactStage = 'A1';
+							}
+						}
 					}}
 				/>
 				<InputOptions
@@ -1436,7 +1445,7 @@
 						<InputOptions
 							identificador="contactStage"
 							name="Etapa"
-							choices={contStage}
+							choices={(contact.typeContact || '').toLowerCase().includes('arrendatario') ? arrendatarioStages : contStage}
 							value={contact.contactStage ? String(contact.contactStage) : ''}
 							on:change={(e) => (contact.contactStage = e.detail)}
 						/>

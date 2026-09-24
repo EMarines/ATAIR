@@ -11,5 +11,5 @@ export { sendWhatsApp } from './whatsapp';
 export { resetContact } from './contactErase';
 export { ranPrice } from './rangeValue';
 export { getProposalUrl, ensureContactInProposalUrl } from './urlUtils';
-
-// export { sortProp } from './sortProp';
+export { getContactBadgeInfo, normalizeStage } from './contactBadge';
+export type { ContactBadgeInfo } from './contactBadge';

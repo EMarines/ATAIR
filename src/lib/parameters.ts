@@ -141,6 +141,16 @@ export const contStage = [
     "Post-Venta"
 ];
 
+export const arrendatarioStages = [
+    "A1",
+    "A2"
+];
+
+export const arrendatarioStageOptions = [
+    "A1",
+    "A2"
+];
+
 export const range = [
     "0 - 1,000,000",
     "1,000,000 - 2,000,000",
