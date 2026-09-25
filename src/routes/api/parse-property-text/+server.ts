@@ -396,13 +396,20 @@ async function scrapeGenericUrl(url: string) {
   };
 }
 
+export const config = {
+  maxDuration: 60
+};
+
 export const POST: RequestHandler = async ({ request }) => {
   try {
     const body = await request.json();
-    const { rawText = '' } = body;
+    const { rawText = '', images = [] } = body;
+    const validImages: string[] = Array.isArray(images)
+      ? images.filter((img) => typeof img === 'string' && img.startsWith('data:image/')).slice(0, 4)
+      : [];
 
-    if (!rawText || !rawText.trim()) {
-      return json({ success: false, error: 'Por favor pega el texto o enlace de la propiedad.' }, { status: 400 });
+    if ((!rawText || !rawText.trim()) && validImages.length === 0) {
+      return json({ success: false, error: 'Por favor pega el texto o adjunta fotos/flyers de la propiedad.' }, { status: 400 });
     }
 
     // 1. Detección automática de enlaces de EasyBroker (dominio principal, subdominios o micrositios)
@@ -423,7 +430,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
     // 2. Detección de cualquier otro enlace web (portales inmobiliarios genéricos, Tokko, Lamudi, etc.)
     let genericScrapedPhotos: string[] = [];
-    let textToAnalyze = rawText;
+    let textToAnalyze = rawText || '(Sin texto adicional, extrae toda la información de las imágenes/flyers adjuntos)';
 
     const genericUrlMatch = rawText.match(/https?:\/\/[^\s"'>]+/i);
     if (genericUrlMatch) {
@@ -441,7 +448,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
     const prompt = `
 Eres un extractor de datos inmobiliarios de alta precisión para ATAIR SGI en Chihuahua, México.
-Analiza el siguiente texto crudo (copiado de un grupo de WhatsApp, mensaje o publicación inmobiliaria) y extrae de forma estructurada los datos de la propiedad:
+Analiza el siguiente texto crudo (copiado de un grupo de WhatsApp, mensaje o publicación inmobiliaria) Y cualquier imagen/flyer adjunto, y extrae de forma estructurada los datos técnicos de la propiedad.
+Si se adjuntan imágenes (flyers promocionales, fichas técnicas o fotografías), lee todo el texto visible en los flyers (ej. número de unidades/departamentos/locales, ingresos por rentas, precio de venta/renta, m² de terreno y construcción, colonia, ubicación y características) y combínalo con el TEXTO COPIADO:
 
 TEXTO COPIADO:
 """
@@ -460,8 +468,9 @@ REGLAS DE EXTRACCIÓN:
    - "Casa de Campo"
    - "Edificio"
    - "Huerta"
-2. "tipoOperacion": "Venta" o "Renta". Si no lo especifica pero menciona un precio alto (ej. millones), asume "Venta". Si menciona renta mensual, asume "Renta".
-3. "precio": Número entero o decimal limpio sin signos $, ni comas, ni texto (ej. 2500000, 18500). Si no hay precio, null.
+   (Nota: Si menciona múltiples departamentos y/o locales en venta como complejo de inversión o unidades rentables, usa "Edificio").
+2. "tipoOperacion": "Venta" o "Renta". Si no lo especifica pero menciona un precio alto (ej. millones) o venta de unidades rentadas, asume "Venta". Si solo menciona renta mensual de una propiedad, asume "Renta".
+3. "precio": Número entero o decimal limpio sin signos $, ni comas, ni texto (ej. 2500000, 18500). Si hay un precio de venta en el flyer y una renta mensual actual que produce, pon el precio de Venta (si la operación es Venta). Si no hay precio, null.
 4. "moneda": "MXN" o "USD". Por defecto "MXN" salvo que diga dólares, USD o Dlls.
 5. "colonia": Nombre limpio de la colonia o fraccionamiento (ej. "Las Granjas", "San Felipe", "Lomas del Santuario", "Cumbres", "Ensenada Centro"). Quita palabras como "Colonia", "Fracc.", etc.
 6. "ubicacion": Ubicación o zona geográfica descriptiva.
@@ -472,7 +481,7 @@ REGLAS DE EXTRACCIÓN:
 11. "terreno": Metros cuadrados de terreno (número limpio), o null.
 12. "construccion": Metros cuadrados de construcción (número limpio), o null.
 13. "titulo": Título comercial vendedor formateado como: "[tipoPropiedad] en [tipoOperacion] Col. [colonia], [amenidad o cualidad más atractiva]". Longitud 50 a 70 caracteres. NUNCA menciones nombres de inmobiliarias ni agentes en el título.
-14. "descripcion": Redacción completa, vendedora y bien estructurada del inmueble, usando emojis sobrios, párrafos limpios, distribución y amenidades. Longitud recomendada entre 700 y 1,200 caracteres. PROHIBICIÓN ESTRICTA: Queda TERMINANTEMENTE PROHIBIDO mencionar nombres de agencias, inmobiliarias (ej. Match Home, Century 21, Remax, JGCapital, etc.) o nombres de agentes/asesores en la descripción. La redacción debe ser 100% de marca blanca, enfocada exclusivamente en el inmueble y su ubicación, con un llamado a la acción neutro.
+14. "descripcion": Redacción completa, vendedora y bien estructurada del inmueble, usando emojis sobrios, párrafos limpios, distribución y amenidades (incluyendo detalles de rentabilidad/unidades si aplica). Longitud recomendada entre 700 y 1,200 caracteres. PROHIBICIÓN ESTRICTA: Queda TERMINANTEMENTE PROHIBIDO mencionar nombres de agencias, inmobiliarias (ej. Match Home, Century 21, Remax, JGCapital, etc.) o nombres de agentes/asesores en la descripción. La redacción debe ser 100% de marca blanca, enfocada exclusivamente en el inmueble y su ubicación, con un llamado a la acción neutro.
 15. "amenidades": Array de strings evaluando obligatoriamente el título, descripción y características frente al catálogo de 10 amenidades oficiales. Si alguna está presente o implícita por sinónimos en el texto, INCLÚYELA en el array con su nombre EXACTO de la siguiente lista:
    - "Una planta"
    - "Recamara en planta baja"
@@ -484,8 +493,8 @@ REGLAS DE EXTRACCIÓN:
    - "Alberca"
    - "Sobre Avenida Principal"
    - "Patio amplio"
-16. "contactoNombre": Si en el texto se menciona el nombre del asesor, contacto o inmobiliaria que lo compartió (ej. "Lic. Juan Pérez"), string o null (para registro interno del contacto, NO para incluir en la descripción).
-17. "contactoTelefono": Si en el texto aparece un teléfono de contacto a 10 dígitos, extráelo limpio (solo dígitos), o null (para registro interno del contacto, NO para la descripción).
+16. "contactoNombre": Si en el texto se menciona el nombre del asesor, contacto o inmobiliaria que lo compartió (ej. "Georgina Barron", "Lic. Juan Pérez"), string o null (para registro interno del contacto, NO para incluir en la descripción).
+17. "contactoTelefono": Si en el texto o flyer aparece un teléfono de contacto a 10 dígitos, extráelo limpio (solo dígitos), o null (para registro interno del contacto, NO para la descripción).
 
 RESPONDE ÚNICAMENTE CON UN OBJETO JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA:
 {
@@ -509,39 +518,72 @@ RESPONDE ÚNICAMENTE CON UN OBJETO JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA:
 }
 `;
 
-    let rawJson = '';
-
-    // 1. Intentar con Gemini
-    if (geminiKey) {
-      const geminiModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
-      for (const model of geminiModels) {
-        try {
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 2000,
-                responseMimeType: 'application/json'
-              }
-            })
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (rawJson) break;
+    const geminiParts: any[] = [{ text: prompt }];
+    for (const dataUrl of validImages) {
+      const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+      if (match) {
+        geminiParts.push({
+          inlineData: {
+            mimeType: match[1],
+            data: match[2]
           }
-        } catch (err) {
-          // continuar con siguiente modelo
-        }
+        });
+      }
+    }
+
+    const parseCleanJson = (str: string) => {
+      const cleaned = str.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+      return JSON.parse(cleaned);
+    };
+
+    let parsed: any = null;
+
+    // 1. Intentar en paralelo (Promise.any) con los modelos Gemini 3.x activos para responder en ~2s sin timeout
+    if (geminiKey) {
+      const modelConfigs = [
+        { name: 'gemini-3.1-flash-lite', thinkingZero: true },
+        { name: 'gemini-3-flash-preview', thinkingZero: true },
+        { name: 'gemini-3.8-flash', thinkingZero: false },
+        { name: 'gemini-3.6-flash', thinkingZero: false }
+      ];
+
+      try {
+        parsed = await Promise.any(
+          modelConfigs.map(async ({ name, thinkingZero }) => {
+            const genConfig: any = {
+              temperature: 0.2,
+              maxOutputTokens: 3500,
+              responseMimeType: 'application/json'
+            };
+            if (thinkingZero) {
+              genConfig.thinkingConfig = { thinkingBudget: 0 };
+            }
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${name}:generateContent?key=${geminiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: geminiParts }],
+                  generationConfig: genConfig
+                }),
+                signal: AbortSignal.timeout(8500)
+              }
+            );
+            if (!res.ok) throw new Error(`${name} HTTP ${res.status}`);
+            const data = await res.json();
+            const text = data.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text || '';
+            if (!text) throw new Error(`${name} empty response`);
+            return parseCleanJson(text);
+          })
+        );
+      } catch (e) {
+        // continuar a fallback OpenAI si todos fallan
       }
     }
 
     // 2. Fallback OpenAI
-    if (!rawJson && openAiKey) {
+    if (!parsed && openAiKey) {
       try {
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -557,23 +599,23 @@ RESPONDE ÚNICAMENTE CON UN OBJETO JSON VÁLIDO CON ESTA ESTRUCTURA EXACTA:
               { role: 'user', content: prompt }
             ],
             temperature: 0.2
-          })
+          }),
+          signal: AbortSignal.timeout(8000)
         });
 
         if (res.ok) {
           const data = await res.json();
-          rawJson = data.choices?.[0]?.message?.content || '';
+          const txt = data.choices?.[0]?.message?.content || '';
+          if (txt) parsed = parseCleanJson(txt);
         }
       } catch (err) {
         // continuar
       }
     }
 
-    if (!rawJson) {
-      return json({ success: false, error: 'No se pudo procesar el texto con la IA. Verifica la conexión o API Keys.' }, { status: 500 });
+    if (!parsed) {
+      return json({ success: false, error: 'No se pudo procesar el texto con la IA. Intenta de nuevo en unos segundos.' }, { status: 500 });
     }
-
-    const parsed = JSON.parse(rawJson);
     parsed.amenidades = detectCatalogAmenities(
       `${parsed.titulo || ''} ${parsed.descripcion || ''} ${textToAnalyze}`,
       Array.isArray(parsed.amenidades) ? parsed.amenidades : []

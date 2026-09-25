@@ -203,33 +203,43 @@ Debes responder ÚNICAMENTE con un objeto JSON válido:
 
     let rawResponse = '';
 
-    // 1. Intentar con Gemini con timeout estricto de 6 segundos
-    if (geminiKey && geminiKey.startsWith('AIzaSy')) {
-      const geminiModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.5-flash-lite'];
-      for (const model of geminiModels) {
-        try {
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: promptText }] }],
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 1500,
-                responseMimeType: 'application/json'
-              }
-            }),
-            signal: AbortSignal.timeout(6000)
-          });
-
-          if (response.ok) {
+    // 1. Intentar con Gemini en paralelo (Promise.any) con timeout estricto de 8 segundos
+    if (geminiKey) {
+      const modelConfigs = [
+        { name: 'gemini-3.1-flash-lite', thinkingZero: true },
+        { name: 'gemini-3-flash-preview', thinkingZero: true },
+        { name: 'gemini-3.8-flash', thinkingZero: false },
+        { name: 'gemini-3.6-flash', thinkingZero: false }
+      ];
+      try {
+        rawResponse = await Promise.any(
+          modelConfigs.map(async ({ name, thinkingZero }) => {
+            const genConfig: any = {
+              temperature: 0.7,
+              maxOutputTokens: 2500,
+              responseMimeType: 'application/json'
+            };
+            if (thinkingZero) {
+              genConfig.thinkingConfig = { thinkingBudget: 0 };
+            }
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${name}:generateContent?key=${geminiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: genConfig
+              }),
+              signal: AbortSignal.timeout(8000)
+            });
+            if (!response.ok) throw new Error(`${name} HTTP ${response.status}`);
             const data = await response.json();
-            rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (rawResponse) break;
-          }
-        } catch {
-          // Si falla o agota tiempo, probar siguiente proveedor
-        }
+            const txt = data.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text || '';
+            if (!txt) throw new Error(`${name} empty`);
+            return txt;
+          })
+        );
+      } catch {
+        // Si falla o agota tiempo, probar siguiente proveedor
       }
     }
 

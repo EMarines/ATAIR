@@ -648,23 +648,10 @@
 							{contact.name}
 							{contact.lastname}
 						</h1>
-						{#if contact.company || contact.inmobiliaria}
-							<div class="contact-company-subtitle">
-								🏢 {contact.company || contact.inmobiliaria}
-							</div>
-						{/if}
 					</div>
 					<div class="rigth__title">
 						<span>Alta el: {formatDate(contact.createdAt)}</span>
 						<span class="stage-info">
-							{#if isAgentContact}
-								{#if (contact?.typeContact || contact?.contactType || '').toLowerCase().includes('constructor')}
-									<span class="agent-role-badge">🏗️ Constructor</span>
-								{:else}
-									<span class="agent-role-badge">🤝 Agente Inmobiliario</span>
-								{/if}
-							{/if}
-
 							<div
 								class="stage-indicator-badge"
 								title={contactBadge.tooltip}
@@ -692,9 +679,9 @@
 					</div>
 				</div>
 
-				{#if getCleanContactNotes(contact)}
+				{#if getCleanContactNotes(contact) || (isAgentContact && (contact.company || contact.inmobiliaria))}
 					<div class="notes">
-						<span>Notas: {getCleanContactNotes(contact)}</span>
+						<span>{isAgentContact ? 'Empresa:' : 'Notas:'} {getCleanContactNotes(contact) || contact.company || contact.inmobiliaria}</span>
 					</div>
 				{/if}
 

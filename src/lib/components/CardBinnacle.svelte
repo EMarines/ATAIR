@@ -11,6 +11,7 @@
 	let isSaving = false;
 
 	function startEdit() {
+		if (binn.action === 'WhatsApp enviado: ' || String(binn.action || '').toLowerCase().includes('whatsapp')) return;
 		editedComment = binn.comment || '';
 		isEditing = true;
 	}
@@ -126,15 +127,17 @@
 		</div>
 
 		<div class="cell__actions">
-			<i
-				on:click|stopPropagation={startEdit}
-				on:keydown={() => {}}
-				class="fa-regular fa-pen-to-square action-icon edit-icon"
-				role="button"
-				tabindex="0"
-				aria-label="Editar nota"
-				title="Editar nota"
-			></i>
+			{#if binn.action !== 'WhatsApp enviado: ' && !String(binn.action || '').toLowerCase().includes('whatsapp')}
+				<i
+					on:click|stopPropagation={startEdit}
+					on:keydown={() => {}}
+					class="fa-regular fa-pen-to-square action-icon edit-icon"
+					role="button"
+					tabindex="0"
+					aria-label="Editar nota"
+					title="Editar nota"
+				></i>
+			{/if}
 			<i
 				on:click|stopPropagation={deleteBinnacle}
 				on:keydown={() => {}}

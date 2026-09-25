@@ -808,21 +808,40 @@
     waParseError = null;
     waParseSuccess = null;
     const cleanText = (rawWhatsAppText || '').trim();
-    if (!cleanText) {
-      waParseError = 'Por favor pega el texto de la propiedad copiado de WhatsApp o redes.';
+    if (!cleanText && modalPhotos.length === 0) {
+      waParseError = 'Por favor pega el texto de la propiedad o arrastra las fotos/flyers.';
       return;
     }
 
     const isLinkSource = cleanText.startsWith('http://') || cleanText.startsWith('https://');
     isParsingWhatsApp = true;
     try {
+      let compressedFlyers: string[] = [];
+      if (modalPhotos.length > 0 && !isLinkSource) {
+        const photosForAi = modalPhotos.slice(0, 4);
+        compressedFlyers = await Promise.all(
+          photosForAi.map((f) => compressImage(f, 800, 0.65))
+        );
+      }
+
       const res = await fetch('/api/parse-property-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawText: cleanText })
+        body: JSON.stringify({ rawText: cleanText, images: compressedFlyers })
       });
 
-      const data = await res.json();
+      const rawResText = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(rawResText);
+      } catch {
+        throw new Error(
+          res.status === 504
+            ? 'El servidor tardó demasiado en responder (Timeout). Intenta de nuevo.'
+            : `Error de respuesta del servidor (${res.status}). Verifica que los cambios estén desplegados o intenta de nuevo.`
+        );
+      }
+
       if (!res.ok || !data.success) {
         throw new Error(data.error || `Error al procesar el texto (${res.status})`);
       }
@@ -833,6 +852,8 @@
       const numFotosDescargadas = Array.isArray(p.fotos) && p.fotos.length > 0 ? p.fotos.length : 0;
       const fotosMsg = numFotosDescargadas > 0
         ? ` Además se descargaron ${numFotosDescargadas} fotos originales listas en la galería.`
+        : modalPhotos.length > 0
+        ? ` Se cargaron ${modalPhotos.length} fotos en la galería.`
         : ' Revisa los campos y arrastra las fotos abajo.';
 
       waParseSuccess = `¡Datos extraídos con éxito! Se autollenaron: ${p.tipoPropiedad || 'Propiedad'} en ${p.tipoOperacion || 'Venta'}, Col. ${p.colonia || 'N/D'}${p.precio ? `, $${Number(p.precio).toLocaleString('es-MX')} ${p.moneda || 'MXN'}` : ''}.${fotosMsg}`;
