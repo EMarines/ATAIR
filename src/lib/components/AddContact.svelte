@@ -36,6 +36,8 @@
 	import { getProposalUrl, ensureContactInProposalUrl } from '$lib/functions/urlUtils';
 	import { onMount, onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
+	import { db } from '$lib/firebase_toggle';
+	import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 	const dispatch = createEventDispatcher<AddContactEvents>();
 
@@ -746,6 +748,41 @@
 				await updateContactInGoogle(savedContact);
 			} catch (updateError) {
 				console.error('⚠️ Error actualizando en Google en segundo plano:', updateError);
+			}
+		}
+
+		// 🔗 Si el contacto tiene procedencia de Sinergia (S1, S2, S3, MH), sincronizar en cascada sus propiedades vinculadas
+		if (savedContact.id && savedContact.procedencia && db) {
+			try {
+				const procCode = String(savedContact.procedencia).trim().toUpperCase();
+				const procLabels: Record<string, string> = {
+					MH: 'Match Home (MH)',
+					EB: 'EasyBroker (EB)',
+					S1: 'Sinergia 1 (S1)',
+					S2: 'Sinergia 2 (S2)',
+					S3: 'Sinergia 3 (S3)'
+				};
+				const procNombre = procLabels[procCode] || procCode;
+				const [byContactId, byCaptadorId] = await Promise.all([
+					getDocs(query(collection(db, 'properties'), where('contactId', '==', savedContact.id))),
+					getDocs(query(collection(db, 'properties'), where('idContactoCaptador', '==', savedContact.id)))
+				]);
+				const docsToUpdate = new Map<string, any>();
+				byContactId.forEach((d) => docsToUpdate.set(d.id, d));
+				byCaptadorId.forEach((d) => docsToUpdate.set(d.id, d));
+
+				for (const [propDocId, propSnap] of docsToUpdate.entries()) {
+					const pData = propSnap.data();
+					if (pData.procedencia !== procCode) {
+						await updateDoc(doc(db, 'properties', propDocId), {
+							procedencia: procCode,
+							procedenciaNombre: procNombre
+						});
+						console.log(`✅ [Cascade Sinergia] Propiedad ${propDocId} actualizada a ${procCode}`);
+					}
+				}
+			} catch (cascadeErr) {
+				console.warn('⚠️ No se pudo sincronizar procedencia en cascada a propiedades:', cascadeErr);
 			}
 		}
 	}

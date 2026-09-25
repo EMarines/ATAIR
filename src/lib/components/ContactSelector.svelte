@@ -378,7 +378,8 @@
         const data = d.data();
         const fullName = `${data.name || ''} ${data.lastname || ''}`.trim() || data.nombre || data.company || 'Sin nombre';
         const notes = data.notes || data.comContact || data.notas || '';
-        const procedenciaExtracted = extractProcedenciaFromNotes(notes);
+        const directProc = data.procedencia ? String(data.procedencia).trim().toUpperCase() : null;
+        const procedenciaExtracted = directProc || extractProcedenciaFromNotes(notes);
         const phone = data.telephon || data.telefono || data.phone || (Array.isArray(data.phoneNumbers) ? data.phoneNumbers[0]?.value : '') || '';
         return {
           id: d.id,
