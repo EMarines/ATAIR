@@ -866,10 +866,11 @@
                     </td>
 
                     <!-- Notas -->
-                    <td class="td-notes">
+                    <td class="td-notes" class:empty-notes={!currentTodo.notes}>
                       {#if currentTodo.notes}
                         <span class="notes-badge" title={currentTodo.notes}>
-                          {currentTodo.notes}
+                          <i class="fa-regular fa-comment-dots notes-icon"></i>
+                          <span>{currentTodo.notes}</span>
                         </span>
                       {:else}
                         <span class="text-muted-empty">—</span>
@@ -1382,21 +1383,30 @@
   }
 
   .notes-badge {
-    display: inline-block;
-    max-width: 280px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    max-width: 420px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.45;
+    font-size: 0.8rem;
     color: var(--text-muted, #64748b);
-    background: rgba(0, 0, 0, 0.03);
-    padding: 0.2rem 0.55rem;
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.035);
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
   }
 
   :global([data-theme="dark"]) .notes-badge {
     background: rgba(255, 255, 255, 0.05);
     color: #94a3b8;
+  }
+
+  .notes-icon {
+    font-size: 0.82rem;
+    color: var(--brand, #6366f1);
+    margin-top: 0.15rem;
+    flex-shrink: 0;
   }
 
   .text-muted-empty {
@@ -1989,7 +1999,7 @@
   }
 
   /* ===== RESPONSIVE ===== */
-  @media (max-width: 768px) {
+  @media (max-width: 860px) {
     .agenda-page-container {
       padding: 1rem 0.75rem 3rem;
     }
@@ -2017,12 +2027,175 @@
       padding: 1.25rem 1rem;
     }
 
-    .agenda-table th, .agenda-table td {
-      padding: 0.75rem 0.6rem;
+    /* Transformación de tabla a Tarjetas Responsivas para pantallas pequeñas */
+    .table-card {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      overflow: visible;
+    }
+
+    .table-responsive {
+      overflow-x: visible;
+    }
+
+    .agenda-table {
+      display: block;
+      width: 100%;
+    }
+
+    .agenda-table thead {
+      display: none;
+    }
+
+    .agenda-table tbody {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      width: 100%;
+    }
+
+    .todo-tr {
+      display: grid;
+      grid-template-areas:
+        "status datetime actions"
+        "task task task"
+        "notes notes notes";
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 0.65rem 0.75rem;
+      padding: 0.95rem 1rem;
+      border-radius: 14px;
+      background: var(--surface-card, #ffffff);
+      border: 1px solid var(--border, #e2e8f0);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      cursor: default;
+    }
+
+    :global([data-theme="dark"]) .todo-tr {
+      background: rgba(255, 255, 255, 0.035);
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .td-status {
+      grid-area: status;
+      padding: 0 !important;
+      border: none !important;
+      width: auto !important;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .btn-check-toggle {
+      font-size: 1.35rem;
+    }
+
+    .td-datetime {
+      grid-area: datetime;
+      padding: 0 !important;
+      border: none !important;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .datetime-pill {
+      font-size: 0.78rem;
+      padding: 0.25rem 0.65rem;
+      white-space: normal;
+      line-height: 1.35;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border-radius: 8px;
+    }
+
+    .td-actions {
+      grid-area: actions;
+      padding: 0 !important;
+      border: none !important;
+      width: auto !important;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .actions-group {
+      gap: 0.45rem;
+    }
+
+    .td-task {
+      grid-area: task;
+      padding: 0.15rem 0 0 !important;
+      border: none !important;
+      width: 100% !important;
+    }
+
+    .task-title-text {
+      font-size: 0.98rem;
+      font-weight: 600;
+      line-height: 1.45;
+      word-break: break-word;
+      color: var(--color, #0f172a);
+    }
+
+    .td-notes {
+      grid-area: notes;
+      padding: 0 !important;
+      border: none !important;
+      width: 100% !important;
+    }
+
+    .td-notes.empty-notes {
+      display: none !important;
     }
 
     .notes-badge {
-      max-width: 140px;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.45rem;
+      width: 100%;
+      max-width: 100% !important;
+      white-space: normal !important;
+      word-break: break-word;
+      overflow: visible;
+      text-overflow: clip;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      padding: 0.55rem 0.85rem;
+      border-radius: 8px;
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.16);
+      color: var(--text-muted, #475569);
+    }
+
+    :global([data-theme="dark"]) .notes-badge {
+      background: rgba(99, 102, 241, 0.14);
+      border-color: rgba(99, 102, 241, 0.25);
+      color: #cbd5e1;
+    }
+
+    .text-muted-empty {
+      display: none;
+    }
+  }
+
+  @media (max-width: 440px) {
+    .todo-tr {
+      gap: 0.5rem 0.65rem;
+      padding: 0.85rem 0.85rem;
+    }
+
+    .datetime-pill {
+      font-size: 0.74rem;
+      padding: 0.2rem 0.45rem;
+    }
+
+    .actions-group {
+      gap: 0.35rem;
     }
   }
 </style>
