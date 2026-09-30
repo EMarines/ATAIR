@@ -12,10 +12,11 @@ function parseDateTimeForChihuahua(isoOrDateStr?: string | null): { timestamp: n
 
 	const str = String(isoOrDateStr).trim();
 
-	// Si es solo fecha YYYY-MM-DD (evento de todo el día)
-	if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-		const [y, m, day] = str.split('-').map(Number);
-		// Fijar a mediodía local para evitar deslizamientos de fecha por UTC
+	// Si es solo fecha YYYY-MM-DD o formato Google Tasks YYYY-MM-DDT00:00:00.000Z (cero UTC)
+	const pureDateMatch = str.match(/^(\d{4}-\d{2}-\d{2})(?:T00:00:00(?:\.000)?Z?)?$/);
+	if (pureDateMatch) {
+		const [y, m, day] = pureDateMatch[1].split('-').map(Number);
+		// Fijar a mediodía local para evitar deslizamientos de fecha por UTC y husos horarios
 		const d = new Date(y, m - 1, day, 12, 0, 0);
 		return {
 			timestamp: d.getTime(),

@@ -228,11 +228,16 @@
   function parseDateAndTimeToChihuahua(rawStr?: string | null) {
     if (!rawStr) return { timestamp: Date.now(), timeString: '' };
     const str = String(rawStr).trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-      const [y, m, d] = str.split('-').map(Number);
+
+    // Si viene como fecha pura YYYY-MM-DD o formato Google Tasks YYYY-MM-DDT00:00:00.000Z (cero UTC)
+    const pureDateMatch = str.match(/^(\d{4}-\d{2}-\d{2})(?:T00:00:00(?:\.000)?Z?)?$/);
+    if (pureDateMatch) {
+      const [y, m, d] = pureDateMatch[1].split('-').map(Number);
+      // Fijar al mediodía local para ser inmune a desfases UTC y cambios de huso horario
       const dateObj = new Date(y, m - 1, d, 12, 0, 0);
       return { timestamp: dateObj.getTime(), timeString: '' };
     }
+
     const dateObj = new Date(str);
     if (isNaN(dateObj.getTime())) return { timestamp: Date.now(), timeString: '' };
 
@@ -691,12 +696,13 @@
               result = await firebase.update('todos', editedTodoId, todoData);
               if (!result.success) throw new Error(result.error as string || 'Error al actualizar');
 
+              const dueIso = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00.000Z`;
               if (todo.googleTaskId) {
                   syncTaskWithGoogle('UPDATE', {
                       googleTaskId: todo.googleTaskId,
                       title: todoData.task,
                       notes: todoData.notes,
-                      dueDate: localDate.toISOString(),
+                      dueDate: dueIso,
                       isCompleted: todoData.isCompleted,
                       status: todoData.isCompleted ? 'completed' : 'needsAction'
                   });
@@ -709,10 +715,11 @@
               }
 
           } else {
+              const dueIso = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00.000Z`;
               const gRes = await syncTaskWithGoogle('CREATE', {
                   title: todoData.task,
                   notes: todoData.notes,
-                  dueDate: localDate.toISOString(),
+                  dueDate: dueIso,
                   isCompleted: false
               });
 
