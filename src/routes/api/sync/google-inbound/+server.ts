@@ -236,7 +236,6 @@ export async function POST({ request }) {
 				continue;
 			}
 
-			const summary = ev.summary || ev.title || ev.task || 'Cita de Calendario';
 			const rawLocation = ev.location || ev.lugar || '';
 			const rawDescription = ev.description || ev.notes || '';
 			const finalNotes = formatNotesWithLocation(rawDescription, rawLocation);
