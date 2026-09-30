@@ -165,11 +165,12 @@
     );
   }
 
-  let selectedFilter: 'ALL' | 'TASKS' | 'CALENDAR' = 'ALL';
+  let selectedFilter: 'ALL' | 'TASKS' | 'CALENDAR' | 'CRM' = 'ALL';
   let hideCompleted: boolean = false;
 
   $: tasksCount = todos.filter(t => !isIgnoredEvent(t.task) && (t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId))).length;
   $: calendarCount = todos.filter(t => !isIgnoredEvent(t.task) && (t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
+  $: crmCount = todos.filter(t => !isIgnoredEvent(t.task) && !(t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId)) && !(t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
 
   // Reactive statement para ordenar los todos por fecha y aplicar filtros de origen/estado
   $: sortedTodos = todos
@@ -181,6 +182,9 @@
         }
         if (selectedFilter === 'CALENDAR') {
           return t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId);
+        }
+        if (selectedFilter === 'CRM') {
+          return !(t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId)) && !(t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId));
         }
         return true;
       })
@@ -674,13 +678,14 @@
 
       const finalTimestamp = localDate.getTime();
 
-      const todoData: Omit<Todo, 'id'> & { googleTaskId?: string; googleEventId?: string } = {
+      const todoData: Omit<Todo, 'id'> & { googleTaskId?: string; googleEventId?: string; source?: string } = {
           task: todo.task.trim(),
           endTask: finalTimestamp,
           notes: todo.notes?.trim() || '',
           isCompleted: todo.isCompleted ?? false,
           createdAt: todo.createdAt || Date.now(),
-          type: todo.type || '',
+          type: todo.type || 'Google Tasks',
+          source: (todo as any).source || 'google_tasks',
           user: todo.user || '',
           timeString: finalTimeStringForDb,
           ...(todo.googleTaskId ? { googleTaskId: todo.googleTaskId } : {}),
@@ -1227,6 +1232,17 @@
               <i class="fa-solid fa-calendar-day"></i>
               <span>Citas Calendar ({calendarCount})</span>
             </button>
+            {#if crmCount > 0}
+            <button
+              type="button"
+              class="tab-btn tab-crm"
+              class:active={selectedFilter === 'CRM'}
+              on:click={() => selectedFilter = 'CRM'}
+            >
+              <i class="fa-solid fa-database"></i>
+              <span>Locales CRM ({crmCount})</span>
+            </button>
+            {/if}
           </div>
 
           <label class="toggle-hide-completed">
@@ -2774,6 +2790,11 @@
   .tab-btn.tab-calendar.active {
     background: #8b5cf6;
     box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
+  }
+
+  .tab-btn.tab-crm.active {
+    background: #f59e0b;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
   }
 
   .toggle-hide-completed {
