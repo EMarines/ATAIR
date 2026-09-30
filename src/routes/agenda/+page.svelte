@@ -160,6 +160,39 @@
 
   let isSyncingGoogle = false;
 
+  // Gestión de Tombstones (IDs eliminados recientemente para evitar resurrección zombie)
+  function getTombstones(key: string): Set<string> {
+    try {
+      if (typeof window === 'undefined') return new Set();
+      const raw = localStorage.getItem(key);
+      if (!raw) return new Set();
+      const data: Record<string, number> = JSON.parse(raw);
+      const now = Date.now();
+      const valid = new Set<string>();
+      const cleanData: Record<string, number> = {};
+      for (const [id, ts] of Object.entries(data)) {
+        if (now - ts < 7 * 24 * 60 * 60 * 1000) {
+          valid.add(id);
+          cleanData[id] = ts;
+        }
+      }
+      localStorage.setItem(key, JSON.stringify(cleanData));
+      return valid;
+    } catch {
+      return new Set();
+    }
+  }
+
+  function addTombstone(key: string, id: string) {
+    try {
+      if (typeof window === 'undefined' || !id) return;
+      const raw = localStorage.getItem(key);
+      const data: Record<string, number> = raw ? JSON.parse(raw) : {};
+      data[id] = Date.now();
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch {}
+  }
+
   function parseDateAndTimeToChihuahua(rawStr?: string | null) {
     if (!rawStr) return { timestamp: Date.now(), timeString: '' };
     const str = String(rawStr).trim();
@@ -221,7 +254,7 @@
       const tasksData = tasksRes.status === 'fulfilled' ? tasksRes.value : null;
       const calData = calRes.status === 'fulfilled' ? calRes.value : null;
 
-      // Obtener tareas actuales para comparar y no duplicar
+      // Obtener tareas actuales para comparar y reconciliar
       const currentTodosResult = await firebase.get('todos');
       const existingTodos = currentTodosResult.success ? (currentTodosResult.data as any[]) : [];
       
@@ -233,20 +266,49 @@
         if (t.googleEventId) eventsMapByGoogleId.set(t.googleEventId, t);
       }
 
+      const taskTombstones = getTombstones('atair_deleted_google_tasks');
+      const eventTombstones = getTombstones('atair_deleted_google_events');
+
       let changesMade = false;
 
-      // 1. Procesar Google Tasks
+      // 1. Reconciliación de Google Tasks
       if (tasksData?.items && Array.isArray(tasksData.items)) {
+        const activeGoogleTaskIds = new Set<string>();
+        const explicitlyDeletedGoogleTaskIds = new Set<string>();
+
         for (const t of tasksData.items) {
           const googleTaskId = t.googleTaskId || t.id;
           if (!googleTaskId) continue;
-
           if (t.deleted) {
-            const existing = tasksMapByGoogleId.get(googleTaskId);
-            if (existing) {
-              await firebase.delete('todos', existing.id);
-              changesMade = true;
-            }
+            explicitlyDeletedGoogleTaskIds.add(googleTaskId);
+          } else {
+            activeGoogleTaskIds.add(googleTaskId);
+          }
+        }
+
+        // FASE A: Purgar en ATAIR tareas eliminadas en Google Tasks
+        for (const existing of existingTodos) {
+          const gId = existing.googleTaskId;
+          const isGoogleTask = existing.source === 'google_tasks' || existing.type === 'Google Tasks' || Boolean(gId);
+          if (!isGoogleTask || !gId) continue;
+
+          // Si Google la reporta como eliminada O si no está en la lista de activas
+          if (explicitlyDeletedGoogleTaskIds.has(gId) || (!activeGoogleTaskIds.has(gId) && tasksData.items.length > 0)) {
+            console.log(`🗑️ [Agenda] Purgando tarea eliminada en Google Tasks: "${existing.task}" (${gId})`);
+            await firebase.delete('todos', existing.id);
+            tasksMapByGoogleId.delete(gId);
+            changesMade = true;
+          }
+        }
+
+        // FASE B: Actualizar o insertar tareas activas
+        for (const t of tasksData.items) {
+          const googleTaskId = t.googleTaskId || t.id;
+          if (!googleTaskId || t.deleted) continue;
+
+          // Si el usuario la borró en ATAIR recientemente, no resucitar
+          if (taskTombstones.has(googleTaskId)) {
+            syncTaskWithGoogle('DELETE', { googleTaskId });
             continue;
           }
 
@@ -265,9 +327,16 @@
           };
 
           if (existing) {
-            // Actualizar si difieren datos clave
-            await firebase.update('todos', existing.id, taskDocData);
-            changesMade = true;
+            if (
+              existing.task !== taskDocData.task ||
+              existing.notes !== taskDocData.notes ||
+              existing.isCompleted !== taskDocData.isCompleted ||
+              existing.endTask !== taskDocData.endTask ||
+              existing.timeString !== taskDocData.timeString
+            ) {
+              await firebase.update('todos', existing.id, taskDocData);
+              changesMade = true;
+            }
           } else {
             await firebase.add('todos', { ...taskDocData, createdAt: Date.now() });
             changesMade = true;
@@ -275,18 +344,47 @@
         }
       }
 
-      // 2. Procesar Google Calendar
+      // 2. Reconciliación de Google Calendar
       if (calData?.events && Array.isArray(calData.events)) {
+        const activeCalendarEventIds = new Set<string>();
+        const explicitlyDeletedEventIds = new Set<string>();
+
         for (const ev of calData.events) {
           const googleEventId = ev.googleEventId || ev.id;
           if (!googleEventId) continue;
-
           if (ev.deleted || ev.status === 'cancelled') {
-            const existing = eventsMapByGoogleId.get(googleEventId);
-            if (existing) {
-              await firebase.delete('todos', existing.id);
-              changesMade = true;
-            }
+            explicitlyDeletedEventIds.add(googleEventId);
+          } else {
+            activeCalendarEventIds.add(googleEventId);
+          }
+        }
+
+        const now = Date.now();
+        const windowMin = now - 7 * 24 * 60 * 60 * 1000;
+        const windowMax = now + 60 * 24 * 60 * 60 * 1000;
+
+        // FASE A: Purgar en ATAIR citas canceladas o borradas en Calendar
+        for (const existing of existingTodos) {
+          const evId = existing.googleEventId;
+          const isGoogleCal = existing.source === 'google_calendar' || existing.type === 'Google Calendar' || Boolean(evId);
+          if (!isGoogleCal || !evId) continue;
+
+          const isInSyncWindow = existing.endTask >= windowMin && existing.endTask <= windowMax;
+
+          if (explicitlyDeletedEventIds.has(evId) || (isInSyncWindow && !activeCalendarEventIds.has(evId) && calData.events.length > 0)) {
+            console.log(`🗑️ [Agenda] Purgando cita cancelada/eliminada en Calendar: "${existing.task}" (${evId})`);
+            await firebase.delete('todos', existing.id);
+            eventsMapByGoogleId.delete(evId);
+            changesMade = true;
+          }
+        }
+
+        // FASE B: Actualizar o insertar eventos activos de Google Calendar
+        for (const ev of calData.events) {
+          const googleEventId = ev.googleEventId || ev.id;
+          if (!googleEventId || ev.deleted || ev.status === 'cancelled') continue;
+
+          if (eventTombstones.has(googleEventId)) {
             continue;
           }
 
@@ -306,7 +404,7 @@
             notes: notesWithLoc,
             isCompleted: ev.status === 'completed' || false,
             endTask: parsed.timestamp,
-            timeString: parsed.timeString,
+            timeString: parsed.timeString || '',
             googleEventId,
             type: 'Google Calendar',
             source: 'google_calendar',
@@ -314,8 +412,16 @@
           };
 
           if (existing) {
-            await firebase.update('todos', existing.id, eventDocData);
-            changesMade = true;
+            if (
+              existing.task !== eventDocData.task ||
+              existing.notes !== eventDocData.notes ||
+              existing.isCompleted !== eventDocData.isCompleted ||
+              existing.endTask !== eventDocData.endTask ||
+              existing.timeString !== eventDocData.timeString
+            ) {
+              await firebase.update('todos', existing.id, eventDocData);
+              changesMade = true;
+            }
           } else {
             await firebase.add('todos', { ...eventDocData, createdAt: Date.now() });
             changesMade = true;
@@ -571,9 +677,16 @@
       try {
           const todoToDelete = todos.find(t => t.id === id);
           if ((todoToDelete as any)?.googleTaskId) {
-              syncTaskWithGoogle('DELETE', {
-                  googleTaskId: (todoToDelete as any).googleTaskId
+              const gTaskId = (todoToDelete as any).googleTaskId;
+              addTombstone('atair_deleted_google_tasks', gTaskId);
+              await syncTaskWithGoogle('DELETE', {
+                  googleTaskId: gTaskId
               });
+          }
+
+          if ((todoToDelete as any)?.googleEventId) {
+              const gEventId = (todoToDelete as any).googleEventId;
+              addTombstone('atair_deleted_google_events', gEventId);
           }
 
           const result = await firebase.delete('todos', id);

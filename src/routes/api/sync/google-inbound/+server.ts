@@ -149,6 +149,42 @@ export async function POST({ request }) {
 		// ============================================================
 		// 1. PROCESAR EVENTOS DE GOOGLE CALENDAR -> AGENDA ATAIR
 		// ============================================================
+		const activeCalendarEventIds = new Set<string>();
+		const explicitlyDeletedEventIds = new Set<string>();
+
+		for (const ev of incomingEventsList) {
+			const evId = ev.googleEventId || ev.id;
+			if (!evId) continue;
+			if (ev.deleted === true || ev.status === 'cancelled' || action === 'DELETE' || action === 'CALENDAR_DELETE') {
+				explicitlyDeletedEventIds.add(evId);
+			} else {
+				activeCalendarEventIds.add(evId);
+			}
+		}
+
+		// Reconciliación de eliminaciones si es un lote completo de Calendar
+		if (type === 'CALENDAR_SYNC' && incomingEventsList.length > 0) {
+			const now = Date.now();
+			const windowMin = now - 7 * 24 * 60 * 60 * 1000;
+			const windowMax = now + 60 * 24 * 60 * 60 * 1000;
+
+			const qExistingCal = query(todosRef, where('source', '==', 'google_calendar'));
+			const calSnapshot = await getDocs(qExistingCal);
+
+			for (const docSnap of calSnapshot.docs) {
+				const d = docSnap.data();
+				const evId = d.googleEventId;
+				if (!evId) continue;
+
+				const isInWindow = Number(d.endTask) >= windowMin && Number(d.endTask) <= windowMax;
+				if (explicitlyDeletedEventIds.has(evId) || (isInWindow && !activeCalendarEventIds.has(evId))) {
+					await deleteDoc(doc(db, 'todos', docSnap.id));
+					deletedCount++;
+					console.log(`🗑️ [Calendar Inbound] Cita purgada por reconciliación: ${docSnap.id} (Event ID: ${evId})`);
+				}
+			}
+		}
+
 		for (const ev of incomingEventsList) {
 			const googleEventId = ev.googleEventId || ev.id;
 			if (!googleEventId) {
@@ -229,6 +265,37 @@ export async function POST({ request }) {
 		// ============================================================
 		// 2. PROCESAR TAREAS DE GOOGLE TASKS -> AGENDA ATAIR
 		// ============================================================
+		const activeGoogleTaskIds = new Set<string>();
+		const explicitlyDeletedGoogleTaskIds = new Set<string>();
+
+		for (const t of incomingTasksList) {
+			const gId = t.googleTaskId || t.id;
+			if (!gId) continue;
+			if (t.deleted === true || action === 'DELETE' || action === 'TASK_DELETE') {
+				explicitlyDeletedGoogleTaskIds.add(gId);
+			} else {
+				activeGoogleTaskIds.add(gId);
+			}
+		}
+
+		// Reconciliación de eliminaciones si es un lote completo de Google Tasks
+		if (type === 'TASK_SYNC' && incomingTasksList.length > 0) {
+			const qExistingTasks = query(todosRef, where('source', '==', 'google_tasks'));
+			const tasksSnapshot = await getDocs(qExistingTasks);
+
+			for (const docSnap of tasksSnapshot.docs) {
+				const d = docSnap.data();
+				const gId = d.googleTaskId;
+				if (!gId) continue;
+
+				if (explicitlyDeletedGoogleTaskIds.has(gId) || !activeGoogleTaskIds.has(gId)) {
+					await deleteDoc(doc(db, 'todos', docSnap.id));
+					deletedCount++;
+					console.log(`🗑️ [Tasks Inbound] Tarea purgada por reconciliación: ${docSnap.id} (Google ID: ${gId})`);
+				}
+			}
+		}
+
 		for (const t of incomingTasksList) {
 			const googleTaskId = t.googleTaskId || t.id;
 			if (!googleTaskId) {
@@ -256,7 +323,12 @@ export async function POST({ request }) {
 				continue;
 			}
 
-			const title = t.title || t.task || 'Tarea Google Tasks';
+			const title = (t.title || t.task || '').trim();
+			if (!title) {
+				ignoredCount++;
+				continue;
+			}
+
 			const notes = t.notes || '';
 			const isCompleted = t.status === 'completed' || Boolean(t.completed) || t.isCompleted === true;
 
@@ -290,13 +362,19 @@ export async function POST({ request }) {
 					console.log(`✏️ [Tasks Inbound] Tarea actualizada en CRM: ${docSnap.id} (Google ID: ${googleTaskId})`, updateData);
 				}
 			} else {
+				// Solo crear si no está marcada como completada (evita revivir tareas viejas purgadas)
+				if (isCompleted) {
+					ignoredCount++;
+					continue;
+				}
+
 				// Insertar nueva tarea creada directamente en Google Tasks
 				const newTaskTodo = {
 					task: title,
 					notes,
 					endTask: parsedDue.timestamp,
 					timeString: parsedDue.timeString || '',
-					isCompleted,
+					isCompleted: false,
 					createdAt: t.createdAt ? Number(t.createdAt) : Date.now(),
 					googleTaskId,
 					type: 'Google Tasks',
