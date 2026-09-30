@@ -20,7 +20,7 @@
   }
   
   let todos: Todo[] = [];
-  $: pendingTodosCount = todos.filter(t => !t.isCompleted).length;
+  $: pendingTodosCount = todos.filter(t => !t.isCompleted && !isIgnoredEvent(t.task)).length;
   let todo: TodoFormState = {}; // Usar el tipo de estado del formulario
   let showForm = false;
   let isLoading = true;
@@ -165,9 +165,25 @@
     );
   }
 
-  // Reactive statement para ordenar los todos por fecha y excluir estrictamente cumpleaños/días especiales
+  let selectedFilter: 'ALL' | 'TASKS' | 'CALENDAR' = 'ALL';
+  let hideCompleted: boolean = false;
+
+  $: tasksCount = todos.filter(t => !isIgnoredEvent(t.task) && (t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId))).length;
+  $: calendarCount = todos.filter(t => !isIgnoredEvent(t.task) && (t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
+
+  // Reactive statement para ordenar los todos por fecha y aplicar filtros de origen/estado
   $: sortedTodos = todos
       .filter(t => !isIgnoredEvent(t.task))
+      .filter(t => {
+        if (hideCompleted && t.isCompleted) return false;
+        if (selectedFilter === 'TASKS') {
+          return t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId);
+        }
+        if (selectedFilter === 'CALENDAR') {
+          return t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId);
+        }
+        return true;
+      })
       .sort((a, b) => {
           const dateA = Number(a.endTask);
           const dateB = Number(b.endTask);
@@ -1174,6 +1190,44 @@
           </button>
         </div>
       {:else}
+        <!-- BARRA DE FILTROS DE ORIGEN Y ESTADO -->
+        <div class="agenda-filter-bar">
+          <div class="filter-tabs">
+            <button
+              type="button"
+              class="tab-btn"
+              class:active={selectedFilter === 'ALL'}
+              on:click={() => selectedFilter = 'ALL'}
+            >
+              <i class="fa-solid fa-list"></i>
+              <span>Todas ({todos.filter(t => !isIgnoredEvent(t.task)).length})</span>
+            </button>
+            <button
+              type="button"
+              class="tab-btn tab-tasks"
+              class:active={selectedFilter === 'TASKS'}
+              on:click={() => selectedFilter = 'TASKS'}
+            >
+              <i class="fa-solid fa-list-check"></i>
+              <span>Google Tasks ({tasksCount})</span>
+            </button>
+            <button
+              type="button"
+              class="tab-btn tab-calendar"
+              class:active={selectedFilter === 'CALENDAR'}
+              on:click={() => selectedFilter = 'CALENDAR'}
+            >
+              <i class="fa-solid fa-calendar-day"></i>
+              <span>Citas Calendar ({calendarCount})</span>
+            </button>
+          </div>
+
+          <label class="toggle-hide-completed">
+            <input type="checkbox" bind:checked={hideCompleted} />
+            <span>Ocultar completadas</span>
+          </label>
+        </div>
+
         <div class="table-card glass">
           <div class="table-responsive">
             <table class="agenda-table">
@@ -2657,5 +2711,78 @@
     .actions-group {
       gap: 0.35rem;
     }
+  }
+
+  /* BARRA DE FILTROS */
+  .agenda-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-tabs {
+    display: inline-flex;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0.25rem;
+    gap: 0.25rem;
+  }
+
+  .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.95rem;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.86rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .tab-btn:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .tab-btn.active {
+    background: #3b82f6;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+  }
+
+  .tab-btn.tab-tasks.active {
+    background: #0ea5e9;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35);
+  }
+
+  .tab-btn.tab-calendar.active {
+    background: #8b5cf6;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
+  }
+
+  .toggle-hide-completed {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle-hide-completed input[type="checkbox"] {
+    accent-color: #3b82f6;
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
   }
 </style>
