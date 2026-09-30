@@ -363,16 +363,25 @@
         const windowMin = now - 7 * 24 * 60 * 60 * 1000;
         const windowMax = now + 60 * 24 * 60 * 60 * 1000;
 
-        // FASE A: Purgar en ATAIR citas canceladas o borradas en Calendar
+        // FASE A: Purgar en ATAIR citas canceladas o borradas en Calendar (y cumpleaños/días especiales)
         for (const existing of existingTodos) {
           const evId = existing.googleEventId;
           const isGoogleCal = existing.source === 'google_calendar' || existing.type === 'Google Calendar' || Boolean(evId);
           if (!isGoogleCal || !evId) continue;
 
+          const title = (existing.task || '').trim().toLowerCase();
+          const isSpecialContactDay =
+            title.startsWith('día especial de') ||
+            title.startsWith('dia especial de') ||
+            title.startsWith('cumpleaños de') ||
+            title.startsWith('cumpleanos de') ||
+            title.includes('feliz cumpleaños') ||
+            title.includes('feliz cumpleanos');
+
           const isInSyncWindow = existing.endTask >= windowMin && existing.endTask <= windowMax;
 
-          if (explicitlyDeletedEventIds.has(evId) || (isInSyncWindow && !activeCalendarEventIds.has(evId) && calData.events.length > 0)) {
-            console.log(`🗑️ [Agenda] Purgando cita cancelada/eliminada en Calendar: "${existing.task}" (${evId})`);
+          if (isSpecialContactDay || explicitlyDeletedEventIds.has(evId) || (isInSyncWindow && !activeCalendarEventIds.has(evId) && calData.events.length > 0)) {
+            console.log(`🗑️ [Agenda] Purgando cita irrelevante/cancelada en Calendar: "${existing.task}" (${evId})`);
             await firebase.delete('todos', existing.id);
             eventsMapByGoogleId.delete(evId);
             changesMade = true;
@@ -383,6 +392,20 @@
         for (const ev of calData.events) {
           const googleEventId = ev.googleEventId || ev.id;
           if (!googleEventId || ev.deleted || ev.status === 'cancelled') continue;
+
+          const summary = (ev.summary || ev.title || 'Cita de Calendario').trim();
+          const lowerSummary = summary.toLowerCase();
+          if (
+            lowerSummary.startsWith('día especial de') ||
+            lowerSummary.startsWith('dia especial de') ||
+            lowerSummary.startsWith('cumpleaños de') ||
+            lowerSummary.startsWith('cumpleanos de') ||
+            lowerSummary.includes('feliz cumpleaños') ||
+            lowerSummary.includes('feliz cumpleanos')
+          ) {
+            // Ignorar días especiales de contactos y cumpleaños para no saturar la agenda de trabajo
+            continue;
+          }
 
           if (eventTombstones.has(googleEventId)) {
             continue;
@@ -400,7 +423,7 @@
 
           const existing = eventsMapByGoogleId.get(googleEventId);
           const eventDocData = {
-            task: ev.summary || ev.title || 'Cita de Calendario',
+            task: summary,
             notes: notesWithLoc,
             isCompleted: ev.status === 'completed' || false,
             endTask: parsed.timestamp,

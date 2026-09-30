@@ -176,11 +176,20 @@ export async function POST({ request }) {
 				const evId = d.googleEventId;
 				if (!evId) continue;
 
+				const title = (d.task || '').trim().toLowerCase();
+				const isSpecialContactDay =
+					title.startsWith('día especial de') ||
+					title.startsWith('dia especial de') ||
+					title.startsWith('cumpleaños de') ||
+					title.startsWith('cumpleanos de') ||
+					title.includes('feliz cumpleaños') ||
+					title.includes('feliz cumpleanos');
+
 				const isInWindow = Number(d.endTask) >= windowMin && Number(d.endTask) <= windowMax;
-				if (explicitlyDeletedEventIds.has(evId) || (isInWindow && !activeCalendarEventIds.has(evId))) {
+				if (isSpecialContactDay || explicitlyDeletedEventIds.has(evId) || (isInWindow && !activeCalendarEventIds.has(evId))) {
 					await deleteDoc(doc(db, 'todos', docSnap.id));
 					deletedCount++;
-					console.log(`🗑️ [Calendar Inbound] Cita purgada por reconciliación: ${docSnap.id} (Event ID: ${evId})`);
+					console.log(`🗑️ [Calendar Inbound] Cita purgada por reconciliación/filtro: ${docSnap.id} (Event ID: ${evId})`);
 				}
 			}
 		}
@@ -188,6 +197,20 @@ export async function POST({ request }) {
 		for (const ev of incomingEventsList) {
 			const googleEventId = ev.googleEventId || ev.id;
 			if (!googleEventId) {
+				ignoredCount++;
+				continue;
+			}
+
+			const summary = (ev.summary || ev.title || ev.task || 'Cita de Calendario').trim();
+			const lowerSummary = summary.toLowerCase();
+			if (
+				lowerSummary.startsWith('día especial de') ||
+				lowerSummary.startsWith('dia especial de') ||
+				lowerSummary.startsWith('cumpleaños de') ||
+				lowerSummary.startsWith('cumpleanos de') ||
+				lowerSummary.includes('feliz cumpleaños') ||
+				lowerSummary.includes('feliz cumpleanos')
+			) {
 				ignoredCount++;
 				continue;
 			}
