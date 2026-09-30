@@ -184,6 +184,9 @@ export interface Todo {
   type?: string;
   user?: string;
   stage?: number | string; // Agregar stage como propiedad opcional (puede ser number o string)
+  googleTaskId?: string;
+  googleEventId?: string;
+  source?: string;
 }
 
 

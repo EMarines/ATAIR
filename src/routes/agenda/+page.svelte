@@ -16,6 +16,7 @@
       type?: string;
       user?: string;
       googleTaskId?: string;
+      googleEventId?: string;
   }
   
   let todos: Todo[] = [];
@@ -157,9 +158,186 @@
       return dateA - dateB;
   });
 
-  // Cargar todos al montar el componente
+  let isSyncingGoogle = false;
+
+  function parseDateAndTimeToChihuahua(rawStr?: string | null) {
+    if (!rawStr) return { timestamp: Date.now(), timeString: '' };
+    const str = String(rawStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [y, m, d] = str.split('-').map(Number);
+      const dateObj = new Date(y, m - 1, d, 12, 0, 0);
+      return { timestamp: dateObj.getTime(), timeString: '' };
+    }
+    const dateObj = new Date(str);
+    if (isNaN(dateObj.getTime())) return { timestamp: Date.now(), timeString: '' };
+
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Chihuahua',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const parts = formatter.formatToParts(dateObj);
+      const getPart = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+      const y = parseInt(getPart('year'), 10);
+      const m = parseInt(getPart('month'), 10) - 1;
+      const day = parseInt(getPart('day'), 10);
+      let h = parseInt(getPart('hour'), 10);
+      if (h === 24) h = 0;
+      const min = parseInt(getPart('minute'), 10);
+      const localD = new Date(y, m, day, h, min, 0, 0);
+      return {
+        timestamp: localD.getTime(),
+        timeString: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+      };
+    } catch {
+      return { timestamp: dateObj.getTime(), timeString: '' };
+    }
+  }
+
+  async function syncFromGoogle() {
+    if (isSyncingGoogle) return;
+    isSyncingGoogle = true;
+
+    try {
+      console.log('🔄 [Agenda] Sincronizando tareas y citas desde Google...');
+      const [tasksRes, calRes] = await Promise.allSettled([
+        fetch('https://n8n-atair.duckdns.org/webhook/atair-google-tasks-inbound-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}'
+        }).then(r => r.json()),
+        fetch('https://n8n-atair.duckdns.org/webhook/atair-google-calendar-inbound-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}'
+        }).then(r => r.json())
+      ]);
+
+      const tasksData = tasksRes.status === 'fulfilled' ? tasksRes.value : null;
+      const calData = calRes.status === 'fulfilled' ? calRes.value : null;
+
+      // Obtener tareas actuales para comparar y no duplicar
+      const currentTodosResult = await firebase.get('todos');
+      const existingTodos = currentTodosResult.success ? (currentTodosResult.data as any[]) : [];
+      
+      const tasksMapByGoogleId = new Map<string, any>();
+      const eventsMapByGoogleId = new Map<string, any>();
+
+      for (const t of existingTodos) {
+        if (t.googleTaskId) tasksMapByGoogleId.set(t.googleTaskId, t);
+        if (t.googleEventId) eventsMapByGoogleId.set(t.googleEventId, t);
+      }
+
+      let changesMade = false;
+
+      // 1. Procesar Google Tasks
+      if (tasksData?.items && Array.isArray(tasksData.items)) {
+        for (const t of tasksData.items) {
+          const googleTaskId = t.googleTaskId || t.id;
+          if (!googleTaskId) continue;
+
+          if (t.deleted) {
+            const existing = tasksMapByGoogleId.get(googleTaskId);
+            if (existing) {
+              await firebase.delete('todos', existing.id);
+              changesMade = true;
+            }
+            continue;
+          }
+
+          const parsed = parseDateAndTimeToChihuahua(t.due || t.dueDate);
+          const existing = tasksMapByGoogleId.get(googleTaskId);
+          const taskDocData = {
+            task: t.title || t.task || 'Tarea Google Tasks',
+            notes: t.notes || '',
+            isCompleted: t.status === 'completed' || Boolean(t.completed),
+            endTask: parsed.timestamp,
+            timeString: parsed.timeString || '',
+            googleTaskId,
+            type: 'Google Tasks',
+            source: 'google_tasks',
+            updatedAt: Date.now()
+          };
+
+          if (existing) {
+            // Actualizar si difieren datos clave
+            await firebase.update('todos', existing.id, taskDocData);
+            changesMade = true;
+          } else {
+            await firebase.add('todos', { ...taskDocData, createdAt: Date.now() });
+            changesMade = true;
+          }
+        }
+      }
+
+      // 2. Procesar Google Calendar
+      if (calData?.events && Array.isArray(calData.events)) {
+        for (const ev of calData.events) {
+          const googleEventId = ev.googleEventId || ev.id;
+          if (!googleEventId) continue;
+
+          if (ev.deleted || ev.status === 'cancelled') {
+            const existing = eventsMapByGoogleId.get(googleEventId);
+            if (existing) {
+              await firebase.delete('todos', existing.id);
+              changesMade = true;
+            }
+            continue;
+          }
+
+          const startStr = ev.start?.dateTime || ev.start?.date || ev.start;
+          const parsed = parseDateAndTimeToChihuahua(startStr);
+
+          const loc = (ev.location || ev.lugar || '').trim();
+          const desc = (ev.description || ev.notes || '').trim();
+          let notesWithLoc = desc;
+          if (loc) {
+            notesWithLoc = `📍 Lugar: ${loc}` + (desc ? `\n\n${desc}` : '');
+          }
+
+          const existing = eventsMapByGoogleId.get(googleEventId);
+          const eventDocData = {
+            task: ev.summary || ev.title || 'Cita de Calendario',
+            notes: notesWithLoc,
+            isCompleted: ev.status === 'completed' || false,
+            endTask: parsed.timestamp,
+            timeString: parsed.timeString,
+            googleEventId,
+            type: 'Google Calendar',
+            source: 'google_calendar',
+            updatedAt: Date.now()
+          };
+
+          if (existing) {
+            await firebase.update('todos', existing.id, eventDocData);
+            changesMade = true;
+          } else {
+            await firebase.add('todos', { ...eventDocData, createdAt: Date.now() });
+            changesMade = true;
+          }
+        }
+      }
+
+      if (changesMade) {
+        await loadTodos();
+      }
+      console.log('✅ [Agenda] Sincronización con Google finalizada');
+    } catch (e) {
+      console.warn('⚠️ [Agenda] Error durante la sincronización:', e);
+    } finally {
+      isSyncingGoogle = false;
+    }
+  }
+
+  // Cargar todos al montar el componente y disparar sincronización en background
   onMount(async () => {
       await loadTodos();
+      syncFromGoogle();
   });
 
   // Función para cargar todos (sin cambios)
@@ -321,7 +499,7 @@
 
       const finalTimestamp = localDate.getTime();
 
-      const todoData: Omit<Todo, 'id'> & { googleTaskId?: string } = {
+      const todoData: Omit<Todo, 'id'> & { googleTaskId?: string; googleEventId?: string } = {
           task: todo.task.trim(),
           endTask: finalTimestamp,
           notes: todo.notes?.trim() || '',
@@ -330,7 +508,8 @@
           type: todo.type || '',
           user: todo.user || '',
           timeString: finalTimeStringForDb,
-          ...(todo.googleTaskId ? { googleTaskId: todo.googleTaskId } : {})
+          ...(todo.googleTaskId ? { googleTaskId: todo.googleTaskId } : {}),
+          ...(todo.googleEventId ? { googleEventId: todo.googleEventId } : {})
       };
 
       try {
@@ -447,7 +626,8 @@
           createdAt: todoToEdit.createdAt,
           type: todoToEdit.type,
           user: todoToEdit.user,
-          googleTaskId: (todoToEdit as any).googleTaskId || ''
+          googleTaskId: (todoToEdit as any).googleTaskId || '',
+          googleEventId: (todoToEdit as any).googleEventId || ''
       };
 
       $systStatus = "editing";
@@ -508,20 +688,33 @@
         <p class="main-subtitle">Organiza tus citas de captación, visitas a propiedades y recordatorios de seguimiento.</p>
       </div>
 
-      <button 
-        class="btn-toggle-task"
-        class:active={showForm}
-        on:click={toggleNewTaskForm}
-        aria-label="Agregar nueva tarea"
-      >
-        {#if showForm}
-          <i class="fa-solid fa-xmark"></i>
-          <span>Cerrar Formulario</span>
-        {:else}
-          <i class="fa-solid fa-plus"></i>
-          <span>Tarea</span>
-        {/if}
-      </button>
+      <div class="agenda-header-actions">
+        <button 
+          class="btn-sync-google"
+          class:is-syncing={isSyncingGoogle}
+          on:click={syncFromGoogle}
+          disabled={isSyncingGoogle}
+          title="Sincronizar tareas y citas desde Google Tasks y Google Calendar"
+        >
+          <i class="fa-solid fa-arrows-rotate" class:fa-spin={isSyncingGoogle}></i>
+          <span>{isSyncingGoogle ? 'Sincronizando...' : 'Sincronizar Google'}</span>
+        </button>
+
+        <button 
+          class="btn-toggle-task"
+          class:active={showForm}
+          on:click={toggleNewTaskForm}
+          aria-label="Agregar nueva tarea"
+        >
+          {#if showForm}
+            <i class="fa-solid fa-xmark"></i>
+            <span>Cerrar Formulario</span>
+          {:else}
+            <i class="fa-solid fa-plus"></i>
+            <span>Tarea</span>
+          {/if}
+        </button>
+      </div>
     </div>
 
     <!-- FORMULARIO REDISEÑADO CON GLASS CARD -->
@@ -860,8 +1053,19 @@
 
                     <!-- Tarea -->
                     <td class="td-task">
-                      <div class="task-title-text" class:completed-text={currentTodo.isCompleted}>
-                        {currentTodo.task}
+                      <div class="task-title-wrap">
+                        {#if currentTodo.googleEventId || currentTodo.type === 'Google Calendar' || currentTodo.source === 'google_calendar'}
+                          <span class="badge-source badge-calendar" title="Cita sincronizada de Google Calendar">
+                            <i class="fa-solid fa-calendar-day"></i> Cita
+                          </span>
+                        {:else if currentTodo.googleTaskId || currentTodo.type === 'Google Tasks' || currentTodo.source === 'google_tasks'}
+                          <span class="badge-source badge-tasks" title="Tarea sincronizada de Google Tasks">
+                            <i class="fa-solid fa-list-check"></i> Tasks
+                          </span>
+                        {/if}
+                        <div class="task-title-text" class:completed-text={currentTodo.isCompleted}>
+                          {currentTodo.task}
+                        </div>
                       </div>
                     </td>
 
@@ -996,6 +1200,48 @@
     font-size: 0.88rem;
     margin: 0;
     max-width: 600px;
+  }
+
+  /* BOTONES DE CABECERA */
+  .agenda-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-sync-google {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.15rem;
+    background: var(--surface-card, #ffffff);
+    color: var(--brand, #4f46e5);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  :global([data-theme="dark"]) .btn-sync-google {
+    background: rgba(99, 102, 241, 0.12);
+    color: #c7d2fe;
+    border-color: rgba(99, 102, 241, 0.35);
+  }
+
+  .btn-sync-google:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: rgba(99, 102, 241, 0.14);
+    border-color: var(--brand, #4f46e5);
+  }
+
+  .btn-sync-google:disabled {
+    opacity: 0.75;
+    cursor: wait;
   }
 
   /* BOTÓN + TAREA */
@@ -1369,6 +1615,51 @@
 
   .datetime-pill i {
     color: var(--brand, #6366f1);
+  }
+
+  .task-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+
+  .badge-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .badge-calendar {
+    background: rgba(147, 51, 234, 0.12);
+    color: #9333ea;
+    border: 1px solid rgba(147, 51, 234, 0.28);
+  }
+
+  :global([data-theme="dark"]) .badge-calendar {
+    background: rgba(168, 85, 247, 0.18);
+    color: #c084fc;
+    border-color: rgba(168, 85, 247, 0.35);
+  }
+
+  .badge-tasks {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.28);
+  }
+
+  :global([data-theme="dark"]) .badge-tasks {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.35);
   }
 
   .task-title-text {
@@ -2010,6 +2301,14 @@
       gap: 1rem;
     }
 
+    .agenda-header-actions {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 0.65rem;
+    }
+
+    .btn-sync-google,
     .btn-toggle-task {
       justify-content: center;
       width: 100%;

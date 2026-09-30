@@ -1,91 +1,318 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/firebase';
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, addDoc } from 'firebase/firestore';
+
+/**
+ * Parsea cadenas ISO o de fecha a timestamp numérico y formato HH:MM en zona horaria America/Chihuahua (UTC-6)
+ */
+function parseDateTimeForChihuahua(isoOrDateStr?: string | null): { timestamp: number; timeString: string } {
+	if (!isoOrDateStr) {
+		return { timestamp: Date.now(), timeString: '' };
+	}
+
+	const str = String(isoOrDateStr).trim();
+
+	// Si es solo fecha YYYY-MM-DD (evento de todo el día)
+	if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+		const [y, m, day] = str.split('-').map(Number);
+		// Fijar a mediodía local para evitar deslizamientos de fecha por UTC
+		const d = new Date(y, m - 1, day, 12, 0, 0);
+		return {
+			timestamp: d.getTime(),
+			timeString: ''
+		};
+	}
+
+	const d = new Date(str);
+	if (isNaN(d.getTime())) {
+		return { timestamp: Date.now(), timeString: '' };
+	}
+
+	try {
+		const formatter = new Intl.DateTimeFormat('en-US', {
+			timeZone: 'America/Chihuahua',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false
+		});
+
+		const parts = formatter.formatToParts(d);
+		const getPart = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+
+		const y = parseInt(getPart('year'), 10);
+		const m = parseInt(getPart('month'), 10) - 1;
+		const day = parseInt(getPart('day'), 10);
+		let h = parseInt(getPart('hour'), 10);
+		if (h === 24) h = 0;
+		const min = parseInt(getPart('minute'), 10);
+
+		const localDate = new Date(y, m, day, h, min, 0, 0);
+		const timeString = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+
+		return {
+			timestamp: localDate.getTime(),
+			timeString
+		};
+	} catch (e) {
+		return {
+			timestamp: d.getTime(),
+			timeString: ''
+		};
+	}
+}
+
+/**
+ * Formatea notas incorporando el lugar de la cita al inicio si existe
+ */
+function formatNotesWithLocation(rawNotes?: string | null, rawLocation?: string | null): string {
+	const location = (rawLocation || '').trim();
+	const notes = (rawNotes || '').trim();
+
+	if (location) {
+		const locPrefix = `📍 Lugar: ${location}`;
+		// Si las notas ya contienen el prefijo de lugar, evitar duplicarlo
+		if (notes.startsWith('📍 Lugar:')) {
+			return notes;
+		}
+		return notes ? `${locPrefix}\n\n${notes}` : locPrefix;
+	}
+
+	return notes;
+}
 
 export async function POST({ request }) {
 	try {
 		const payload = await request.json();
-		const { type, items, task } = payload;
+		const { type, items, task, tasks, event, events, action } = payload;
 
 		if (!db) {
 			return json({ success: false, error: 'Firestore no está inicializado' }, { status: 500 });
 		}
 
-		console.log('📥 [API /api/sync/google-inbound] Evento recibido desde Google / n8n:', type);
+		console.log('📥 [API /api/sync/google-inbound] Evento recibido desde Google / n8n:', type || action || 'SYNC');
 
+		let createdCount = 0;
 		let updatedCount = 0;
 		let deletedCount = 0;
 		let ignoredCount = 0;
 
-		// 1. Sincronización de Tareas (Lote o Individual)
-		if (type === 'TASK_SYNC' || type === 'TASK_UPDATE' || task || (items && items.length > 0)) {
-			const tasksList = items || (task ? [task] : []);
-			const todosRef = collection(db, 'todos');
+		const todosRef = collection(db, 'todos');
 
-			for (const item of tasksList) {
-				const googleTaskId = item.googleTaskId || item.id;
-				if (!googleTaskId) {
-					ignoredCount++;
-					continue;
+		// Separar o detectar listas de Tareas y Eventos de Calendario
+		const incomingEventsList: any[] = [];
+		const incomingTasksList: any[] = [];
+
+		if (events && Array.isArray(events)) {
+			incomingEventsList.push(...events);
+		}
+		if (event && typeof event === 'object') {
+			incomingEventsList.push(event);
+		}
+
+		if (tasks && Array.isArray(tasks)) {
+			incomingTasksList.push(...tasks);
+		}
+		if (task && typeof task === 'object') {
+			incomingTasksList.push(task);
+		}
+
+		if (items && Array.isArray(items)) {
+			for (const it of items) {
+				// Detectar si el item es de Calendario o de Tasks
+				const isCalendarItem =
+					type === 'CALENDAR_SYNC' ||
+					type === 'EVENT_SYNC' ||
+					Boolean(it.googleEventId) ||
+					Boolean(it.start && (it.summary || it.location || it.end));
+
+				if (isCalendarItem) {
+					incomingEventsList.push(it);
+				} else {
+					incomingTasksList.push(it);
 				}
+			}
+		}
 
-				// Buscar en Firestore si existe un todo con este googleTaskId
-				const q = query(todosRef, where('googleTaskId', '==', googleTaskId));
-				const snapshot = await getDocs(q);
+		// Si el payload es un evento directo en la raíz
+		if (type === 'CALENDAR_SYNC' && !incomingEventsList.length && (payload.summary || payload.start || payload.id)) {
+			incomingEventsList.push(payload);
+		}
 
-				if (snapshot.empty) {
-					// Es una tarea personal/externa creada en Google -> IGNORAR
-					ignoredCount++;
-					continue;
-				}
+		// Si el payload es una tarea directa en la raíz
+		if (type === 'TASK_SYNC' && !incomingTasksList.length && (payload.title || payload.googleTaskId || payload.id)) {
+			incomingTasksList.push(payload);
+		}
 
-				for (const todoDoc of snapshot.docs) {
-					const docRef = doc(db, 'todos', todoDoc.id);
+		// ============================================================
+		// 1. PROCESAR EVENTOS DE GOOGLE CALENDAR -> AGENDA ATAIR
+		// ============================================================
+		for (const ev of incomingEventsList) {
+			const googleEventId = ev.googleEventId || ev.id;
+			if (!googleEventId) {
+				ignoredCount++;
+				continue;
+			}
 
-					// Si la tarea fue eliminada en Google
-					if (item.deleted === true) {
-						await deleteDoc(docRef);
+			const isDeleted =
+				ev.deleted === true ||
+				ev.status === 'cancelled' ||
+				action === 'DELETE' ||
+				action === 'CALENDAR_DELETE';
+
+			// Buscar si ya existe un todo con este googleEventId
+			const q = query(todosRef, where('googleEventId', '==', googleEventId));
+			const snapshot = await getDocs(q);
+
+			if (isDeleted) {
+				if (!snapshot.empty) {
+					for (const docSnap of snapshot.docs) {
+						await deleteDoc(doc(db, 'todos', docSnap.id));
 						deletedCount++;
-						console.log(`🗑️ [Google Tasks Sync] Tarea eliminada en CRM: ${todoDoc.id} (Google ID: ${googleTaskId})`);
-						continue;
+						console.log(`🗑️ [Calendar Inbound] Cita eliminada en CRM: ${docSnap.id} (Google Event ID: ${googleEventId})`);
 					}
+				}
+				continue;
+			}
 
-					// Actualización de campos
-					const updateData: Record<string, any> = {};
+			const summary = ev.summary || ev.title || ev.task || 'Cita de Calendario';
+			const rawLocation = ev.location || ev.lugar || '';
+			const rawDescription = ev.description || ev.notes || '';
+			const finalNotes = formatNotesWithLocation(rawDescription, rawLocation);
 
-					if (item.title !== undefined && item.title !== null) {
-						updateData.task = item.title;
+			// Extraer fecha y hora de inicio
+			const rawStart = ev.start?.dateTime || ev.start?.date || ev.start || ev.dueDate || ev.due;
+			const parsed = parseDateTimeForChihuahua(rawStart);
+
+			const isCompleted = ev.isCompleted === true || ev.status === 'completed';
+
+			if (!snapshot.empty) {
+				// Actualizar cita existente
+				for (const docSnap of snapshot.docs) {
+					const docRef = doc(db, 'todos', docSnap.id);
+					const updateData: Record<string, any> = {
+						task: summary,
+						notes: finalNotes,
+						endTask: parsed.timestamp,
+						timeString: parsed.timeString || '',
+						isCompleted,
+						updatedAt: Date.now()
+					};
+
+					await updateDoc(docRef, updateData);
+					updatedCount++;
+					console.log(`✏️ [Calendar Inbound] Cita actualizada en CRM: ${docSnap.id} (Google Event ID: ${googleEventId})`, updateData);
+				}
+			} else {
+				// Insertar nueva cita proveniente de Google Calendar
+				const newCalendarTodo = {
+					task: summary,
+					notes: finalNotes,
+					endTask: parsed.timestamp,
+					timeString: parsed.timeString || '',
+					isCompleted,
+					createdAt: ev.createdAt ? Number(ev.createdAt) : Date.now(),
+					googleEventId,
+					type: 'Google Calendar',
+					source: 'google_calendar',
+					updatedAt: Date.now()
+				};
+
+				const newDocRef = await addDoc(todosRef, newCalendarTodo);
+				createdCount++;
+				console.log(`✨ [Calendar Inbound] Nueva cita creada en CRM: ${newDocRef.id} (Google Event ID: ${googleEventId})`, newCalendarTodo);
+			}
+		}
+
+		// ============================================================
+		// 2. PROCESAR TAREAS DE GOOGLE TASKS -> AGENDA ATAIR
+		// ============================================================
+		for (const t of incomingTasksList) {
+			const googleTaskId = t.googleTaskId || t.id;
+			if (!googleTaskId) {
+				ignoredCount++;
+				continue;
+			}
+
+			const isDeleted =
+				t.deleted === true ||
+				action === 'DELETE' ||
+				action === 'TASK_DELETE';
+
+			// Buscar en Firestore si existe un todo con este googleTaskId
+			const q = query(todosRef, where('googleTaskId', '==', googleTaskId));
+			const snapshot = await getDocs(q);
+
+			if (isDeleted) {
+				if (!snapshot.empty) {
+					for (const docSnap of snapshot.docs) {
+						await deleteDoc(doc(db, 'todos', docSnap.id));
+						deletedCount++;
+						console.log(`🗑️ [Tasks Inbound] Tarea eliminada en CRM: ${docSnap.id} (Google ID: ${googleTaskId})`);
 					}
+				}
+				continue;
+			}
 
-					if (item.notes !== undefined && item.notes !== null) {
-						updateData.notes = item.notes;
-					}
+			const title = t.title || t.task || 'Tarea Google Tasks';
+			const notes = t.notes || '';
+			const isCompleted = t.status === 'completed' || Boolean(t.completed) || t.isCompleted === true;
 
-					if (item.status !== undefined) {
-						updateData.isCompleted = item.status === 'completed';
-					} else if (item.completed !== undefined) {
-						updateData.isCompleted = Boolean(item.completed);
-					}
+			// Fecha de vencimiento
+			let parsedDue = { timestamp: Date.now(), timeString: '' };
+			const rawDue = t.due || t.dueDate || t.endTask;
+			if (rawDue) {
+				parsedDue = parseDateTimeForChihuahua(rawDue);
+			}
 
-					if (item.due || item.dueDate) {
-						const dueParsed = new Date(item.due || item.dueDate);
-						if (!isNaN(dueParsed.getTime())) {
-							updateData.endTask = dueParsed.getTime();
+			if (!snapshot.empty) {
+				// Actualización de tarea existente
+				for (const docSnap of snapshot.docs) {
+					const docRef = doc(db, 'todos', docSnap.id);
+					const updateData: Record<string, any> = {
+						task: title,
+						notes,
+						isCompleted,
+						updatedAt: Date.now()
+					};
+
+					if (rawDue) {
+						updateData.endTask = parsedDue.timestamp;
+						if (parsedDue.timeString) {
+							updateData.timeString = parsedDue.timeString;
 						}
 					}
 
-					if (Object.keys(updateData).length > 0) {
-						updateData.updatedAt = Date.now();
-						await updateDoc(docRef, updateData);
-						updatedCount++;
-						console.log(`✏️ [Google Tasks Sync] Tarea actualizada en CRM: ${todoDoc.id} (Google ID: ${googleTaskId})`, updateData);
-					}
+					await updateDoc(docRef, updateData);
+					updatedCount++;
+					console.log(`✏️ [Tasks Inbound] Tarea actualizada en CRM: ${docSnap.id} (Google ID: ${googleTaskId})`, updateData);
 				}
+			} else {
+				// Insertar nueva tarea creada directamente en Google Tasks
+				const newTaskTodo = {
+					task: title,
+					notes,
+					endTask: parsedDue.timestamp,
+					timeString: parsedDue.timeString || '',
+					isCompleted,
+					createdAt: t.createdAt ? Number(t.createdAt) : Date.now(),
+					googleTaskId,
+					type: 'Google Tasks',
+					source: 'google_tasks',
+					updatedAt: Date.now()
+				};
+
+				const newDocRef = await addDoc(todosRef, newTaskTodo);
+				createdCount++;
+				console.log(`✨ [Tasks Inbound] Nueva tarea creada en CRM: ${newDocRef.id} (Google ID: ${googleTaskId})`, newTaskTodo);
 			}
 		}
 
 		return json({
 			success: true,
+			createdCount,
 			updatedCount,
 			deletedCount,
 			ignoredCount,
