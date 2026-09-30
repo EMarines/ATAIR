@@ -151,12 +151,28 @@
     } catch {}
   }
 
-  // Reactive statement para ordenar los todos por fecha (usa el timestamp numérico)
-  $: sortedTodos = todos.sort((a, b) => {
-      const dateA = Number(a.endTask); // Asegurarse de que es número para ordenar
-      const dateB = Number(b.endTask);
-      return dateA - dateB;
-  });
+  function isIgnoredEvent(rawTitle?: string | null): boolean {
+    if (!rawTitle) return false;
+    const s = String(rawTitle).trim().toLowerCase();
+    return (
+      s.startsWith('día especial de') ||
+      s.startsWith('dia especial de') ||
+      s.startsWith('cumpleaños de') ||
+      s.startsWith('cumpleanos de') ||
+      s.includes('feliz cumpleaños') ||
+      s.includes('feliz cumpleanos') ||
+      s.startsWith('aniversario de')
+    );
+  }
+
+  // Reactive statement para ordenar los todos por fecha y excluir estrictamente cumpleaños/días especiales
+  $: sortedTodos = todos
+      .filter(t => !isIgnoredEvent(t.task))
+      .sort((a, b) => {
+          const dateA = Number(a.endTask);
+          const dateB = Number(b.endTask);
+          return dateA - dateB;
+      });
 
   let isSyncingGoogle = false;
 
@@ -469,7 +485,6 @@
       syncFromGoogle();
   });
 
-  // Función para cargar todos (sin cambios)
   async function loadTodos() {
       isLoading = true;
       error = null;
@@ -477,11 +492,21 @@
       try {
           const result = await firebase.get('todos');
           if (result.success) {
-              // Asegurarse de que endTask sea un número al cargar
-              todos = (result.data as Todo[]).map(t => ({
+              const allDocs = (result.data as any[]).map(t => ({
                   ...t,
-                  endTask: Number(t.endTask) // Convertir a número si viene como string/otro
-              })).filter(t => !isNaN(t.endTask)); // Filtrar tareas con fecha inválida
+                  endTask: Number(t.endTask)
+              })).filter(t => !isNaN(t.endTask));
+
+              const cleanDocs: Todo[] = [];
+              for (const t of allDocs) {
+                if (isIgnoredEvent(t.task)) {
+                  // Purgar de Firestore silenciosamente
+                  firebase.delete('todos', t.id).catch(() => {});
+                } else {
+                  cleanDocs.push(t as Todo);
+                }
+              }
+              todos = cleanDocs;
           } else {
               error = result.error as string;
           }
