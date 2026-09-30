@@ -654,7 +654,7 @@
       const monthIndex = parseInt(dateParts[1], 10) - 1;
       const day = parseInt(dateParts[2], 10);
 
-      let hours = 0;
+      let hours = 12;
       let minutes = 0;
       let finalTimeStringForDb = '';
 
@@ -847,7 +847,7 @@
       } else {
           todo = {
               endTask: formatTimestampToLocalDateInputString(Date.now()),
-              timeTask: '10:00'
+              timeTask: ''
           };
           $systStatus = "";
           showForm = true;
