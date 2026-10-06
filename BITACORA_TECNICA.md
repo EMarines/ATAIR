@@ -152,3 +152,23 @@ En lugar de una tabla estática de escritorio, los compromisos se dividen autom�
 | `src/routes/property/[id]/+page.svelte` | Ficha técnica completa con generador de propuesta en 1 clic. |
 | `src/routes/agenda/+page.svelte` | Agenda móvil agrupada cronológicamente con check interactivo en vivo. |
 | `src/routes/+page.svelte` | Dashboard reactivo con métricas vivas y prospectos recientes. |
+
+---
+
+## 10. Paquete Documental Comprometido al Cierre del Proyecto
+*(Acuerdo con Enrique Marines — Asiento #282)*
+
+Al finalizar los módulos de ATAIR CRM, se generará y entregará formalmente el expediente ejecutivo que contendrá:
+
+1. **Descripción General del Funcionamiento Integral:**
+   - Mapa de la arquitectura funcional de punta a punta.
+   - Detalle de cómo interactúan la PWA, la cartera aislada, el catálogo comercial, la agenda y el dashboard sin requerir software externo.
+2. **Diagrama de Flujo Canónico (Mermaid & Gráfico):**
+   - Recorrido completo del prospecto y la asesora:
+     $$\text{Llamada por Lona} \longrightarrow \text{Ingesta PWA 15s} \longrightarrow \text{Protección Autoría (associate\_id)} \longrightarrow \text{Propuesta Ligera WhatsApp} \longrightarrow \text{Agenda Cita/D1} \longrightarrow \text{Pipeline E1-E5} \longrightarrow \text{Cierre / Split 57.5-42.5}$$
+3. **Instructivo Institucional de Operación:**
+   - **Alcances:** Límites operativos de la PWA, cobertura de plazas (Chihuahua / Delicias) y roles (`admin` vs `asociado`).
+   - **Objetivos:** Productividad de campo, cero fuga de prospectos, velocidad de respuesta en <24h.
+   - **Métodos:** Estándares de captura, etiqueta telefónica `### ### ####`, y mensaje ligero no invasivo.
+   - **Metas Cuantitativas:** SLAs de atención (D1 <24h), ratio de conversión y pipeline de la red comercial.
+
