@@ -11,8 +11,29 @@
 	$: fullName = contact.fullName || `${contact.name || ''} ${contact.lastname || ''}`.trim() || 'Sin Nombre';
 	$: rawPhone = (contact.phoneRaw || contact.telephon || '').replace(/\D/g, '').slice(-10);
 	$: waPhone = rawPhone.length === 10 ? `52${rawPhone}` : rawPhone;
-	$: budget = contact.budgetTope || (contact.presupuestoMax ? `$${Number(contact.presupuestoMax).toLocaleString('es-MX')}` : '');
+	$: budget = formatBudget(contact.budgetTope || contact.presupuestoMax);
+	$: displayPhone = formatDisplayPhone(rawPhone);
 	$: propInterest = contact.propertyTitle || contact.lonaCode || contact.propertyInterestId || '';
+
+	function formatBudget(val: any): string {
+		if (!val && val !== 0) return '';
+		const str = String(val).trim();
+		if (!str) return '';
+		if (str.includes('$') || str.toLowerCase().includes('m')) return str;
+		const num = Number(str.replace(/\D/g, ''));
+		if (!isNaN(num) && num > 0) {
+			return `$${num.toLocaleString('es-MX')}`;
+		}
+		return str;
+	}
+
+	function formatDisplayPhone(raw: string): string {
+		const digits = (raw || '').replace(/\D/g, '').slice(-10);
+		if (digits.length === 10) {
+			return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+		}
+		return raw || '';
+	}
 
 	function handleCardClick() {
 		if (contact.id) {
@@ -88,26 +109,28 @@
 	<!-- Barra Inferior de Acciones Rápidas -->
 	<div class="card-footer" on:click={handleActionClick} role="presentation">
 		{#if rawPhone}
-			<a
-				href="tel:+52{rawPhone}"
-				class="action-btn call-btn"
-				title="Llamar al cliente"
-			>
-				<i class="fa-solid fa-phone"></i>
-				<span>{rawPhone}</span>
-			</a>
-			<a
-				href="https://wa.me/{waPhone}"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="action-btn wa-btn"
-				title="Abrir WhatsApp"
-			>
-				<i class="fa-brands fa-whatsapp"></i>
-				<span>WhatsApp</span>
-			</a>
+			<div class="footer-actions-wrap">
+				<a
+					href="tel:+52{rawPhone}"
+					class="btn-call-action"
+					title="Llamar a {displayPhone}"
+				>
+					<i class="fa-solid fa-phone"></i>
+					<span>{displayPhone}</span>
+				</a>
+				<a
+					href="https://wa.me/{waPhone}"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="btn-wa-action"
+					title="Abrir WhatsApp"
+				>
+					<i class="fa-brands fa-whatsapp"></i>
+					<span>WhatsApp</span>
+				</a>
+			</div>
 		{/if}
-		<span class="chevron-btn">
+		<span class="chevron-btn" title="Ver detalle">
 			<i class="fa-solid fa-chevron-right"></i>
 		</span>
 	</div>
@@ -258,51 +281,75 @@
 	}
 
 	.card-footer {
-		margin-top: 0.3rem;
-		padding-top: 0.7rem;
-		border-top: 1px solid rgba(255, 255, 255, 0.06);
+		margin-top: 0.35rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
 		display: flex;
 		align-items: center;
+		justify-content: space-between;
 		gap: 0.5rem;
 	}
 
-	.action-btn {
-		text-decoration: none;
-		font-size: 0.75rem;
-		font-weight: 600;
-		padding: 0.35rem 0.65rem;
-		border-radius: 6px;
+	.footer-actions-wrap {
 		display: flex;
 		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.btn-call-action,
+	.btn-wa-action {
+		display: inline-flex !important;
+		width: auto !important;
+		height: auto !important;
+		min-height: 32px;
+		padding: 0.38rem 0.7rem !important;
+		border-radius: 6px;
+		font-size: 0.78rem;
+		font-weight: 600;
+		text-decoration: none;
+		align-items: center;
 		gap: 0.35rem;
-		transition: background 0.15s ease;
+		white-space: nowrap;
+		box-sizing: border-box;
+		transition: background 0.15s ease, transform 0.15s ease;
 	}
 
-	.call-btn {
-		background: rgba(255, 255, 255, 0.08);
-		color: #e4e4e7;
-		border: 1px solid rgba(255, 255, 255, 0.12);
+	.btn-call-action {
+		background: #27272a !important;
+		color: #e4e4e7 !important;
+		border: 1px solid rgba(255, 255, 255, 0.14) !important;
 	}
 
-	.call-btn:hover {
-		background: rgba(255, 255, 255, 0.18);
-		color: #ffffff;
+	.btn-call-action:hover {
+		background: #3f3f46 !important;
+		color: #ffffff !important;
+		transform: translateY(-1px);
 	}
 
-	.wa-btn {
-		background: rgba(34, 197, 94, 0.15);
-		color: #4ade80;
-		border: 1px solid rgba(34, 197, 94, 0.3);
+	.btn-wa-action {
+		background: rgba(34, 197, 94, 0.16) !important;
+		color: #4ade80 !important;
+		border: 1px solid rgba(34, 197, 94, 0.35) !important;
 	}
 
-	.wa-btn:hover {
-		background: rgba(34, 197, 94, 0.25);
-		color: #22c55e;
+	.btn-wa-action:hover {
+		background: rgba(34, 197, 94, 0.28) !important;
+		color: #22c55e !important;
+		transform: translateY(-1px);
 	}
 
 	.chevron-btn {
 		margin-left: auto;
 		color: #71717a;
-		font-size: 0.8rem;
+		font-size: 0.85rem;
+		padding: 0.2rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.contact-card:hover .chevron-btn {
+		color: #0cbff6;
 	}
 </style>
