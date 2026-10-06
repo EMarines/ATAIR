@@ -15,6 +15,7 @@
 	} from 'firebase/firestore';
 	import { notifications } from '$lib/stores/notificationStore';
 	import { empresa } from '$lib/config/empresa';
+	import { getProposalUrl } from '$lib/functions/urlUtils';
 
 	// Estado del formulario
 	let leadFullName = '';
@@ -22,7 +23,9 @@
 	let interestType: 'Comprador' | 'Arrendatario' = 'Comprador';
 	let propertySearch = '';
 	let selectedPropertyId = '';
+	let selectedPropertyCode = '';
 	let selectedPropertyTitle = '';
+	let generatedProposalLink = '';
 	let maxBudget = '';
 	let notes = '';
 
@@ -54,7 +57,7 @@
 				return {
 					id: doc.id,
 					title: d.titulo || d.title || 'Propiedad sin título',
-					code: d.clavePropiedad || d.easybroker_id || doc.id.substring(0, 6),
+					code: d.clavePropiedad || d.easybroker_id || d.public_id || doc.id,
 					colonia: d.colonia || '',
 					price: d.precio || d.price || 0,
 					operation: d.tipoOperacion || d.operation_type || ''
@@ -81,6 +84,7 @@
 
 	function selectProperty(prop: PropItem) {
 		selectedPropertyId = prop.id;
+		selectedPropertyCode = prop.code;
 		selectedPropertyTitle = `${prop.code} - ${prop.title} ${prop.colonia ? `(${prop.colonia})` : ''}`;
 		propertySearch = selectedPropertyTitle;
 		filteredProperties = [];
@@ -90,7 +94,9 @@
 	function clearPropertySelection() {
 		propertySearch = '';
 		selectedPropertyId = '';
+		selectedPropertyCode = '';
 		selectedPropertyTitle = '';
+		generatedProposalLink = '';
 		filteredProperties = [];
 		showDropdown = false;
 	}
@@ -112,8 +118,6 @@
 		if (parts.length === 1) {
 			return { name: parts[0], lastname: '' };
 		}
-		// Si son 2 palabras: Primera = Nombre, Segunda = Apellido
-		// Si son 3 o más palabras: Primera = Nombre, Resto = Apellidos
 		const name = parts[0];
 		const lastname = parts.slice(1).join(' ');
 		return { name, lastname };
@@ -184,8 +188,27 @@
 				asesor: asesorName
 			});
 
-			// 3. Generar enlace de WhatsApp con saludo cordial pre-redactado
-			const greeting = `Hola ${fName}, mucho gusto. Te saluda ${asesorName} de ${empresa.companyName}. Recibí tu llamada sobre ${finalPropertyText ? 'la propiedad ' + finalPropertyText : 'la propiedad en lona'}. Con gusto te comparto los detalles y fotos. ¿A qué hora te quedaría bien que lo platiquemos?`;
+			// 3. Generar enlace de propuesta oficial en Match Home
+			generatedProposalLink = '';
+			const propCodeToUse = selectedPropertyCode || (selectedPropertyId ? selectedPropertyId : '');
+			if (propCodeToUse) {
+				generatedProposalLink = getProposalUrl(propCodeToUse, {
+					id: contactRef.id,
+					name: fName,
+					lastname: lName,
+					telephon: cleanPhone
+				});
+			}
+
+			// 4. Redactar mensaje de WhatsApp con enlace a la ficha técnica
+			let greeting = `Hola ${fName}, mucho gusto. Te saluda ${asesorName} de ${empresa.companyName}.\n\nRecibí tu llamada sobre la propiedad ${finalPropertyText}.`;
+
+			if (generatedProposalLink) {
+				greeting += `\n\nAquí puedes ver la ficha con fotos, ubicación y detalles completos:\n👉 ${generatedProposalLink}`;
+			}
+
+			greeting += `\n\n¿A qué hora te quedaría bien que lo platiquemos o agendemos una visita?`;
+
 			whatsappUrl = `https://wa.me/52${cleanPhone}?text=${encodeURIComponent(greeting)}`;
 
 			savedSuccess = true;
@@ -203,7 +226,9 @@
 		leadPhone = '';
 		propertySearch = '';
 		selectedPropertyId = '';
+		selectedPropertyCode = '';
 		selectedPropertyTitle = '';
+		generatedProposalLink = '';
 		maxBudget = '';
 		notes = '';
 		savedSuccess = false;
@@ -421,6 +446,15 @@
 				<p class="lead-summary">
 					<strong>{leadFullName}</strong> (+52 {extractCleanPhone(leadPhone)}) ha quedado indexado a tu nombre.
 				</p>
+
+				{#if generatedProposalLink}
+					<div class="proposal-link-box">
+						<span class="prop-link-title"><i class="fa-solid fa-link"></i> Enlace Ficha Técnica Incluido en WhatsApp:</span>
+						<a href={generatedProposalLink} target="_blank" rel="noopener noreferrer" class="prop-link-url">
+							{generatedProposalLink}
+						</a>
+					</div>
+				{/if}
 
 				<!-- Botón Primario: WhatsApp Inmediato -->
 				<a
@@ -927,5 +961,33 @@
 		align-items: center;
 		justify-content: center;
 		gap: 0.4rem;
+	}
+
+	.proposal-link-box {
+		width: 100%;
+		background: rgba(12, 191, 246, 0.08);
+		border: 1px dashed rgba(12, 191, 246, 0.35);
+		border-radius: 8px;
+		padding: 0.75rem 0.9rem;
+		text-align: left;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		box-sizing: border-box;
+	}
+
+	.prop-link-title {
+		font-size: 0.72rem;
+		color: #38bdf8;
+		font-weight: 700;
+		letter-spacing: 0.03em;
+		text-transform: uppercase;
+	}
+
+	.prop-link-url {
+		font-size: 0.8rem;
+		color: #ffffff;
+		text-decoration: underline;
+		word-break: break-all;
 	}
 </style>
