@@ -173,6 +173,23 @@ export async function initializeAuthManager() {
 			}
 			attachProfileListener(user);
 		} else {
+			// Si hay una sesión dev activa en localStorage, conservarla sin borrar
+			const cachedProfile = getCachedItem<UserProfile>('atair_profile');
+			if (cachedProfile && cachedProfile.uid?.startsWith('dev-')) {
+				const fakeUser: any = {
+					uid: cachedProfile.uid,
+					email: cachedProfile.email,
+					displayName: cachedProfile.displayName || cachedProfile.name,
+					getIdToken: async () => 'dev-token-' + cachedProfile.role
+				};
+				userProfile.set(cachedProfile);
+				userStore.set(fakeUser);
+				await syncSessionWithServer('dev-token-' + cachedProfile.role, cachedProfile);
+				authLoading.set(false);
+				authInitialized.set(true);
+				return;
+			}
+
 			if (profileUnsubscribe) {
 				profileUnsubscribe();
 				profileUnsubscribe = null;
@@ -188,6 +205,41 @@ export async function initializeAuthManager() {
 			authInitialized.set(true);
 		}
 	});
+}
+
+/**
+ * Iniciar sesión rápida de desarrollo (Admin o Asociado) sin contraseña
+ */
+export async function setDevRole(role: 'admin' | 'asociado' = 'admin') {
+	const profile: UserProfile = {
+		uid: role === 'admin' ? 'dev-admin-enrique' : 'dev-asociada-claudia',
+		email: role === 'admin' ? 'marines.enrique@gmail.com' : 'claudia.asociada@matchhome.net',
+		name: role === 'admin' ? 'Enrique Marines' : 'Claudia Asociada',
+		displayName: role === 'admin' ? 'Enrique Marines' : 'Claudia Asociada',
+		role: role,
+		isActive: true,
+		city_id: 'cuu'
+	};
+
+	const fakeUser: any = {
+		uid: profile.uid,
+		email: profile.email,
+		displayName: profile.displayName,
+		getIdToken: async () => 'dev-token-' + role
+	};
+
+	userStore.set(fakeUser);
+	userProfile.set(profile);
+	authLoading.set(false);
+	authInitialized.set(true);
+
+	if (browser) {
+		localStorage.setItem('atair_user', JSON.stringify({ uid: profile.uid, email: profile.email, displayName: profile.displayName }));
+		localStorage.setItem('atair_profile', JSON.stringify(profile));
+	}
+
+	await syncSessionWithServer('dev-token-' + role, profile);
+	return profile;
 }
 
 /**

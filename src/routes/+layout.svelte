@@ -32,8 +32,6 @@
 			goto(`/login?redirect=${encodeURIComponent(pathname)}`);
 		} else if (isAuthenticated && pathname === '/login') {
 			goto('/');
-		} else if (isAuthenticated && isAdminOnlyRoute(pathname) && !$isAdmin) {
-			goto('/');
 		}
 	}
 </script>

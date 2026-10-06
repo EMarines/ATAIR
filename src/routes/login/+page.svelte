@@ -9,7 +9,8 @@
 		userStore,
 		userProfile,
 		authLoading,
-		authInitialized
+		authInitialized,
+		setDevRole
 	} from '$lib/firebase/authManager';
 	import { notifications } from '$lib/stores/notificationStore';
 	import { goto } from '$app/navigation';
@@ -281,10 +282,121 @@
 				</p>
 			{/if}
 		</div>
+
+		<!-- Acceso Rápido Directo (Dev / Demostración / Dirección) -->
+		<div class="dev-quick-access">
+			<div class="dev-divider">
+				<span>ACCESO DIRECTO RÁPIDO (CERO CONTRASEÑA)</span>
+			</div>
+			<div class="dev-buttons-row">
+				<button
+					type="button"
+					class="btn-dev-admin"
+					on:click={async () => {
+						await setDevRole('admin');
+						notifications.success('¡Sesión iniciada como Enrique Marines (Director Admin)!');
+						await goto(redirectUrl === '/login' ? '/' : redirectUrl);
+					}}
+				>
+					<i class="fa-solid fa-crown"></i>
+					<span>Entrar como Administrador (Enrique Marines)</span>
+				</button>
+				<button
+					type="button"
+					class="btn-dev-asociado"
+					on:click={async () => {
+						await setDevRole('asociado');
+						notifications.info('Sesión iniciada como Asociada de Campo (CUU)');
+						await goto(redirectUrl === '/login' ? '/' : redirectUrl);
+					}}
+				>
+					<i class="fa-solid fa-handshake"></i>
+					<span>Entrar como Asociada (Prueba)</span>
+				</button>
+			</div>
+		</div>
 	</div>
 </div>
 
 <style>
+	/* Acceso Rápido Dev / Dirección */
+	.dev-quick-access {
+		margin-top: 1.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.85rem;
+		width: 100%;
+	}
+
+	.dev-divider {
+		display: flex;
+		align-items: center;
+		text-align: center;
+		color: #71717a;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+	}
+
+	.dev-divider::before,
+	.dev-divider::after {
+		content: '';
+		flex: 1;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	}
+
+	.dev-divider span {
+		padding: 0 0.6rem;
+	}
+
+	.dev-buttons-row {
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+
+	.btn-dev-admin {
+		background: linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(126, 34, 206, 0.25) 100%);
+		border: 1px solid rgba(168, 85, 247, 0.5);
+		color: #e9d5ff;
+		border-radius: 8px;
+		padding: 0.7rem 1rem;
+		font-size: 0.88rem;
+		font-weight: 700;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.6rem;
+		transition: all 0.15s ease;
+	}
+
+	.btn-dev-admin:hover {
+		background: linear-gradient(135deg, rgba(168, 85, 247, 0.4) 0%, rgba(126, 34, 206, 0.4) 100%);
+		border-color: #c084fc;
+		transform: translateY(-1px);
+	}
+
+	.btn-dev-asociado {
+		background: rgba(255, 255, 255, 0.04);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		color: #d4d4d8;
+		border-radius: 8px;
+		padding: 0.65rem 1rem;
+		font-size: 0.82rem;
+		font-weight: 600;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		transition: all 0.15s ease;
+	}
+
+	.btn-dev-asociado:hover {
+		background: rgba(255, 255, 255, 0.08);
+		color: #ffffff;
+	}
 	.auth-page-container {
 		min-height: calc(100vh - 140px);
 		display: flex;

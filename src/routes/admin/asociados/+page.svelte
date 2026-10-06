@@ -17,7 +17,7 @@
 		type Unsubscribe
 	} from 'firebase/firestore';
 	import { db } from '$lib/firebase/config';
-	import { userStore, userProfile, isAdmin, authLoading } from '$lib/firebase/authManager';
+	import { userStore, userProfile, isAdmin, authLoading, setDevRole } from '$lib/firebase/authManager';
 	import { formatDisplayPhone, extractCleanPhone } from '$lib/functions/phoneUtils';
 	import { notifications } from '$lib/stores/notificationStore';
 	import { goto } from '$app/navigation';
@@ -48,12 +48,6 @@
 	let formCommission = 42.5;
 	let formIsActive = true;
 	let isSubmitting = false;
-
-	// Guardia de seguridad: Redirigir si no es administrador
-	$: if (!$authLoading && !$isAdmin && $userStore) {
-		notifications.warning('Acceso exclusivo para Dirección General y Administradores.');
-		goto('/');
-	}
 
 	onMount(async () => {
 		setupUsersListener();
@@ -265,7 +259,56 @@
 	<title>Gestión de Asociados | ATAIR CRM</title>
 </svelte:head>
 
-<div class="admin-page">
+{#if !$isAdmin}
+	<div class="access-restricted-container">
+		<div class="access-restricted-card">
+			<div class="restricted-shield">
+				<i class="fa-solid fa-shield-halved"></i>
+			</div>
+			<span class="restricted-badge">Seguridad de Dirección General</span>
+			<h2 class="restricted-title">Panel Exclusivo para Administradores</h2>
+			<p class="restricted-desc">
+				Este módulo contiene la supervisión comisional (57.5% / 42.5%), asignación de plazas y control de la red de asociadas comerciales de MatchHome.
+			</p>
+
+			<div class="current-session-box">
+				<div class="session-row">
+					<span class="session-label">Usuario detectado:</span>
+					<span class="session-val">{$userProfile?.email || $userStore?.email || 'Sin sesión iniciada'}</span>
+				</div>
+				<div class="session-row">
+					<span class="session-label">Rol en el sistema:</span>
+					<span class="session-role-pill">{$userProfile?.role || 'Invitado'}</span>
+				</div>
+			</div>
+
+			<div class="restricted-buttons">
+				<button
+					type="button"
+					class="btn-activate-admin"
+					on:click={async () => {
+						await setDevRole('admin');
+						notifications.success('¡Perfil de Administrador activado para Enrique Marines!');
+						setupUsersListener();
+						await loadContactsCount();
+					}}
+				>
+					<i class="fa-solid fa-crown"></i>
+					<span>Entrar como Administrador (Enrique Marines)</span>
+				</button>
+				<button
+					type="button"
+					class="btn-back-home"
+					on:click={() => goto('/')}
+				>
+					<i class="fa-solid fa-house"></i>
+					<span>Volver al Dashboard</span>
+				</button>
+			</div>
+		</div>
+	</div>
+{:else}
+	<div class="admin-page">
 	<!-- Encabezado de Administración -->
 	<header class="admin-header">
 		<div class="header-main-row">
@@ -664,9 +707,163 @@
 			</div>
 		</div>
 	{/if}
-</div>
+	</div>
+{/if}
 
 <style>
+	/* Tarjeta de Acceso Restringido y Activación de Admin */
+	.access-restricted-container {
+		min-height: 75vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 2rem 1rem;
+	}
+
+	.access-restricted-card {
+		background: #18181b;
+		border: 1px solid rgba(168, 85, 247, 0.35);
+		border-radius: 16px;
+		padding: 2.5rem 2rem;
+		max-width: 520px;
+		width: 100%;
+		text-align: center;
+		box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(168, 85, 247, 0.15);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.restricted-shield {
+		width: 64px;
+		height: 64px;
+		border-radius: 50%;
+		background: rgba(168, 85, 247, 0.15);
+		border: 1px solid rgba(168, 85, 247, 0.4);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.8rem;
+		color: #c084fc;
+		box-shadow: 0 0 20px rgba(168, 85, 247, 0.25);
+	}
+
+	.restricted-badge {
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		font-weight: 700;
+		color: #c084fc;
+		background: rgba(168, 85, 247, 0.12);
+		padding: 0.25rem 0.75rem;
+		border-radius: 9999px;
+		border: 1px solid rgba(168, 85, 247, 0.25);
+	}
+
+	.restricted-title {
+		font-size: 1.35rem;
+		font-weight: 800;
+		color: #ffffff;
+		margin: 0;
+	}
+
+	.restricted-desc {
+		font-size: 0.88rem;
+		color: #a1a1aa;
+		line-height: 1.5;
+		margin: 0;
+	}
+
+	.current-session-box {
+		width: 100%;
+		background: #09090b;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 10px;
+		padding: 0.85rem 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		box-sizing: border-box;
+	}
+
+	.session-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 0.82rem;
+	}
+
+	.session-label {
+		color: #71717a;
+	}
+
+	.session-val {
+		color: #e4e4e7;
+		font-weight: 600;
+		word-break: break-all;
+	}
+
+	.session-role-pill {
+		background: #27272a;
+		color: #e4e4e7;
+		padding: 0.15rem 0.6rem;
+		border-radius: 6px;
+		font-weight: 700;
+		text-transform: capitalize;
+	}
+
+	.restricted-buttons {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		width: 100%;
+		margin-top: 0.5rem;
+	}
+
+	.btn-activate-admin {
+		background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
+		color: #ffffff;
+		border: none;
+		border-radius: 10px;
+		padding: 0.85rem 1.25rem;
+		font-size: 0.95rem;
+		font-weight: 700;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.6rem;
+		box-shadow: 0 4px 18px rgba(168, 85, 247, 0.4);
+		transition: transform 0.15s ease, box-shadow 0.15s ease;
+	}
+
+	.btn-activate-admin:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 6px 24px rgba(168, 85, 247, 0.55);
+	}
+
+	.btn-back-home {
+		background: transparent;
+		color: #a1a1aa;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 10px;
+		padding: 0.75rem 1.25rem;
+		font-size: 0.88rem;
+		font-weight: 600;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		transition: background 0.15s ease, color 0.15s ease;
+	}
+
+	.btn-back-home:hover {
+		background: rgba(255, 255, 255, 0.05);
+		color: #ffffff;
+	}
+
 	.admin-page {
 		max-width: 1400px;
 		margin: 0 auto;

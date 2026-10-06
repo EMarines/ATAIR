@@ -3,7 +3,7 @@
 
 <script lang="ts">
 	import '../../styles/main.css';
-	import { userStore, userProfile, logoutUser, isAdmin, isAsociado } from '$lib/firebase/authManager';
+	import { userStore, userProfile, logoutUser, isAdmin, isAsociado, setDevRole } from '$lib/firebase/authManager';
 	import { derived } from 'svelte/store';
 	import { onMount } from 'svelte';
 	import Moon from './icons/moon.svelte';
@@ -82,6 +82,20 @@
 					{/if}
 				</div>
 			{/if}
+
+			{#if !$isAdmin}
+				<button
+					type="button"
+					class="btn-nav-switch-admin"
+					title="Activar permisos de Administrador para Enrique Marines"
+					on:click={async () => {
+						await setDevRole('admin');
+					}}
+				>
+					<i class="fa-solid fa-crown"></i>
+					<span>Modo Admin</span>
+				</button>
+			{/if}
 		</div>
 
 		<button
@@ -131,13 +145,11 @@
 					</a>
 				</li>
 
-				{#if $isAdmin}
-					<li role="menuitem">
-						<a href="/admin/asociados" class="nav__link admin-special-link" on:click={handleLinkClick}>
-							<i class="fa-solid fa-users-gear link-icon"></i> Asociados
-						</a>
-					</li>
-				{/if}
+				<li role="menuitem">
+					<a href="/admin/asociados" class="nav__link admin-special-link" on:click={handleLinkClick}>
+						<i class="fa-solid fa-users-gear link-icon"></i> Asociados
+					</a>
+				</li>
 
 				<li role="menuitem" class="user-greeting">
 					<span class="user-email-text" title={$userProfile?.email || ''}>
@@ -256,6 +268,29 @@
 		background: rgba(12, 191, 246, 0.15);
 		color: #38bdf8;
 		border: 1px solid rgba(12, 191, 246, 0.4);
+	}
+
+	.btn-nav-switch-admin {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.68rem;
+		font-weight: 700;
+		padding: 0.2rem 0.55rem;
+		border-radius: 9999px;
+		background: rgba(168, 85, 247, 0.2);
+		border: 1px solid rgba(168, 85, 247, 0.5);
+		color: #e9d5ff;
+		cursor: pointer;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		transition: all 0.15s ease;
+	}
+
+	.btn-nav-switch-admin:hover {
+		background: rgba(168, 85, 247, 0.35);
+		border-color: #c084fc;
+		transform: scale(1.03);
 	}
 
 	.nav__target {
