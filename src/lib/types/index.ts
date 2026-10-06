@@ -74,3 +74,24 @@ export interface ContactBadgeInfo {
 	color: string;
 	tooltip: string;
 }
+
+export interface Todo {
+	id: string;
+	task: string;
+	endTask: number; // Timestamp Unix en ms de la fecha acordada
+	timeString?: string; // HH:MM legible si tiene hora específica
+	timeTask?: string; // Formato de entrada
+	notes?: string;
+	isCompleted: boolean;
+	createdAt: number;
+	type?: 'Llamada' | 'Visita' | 'Cita' | 'Trámite' | 'Google Tasks' | 'Google Calendar' | string;
+	user?: string;
+	associate_id?: string;
+	associate_name?: string;
+	contactId?: string;
+	contactName?: string;
+	googleTaskId?: string;
+	googleEventId?: string;
+	source?: 'google_tasks' | 'google_calendar' | 'crm' | string;
+	[key: string]: any;
+}
