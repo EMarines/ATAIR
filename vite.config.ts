@@ -8,7 +8,10 @@ export default defineConfig({
 	},
 	server: {
 		port: 5175,
-		strictPort: false
+		strictPort: false,
+		fs: {
+			allow: ['..']
+		}
 	},
 	define: {
 		__APP_VERSION__: JSON.stringify((() => {
