@@ -151,7 +151,29 @@ En lugar de una tabla estática de escritorio, los compromisos se dividen autom�
 | `src/routes/properties/+page.svelte` | Catálogo móvil de propiedades con filtros rápidos. |
 | `src/routes/property/[id]/+page.svelte` | Ficha técnica completa con generador de propuesta en 1 clic. |
 | `src/routes/agenda/+page.svelte` | Agenda móvil agrupada cronológicamente con check interactivo en vivo. |
+| `src/routes/admin/asociados/+page.svelte` | Panel de supervisión de asociadas: altas, asignación de plaza, split comisional y conteo de leads. |
 | `src/routes/+page.svelte` | Dashboard reactivo con métricas vivas y prospectos recientes. |
+
+---
+
+## 8.1. Gestión de Asociados Comerciales (Paso 5)
+
+### A. Reglas de Negocio del Panel Admin (`/admin/asociados`)
+- **Acceso Exclusivo:** Solo accesible para usuarios con rol `admin` (`role === 'admin'`). Si una asociada ingresa directamente, la interfaz restringe el acceso con aviso de seguridad y redirección.
+- **Métricas Globales de Red:**
+  - Total de asociadas registradas.
+  - Asociadas con estatus **Activa** vs **Inactiva**.
+  - Distribución por Plaza: **Chihuahua (CUU)** y **Delicias (DEL)**.
+- **Esquema Comisionista Paramétrico:**
+  - Split predeterminado canónico del modelo: **42.5%** para la Asociada Comercial / **57.5%** para MatchHome Matriz.
+  - El administrador puede personalizar el porcentaje comisional por asociada según su nivel de producción.
+- **Conteo Dinámico de Cartera por Asociada:**
+  - Cruce reactivo en tiempo real con la colección `contacts`.
+  - Calcula automáticamente cuántos prospectos tiene asignados cada asociada (`where('associate_id', '==', user.uid)`).
+- **Acciones Táctiles en 1 Toque:**
+  - Cambio instantáneo de estatus (Activar / Suspender).
+  - Apertura directa de chat de WhatsApp con la asesora formateando el teléfono en regla `### ### ####`.
+  - Modal de alta y edición con validación de correo, nombre, teléfono y plaza.
 
 ---
 
