@@ -25,6 +25,7 @@
 	let selectedPropertyId = '';
 	let selectedPropertyCode = '';
 	let selectedPropertyTitle = '';
+	let selectedPropertyType = '';
 	let generatedProposalLink = '';
 	let maxBudget = '';
 	let notes = '';
@@ -34,6 +35,7 @@
 	let savedSuccess = false;
 	let createdLeadId = '';
 	let whatsappUrl = '';
+	let whatsappMessageText = '';
 	let showDropdown = false;
 
 	// Catálogo de propiedades en memoria para filtrado instantáneo
@@ -41,6 +43,7 @@
 		id: string;
 		title: string;
 		code: string;
+		propertyType?: string;
 		colonia: string;
 		price?: number;
 		operation?: string;
@@ -58,6 +61,7 @@
 					id: doc.id,
 					title: d.titulo || d.title || 'Propiedad sin título',
 					code: d.clavePropiedad || d.easybroker_id || d.public_id || doc.id,
+					propertyType: d.tipoPropiedad || d.property_type || '',
 					colonia: d.colonia || '',
 					price: d.precio || d.price || 0,
 					operation: d.tipoOperacion || d.operation_type || ''
@@ -85,6 +89,7 @@
 	function selectProperty(prop: PropItem) {
 		selectedPropertyId = prop.id;
 		selectedPropertyCode = prop.code;
+		selectedPropertyType = prop.propertyType || '';
 		selectedPropertyTitle = `${prop.code} - ${prop.title} ${prop.colonia ? `(${prop.colonia})` : ''}`;
 		propertySearch = selectedPropertyTitle;
 		filteredProperties = [];
@@ -95,6 +100,7 @@
 		propertySearch = '';
 		selectedPropertyId = '';
 		selectedPropertyCode = '';
+		selectedPropertyType = '';
 		selectedPropertyTitle = '';
 		generatedProposalLink = '';
 		filteredProperties = [];
@@ -121,6 +127,36 @@
 		const name = parts[0];
 		const lastname = parts.slice(1).join(' ');
 		return { name, lastname };
+	}
+
+	// Capitalizar nombre propio (ej. "ENRIQUE" -> "Enrique")
+	function formatCapitalName(name: string): string {
+		if (!name) return '';
+		const trimmed = name.trim();
+		return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+	}
+
+	// Frase conversacional según el tipo de inmueble: "de la casa", "del terreno", "del departamento", etc.
+	function formatPropertyPhrase(rawType?: string, searchText?: string): string {
+		const target = (rawType || searchText || '').toLowerCase().trim();
+		if (target.includes('casa de campo')) return 'de la casa de campo';
+		if (target.includes('casa')) return 'de la casa';
+		if (target.includes('departamento') || target.includes('depa')) return 'del departamento';
+		if (target.includes('terreno') || target.includes('lote')) return 'del terreno';
+		if (target.includes('bodega')) return 'de la bodega';
+		if (target.includes('local')) return 'del local comercial';
+		if (target.includes('oficina')) return 'de la oficina';
+		if (target.includes('rancho') || target.includes('huerta')) return 'del rancho';
+		if (target.includes('edificio')) return 'del edificio';
+		if (target.includes('quinta')) return 'de la quinta';
+		if (target.includes('nave')) return 'de la nave industrial';
+		return 'de la propiedad';
+	}
+
+	function copyWhatsAppMessage() {
+		if (!whatsappMessageText) return;
+		navigator.clipboard.writeText(whatsappMessageText);
+		notifications.success('¡Mensaje copiado al portapapeles!');
 	}
 
 	// Formatear valor numérico de presupuesto a moneda legible
@@ -200,16 +236,18 @@
 				});
 			}
 
-			// 4. Redactar mensaje de WhatsApp con enlace a la ficha técnica
-			let greeting = `Hola ${fName}, mucho gusto. Te saluda ${asesorName} de ${empresa.companyName}.\n\nRecibí tu llamada sobre la propiedad ${finalPropertyText}.`;
+			// 4. Redactar mensaje de WhatsApp ligero y conversacional (formato exacto solicitado por Enrique)
+			const clientFirstName = formatCapitalName(fName);
+			const propPhrase = formatPropertyPhrase(selectedPropertyType, finalPropertyText);
+
+			let message = `Hola ${clientFirstName}, gracias por contactarnos.\n\nTe envío la información ${propPhrase} que te interesó, quedo al pendiente para cuando desees conocerla.`;
 
 			if (generatedProposalLink) {
-				greeting += `\n\nAquí puedes ver la ficha con fotos, ubicación y detalles completos:\n👉 ${generatedProposalLink}`;
+				message += `\n\n${generatedProposalLink}`;
 			}
 
-			greeting += `\n\n¿A qué hora te quedaría bien que lo platiquemos o agendemos una visita?`;
-
-			whatsappUrl = `https://wa.me/52${cleanPhone}?text=${encodeURIComponent(greeting)}`;
+			whatsappMessageText = message;
+			whatsappUrl = `https://wa.me/52${cleanPhone}?text=${encodeURIComponent(message)}`;
 
 			savedSuccess = true;
 			notifications.success('¡Lead registrado y protegido bajo tu autoría!');
@@ -227,13 +265,15 @@
 		propertySearch = '';
 		selectedPropertyId = '';
 		selectedPropertyCode = '';
+		selectedPropertyType = '';
 		selectedPropertyTitle = '';
 		generatedProposalLink = '';
+		whatsappMessageText = '';
+		whatsappUrl = '';
 		maxBudget = '';
 		notes = '';
 		savedSuccess = false;
 		createdLeadId = '';
-		whatsappUrl = '';
 		showDropdown = false;
 	}
 </script>
@@ -447,14 +487,18 @@
 					<strong>{leadFullName}</strong> (+52 {extractCleanPhone(leadPhone)}) ha quedado indexado a tu nombre.
 				</p>
 
-				{#if generatedProposalLink}
-					<div class="proposal-link-box">
-						<span class="prop-link-title"><i class="fa-solid fa-link"></i> Enlace Ficha Técnica Incluido en WhatsApp:</span>
-						<a href={generatedProposalLink} target="_blank" rel="noopener noreferrer" class="prop-link-url">
-							{generatedProposalLink}
-						</a>
+				<!-- Vista Previa del Mensaje Ligero de WhatsApp -->
+				<div class="message-preview-box">
+					<div class="msg-preview-header">
+						<span class="msg-preview-tag"><i class="fa-brands fa-whatsapp"></i> Mensaje listo para enviar:</span>
+						<button type="button" class="copy-msg-btn" on:click={copyWhatsAppMessage} title="Copiar mensaje">
+							<i class="fa-regular fa-copy"></i> Copiar
+						</button>
 					</div>
-				{/if}
+					<div class="msg-preview-body">
+						{whatsappMessageText}
+					</div>
+				</div>
 
 				<!-- Botón Primario: WhatsApp Inmediato -->
 				<a
@@ -467,7 +511,7 @@
 					<span>💬 Enviar WhatsApp al Cliente</span>
 				</a>
 				<p class="wa-helper-text">
-					Abre WhatsApp con el mensaje de presentación de Match Home precargado listo para enviar.
+					Abre WhatsApp con el mensaje conversacional y el enlace precargados listos para enviar.
 				</p>
 
 				<!-- Acciones Secundarias -->
@@ -963,31 +1007,65 @@
 		gap: 0.4rem;
 	}
 
-	.proposal-link-box {
+	.message-preview-box {
 		width: 100%;
-		background: rgba(12, 191, 246, 0.08);
-		border: 1px dashed rgba(12, 191, 246, 0.35);
+		background: #18181b;
+		border: 1px solid rgba(34, 197, 94, 0.25);
 		border-radius: 8px;
-		padding: 0.75rem 0.9rem;
+		padding: 0.85rem;
 		text-align: left;
 		display: flex;
 		flex-direction: column;
-		gap: 0.3rem;
+		gap: 0.5rem;
 		box-sizing: border-box;
 	}
 
-	.prop-link-title {
-		font-size: 0.72rem;
-		color: #38bdf8;
-		font-weight: 700;
-		letter-spacing: 0.03em;
-		text-transform: uppercase;
+	.msg-preview-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 	}
 
-	.prop-link-url {
-		font-size: 0.8rem;
+	.msg-preview-tag {
+		font-size: 0.72rem;
+		color: #4ade80;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+
+	.copy-msg-btn {
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		color: #e4e4e7;
+		padding: 0.25rem 0.55rem;
+		border-radius: 4px;
+		font-size: 0.72rem;
+		font-weight: 600;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		transition: background 0.15s;
+	}
+
+	.copy-msg-btn:hover {
+		background: rgba(255, 255, 255, 0.16);
 		color: #ffffff;
-		text-decoration: underline;
-		word-break: break-all;
+	}
+
+	.msg-preview-body {
+		font-size: 0.82rem;
+		color: #d4d4d8;
+		background: #09090b;
+		padding: 0.7rem;
+		border-radius: 6px;
+		line-height: 1.45;
+		white-space: pre-wrap;
+		word-break: break-word;
+		border: 1px solid rgba(255, 255, 255, 0.06);
 	}
 </style>
