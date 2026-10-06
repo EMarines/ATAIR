@@ -1,5 +1,5 @@
 <!-- src/routes/ingesta-lead/+page.svelte -->
-<!-- PWA Ligera Mobile-First: Ingesta Inmediata de Leads por Llamadas de Lonas -->
+<!-- PWA Ligera Mobile-First v2: Ingesta Inmediata con Búsqueda predictiva (3+ letras), Teléfono flexible y Tope presupuestal -->
 
 <script lang="ts">
 	import { onMount } from 'svelte';
@@ -17,68 +17,119 @@
 	import { empresa } from '$lib/config/empresa';
 
 	// Estado del formulario
-	let leadName = '';
+	let leadFullName = '';
 	let leadPhone = '';
 	let interestType: 'Comprador' | 'Arrendatario' = 'Comprador';
-	let selectedProperty = '';
-	let lonaCustomCode = '';
+	let propertySearch = '';
+	let selectedPropertyId = '';
+	let selectedPropertyTitle = '';
+	let maxBudget = '';
 	let notes = '';
-	let budgetRange = '';
 
 	// Estado UI
 	let isSubmitting = false;
 	let savedSuccess = false;
 	let createdLeadId = '';
 	let whatsappUrl = '';
+	let showDropdown = false;
 
-	// Lista de propiedades para selector rápido
+	// Catálogo de propiedades en memoria para filtrado instantáneo
 	interface PropItem {
 		id: string;
 		title: string;
 		code: string;
 		colonia: string;
+		price?: number;
+		operation?: string;
 	}
-	let propertiesList: PropItem[] = [];
-	let loadingProps = true;
+	let allProperties: PropItem[] = [];
+	let filteredProperties: PropItem[] = [];
 
 	onMount(async () => {
 		try {
-			const propsQuery = query(collection(db, 'properties'), limit(40));
+			const propsQuery = query(collection(db, 'properties'), limit(80));
 			const snapshot = await getDocs(propsQuery);
-			propertiesList = snapshot.docs.map((doc) => {
+			allProperties = snapshot.docs.map((doc) => {
 				const d = doc.data();
 				return {
 					id: doc.id,
 					title: d.titulo || d.title || 'Propiedad sin título',
 					code: d.clavePropiedad || d.easybroker_id || doc.id.substring(0, 6),
-					colonia: d.colonia || ''
+					colonia: d.colonia || '',
+					price: d.precio || d.price || 0,
+					operation: d.tipoOperacion || d.operation_type || ''
 				};
 			});
 		} catch (err) {
-			console.warn('[IngestaLead] No se pudieron cargar propiedades previas:', err);
-		} finally {
-			loadingProps = false;
+			console.warn('[IngestaLead] No se pudieron precargar propiedades:', err);
 		}
 	});
 
-	// Formatear teléfono a 10 dígitos limpios
-	function cleanPhoneNumber(raw: string): string {
+	// Filtrado reactivo al teclear a partir de la 3era letra
+	$: if (propertySearch.trim().length >= 3) {
+		const term = propertySearch.toLowerCase().trim();
+		filteredProperties = allProperties.filter((p) =>
+			p.title.toLowerCase().includes(term) ||
+			p.code.toLowerCase().includes(term) ||
+			p.colonia.toLowerCase().includes(term)
+		).slice(0, 6);
+		showDropdown = true;
+	} else {
+		filteredProperties = [];
+		showDropdown = false;
+	}
+
+	function selectProperty(prop: PropItem) {
+		selectedPropertyId = prop.id;
+		selectedPropertyTitle = `${prop.code} - ${prop.title} ${prop.colonia ? `(${prop.colonia})` : ''}`;
+		propertySearch = selectedPropertyTitle;
+		showDropdown = false;
+	}
+
+	function clearPropertySelection() {
+		propertySearch = '';
+		selectedPropertyId = '';
+		selectedPropertyTitle = '';
+		showDropdown = false;
+	}
+
+	// Limpieza profunda del teléfono (admite guiones, espacios y paréntesis)
+	function extractCleanPhone(raw: string): string {
 		const digits = raw.replace(/\D/g, '');
-		// Si incluye 52 al inicio y tiene 12 dígitos, extraer los 10
 		if (digits.length === 12 && digits.startsWith('52')) {
 			return digits.substring(2);
 		}
 		return digits.slice(-10);
 	}
 
+	// Separación inteligente de Nombre y Apellidos
+	function splitFullName(raw: string): { name: string; lastname: string } {
+		const clean = raw.trim().replace(/\s+/g, ' ');
+		if (!clean) return { name: '', lastname: '' };
+		const parts = clean.split(' ');
+		if (parts.length === 1) {
+			return { name: parts[0], lastname: '' };
+		}
+		// Si son 2 palabras: Primera = Nombre, Segunda = Apellido
+		// Si son 3 o más palabras: Primera = Nombre, Resto = Apellidos
+		const name = parts[0];
+		const lastname = parts.slice(1).join(' ');
+		return { name, lastname };
+	}
+
+	// Formatear valor numérico de presupuesto a moneda legible
+	function setBudgetPreset(val: string) {
+		maxBudget = val;
+	}
+
 	async function handleSubmit() {
-		const cleanPhone = cleanPhoneNumber(leadPhone);
-		if (!leadName.trim()) {
-			notifications.warning('Por favor escribe el nombre del prospecto.');
+		const cleanPhone = extractCleanPhone(leadPhone);
+		if (!leadFullName.trim()) {
+			notifications.warning('Por favor escribe el nombre del cliente.');
 			return;
 		}
 		if (cleanPhone.length < 10) {
-			notifications.warning('El teléfono debe tener al menos 10 dígitos.');
+			notifications.warning('El teléfono debe contener al menos 10 dígitos.');
 			return;
 		}
 
@@ -89,29 +140,27 @@
 			const asesorName = $userProfile?.name || $userProfile?.displayName || empresa.agentName;
 			const cityId = $userProfile?.city_id || 'cuu';
 
-			// Título del inmueble de interés
-			let finalPropertyInterest = lonaCustomCode.trim();
-			let selectedPropertyObj: PropItem | undefined;
-			if (selectedProperty) {
-				selectedPropertyObj = propertiesList.find((p) => p.id === selectedProperty);
-				if (selectedPropertyObj) {
-					finalPropertyInterest = `${selectedPropertyObj.title} (${selectedPropertyObj.code})`;
-				}
-			}
+			const { name: fName, lastname: lName } = splitFullName(leadFullName);
+
+			// Inmueble de interés: el seleccionado o el texto manual escrito
+			const finalPropertyText = selectedPropertyTitle || propertySearch.trim() || 'LONA-GENERAL';
 
 			// 1. Guardar contacto en Firestore
 			const contactPayload = {
-				name: leadName.trim(),
-				lastname: '',
+				name: fName,
+				lastname: lName,
+				fullName: leadFullName.trim(),
 				telephon: `+52${cleanPhone}`,
 				phoneRaw: cleanPhone,
+				phoneFormatted: leadPhone.trim(),
 				typeContact: interestType,
 				contactStage: 1, // E1 - Primer Contacto
 				source: 'lona_llamada',
-				lonaCode: lonaCustomCode.trim() || selectedPropertyObj?.code || 'LONA-GENERAL',
-				propertyInterestId: selectedProperty || '',
-				propertyTitle: finalPropertyInterest,
-				budgetRange: budgetRange,
+				lonaCode: finalPropertyText,
+				propertyInterestId: selectedPropertyId || '',
+				propertyTitle: finalPropertyText,
+				presupuestoMax: maxBudget ? Number(maxBudget.replace(/\D/g, '')) || maxBudget : 0,
+				budgetTope: maxBudget,
 				comContact: notes.trim(),
 				associate_id: asesorUid,
 				associate_name: asesorName,
@@ -128,13 +177,13 @@
 			await addDoc(collection(db, 'binnacles'), {
 				contactId: contactRef.id,
 				tipo: 'llamada',
-				descripcion: `Llamada entrante por lona: ${finalPropertyInterest || 'Interés general'}. Captada por ${asesorName}.`,
+				descripcion: `Llamada entrante por lona: ${finalPropertyText}. Tope: ${maxBudget || 'No especificado'}. Atendido por ${asesorName}.`,
 				fecha: serverTimestamp(),
 				asesor: asesorName
 			});
 
 			// 3. Generar enlace de WhatsApp con saludo cordial pre-redactado
-			const greeting = `Hola ${leadName.trim()}, mucho gusto. Te saluda ${asesorName} de ${empresa.companyName}. Recibí tu llamada sobre ${finalPropertyInterest ? 'la propiedad ' + finalPropertyInterest : 'la propiedad en lona'}. Con gusto te comparto los detalles y fotos. ¿A qué hora te quedaría bien que lo platiquemos?`;
+			const greeting = `Hola ${fName}, mucho gusto. Te saluda ${asesorName} de ${empresa.companyName}. Recibí tu llamada sobre ${finalPropertyText ? 'la propiedad ' + finalPropertyText : 'la propiedad en lona'}. Con gusto te comparto los detalles y fotos. ¿A qué hora te quedaría bien que lo platiquemos?`;
 			whatsappUrl = `https://wa.me/52${cleanPhone}?text=${encodeURIComponent(greeting)}`;
 
 			savedSuccess = true;
@@ -148,15 +197,17 @@
 	}
 
 	function resetForNextLead() {
-		leadName = '';
+		leadFullName = '';
 		leadPhone = '';
+		propertySearch = '';
+		selectedPropertyId = '';
+		selectedPropertyTitle = '';
+		maxBudget = '';
 		notes = '';
-		lonaCustomCode = '';
-		selectedProperty = '';
-		budgetRange = '';
 		savedSuccess = false;
 		createdLeadId = '';
 		whatsappUrl = '';
+		showDropdown = false;
 	}
 </script>
 
@@ -189,23 +240,24 @@
 		{#if !savedSuccess}
 			<!-- FORMULARIO DE INGESTA RÁPIDA -->
 			<form on:submit|preventDefault={handleSubmit} class="ingesta-form">
-				<!-- Nombre del Prospecto -->
+				<!-- Nombre Completo (1 solo campo con separación automática por código) -->
 				<div class="field-card">
-					<label for="leadName">
-						<i class="fa-solid fa-user input-icon"></i> Nombre del Cliente *
+					<label for="leadFullName">
+						<i class="fa-solid fa-user input-icon"></i> Nombre Completo del Cliente *
 					</label>
 					<input
-						id="leadName"
+						id="leadFullName"
 						type="text"
-						bind:value={leadName}
-						placeholder="Ej. Roberto Garza"
+						bind:value={leadFullName}
+						placeholder="Ej. Roberto Garza Méndez"
 						required
-						autocomplete="off"
+						autocomplete="name"
 						disabled={isSubmitting}
 					/>
+					<span class="hint-text">El sistema separa automáticamente nombre y apellidos.</span>
 				</div>
 
-				<!-- Teléfono Móvil -->
+				<!-- Teléfono Móvil (Permite espacios, guiones y paréntesis) -->
 				<div class="field-card">
 					<label for="leadPhone">
 						<i class="fa-brands fa-whatsapp input-icon wa-color"></i> WhatsApp / Teléfono *
@@ -214,15 +266,15 @@
 						<span class="phone-prefix">+52</span>
 						<input
 							id="leadPhone"
-							type="tel"
+							type="text"
 							bind:value={leadPhone}
-							placeholder="614 123 4567"
+							placeholder="614 123 4567 o 614-123-4567"
 							required
-							inputmode="numeric"
+							inputmode="tel"
 							disabled={isSubmitting}
 						/>
 					</div>
-					<span class="hint-text">10 dígitos sin espacios ni guiones</span>
+					<span class="hint-text">Puedes escribir espacios o guiones libremente; se limpian al guardar.</span>
 				</div>
 
 				<!-- Tipo de Interés (Toggle Comprar / Rentar) -->
@@ -248,40 +300,86 @@
 					</div>
 				</div>
 
-				<!-- Propiedad o Lona de Interés -->
-				<div class="field-card">
-					<label for="propertySelect">
-						<i class="fa-solid fa-sign-hanging input-icon"></i> Inmueble / Lona
-					</label>
-					<select id="propertySelect" bind:value={selectedProperty} disabled={isSubmitting}>
-						<option value="">-- Seleccionar de catálogo o ingresar manual --</option>
-						{#each propertiesList as prop}
-							<option value={prop.id}>
-								{prop.code} - {prop.title} {prop.colonia ? `(${prop.colonia})` : ''}
-							</option>
-						{/each}
-					</select>
-
-					<div class="custom-lona-row">
-						<input
-							type="text"
-							bind:value={lonaCustomCode}
-							placeholder="O escribe lona/dirección manual (ej. LONA-04 Canteras)"
-							disabled={isSubmitting}
-						/>
+				<!-- Inmueble / Lona con Filtro Dinámico (3+ letras) -->
+				<div class="field-card relative-card">
+					<div class="label-with-clear">
+						<label for="propertySearch">
+							<i class="fa-solid fa-sign-hanging input-icon"></i> Inmueble o Código de Lona
+						</label>
+						{#if propertySearch}
+							<button type="button" class="clear-btn" on:click={clearPropertySelection}>
+								Limpiar
+							</button>
+						{/if}
 					</div>
+
+					<input
+						id="propertySearch"
+						type="text"
+						bind:value={propertySearch}
+						placeholder="Escribe 3 letras para filtrar catálogo o código de lona manual..."
+						autocomplete="off"
+						disabled={isSubmitting}
+					/>
+
+					{#if selectedPropertyId}
+						<div class="selected-badge">
+							<i class="fa-solid fa-circle-check"></i>
+							<span>Inmueble vinculado: {selectedPropertyTitle}</span>
+						</div>
+					{/if}
+
+					<!-- Menú Predictivo Flotante -->
+					{#if showDropdown && filteredProperties.length > 0}
+						<div class="predictive-dropdown">
+							<div class="dropdown-header">Inmuebles coincidentes:</div>
+							{#each filteredProperties as prop}
+								<button
+									type="button"
+									class="dropdown-item"
+									on:click={() => selectProperty(prop)}
+								>
+									<div class="item-title">{prop.title}</div>
+									<div class="item-meta">
+										<span class="prop-code">{prop.code}</span>
+										{#if prop.colonia}
+											<span class="prop-colonia">📍 {prop.colonia}</span>
+										{/if}
+										{#if prop.price}
+											<span class="prop-price">${Number(prop.price).toLocaleString('es-MX')}</span>
+										{/if}
+									</div>
+								</button>
+							{/each}
+						</div>
+					{:else if propertySearch.trim().length >= 3 && filteredProperties.length === 0}
+						<div class="predictive-hint">
+							<span>No hay inmueble exacto en catálogo. Se guardará como código de lona libre: <strong>"{propertySearch}"</strong></span>
+						</div>
+					{/if}
 				</div>
 
-				<!-- Rango Presupuestal Rápido (Chips) -->
+				<!-- Tope de Presupuesto (Solo el valor máximo) -->
 				<div class="field-card">
-					<span class="field-label">Presupuesto Aproximado (Opcional)</span>
+					<label for="maxBudget">
+						<i class="fa-solid fa-hand-holding-dollar input-icon"></i> Presupuesto Tope (Máximo)
+					</label>
+					<input
+						id="maxBudget"
+						type="text"
+						bind:value={maxBudget}
+						placeholder="Ej. $3,500,000 o 3500000"
+						inputmode="numeric"
+						disabled={isSubmitting}
+					/>
+					<!-- Botones Rápidos de Topes Frecuentes -->
 					<div class="budget-chips">
-						{#each ['< $2M', '$2M - $3.5M', '$3.5M - $5M', '> $5M'] as b}
+						{#each ['$1,500,000', '$2,500,000', '$3,500,000', '$5,000,000', '$8,000,000+'] as b}
 							<button
 								type="button"
 								class="chip-btn"
-								class:selected={budgetRange === b}
-								on:click={() => (budgetRange = budgetRange === b ? '' : b)}
+								class:selected={maxBudget === b}
+								on:click={() => setBudgetPreset(b)}
 							>
 								{b}
 							</button>
@@ -322,7 +420,7 @@
 				</div>
 				<h2>¡Lead Blindado con Éxito!</h2>
 				<p class="lead-summary">
-					<strong>{leadName}</strong> (+52 {cleanPhoneNumber(leadPhone)}) ha quedado indexado a tu nombre.
+					<strong>{leadFullName}</strong> (+52 {extractCleanPhone(leadPhone)}) ha quedado indexado a tu nombre.
 				</p>
 
 				<!-- Botón Primario: WhatsApp Inmediato -->
@@ -446,6 +544,10 @@
 		gap: 0.45rem;
 	}
 
+	.relative-card {
+		position: relative;
+	}
+
 	label,
 	.field-label {
 		font-size: 0.82rem;
@@ -454,6 +556,22 @@
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
+	}
+
+	.label-with-clear {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.clear-btn {
+		background: none;
+		border: none;
+		color: #ef4444;
+		font-size: 0.75rem;
+		cursor: pointer;
+		padding: 0;
+		text-decoration: underline;
 	}
 
 	.input-icon {
@@ -466,8 +584,6 @@
 	}
 
 	input[type="text"],
-	input[type="tel"],
-	select,
 	textarea {
 		width: 100%;
 		padding: 0.8rem 0.9rem;
@@ -482,7 +598,6 @@
 	}
 
 	input:focus,
-	select:focus,
 	textarea:focus {
 		border-color: #0cbff6;
 		box-shadow: 0 0 0 2px rgba(12, 191, 246, 0.25);
@@ -538,15 +653,116 @@
 		color: #38bdf8;
 	}
 
-	.custom-lona-row {
-		margin-top: 0.35rem;
+	/* Dropdown predictivo de inmuebles */
+	.predictive-dropdown {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
+		background: #27272a;
+		border: 1px solid rgba(12, 191, 246, 0.4);
+		border-radius: 8px;
+		z-index: 50;
+		margin-top: 0.25rem;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+		overflow: hidden;
 	}
 
-	/* Chips de presupuesto */
+	.dropdown-header {
+		padding: 0.4rem 0.75rem;
+		font-size: 0.7rem;
+		color: #71717a;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		background: #18181b;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	}
+
+	.dropdown-item {
+		width: 100%;
+		padding: 0.7rem 0.85rem;
+		background: transparent;
+		border: none;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		text-align: left;
+		cursor: pointer;
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		transition: background 0.15s;
+	}
+
+	.dropdown-item:hover,
+	.dropdown-item:active {
+		background: rgba(12, 191, 246, 0.15);
+	}
+
+	.item-title {
+		font-size: 0.84rem;
+		font-weight: 600;
+		color: #ffffff;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.item-meta {
+		display: flex;
+		gap: 0.5rem;
+		font-size: 0.72rem;
+		align-items: center;
+	}
+
+	.prop-code {
+		background: rgba(255, 255, 255, 0.1);
+		color: #38bdf8;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-weight: 700;
+	}
+
+	.prop-colonia {
+		color: #a1a1aa;
+	}
+
+	.prop-price {
+		color: #34d399;
+		font-weight: 600;
+		margin-left: auto;
+	}
+
+	.predictive-hint {
+		font-size: 0.72rem;
+		color: #a1a1aa;
+		background: rgba(255, 255, 255, 0.04);
+		padding: 0.4rem 0.6rem;
+		border-radius: 6px;
+		border: 1px dashed rgba(255, 255, 255, 0.12);
+	}
+
+	.predictive-hint strong {
+		color: #38bdf8;
+	}
+
+	.selected-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		background: rgba(16, 185, 129, 0.15);
+		color: #34d399;
+		border: 1px solid rgba(16, 185, 129, 0.3);
+		padding: 0.35rem 0.65rem;
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	/* Chips de presupuesto tope */
 	.budget-chips {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.4rem;
+		margin-top: 0.25rem;
 	}
 
 	.chip-btn {
