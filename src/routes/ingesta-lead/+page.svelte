@@ -65,8 +65,8 @@
 		}
 	});
 
-	// Filtrado reactivo al teclear a partir de la 3era letra
-	$: if (propertySearch.trim().length >= 3) {
+	// Filtrado reactivo al teclear a partir de la 3era letra (solo cuando se está buscando activamente)
+	$: if (!selectedPropertyId && propertySearch.trim().length >= 3) {
 		const term = propertySearch.toLowerCase().trim();
 		filteredProperties = allProperties.filter((p) =>
 			p.title.toLowerCase().includes(term) ||
@@ -74,7 +74,7 @@
 			p.colonia.toLowerCase().includes(term)
 		).slice(0, 6);
 		showDropdown = true;
-	} else {
+	} else if (!selectedPropertyId) {
 		filteredProperties = [];
 		showDropdown = false;
 	}
@@ -83,6 +83,7 @@
 		selectedPropertyId = prop.id;
 		selectedPropertyTitle = `${prop.code} - ${prop.title} ${prop.colonia ? `(${prop.colonia})` : ''}`;
 		propertySearch = selectedPropertyTitle;
+		filteredProperties = [];
 		showDropdown = false;
 	}
 
@@ -90,6 +91,7 @@
 		propertySearch = '';
 		selectedPropertyId = '';
 		selectedPropertyTitle = '';
+		filteredProperties = [];
 		showDropdown = false;
 	}
 
@@ -325,14 +327,11 @@
 					{#if selectedPropertyId}
 						<div class="selected-badge">
 							<i class="fa-solid fa-circle-check"></i>
-							<span>Inmueble vinculado: {selectedPropertyTitle}</span>
+							<span>Inmueble vinculado con éxito</span>
 						</div>
-					{/if}
-
-					<!-- Menú Predictivo Flotante -->
-					{#if showDropdown && filteredProperties.length > 0}
+					{:else if showDropdown && filteredProperties.length > 0}
 						<div class="predictive-dropdown">
-							<div class="dropdown-header">Inmuebles coincidentes:</div>
+							<div class="dropdown-header">Inmuebles coincidentes (toca para vincular):</div>
 							{#each filteredProperties as prop}
 								<button
 									type="button"
@@ -354,7 +353,7 @@
 						</div>
 					{:else if propertySearch.trim().length >= 3 && filteredProperties.length === 0}
 						<div class="predictive-hint">
-							<span>No hay inmueble exacto en catálogo. Se guardará como código de lona libre: <strong>"{propertySearch}"</strong></span>
+							<span>No hay inmueble en catálogo. Se guardará como código de lona libre: <strong>"{propertySearch}"</strong></span>
 						</div>
 					{/if}
 				</div>
