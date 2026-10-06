@@ -16,6 +16,7 @@
 	import { notifications } from '$lib/stores/notificationStore';
 	import { empresa } from '$lib/config/empresa';
 	import { getProposalUrl } from '$lib/functions/urlUtils';
+	import { formatDisplayPhone, extractCleanPhone } from '$lib/functions/phoneUtils';
 
 	// Estado del formulario
 	let leadFullName = '';
@@ -107,15 +108,6 @@
 		showDropdown = false;
 	}
 
-	// Limpieza profunda del teléfono (admite guiones, espacios y paréntesis)
-	function extractCleanPhone(raw: string): string {
-		const digits = raw.replace(/\D/g, '');
-		if (digits.length === 12 && digits.startsWith('52')) {
-			return digits.substring(2);
-		}
-		return digits.slice(-10);
-	}
-
 	// Separación inteligente de Nombre y Apellidos
 	function splitFullName(raw: string): { name: string; lastname: string } {
 		const clean = raw.trim().replace(/\s+/g, ' ');
@@ -194,7 +186,7 @@
 				fullName: leadFullName.trim(),
 				telephon: `+52${cleanPhone}`,
 				phoneRaw: cleanPhone,
-				phoneFormatted: leadPhone.trim(),
+				phoneFormatted: formatDisplayPhone(cleanPhone),
 				typeContact: interestType,
 				contactStage: 1, // E1 - Primer Contacto
 				source: 'lona_llamada',
@@ -484,7 +476,7 @@
 				</div>
 				<h2>¡Lead Blindado con Éxito!</h2>
 				<p class="lead-summary">
-					<strong>{leadFullName}</strong> (+52 {extractCleanPhone(leadPhone)}) ha quedado indexado a tu nombre.
+					<strong>{leadFullName}</strong> ({formatDisplayPhone(leadPhone)}) ha quedado indexado a tu nombre.
 				</p>
 
 				<!-- Vista Previa del Mensaje Ligero de WhatsApp -->

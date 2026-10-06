@@ -2,6 +2,7 @@
 <script lang="ts">
 	import type { Contact } from '$lib/types';
 	import { getContactBadgeInfo } from '$lib/functions/contactBadge';
+	import { formatDisplayPhone } from '$lib/functions/phoneUtils';
 	import { goto } from '$app/navigation';
 
 	export let contact: Contact;
@@ -25,14 +26,6 @@
 			return `$${num.toLocaleString('es-MX')}`;
 		}
 		return str;
-	}
-
-	function formatDisplayPhone(raw: string): string {
-		const digits = (raw || '').replace(/\D/g, '').slice(-10);
-		if (digits.length === 10) {
-			return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
-		}
-		return raw || '';
 	}
 
 	function handleCardClick() {

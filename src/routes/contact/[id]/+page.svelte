@@ -21,9 +21,22 @@
 	import { userProfile, userStore, isAdmin, isAsociado } from '$lib/firebase/authManager';
 	import { notifications } from '$lib/stores/notificationStore';
 	import { getContactBadgeInfo } from '$lib/functions/contactBadge';
+	import { formatDisplayPhone } from '$lib/functions/phoneUtils';
 	import { getProposalUrl } from '$lib/functions/urlUtils';
 	import { empresa } from '$lib/config/empresa';
 	import type { Contact, Binnacle } from '$lib/types';
+
+	function formatBudget(val: any): string {
+		if (!val && val !== 0) return '';
+		const str = String(val).trim();
+		if (!str) return '';
+		if (str.includes('$') || str.toLowerCase().includes('m')) return str;
+		const num = Number(str.replace(/\D/g, ''));
+		if (!isNaN(num) && num > 0) {
+			return `$${num.toLocaleString('es-MX')}`;
+		}
+		return str;
+	}
 
 	const contactId = $page.params.id;
 
@@ -290,7 +303,7 @@
 						{#if contact.phoneRaw || contact.telephon}
 							{@const cleanTel = (contact.phoneRaw || contact.telephon).replace(/\D/g, '').slice(-10)}
 							<a href="tel:+52{cleanTel}" class="hero-btn call-hero-btn">
-								<i class="fa-solid fa-phone"></i> Llamar (+52 {cleanTel})
+								<i class="fa-solid fa-phone"></i> Llamar ({formatDisplayPhone(cleanTel)})
 							</a>
 							<a
 								href={getContactWhatsAppUrl()}
@@ -398,7 +411,7 @@
 						<div class="info-list">
 							<div class="info-item">
 								<span class="info-label">Teléfono:</span>
-								<span class="info-value text-highlight">{contact.phoneFormatted || contact.telephon}</span>
+								<span class="info-value text-highlight">{formatDisplayPhone(contact.phoneFormatted || contact.telephon)}</span>
 							</div>
 
 							{#if contact.email}
@@ -417,7 +430,7 @@
 								<div class="info-item">
 									<span class="info-label">Presupuesto Tope:</span>
 									<span class="info-value text-budget">
-										{contact.budgetTope || `$${Number(contact.presupuestoMax).toLocaleString('es-MX')}`}
+										{formatBudget(contact.budgetTope || contact.presupuestoMax)}
 									</span>
 								</div>
 							{/if}
