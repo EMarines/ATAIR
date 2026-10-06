@@ -1,0 +1,9 @@
+node_modules
+.svelte-kit
+.vercel
+dist
+.env
+.env.*
+!.env.example
+.vite_cache
+.DS_Store

@@ -1,0 +1,444 @@
+*{
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  transition-duration: 200ms;
+  font-family: 'Poppins', sans-serif;
+  scrollbar-color: blue lightblue;
+  scroll-behavior: smooth;
+ 
+}
+:root, [data-theme="light"] {
+  font-family: 'Poppins', Roboto, sans-serif;
+  --primary-color: #2d3f63;
+  --hero-bg: #2d3f63;
+  --primary-hover: #3d5584;
+  --accent-color: #0284c7;
+  --bg-color: #f4f4f6;
+  --surface-1: #ffffff;
+  --surface-card: #ffffff;
+  --surface-card-hover: #f1f5f9;
+  --color: #18181b;
+  --text-1: #18181b;
+  --text-muted: #52525b;
+  --border: #d4d4d8;
+  --border-hover: #a1a1aa;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.14);
+  --title-color: #6b21a8;
+  --title-heading: #18181b;
+  --dashboard-card-bg: #ffffff;
+  --dashboard-card-border: #e4e4e7;
+  --dashboard-card-hover: #f8fafc;
+  --dashboard-card-title: #18181b;
+  --dashboard-card-desc: #52525b;
+  --footer-text: #18181b;
+  --footer-muted: #52525b;
+  --nav-bg: #ffffff;
+  --nav-text: #18181b;
+  --nav-logo: #6b21a8;
+  --input-bg: #ffffff;
+  --input-border: #a1a1aa;
+  --input-text: #18181b;
+  --sidebar-color: #ffffff;
+  --header-color: #ffffff;
+  --text-color: #18181b;
+  --menu-background-color: #ffffff;
+  --light-gray: #71717a;
+  --medium-gray: #e4e4e7;
+  --dark-gray: #f4f4f5;
+  --menu-text-color: #18181b;
+  --sidebar-width: 250px;
+  --header-height: 64px;
+  --error: #c24141;
+  --warning: #d97706;
+}
+
+[data-theme="dark"] {
+  --primary-color: #2d3f63;
+  --hero-bg: #2d3f63;
+  --primary-hover: #3d5584;
+  --accent-color: #0cbff6;
+  --bg-color: #000000;
+  --surface-1: #18181b;
+  --surface-card: rgb(56, 56, 56);
+  --surface-card-hover: rgb(76, 76, 76);
+  --color: #f4f4f5;
+  --text-1: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.15);
+  --border-hover: rgba(255, 255, 255, 0.3);
+  --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  --card-shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.4);
+  --title-color: #a855f7;
+  --title-heading: #ffffff;
+  --dashboard-card-bg: rgba(255, 255, 255, 0.05);
+  --dashboard-card-border: rgba(255, 255, 255, 0.1);
+  --dashboard-card-hover: rgba(255, 255, 255, 0.08);
+  --dashboard-card-title: #ffffff;
+  --dashboard-card-desc: rgba(255, 255, 255, 0.6);
+  --footer-text: #ffffff;
+  --footer-muted: #a1a1aa;
+  --nav-bg: #18181b;
+  --nav-text: #f4f4f5;
+  --nav-logo: #ffffff;
+  --input-bg: #27272a;
+  --input-border: #3f3f46;
+  --input-text: #f4f4f5;
+  --sidebar-color: #000000;
+  --header-color: #000000;
+  --text-color: #ffffff;
+  --menu-background-color: #2e2e2e;
+  --light-gray: #a7a7a7;
+  --medium-gray: #2e2e2e;
+  --dark-gray: #181818;
+  --menu-text-color: #ffffff;
+}
+
+body{
+  background-color: var(--bg-color);
+  color: var(--color);
+}
+.container{
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 10px;
+  /* background: red; */
+}
+
+.pageContainer {
+  padding: 10px;  
+}
+
+/* Estilos generales para centrar y limitar el ancho */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Estilos para la navbar */
+.navbar {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px 20px;
+}
+
+/* Estilos para el contenedor de tarjetas */
+.cards__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    position: relative;
+    z-index: 5;
+}
+
+/* Estilos para el footer */
+.footer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    margin-top: 20px;
+    clear: both;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: hidden; /* Evitar scroll horizontal */
+}
+
+h1.title {
+  font-size: 2.5em;
+  font-weight: 350;
+  color: #6b21a8;
+  text-align: center;
+}
+h1 , h2{
+  text-transform: capitalize;
+}
+
+h2.title {
+  font-size: 2em;
+  font-weight: 250;
+  color: #6b21a8;
+  margin: 0 auto;
+  text-align: center
+}
+
+h3.title {
+  font-size: 1.5em;
+  font-weight: 200;
+  color: #6b21a8;
+  text-align: center;
+
+}
+h4.title {
+  font-size: 1.3em;
+  font-weight: 200;
+  color: #6b21a8;
+  text-align: center;  
+}
+h1.name {
+  font-size: 2.2em;
+  font-weight: 300;
+}
+
+.btn__submit {
+  width: 180px;
+  background: blue;
+  color: whitesmoke;
+  font-weight: 800;
+  padding: 8px;
+  margin: 8px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+
+/* inputs dessigns   */
+
+.above, .center {
+  position: absolute;
+  transform: translateY(-50%);
+  min-width: 150px;
+  pointer-events: none;
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: .8em;
+}
+
+.slogan {
+  font-family: Nothing You Could Do;
+  font-size: 2.5rem;
+  color: #6b21a8;
+  text-shadow: 1px 1px 3px rgba(200, 200, 200, 0.5);
+}
+
+.izq {
+  transform: translatex(-50%);
+
+}
+
+.above {
+  top: 0;
+  left: 24px;
+  color: whitesmoke;
+  background: navy;
+  border: 1px solid blue;
+  font-size: .7em;
+}
+
+.center {
+  top: 50%;
+  left: 6px;
+  border: 1px solid transparent;
+  opacity: 0;
+}
+
+.label__title {
+  position: relative; 
+  border: 1px solid navy;
+  border-radius: 5px;
+  padding: 5px 3px 7px 3px;
+}
+
+.in__sel {  
+  padding: 3px 0 3px 5px;
+  width: 250px;
+  border-color: 2px solid blue;
+  border-radius: 8px;
+  font-size: .8em;
+  padding: 3px;
+  font-weight: 600;
+  color: darkblue;    
+  }
+
+
+  input::placeholder{
+    color: rgba(148, 163, 184, 0.4);
+  }
+
+  /* Autofill dark mode override */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  textarea:-webkit-autofill:active,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus,
+  select:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #1e1e35 inset !important;
+    box-shadow: 0 0 0 1000px #1e1e35 inset !important;
+    -webkit-text-fill-color: #f1f5f9 !important;
+    caret-color: #f1f5f9 !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  .capitalize {
+    text-transform: capitalize;
+  }
+
+
+/* =========================================================
+   SISTEMA CENTRALIZADO DE ICONOS Y BOTONES DE ACCIÓN (ATAIR)
+   ========================================================= */
+
+.action-icon,
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(125, 125, 125, 0.08);
+  border: 1px solid rgba(125, 125, 125, 0.12);
+  cursor: pointer;
+  padding: 0 !important;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+
+:root[data-theme="dark"] .action-icon,
+:root[data-theme="dark"] .action-btn,
+[data-theme="dark"] .action-icon,
+[data-theme="dark"] .action-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Colores Base */
+.fa-pen-to-square,
+.edit-icon,
+.action-btn.edit-btn,
+.action-icon.edit-icon {
+  color: #2563eb !important;
+}
+
+.fa-trash-can,
+.delete-icon,
+.action-btn.delete-btn,
+.action-icon.delete-icon {
+  color: #ef4444 !important;
+}
+
+.fa-square-check {
+  font-size: 1em;
+  color: #16a34a !important;
+  cursor: pointer;
+}
+
+/* Efecto Hover: Aluce en Amarillo Luminoso con fondo y sombra resplandeciente */
+.action-icon:hover,
+.action-btn:hover,
+.action-icon.edit-icon:hover,
+.action-btn.edit-btn:hover,
+.action-icon.delete-icon:hover,
+.action-btn.delete-btn:hover,
+.fa-pen-to-square:hover,
+.fa-trash-can:hover,
+i.fa-pen-to-square:hover,
+i.fa-trash-can:hover {
+  color: #eab308 !important;
+  background: rgba(234, 179, 8, 0.18) !important;
+  border-color: rgba(234, 179, 8, 0.45) !important;
+  transform: scale(1.12);
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.45) !important;
+}
+
+.action-btn i,
+.action-icon i {
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  pointer-events: none;
+}
+
+/* Iconos de acciones */
+.whatsapp-icon {
+  color: #25D366 !important;  /* Color oficial de WhatsApp */
+  font-size: 1.5em !important;  /* 50% más grande */
+}
+
+.fa-users-viewfinder {
+  color: blue !important;
+  font-size: 1.5em !important;  /* 50% más grande */
+}
+
+.fa-arrow-left {
+  color: yellow !important;
+  font-size: 1.5em !important;  /* 50% más grande */
+}
+
+.fa-arrow-up-right-from-square {
+  color: purple !important;
+  font-size: 1.5em !important;  /* 50% más grande */
+}
+
+
+select,
+input,
+button,
+a {
+	&:focus-visible {
+		outline: 2px solid var(--accent-color);
+		outline-offset: 2px;
+	}
+}
+
+/* Estilos para la barra de scroll - Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(155, 155, 155, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6b21a8;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8b31d8;
+}
+
+/* Estilos para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #6b21a8 rgba(155, 155, 155, 0.1);
+}
+
+/* Para elementos con scroll horizontal */
+.scroll-horizontal {
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hidden-footer {
+  display: none !important;
+}
