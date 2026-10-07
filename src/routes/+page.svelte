@@ -1,6 +1,6 @@
 <script lang="ts">
   import { db } from '$lib/firebase_toggle';
-  import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+  import { collection, getDocs, doc, updateDoc, addDoc } from 'firebase/firestore';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { userProfile } from '$lib/firebase/authManager';
@@ -157,6 +157,7 @@
   onMount(() => {
     loadDashboardData();
     loadAgendaTodos();
+    syncGoogleTasksInBackground();
   });
 
   async function loadDashboardData() {
@@ -278,6 +279,71 @@
         });
     } catch (err) {
       console.warn('Error cargando pendientes de agenda en dashboard:', err);
+    }
+  }
+
+  async function syncGoogleTasksInBackground() {
+    try {
+      const res = await fetch('https://n8n-atair.duckdns.org/webhook/atair-google-tasks-inbound-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data?.items || !Array.isArray(data.items)) return;
+
+      const snap = await getDocs(collection(db, 'todos'));
+      const existingMap = new Map<string, any>();
+      snap.docs.forEach((d) => {
+        const item = d.data();
+        if (item.googleTaskId) existingMap.set(item.googleTaskId, { id: d.id, ...item });
+      });
+
+      let changes = false;
+      for (const t of data.items) {
+        const gId = t.googleTaskId || t.id;
+        if (!gId || t.deleted) continue;
+        const isDone = t.status === 'completed' || Boolean(t.completed);
+
+        const existing = existingMap.get(gId);
+        if (existing) {
+          if (existing.isCompleted !== isDone || existing.task !== (t.title || t.task)) {
+            await updateDoc(doc(db, 'todos', existing.id), {
+              task: t.title || t.task || 'Tarea Google Tasks',
+              isCompleted: isDone,
+              notes: t.notes || '',
+              updatedAt: Date.now()
+            });
+            changes = true;
+          }
+        } else if (!isDone) {
+          // Solo insertar nuevas tareas pendientes
+          let dueTimestamp = Date.now();
+          if (t.due || t.dueDate) {
+            const d = new Date(t.due || t.dueDate);
+            if (!isNaN(d.getTime())) dueTimestamp = d.getTime();
+          }
+          await addDoc(collection(db, 'todos'), {
+            task: t.title || t.task || 'Tarea Google Tasks',
+            notes: t.notes || '',
+            isCompleted: false,
+            endTask: dueTimestamp,
+            googleTaskId: gId,
+            type: 'Google Tasks',
+            source: 'google_tasks',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          });
+          changes = true;
+        }
+      }
+
+      if (changes) {
+        await loadAgendaTodos();
+      }
+    } catch {
+      // Sincronización en segundo plano silenciosa
     }
   }
 

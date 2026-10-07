@@ -376,10 +376,18 @@
               existing.timeString !== taskDocData.timeString
             ) {
               await firebase.update('todos', existing.id, taskDocData);
+              tasksMapByGoogleId.set(googleTaskId, { ...existing, ...taskDocData });
               changesMade = true;
             }
           } else {
-            await firebase.add('todos', { ...taskDocData, createdAt: Date.now() });
+            // No importar tareas históricas ya completadas que nunca estuvieron en ATAIR
+            if (taskDocData.isCompleted) {
+              continue;
+            }
+            const addRes = await firebase.add('todos', { ...taskDocData, createdAt: Date.now() });
+            if (addRes.success && addRes.id) {
+              tasksMapByGoogleId.set(googleTaskId, { ...taskDocData, id: addRes.id });
+            }
             changesMade = true;
           }
         }
@@ -484,10 +492,14 @@
               existing.timeString !== eventDocData.timeString
             ) {
               await firebase.update('todos', existing.id, eventDocData);
+              eventsMapByGoogleId.set(googleEventId, { ...existing, ...eventDocData });
               changesMade = true;
             }
           } else {
-            await firebase.add('todos', { ...eventDocData, createdAt: Date.now() });
+            const addRes = await firebase.add('todos', { ...eventDocData, createdAt: Date.now() });
+            if (addRes.success && addRes.id) {
+              eventsMapByGoogleId.set(googleEventId, { ...eventDocData, id: addRes.id });
+            }
             changesMade = true;
           }
         }

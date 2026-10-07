@@ -268,10 +268,15 @@
 
 					console.log('✅ ÉXITO: Contacto enviado a n8n:', result);
 
-					// 🔥 Capturar googleContactId y notas/frase generadas
+					// 🔥 Capturar googleContactId, googleTaskId y notas/frase generadas
 					const gId = result?.googleContactId || result?.resourceName || null;
+					const gTaskId = result?.googleTaskId || result?.id || null;
 					const generatedPhrase = result?.phrase || '';
 					const generatedNotes = result?.notes || generatedPhrase;
+
+					if (gTaskId) {
+						console.log('📋 Google Task ID recibido:', gTaskId);
+					}
 
 					if (gId || generatedNotes) {
 						console.log('🆔 Google Contact ID recibido:', gId);
@@ -303,6 +308,7 @@
 								return {
 									success: true,
 									googleContactId: gId,
+									googleTaskId: gTaskId,
 									notes: updatedNotes,
 									phrase: generatedPhrase
 								};
@@ -316,7 +322,10 @@
 						console.log('⚠️ No se recibió googleContactId ni notas en la respuesta');
 					}
 
-					return result;
+					return {
+						...result,
+						googleTaskId: gTaskId
+					};
 				} else {
 					// Intentar obtener el cuerpo de la respuesta de error
 					let errorBody = '';
@@ -647,6 +656,7 @@
 				createdAt: Date.now(),
 				contactId: contactData.id,
 				type: 'Seguimiento Etapa 1',
+				source: 'google_tasks',
 				...(googleTaskId ? { googleTaskId } : {})
 			};
 
@@ -714,8 +724,8 @@
 				if (syncResult && syncResult.googleContactId) {
 					savedContact.googleContactId = syncResult.googleContactId;
 				}
-				if (syncResult && syncResult.googleTaskId) {
-					returnedGoogleTaskId = syncResult.googleTaskId;
+				if (syncResult && (syncResult.googleTaskId || (syncResult as any).id)) {
+					returnedGoogleTaskId = syncResult.googleTaskId || (syncResult as any).id;
 					console.log('📋 Google Task ID recibido en background:', returnedGoogleTaskId);
 				}
 				// Refrescar store reactivo con las notas y Google IDs enriquecidos
