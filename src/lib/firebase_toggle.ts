@@ -26,7 +26,8 @@ const prodConfig = {
 };
 
 const isLocalhost = browser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const activeEnv = import.meta.env.VITE_FIREBASE_ENV || (isLocalhost ? 'dev' : 'prod');
+// En dominios remotos / Vercel SIEMPRE apunta a PRODUCCIÓN OFICIAL (matchhome-crm-46de4)
+const activeEnv = isLocalhost ? (import.meta.env.VITE_FIREBASE_ENV || 'dev') : 'prod';
 
 export const isSandbox = activeEnv === 'dev';
 const firebaseConfig = isSandbox ? devConfig : prodConfig;
