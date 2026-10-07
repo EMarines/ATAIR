@@ -18,7 +18,7 @@ const config = {
 		adapter: adapter({
 			// Opciones específicas para el adaptador de Vercel
 			external: [],
-			runtime: 'nodejs20.x',
+			runtime: 'nodejs22.x',
 			split: false
 		}),
 		alias: {
