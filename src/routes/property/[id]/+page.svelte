@@ -8,6 +8,7 @@
 	import { formatDisplayPhone, extractCleanPhone } from '$lib/functions/phoneUtils';
 	import { getProposalUrl } from '$lib/functions/urlUtils';
 	import { buildProposalWhatsAppMessage, formatPropertyPhrase } from '$lib/functions/proposalMessage';
+	import { matchPropertyAgainstContacts, type MatchResult } from '$lib/functions/matchingEngine';
 	import { notifications } from '$lib/stores/notificationStore';
 	import { userStore, userProfile, isAdmin } from '$lib/firebase/authManager';
 	import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
@@ -16,6 +17,7 @@
 	export let data: { property: Property };
 
 	$: property = data.property;
+	$: matchedLeads = property && contacts.length > 0 ? matchPropertyAgainstContacts(property, contacts) : [];
 	$: code = property.public_id || property.clavePropiedad || property.id || '';
 	$: isRental =
 		String(property.tipoOperacion || property.operation_type || property.selecTO)
@@ -358,8 +360,70 @@
 			{/if}
 		</div>
 
-		<!-- Columna Derecha: Generador Móvil de Propuesta & WhatsApp -->
+		<!-- Columna Derecha: Matching Inverso & Generador de Propuesta -->
 		<aside class="proposal-aside-col">
+			<!-- Tarjeta de Matching Inverso: Prospectos Compatibles -->
+			<div class="matching-leads-card">
+				<div class="matching-card-header">
+					<div class="match-badge-row">
+						<i class="fa-solid fa-bullseye match-ico"></i>
+						<span class="match-tag">Matching Inverso</span>
+						{#if matchedLeads.length > 0}
+							<span class="match-count-pill">{matchedLeads.length} Calificados</span>
+						{/if}
+					</div>
+					<h3 class="matching-heading">Clientes con Interés en esta Casa</h3>
+					<p class="matching-subdesc">
+						Cruza plaza ({property.city_id === 'del' ? 'Delicias' : 'Chihuahua'}), presupuesto y perfilamiento.
+					</p>
+				</div>
+
+				{#if loadingContacts}
+					<div class="matching-loading">
+						<i class="fa-solid fa-spinner fa-spin"></i> Escaneando cartera...
+					</div>
+				{:else if matchedLeads.length === 0}
+					<div class="matching-empty">
+						<i class="fa-solid fa-user-slash"></i>
+						<p>No hay clientes activos que coincidan con el rango de precio y plaza de este inmueble.</p>
+					</div>
+				{:else}
+					<div class="matched-leads-list">
+						{#each matchedLeads.slice(0, 5) as item (item.contact.id)}
+							<div class="matched-lead-row" class:selected={selectedContact?.id === item.contact.id}>
+								<div class="match-score-badge grade-{item.grade}">
+									<span class="score-num">{item.score}%</span>
+									<span class="score-txt">Match</span>
+								</div>
+								<div class="match-lead-info">
+									<div class="match-lead-name">
+										{item.contact.name} {item.contact.lastname || ''}
+										{#if item.contact.associate_name}
+											<span class="advisor-tag">({item.contact.associate_name})</span>
+										{/if}
+									</div>
+									<div class="match-reasons-chips">
+										{#each item.reasons.slice(0, 2) as reason}
+											<span class="reason-chip">{reason}</span>
+										{/each}
+									</div>
+								</div>
+								<div class="match-lead-actions">
+									<button
+										type="button"
+										class="btn-select-match"
+										title="Preparar propuesta para este cliente"
+										on:click={() => selectContact(item.contact)}
+									>
+										<i class="fa-brands fa-whatsapp"></i> Proponer
+									</button>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+
 			<div class="proposal-card">
 				<div class="proposal-card-header">
 					<div class="proposal-badge-row">
@@ -867,6 +931,221 @@
 	.proposal-aside-col {
 		position: sticky;
 		top: 80px;
+	}
+
+	/* Tarjeta de Matching Inverso */
+	.matching-leads-card {
+		background: #18181b;
+		border: 1px solid rgba(245, 158, 11, 0.35);
+		border-radius: 12px;
+		padding: 1.15rem;
+		margin-bottom: 1rem;
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+		display: flex;
+		flex-direction: column;
+		gap: 0.85rem;
+	}
+
+	.matching-card-header {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.match-badge-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.match-ico {
+		color: #f59e0b;
+		font-size: 0.85rem;
+	}
+
+	.match-tag {
+		font-size: 0.72rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: #fbbf24;
+	}
+
+	.match-count-pill {
+		font-size: 0.68rem;
+		background: rgba(245, 158, 11, 0.2);
+		color: #f59e0b;
+		border: 1px solid rgba(245, 158, 11, 0.4);
+		padding: 0.15rem 0.5rem;
+		border-radius: 6px;
+		font-weight: 700;
+	}
+
+	.matching-heading {
+		font-size: 0.98rem;
+		font-weight: 800;
+		color: #ffffff;
+		margin: 0;
+	}
+
+	.matching-subdesc {
+		font-size: 0.75rem;
+		color: #a1a1aa;
+		margin: 0;
+	}
+
+	.matching-loading, .matching-empty {
+		padding: 1rem;
+		text-align: center;
+		color: #71717a;
+		font-size: 0.78rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.matching-empty i {
+		font-size: 1.4rem;
+		opacity: 0.5;
+	}
+
+	.matched-leads-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+		max-height: 280px;
+		overflow-y: auto;
+		padding-right: 0.2rem;
+	}
+
+	.matched-lead-row {
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 8px;
+		padding: 0.55rem 0.65rem;
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		transition: all 0.15s ease;
+	}
+
+	.matched-lead-row:hover {
+		background: rgba(255, 255, 255, 0.06);
+		border-color: rgba(245, 158, 11, 0.3);
+	}
+
+	.matched-lead-row.selected {
+		border-color: #22c55e;
+		background: rgba(34, 197, 94, 0.1);
+	}
+
+	.match-score-badge {
+		min-width: 44px;
+		height: 44px;
+		border-radius: 8px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		font-weight: 800;
+		line-height: 1.1;
+	}
+
+	.grade-elite {
+		background: rgba(16, 185, 129, 0.2);
+		border: 1px solid #10b981;
+		color: #34d399;
+	}
+
+	.grade-qualified {
+		background: rgba(12, 191, 246, 0.2);
+		border: 1px solid #0cbff6;
+		color: #38bdf8;
+	}
+
+	.grade-partial {
+		background: rgba(245, 158, 11, 0.2);
+		border: 1px solid #f59e0b;
+		color: #fbbf24;
+	}
+
+	.grade-low {
+		background: rgba(113, 113, 122, 0.2);
+		border: 1px solid #71717a;
+		color: #a1a1aa;
+	}
+
+	.score-num {
+		font-size: 0.85rem;
+	}
+
+	.score-txt {
+		font-size: 0.55rem;
+		text-transform: uppercase;
+		opacity: 0.8;
+	}
+
+	.match-lead-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		overflow: hidden;
+	}
+
+	.match-lead-name {
+		font-size: 0.82rem;
+		font-weight: 700;
+		color: #ffffff;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.advisor-tag {
+		font-size: 0.68rem;
+		color: #a1a1aa;
+		font-weight: 500;
+	}
+
+	.match-reasons-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+	}
+
+	.reason-chip {
+		font-size: 0.62rem;
+		background: rgba(255, 255, 255, 0.05);
+		color: #d4d4d8;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+
+	.match-lead-actions {
+		display: flex;
+		align-items: center;
+	}
+
+	.btn-select-match {
+		background: rgba(37, 211, 102, 0.15);
+		border: 1px solid rgba(37, 211, 102, 0.4);
+		color: #4ade80;
+		font-size: 0.72rem;
+		font-weight: 700;
+		padding: 0.35rem 0.6rem;
+		border-radius: 6px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		transition: all 0.15s ease;
+	}
+
+	.btn-select-match:hover {
+		background: #25d366;
+		color: #000000;
 	}
 
 	.proposal-card {

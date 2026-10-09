@@ -28,6 +28,21 @@ export interface Contact {
 	city_id?: string; // 'cuu', 'del'
 	procedencia?: string; // 'S1', 'S2', 'S3', 'MH'
 	isActive?: boolean;
+
+	// --- Perfilamiento Total (Etapa 2 - Calificación) ---
+	metodoPago?: 'Bancario' | 'Infonavit' | 'Cofinavit' | 'Fovissste' | 'Contado' | string;
+	estatusCredito?: 'Autorizado' | 'En Trámite' | 'Requiere Asesoría' | 'No Aplica' | string;
+	montoAutorizado?: number | string;
+	engancheDisponible?: number | string;
+	zonasInteres?: string;
+	recamarasMin?: number;
+	plantasPreferencia?: '1 Planta' | '2 Plantas' | 'Indiferente' | string;
+	cocheraMin?: number;
+	requierePatio?: boolean;
+	urgenciaCompra?: 'Inmediata (<30d)' | '1 a 3 meses' | '3 a 6 meses' | 'Curioso' | string;
+	situacionActual?: string;
+	tomaDecision?: string;
+
 	createdAt?: any;
 	updatedAt?: any;
 	[key: string]: any;
@@ -43,7 +58,15 @@ export interface Binnacle {
 	date?: number;
 	asesor?: string;
 	author?: string;
+	author_id?: string;
 	action?: string;
+
+	// --- Chat Embebido de WhatsApp ---
+	direction?: 'inbound' | 'outbound';
+	sender?: 'client' | 'associate' | 'system';
+	messageText?: string;
+	status?: 'sent' | 'delivered' | 'read' | 'pending';
+
 	[key: string]: any;
 }
 
