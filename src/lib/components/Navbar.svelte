@@ -151,6 +151,12 @@
 					</a>
 				</li>
 
+				<li role="menuitem">
+					<a href="/admin/squad" class="nav__link admin-special-link squad-nav-link" on:click={handleLinkClick}>
+						<i class="fa-solid fa-network-wired link-icon"></i> Squad IA
+					</a>
+				</li>
+
 				<li role="menuitem" class="user-greeting">
 					<span class="user-email-text" title={$userProfile?.email || ''}>
 						{$userProfile?.displayName || $userProfile?.email?.split('@')[0] || 'Sesión activa'}
@@ -337,6 +343,15 @@
 
 	.admin-special-link {
 		color: #c084fc !important;
+	}
+
+	.squad-nav-link {
+		color: #f59e0b !important;
+	}
+
+	.squad-nav-link:hover {
+		color: #fbbf24 !important;
+		background: rgba(245, 158, 11, 0.12) !important;
 	}
 
 	.link-icon {

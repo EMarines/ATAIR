@@ -12,6 +12,7 @@ export const PUBLIC_ROUTES = [
 export const ADMIN_ONLY_ROUTES = [
 	'/admin',
 	'/admin/asociados',
+	'/admin/squad',
 	'/admin/configuracion',
 	'/api/admin'
 ];

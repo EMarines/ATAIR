@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATAIR SGI — Constelación Radial Concéntrica (Nitidez 100%)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-space: #050811;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg-space);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #f8fafc;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Ambient Space Grid */
+    .space-grid {
+      position: absolute;
+      inset: 0;
+      background-size: 60px 60px;
+      background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      pointer-events: none;
+    }
+
+    /* Viewport & Universe */
+    #viewport {
+      position: absolute;
+      inset: 0;
+      cursor: grab;
+      overflow: hidden;
+    }
+    #viewport.grabbing {
+      cursor: grabbing;
+    }
+    #universe {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform-origin: 0 0;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: transform;
+    }
+
+    /* SVG Canvas */
+    #svg-canvas {
+      position: absolute;
+      top: -2000px;
+      left: -2000px;
+      width: 4000px;
+      height: 4000px;
+      pointer-events: none;
+    }
+
+    /* LAYER 1: BACKGROUND LAYER (Gets Blurred & Darkened When Sub-Galaxy is Active) */
+    #layer-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transition: filter 0.5s ease, opacity 0.5s ease;
+      will-change: filter, opacity;
+    }
+    #layer-background.is-blurred-bg {
+      filter: blur(14px) brightness(0.2) saturate(0.3);
+      opacity: 0.18 !important;
+      pointer-events: none !important;
+    }
+
+    /* LAYER 2: ACTIVE FOREGROUND LAYER (100% CRYSTAL CLEAR - ZERO BLUR) */
+    #layer-foreground {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 50;
+    }
+
+    /* CIRCLE NODES DESIGN (SOLID OPAQUE BACKGROUND TO PREVENT RASTERIZATION BLUR) */
+    .circle-node {
+      position: absolute;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      transform: translate(-50%, -50%);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+      will-change: transform;
+    }
+
+    /* Core Hub Circle */
+    .circle-core {
+      width: 210px;
+      height: 210px;
+      background: radial-gradient(circle at 35% 35%, #1e293b, #090d16);
+      border: 3px solid rgba(56, 189, 248, 0.7);
+      box-shadow: 0 0 50px rgba(14, 165, 233, 0.4), inset 0 0 30px rgba(14, 165, 233, 0.2);
+      z-index: 20;
+    }
+    .circle-core:hover {
+      transform: translate(-50%, -50%) scale(1.06);
+      border-color: #38bdf8;
+      box-shadow: 0 0 70px rgba(56, 189, 248, 0.6);
+    }
+
+    /* Primary Function Circles (Level 1) */
+    .circle-primary {
+      width: 175px;
+      height: 175px;
+      padding: 14px;
+      background: #0f172a;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 0, 0, 0.5);
+      z-index: 25;
+    }
+    .circle-primary:hover {
+      transform: translate(-50%, -50%) scale(1.12);
+      border-color: var(--node-glow);
+      box-shadow: 0 0 45px var(--node-glow), 0 20px 40px rgba(0, 0, 0, 0.9);
+    }
+
+    /* Focused Center Circle in Active Foreground */
+    .circle-focused-center {
+      width: 210px;
+      height: 210px;
+      padding: 16px;
+      background: #090d16;
+      border: 3.5px solid #ffffff;
+      box-shadow: 0 0 80px var(--node-glow), 0 0 120px rgba(255, 255, 255, 0.4);
+      z-index: 60;
+    }
+    .circle-focused-center:hover {
+      transform: translate(-50%, -50%) scale(1.05);
+      box-shadow: 0 0 100px var(--node-glow), 0 0 140px rgba(255, 255, 255, 0.6);
+    }
+
+    /* Level 2: Satellite Sub-Circles (100% SHARP & CRISP) */
+    .circle-satellite {
+      width: 135px;
+      height: 135px;
+      padding: 10px;
+      background: #0b1120;
+      border: 2px solid var(--node-glow);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 25px var(--node-glow);
+      z-index: 55;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0);
+      pointer-events: none;
+    }
+    .circle-satellite.bloomed {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+    }
+    .circle-satellite.bloomed:hover {
+      transform: translate(-50%, -50%) scale(1.22) !important;
+      border-color: #ffffff !important;
+      background: #0f172a !important;
+      box-shadow: 0 0 50px var(--node-glow), 0 0 35px #ffffff !important;
+      z-index: 70 !important;
+    }
+
+    /* Color Themes */
+    .theme-cyan { --node-glow: #06b6d4; border-color: rgba(6, 182, 212, 0.6); }
+    .theme-amber { --node-glow: #f59e0b; border-color: rgba(245, 158, 11, 0.6); }
+    .theme-emerald { --node-glow: #10b981; border-color: rgba(16, 185, 129, 0.6); }
+    .theme-indigo { --node-glow: #6366f1; border-color: rgba(99, 102, 241, 0.6); }
+    .theme-rose { --node-glow: #f43f5e; border-color: rgba(244, 63, 94, 0.6); }
+    .theme-purple { --node-glow: #a855f7; border-color: rgba(168, 85, 247, 0.6); }
+
+    /* Orbit Dash Animation */
+    @keyframes dash-rotate {
+      to { stroke-dashoffset: -100; }
+    }
+    .animated-dash {
+      animation: dash-rotate 14s linear infinite;
+    }
+
+    /* Modal Inspection Card */
+    #detail-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      backdrop-filter: blur(20px) brightness(0.25);
+      background: rgba(3, 7, 18, 0.7);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    #detail-modal.active {
+      display: flex;
+      opacity: 1;
+    }
+    .modal-card {
+      width: 100%;
+      max-width: 580px;
+      background: #0f172a;
+      border: 2px solid rgba(56, 189, 248, 0.5);
+      border-radius: 28px;
+      padding: 30px;
+      box-shadow: 0 35px 80px rgba(0, 0, 0, 0.95), 0 0 50px rgba(14, 165, 233, 0.3);
+      transform: scale(0.95) translateY(20px);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #detail-modal.active .modal-card {
+      transform: scale(1) translateY(0);
+    }
+  </style>
+</head>
+<body class="relative selection:bg-cyan-500 selection:text-white">
+
+  <div class="space-grid"></div>
+
+  <!-- Top Header Navigation -->
+  <header class="absolute top-4 left-4 right-4 z-40 flex items-center justify-between pointer-events-none">
+    <div class="flex items-center gap-3.5 bg-slate-900/90 border border-slate-700/80 px-5 py-3 rounded-2xl pointer-events-auto shadow-2xl">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+        <i class="fa-solid fa-circle-nodes text-white text-base"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-black text-sm text-white tracking-wide">ATAIR SGI • Constelación Concéntrica</h1>
+          <span class="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-500/40 px-2.5 py-0.5 rounded-full font-mono font-bold">atair.vercel.app</span>
+        </div>
+        <p class="text-[11px] text-slate-400 font-medium">Toca un círculo para abrir sus funciones satelitales • Toca el centro para volver al inicio.</p>
+      </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="flex items-center gap-2.5 pointer-events-auto">
+      <button id="btn-return-root" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-lg" onclick="resetToMasterEcosystem()">
+        <i class="fa-solid fa-house text-cyan-400"></i> Ecosistema Completo
+      </button>
+      <button id="btn-fullscreen" class="bg-cyan-600 hover:bg-cyan-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-lg">
+        <i class="fa-solid fa-expand"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Viewport -->
+  <main id="viewport">
+    <div id="universe">
+      
+      <!-- SVG Lines Layer -->
+      <svg id="svg-canvas">
+        <!-- Master Orbit Ring (Radius = 390px) -->
+        <circle id="master-orbit" cx="2000" cy="2000" r="390" fill="none" stroke="rgba(56, 189, 248, 0.2)" stroke-width="2" stroke-dasharray="8 8" class="animated-dash" />
+
+        <!-- Master Spokes Layer -->
+        <g id="master-spokes"></g>
+
+        <!-- Active Sub-Orbit & Satellite Spokes Layer -->
+        <g id="active-satellite-spokes"></g>
+      </svg>
+
+      <!-- ==========================================
+           LAYER 1: BACKGROUND LAYER (Gets Blurred)
+      =========================================== -->
+      <div id="layer-background">
+        
+        <!-- Center Master Hub (CORE ATAIR) -->
+        <div id="core-circle" class="circle-node circle-core" style="left: 0px; top: 0px;" onclick="resetToMasterEcosystem()">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xl shadow-lg mb-1.5">
+            <i class="fa-solid fa-cubes-stacked"></i>
+          </div>
+          <h2 class="font-black text-xs text-white uppercase tracking-wider">CORE ATAIR</h2>
+          <span class="text-[9px] text-cyan-300 font-bold">Match Home</span>
+          <span class="text-[8px] text-slate-400 mt-1 font-mono">24/7 Ecosistema</span>
+        </div>
+
+        <!-- Inactive Primary Circles Container -->
+        <div id="bg-primary-nodes"></div>
+
+      </div>
+
+      <!-- ==========================================
+           LAYER 2: ACTIVE FOREGROUND (100% SHARP)
+      =========================================== -->
+      <div id="layer-foreground">
+        
+        <!-- Active Center Focused Circle -->
+        <div id="active-center-node" style="display: none;"></div>
+
+        <!-- Active Satellites Container (100% Sharp) -->
+        <div id="active-satellites-container"></div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Bottom Floating HUD Helper -->
+  <footer class="absolute bottom-5 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 border border-slate-700/80 px-6 py-2 rounded-2xl flex items-center gap-4 text-xs text-slate-300 shadow-2xl pointer-events-auto">
+    <div class="flex items-center gap-2">
+      <button id="zoom-in" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center text-xs transition"><i class="fa-solid fa-plus"></i></button>
+      <button id="zoom-out" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center text-xs transition"><i class="fa-solid fa-minus"></i></button>
+      <span id="zoom-val" class="font-mono text-[11px] text-cyan-300 font-bold w-10 text-center">100%</span>
+    </div>
+    <div class="h-3.5 w-[1px] bg-slate-700"></div>
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+      <span id="status-hint" class="font-semibold text-slate-300">Toca cualquier círculo para abrir sus funciones internas</span>
+    </div>
+  </footer>
+
+  <!-- DETAIL INSPECTION MODAL (When clicking any sub-circle) -->
+  <div id="detail-modal" onclick="closeDetailModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <span id="modal-tag" class="text-[10px] uppercase font-mono font-bold tracking-wider px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/50">Componente</span>
+        <button onclick="closeDetailModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div class="flex items-center gap-3.5 mb-4">
+        <div id="modal-icon-box" class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-lg"></div>
+        <div>
+          <h3 id="modal-title" class="text-lg font-black text-white">Nombre de Función</h3>
+          <p id="modal-parent" class="text-xs text-slate-400 font-medium">Módulo Padre</p>
+        </div>
+      </div>
+
+      <div class="h-[1px] w-full bg-slate-800 mb-4"></div>
+
+      <p id="modal-desc" class="text-sm text-slate-300 leading-relaxed mb-6 font-normal"></p>
+
+      <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl mb-6">
+        <h4 class="text-[11px] font-bold text-cyan-400 uppercase tracking-wider mb-2.5 flex items-center gap-2">
+          <i class="fa-solid fa-code text-cyan-400"></i> Especificación Técnica & Operativa
+        </h4>
+        <ul id="modal-specs" class="text-xs text-slate-300 space-y-1.5 list-disc list-inside font-normal"></ul>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-400">
+        <span class="font-mono text-cyan-400 font-semibold">atair.vercel.app</span>
+        <button onclick="closeDetailModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition border border-slate-700">
+          Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DATA TREE 100% FAITHFUL TO ATAIR_FUNCIONAMIENTO.docx
+    const DATA_ECOSYSTEM = [
+      {
+        id: 0,
+        name: "Dashboard",
+        icon: "fa-chart-line",
+        theme: "theme-cyan",
+        color: "#06b6d4",
+        angle: 270, // Top
+        desc: "Informa en tiempo real la situación actual de Match Home.",
+        subs: [
+          {
+            name: "Accesos Rápidos",
+            icon: "fa-bolt",
+            tag: "UX Reducido -50%",
+            desc: "Panel condensado al 50% de tamaño para dar protagonismo a los indicadores clave y optimizar la ergonomía visual.",
+            specs: ["Reducción visual al 50%", "Acceso en 1 clic a Alta de Contacto y Subida", "Ergonomía mobile-first"]
+          },
+          {
+            name: "Pendientes Agenda",
+            icon: "fa-clock",
+            tag: "Alertas D1",
+            desc: "Visualizador de compromisos urgentes, tareas atrasadas y llamadas de seguimiento programadas para el día.",
+            specs: ["Alertas prioritarias de seguimiento D1", "Filtro reactivo por asesor", "Sincronizado con Google Tasks"]
+          },
+          {
+            name: "Inventario & Distribución",
+            tag: "Mapeo de Stock",
+            icon: "fa-chart-pie",
+            desc: "Muestra las casas y cómo se subieron, con desglose analítico de distribución por tipo de inmueble.",
+            specs: ["Segmentación por tipología (Casas, Deptos, Terrenos)", "Distribución: Directas vs Sinergias", "Métricas de absorción"]
+          },
+          {
+            name: "Actividad Mensual Captación",
+            tag: "Métricas Red",
+            icon: "fa-arrow-trend-up",
+            desc: "Monitoreo mensual de captaciones generadas por la red de Asociadas y volumen de nuevo stock indexado.",
+            specs: ["Registro cronológico por plaza (CUU/DEL)", "Desempeño por Asociada de campo", "Tasa de conversión de captación"]
+          },
+          {
+            name: "Inventario Completo",
+            tag: "Catálogo General",
+            icon: "fa-table-list",
+            desc: "Muestra las propiedades con filtro dinámico por precio, zona, operación (Venta/Renta) y clave EB.",
+            specs: ["Búsqueda predictiva reactiva", "Filtros multicriterio", "Conexión en vivo con Firestore (0 mocks)"]
+          }
+        ]
+      },
+      {
+        id: 1,
+        name: "Contactos",
+        icon: "fa-users",
+        theme: "theme-amber",
+        color: "#f59e0b",
+        angle: 330, // Top-Right
+        desc: "Alta express en 15s, perfilado y seguimiento automatizado.",
+        subs: [
+          {
+            name: "Alta de Contacto",
+            tag: "Ingesta 15s",
+            icon: "fa-user-plus",
+            desc: "Abre el formulario táctil de acceso rápido para captar llamadas de lonas físicas con 3 botones de control.",
+            specs: ["Captura express en 15 segundos", "Auto-split de Nombre y Apellido", "Formato telefónico flexible ### ### ####"]
+          },
+          {
+            name: "Campos Adicionales",
+            tag: "Perfilado Total",
+            icon: "fa-sliders",
+            desc: "Abre el formulario completo para el perfilado profundo del lead (crédito, buró, presupuesto tope).",
+            specs: ["Capacidad financiera validada", "Método de pago (Contado/Bancario/Infonavit)", "Urgencia y zona preferida"]
+          },
+          {
+            name: "Botón Guardar",
+            tag: "Multi-Sync",
+            icon: "fa-floppy-disk",
+            desc: "Detona 4 acciones: Crea link WA con saludo, guarda en Google Contacts, graba en bitácora y perfila el lead.",
+            specs: ["Genera propuesta WhatsApp dinámica", "Sincroniza a Google Contacts", "Asienta fecha e inmueble en bitácora"]
+          },
+          {
+            name: "Detalle de Contacto",
+            tag: "Modal 6 Botones",
+            icon: "fa-circle-dot",
+            desc: "Centro de mando del lead con 6 botones de acción: Agendar, Propiedades, Propiedad, Llamar, WA y Regresar.",
+            specs: ["Historial cronológico de notas", "Pipeline de avance (E1 a E5)", "Acceso directo a chat institucional"]
+          },
+          {
+            name: "Botón Propiedades",
+            tag: "Matching Predictivo",
+            icon: "fa-wand-magic-sparkles",
+            desc: "Cruza el perfil y presupuesto del prospecto contra la bolsa de sinergias para sugerir inmuebles compatibles al instante.",
+            specs: ["Algoritmo de cruce por presupuesto y zona", "Sinergias compartidas en Chihuahua", "Cero pérdida de llamadas de lona"]
+          },
+          {
+            name: "Botón Propiedad",
+            tag: "Catálogo Global",
+            icon: "fa-magnifying-glass",
+            desc: "Abre un filtro para seleccionar manualmente cualquier inmueble de todo el inventario de la plataforma.",
+            specs: ["Explorador de inventario", "Vinculación rápida al lead", "Generación de ficha comercial"]
+          },
+          {
+            name: "Botón Regresar",
+            tag: "Navegación",
+            icon: "fa-arrow-left",
+            desc: "Regresa de forma fluida a la página principal de contactos sin recargar la pantalla.",
+            specs: ["Retorno instantáneo a la cartera", "Preserva filtros activos", "Experiencia SPA fluida"]
+          }
+        ]
+      },
+      {
+        id: 2,
+        name: "Propiedades",
+        icon: "fa-building-user",
+        theme: "theme-emerald",
+        color: "#10b981",
+        angle: 30, // Bottom-Right
+        desc: "3 vías de subida: Texto/Fotos OCR, Clave EB y Scraper.",
+        subs: [
+          {
+            name: "Texto y Fotos",
+            tag: "IA & OCR",
+            icon: "fa-file-lines",
+            desc: "Abre modal para arrastrar y pegar texto libre, o seleccionar archivos PDF, DOCX o Excel con auto-extracción inteligente.",
+            specs: ["Drag & Drop de fichas técnicas", "Extracción con IA (precios, m², recámaras)", "Cero captura manual tediosa"]
+          },
+          {
+            name: "Por Clave EB",
+            tag: "EasyBroker Directo",
+            icon: "fa-key",
+            desc: "Ingreso de la clave EasyBroker de Match Home para descarga inmediata de fotos, precio, m² y descripción.",
+            specs: ["Sincronización en 1 segundo", "Descarga de galería en alta resolución", "Geolocalización automática"]
+          },
+          {
+            name: "Por Link Scraper",
+            tag: "Sinergias Externas",
+            icon: "fa-globe",
+            desc: "Ingesta pegando URLs de sinergias de EasyBroker, Tokko, Inmuebles24, Segunda Mano y Propiedades.com.",
+            specs: ["Scraping automático de portales", "Conversión a marca blanca Match Home", "Protección de datos del captador"]
+          },
+          {
+            name: "Catálogo con Filtros",
+            tag: "5 Botones",
+            icon: "fa-grip",
+            desc: "Página principal con 5 botones de control y filtros por operación (Venta/Renta) y ordenamiento de precios.",
+            specs: ["Visualización en tarjetas táctiles", "Filtro por procedencia de stock", "Acceso directo a ficha pública"]
+          },
+          {
+            name: "Normalizador Universal",
+            tag: "Esquema Canónico",
+            icon: "fa-code-compare",
+            desc: "Estandariza los datos de cualquier fuente en una estructura limpia en Firestore (m² const, m² terreno, amenidades).",
+            specs: ["Normalización de datos en Firestore", "Cálculo de precio por m²", "Validación de coherencia técnica"]
+          }
+        ]
+      },
+      {
+        id: 3,
+        name: "Agenda Móvil",
+        icon: "fa-calendar-check",
+        theme: "theme-indigo",
+        color: "#6366f1",
+        angle: 90, // Bottom
+        desc: "Sync Google Tasks/Calendar y regla Hora = Cita.",
+        subs: [
+          {
+            name: "Sincronizar Google",
+            tag: "Bidireccional",
+            icon: "fa-rotate",
+            desc: "Sincroniza y actualiza tareas y citas con Google Tasks y Calendar en segundo plano, con soporte para tareas repetitivas.",
+            specs: ["Sincronización en tiempo real", "Soporte de tareas recurrentes", "Integración con Google Workspace"]
+          },
+          {
+            name: "+ Tarea (Hora = Cita)",
+            tag: "Lógica Inteligente",
+            icon: "fa-plus-circle",
+            desc: "Abre modal para crear compromiso: si se deja sin hora es Tarea (Tasks); si se asigna hora cambia automáticamente a Cita (Calendar).",
+            specs: ["Regla de oro: sin hora = Tarea, con hora = Cita", "Selector táctil de clientes de cartera", "Registro en bitácora"]
+          },
+          {
+            name: "Botón 'Mi Día'",
+            tag: "Priorización",
+            icon: "fa-sun",
+            desc: "Muestra las tareas pendientes del día y las vencidas arriba; las realizadas se pasan con animación hacia abajo.",
+            specs: ["Check interactivo de 1 toque", "Ordenamiento cronológico inteligente", "Cero distracciones visuales"]
+          },
+          {
+            name: "Vistas Filtradas",
+            tag: "3 Modos",
+            icon: "fa-filter",
+            desc: "Botones para conmutar entre tareas y citas a mostrar: Todas, Google Tasks o Citas de Google Calendar.",
+            specs: ["Píldoras ergonómicas táctiles", "Filtrado por tipo de evento", "Vista de asociadas para rol Admin"]
+          },
+          {
+            name: "Llamar / WhatsApp Directo",
+            tag: "Acción de Campo",
+            icon: "fa-phone-volume",
+            desc: "Botones directos para marcar por teléfono o abrir chat institucional de WhatsApp desde cada tarjeta de cita.",
+            specs: ["Marcación nativa tel:###", "Enlace conversacional pre-redactado", "Formato ### ### ####"]
+          }
+        ]
+      },
+      {
+        id: 4,
+        name: "Trámites",
+        icon: "fa-file-contract",
+        theme: "theme-rose",
+        color: "#f43f5e",
+        angle: 150, // Bottom-Left
+        desc: "Pipeline E1-E5, créditos hipotecarios y notaría.",
+        subs: [
+          {
+            name: "Pipeline de Cierre",
+            tag: "Embudo E1 a E5",
+            icon: "fa-diagram-project",
+            desc: "Progresión secuencial: E1 Contacto -> E2 Calificado -> E3 Muestra -> E4 Oferta/Promesa -> E5 Escrituración Notarial.",
+            specs: ["Seguimiento por etapas", "Alertas de documentos faltantes", "Historial de transacciones"]
+          },
+          {
+            name: "Checklist Notarial",
+            tag: "RPP & Gravamen",
+            icon: "fa-list-check",
+            desc: "Validación de escrituras inscritas en Registro Público, certificados de libertad de gravamen, predial 5 años y agua.",
+            specs: ["Validación documental exhaustiva", "Revisión preventiva con notaría", "Prevención de vicios jurídicos"]
+          },
+          {
+            name: "Matriz Hipotecaria",
+            tag: "Bancos / Infonavit",
+            icon: "fa-landmark",
+            desc: "Guía de requisitos por institución, reglas de edad tope, capacidad de pago (30% ingreso) y avalúos comerciales.",
+            specs: ["Bancario, Infonavit, Cofinavit y Fovissste", "Criterios de edad de contratación y liquidación", "Coordinación con brokers"]
+          },
+          {
+            name: "Criterio Ad Corpus (<10%)",
+            tag: "Tolerancia SHF",
+            icon: "fa-scale-balanced",
+            desc: "Protocolo pericial para formalizar venta Ad Corpus en discrepancias de superficie menores al 10% sin requerir juicio de apeo.",
+            specs: ["Tolerancia pericial SHF y bancaria", "Ahorro de 3 a 5 meses de juicio", "Escrituración directa sobre antecedente"]
+          },
+          {
+            name: "Repositorio Plantillas",
+            tag: "Formatos Listos",
+            icon: "fa-file-signature",
+            desc: "Modelos estandarizados de cartas de intención de compra, contratos de promesa y acuerdos de confidencialidad.",
+            specs: ["Cartas de intención y ofertas", "Borrador de condiciones comerciales", "Guías para compradores y vendedores"]
+          }
+        ]
+      },
+      {
+        id: 5,
+        name: "Seguridad",
+        icon: "fa-shield-halved",
+        theme: "theme-purple",
+        color: "#a855f7",
+        angle: 210, // Top-Left
+        desc: "Admin 360° vs Asociada con cartera aislada.",
+        subs: [
+          {
+            name: "Panel de Asociados",
+            tag: "/admin/asociados",
+            icon: "fa-id-badge",
+            desc: "Métricas consolidadas por plaza (CUU/DEL), balance de asociadas activas/inactivas y cálculo reactivo de cartera.",
+            specs: ["Supervisión 360° para Dirección", "Gestión de plazas y candidatas", "Métricas de prospectos por asesora"]
+          },
+          {
+            name: "Cartera Aislada (RLS)",
+            tag: "Privacidad Total",
+            icon: "fa-user-lock",
+            desc: "Cada Asociada visualiza exclusivamente los prospectos que ella ha captado (associate_id). Cero fuga de clientes.",
+            specs: ["Aislamiento estricto en Firestore", "Seguridad server-side en hooks.server.ts", "Protección de autoría de lona"]
+          },
+          {
+            name: "Split Comisionista",
+            tag: "42.5% / 57.5%",
+            icon: "fa-percent",
+            desc: "Cálculo automático: 42.5% para la Asociada de campo y 57.5% para Match Home (absorbe tecnología, marketing y legal).",
+            specs: ["Ledger financiero transparente", "Incentivo comisionista de alto rendimiento", "Absorción corporativa de costos"]
+          },
+          {
+            name: "Modo Admin 1-Clic",
+            tag: "Enrique Marines",
+            icon: "fa-crown",
+            desc: "Conmutador seguro de rol directivo con cookies HTTP-Only para auditoría y control total de la plataforma.",
+            specs: ["Autenticación segura multi-admin", "Acceso inmediato sin contraseñas mock", "Supervisión global de operaciones"]
+          }
+        ]
+      }
+    ];
+
+    const MASTER_RADIUS = 390;
+    const SUB_RADIUS = 230;
+
+    let scale = 1;
+    let panX = 0;
+    let panY = 0;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let activeModuleId = null; // null = Ecosystem; number = Active Module
+
+    const universe = document.getElementById('universe');
+    const viewport = document.getElementById('viewport');
+    const zoomValEl = document.getElementById('zoom-val');
+    const statusHintEl = document.getElementById('status-hint');
+    const masterSpokes = document.getElementById('master-spokes');
+    const activeSatelliteSpokes = document.getElementById('active-satellite-spokes');
+    const layerBg = document.getElementById('layer-background');
+    const bgPrimaryNodes = document.getElementById('bg-primary-nodes');
+    const activeCenterNode = document.getElementById('active-center-node');
+    const activeSatellitesContainer = document.getElementById('active-satellites-container');
+    const detailModal = document.getElementById('detail-modal');
+
+    function updateTransform() {
+      universe.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+      zoomValEl.textContent = `${Math.round(scale * 100)}%`;
+    }
+
+    // RENDER INITIAL MASTER ECOSYSTEM
+    function renderMasterEcosystem() {
+      bgPrimaryNodes.innerHTML = '';
+      masterSpokes.innerHTML = '';
+
+      DATA_ECOSYSTEM.forEach((mod) => {
+        const rad = (mod.angle * Math.PI) / 180;
+        const x = MASTER_RADIUS * Math.cos(rad);
+        const y = MASTER_RADIUS * Math.sin(rad);
+
+        // Spoke from Core (2000, 2000)
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', '2000');
+        line.setAttribute('y1', '2000');
+        line.setAttribute('x2', (2000 + x).toString());
+        line.setAttribute('y2', (2000 + y).toString());
+        line.setAttribute('stroke', mod.color);
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('stroke-dasharray', '6 4');
+        line.setAttribute('opacity', '0.6');
+        masterSpokes.appendChild(line);
+
+        // Primary Circle Node
+        const el = document.createElement('div');
+        el.id = `bg-primary-${mod.id}`;
+        el.className = `circle-node circle-primary ${mod.theme}`;
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.innerHTML = `
+          <div class="w-10 h-10 rounded-full flex items-center justify-center text-lg mb-1" style="background: ${mod.color}25; color: ${mod.color}; border: 1.5px solid ${mod.color}60;">
+            <i class="fa-solid ${mod.icon}"></i>
+          </div>
+          <h3 class="font-black text-xs text-white">${mod.name}</h3>
+          <span class="text-[9px] text-slate-300 font-medium mt-0.5">${mod.subs.length} sub-círculos</span>
+          <div class="mt-1 text-[8px] px-2 py-0.5 rounded-full font-mono font-bold" style="background: ${mod.color}35; color: #fff;">
+            Abrir
+          </div>
+        `;
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          focusModule(mod.id);
+        });
+
+        bgPrimaryNodes.appendChild(el);
+      });
+    }
+
+    // FOCUS MODULE: BLUR BACKGROUND & SPAWN 100% SHARP FOREGROUND SATELLITES
+    function focusModule(moduleId) {
+      activeModuleId = moduleId;
+      const mod = DATA_ECOSYSTEM[moduleId];
+      const radParent = (mod.angle * Math.PI) / 180;
+      const parentX = MASTER_RADIUS * Math.cos(radParent);
+      const parentY = MASTER_RADIUS * Math.sin(radParent);
+
+      statusHintEl.textContent = `Explorando ${mod.name} • Toca el centro (${mod.name}) para volver al inicio`;
+
+      // 1. BLUR BACKGROUND LAYER (Everything in Layer 1 is blurred & darkened)
+      layerBg.classList.add('is-blurred-bg');
+
+      // 2. BUILD ACTIVE CENTER NODE IN LAYER 2 (100% Crisp Foreground)
+      activeCenterNode.style.display = 'flex';
+      activeCenterNode.className = `circle-node circle-focused-center ${mod.theme}`;
+      activeCenterNode.style.left = `${parentX}px`;
+      activeCenterNode.style.top = `${parentY}px`;
+      activeCenterNode.innerHTML = `
+        <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl mb-1 shadow-lg" style="background: ${mod.color}40; color: #ffffff; border: 2px solid #ffffff;">
+          <i class="fa-solid ${mod.icon}"></i>
+        </div>
+        <h3 class="font-black text-sm text-white">${mod.name}</h3>
+        <span class="text-[9px] text-cyan-300 font-bold mt-0.5">Centro Activo</span>
+        <div class="mt-1.5 text-[8.5px] px-2.5 py-0.5 rounded-full font-mono font-bold bg-white text-slate-900 shadow-lg">
+          <i class="fa-solid fa-arrow-rotate-left mr-1"></i> Clic para Cerrar
+        </div>
+      `;
+
+      activeCenterNode.onclick = (e) => {
+        e.stopPropagation();
+        resetToMasterEcosystem();
+      };
+
+      // 3. DRAW SUB-ORBIT RING & SPOKES IN FOREGROUND SVG
+      activeSatelliteSpokes.innerHTML = '';
+      const subRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      subRing.setAttribute('cx', (2000 + parentX).toString());
+      subRing.setAttribute('cy', (2000 + parentY).toString());
+      subRing.setAttribute('r', SUB_RADIUS.toString());
+      subRing.setAttribute('fill', 'none');
+      subRing.setAttribute('stroke', mod.color);
+      subRing.setAttribute('stroke-width', '2');
+      subRing.setAttribute('stroke-dasharray', '5 5');
+      subRing.setAttribute('opacity', '0.7');
+      subRing.classList.add('animated-dash');
+      activeSatelliteSpokes.appendChild(subRing);
+
+      // 4. SPAWN 100% SHARP SATELLITES (Layer 2)
+      activeSatellitesContainer.innerHTML = '';
+      const numSubs = mod.subs.length;
+      const angleStep = 360 / numSubs;
+
+      mod.subs.forEach((sub, idx) => {
+        const subAngle = idx * angleStep;
+        const subRad = (subAngle * Math.PI) / 180;
+        const satX = parentX + SUB_RADIUS * Math.cos(subRad);
+        const satY = parentY + SUB_RADIUS * Math.sin(subRad);
+
+        // Connector line
+        const satLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        satLine.setAttribute('x1', (2000 + parentX).toString());
+        satLine.setAttribute('y1', (2000 + parentY).toString());
+        satLine.setAttribute('x2', (2000 + satX).toString());
+        satLine.setAttribute('y2', (2000 + satY).toString());
+        satLine.setAttribute('stroke', mod.color);
+        satLine.setAttribute('stroke-width', '2');
+        satLine.setAttribute('opacity', '0.85');
+        activeSatelliteSpokes.appendChild(satLine);
+
+        // Satellite Node
+        const satEl = document.createElement('div');
+        satEl.className = `circle-node circle-satellite ${mod.theme}`;
+        satEl.style.left = `${satX}px`;
+        satEl.style.top = `${satY}px`;
+        satEl.innerHTML = `
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs mb-1 shadow-md" style="background: ${mod.color}35; color: ${mod.color}; border: 1.5px solid ${mod.color}80;">
+            <i class="fa-solid ${sub.icon}"></i>
+          </div>
+          <h4 class="font-extrabold text-[11px] text-white leading-tight px-1">${sub.name}</h4>
+          <span class="text-[8px] font-mono px-2 py-0.5 rounded-full mt-1 font-bold" style="background: ${mod.color}30; color: #ffffff; border: 1px solid ${mod.color}50;">${sub.tag}</span>
+        `;
+
+        satEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openDetailModal(sub, mod);
+        });
+
+        activeSatellitesContainer.appendChild(satEl);
+
+        setTimeout(() => {
+          satEl.classList.add('bloomed');
+        }, idx * 60);
+      });
+
+      // Smooth pan to center the active constellation in the screen
+      panX = -parentX * scale;
+      panY = -parentY * scale;
+      updateTransform();
+    }
+
+    // RESET TO MASTER ECOSYSTEM (Restore Layer 1 sharpness and clear Layer 2)
+    function resetToMasterEcosystem() {
+      activeModuleId = null;
+      statusHintEl.textContent = "Toca cualquier círculo para abrir sus funciones internas";
+
+      // 1. Unblur background layer
+      layerBg.classList.remove('is-blurred-bg');
+
+      // 2. Hide and clear foreground active layer
+      activeCenterNode.style.display = 'none';
+      const satellites = document.querySelectorAll('.circle-satellite');
+      satellites.forEach(s => s.classList.remove('bloomed'));
+
+      setTimeout(() => {
+        activeSatellitesContainer.innerHTML = '';
+        activeSatelliteSpokes.innerHTML = '';
+      }, 300);
+
+      // 3. Smooth pan back to origin (0, 0)
+      panX = 0;
+      panY = 0;
+      scale = 1;
+      updateTransform();
+    }
+
+    // DETAIL INSPECTION MODAL
+    function openDetailModal(sub, parentMod) {
+      document.getElementById('modal-tag').textContent = sub.tag;
+      document.getElementById('modal-tag').style.borderColor = parentMod.color;
+      document.getElementById('modal-title').textContent = sub.name;
+      document.getElementById('modal-parent').textContent = `Módulo: ${parentMod.name} • ATAIR SGI`;
+      document.getElementById('modal-desc').textContent = sub.desc;
+
+      const iconBox = document.getElementById('modal-icon-box');
+      iconBox.innerHTML = `<i class="fa-solid ${sub.icon}"></i>`;
+      iconBox.style.background = `${parentMod.color}30`;
+      iconBox.style.color = parentMod.color;
+      iconBox.style.border = `2px solid ${parentMod.color}80`;
+
+      const specsList = document.getElementById('modal-specs');
+      specsList.innerHTML = sub.specs.map(s => `<li>${s}</li>`).join('');
+
+      detailModal.classList.add('active');
+    }
+
+    function closeDetailModal() {
+      detailModal.classList.remove('active');
+    }
+
+    // PAN & ZOOM EVENT LISTENERS
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.circle-node') || e.target.closest('.modal-card')) return;
+      isDragging = true;
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+      viewport.classList.add('grabbing');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      panX = e.clientX - startX;
+      panY = e.clientY - startY;
+      updateTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+      viewport.classList.remove('grabbing');
+    });
+
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      scale = Math.min(Math.max(scale * zoomFactor, 0.4), 2.5);
+      updateTransform();
+    }, { passive: false });
+
+    document.getElementById('zoom-in').addEventListener('click', () => {
+      scale = Math.min(scale * 1.2, 2.5);
+      updateTransform();
+    });
+
+    document.getElementById('zoom-out').addEventListener('click', () => {
+      scale = Math.max(scale * 0.8, 0.4);
+      updateTransform();
+    });
+
+    document.getElementById('btn-fullscreen').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (detailModal.classList.contains('active')) {
+          closeDetailModal();
+        } else if (activeModuleId !== null) {
+          resetToMasterEcosystem();
+        }
+      }
+    });
+
+    // INIT
+    renderMasterEcosystem();
+    updateTransform();
+  </script>
+</body>
+</html>
