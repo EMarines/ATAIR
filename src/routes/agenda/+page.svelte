@@ -17,14 +17,87 @@
       user?: string;
       googleTaskId?: string;
       googleEventId?: string;
+      recurrence?: string;
+      completedAt?: number;
   }
-  
+
+  const RECURRENCE_OPTIONS = [
+    { value: 'NONE', label: 'No se repite' },
+    { value: 'DAILY', label: 'Todos los días' },
+    { value: 'WEEKDAYS', label: 'Lunes a viernes (Días laborables)' },
+    { value: 'WEEKLY', label: 'Cada semana' },
+    { value: 'MONTHLY', label: 'Cada mes' },
+    { value: 'YEARLY', label: 'Cada año' },
+  ];
+
+  function getRecurrenceLabel(val?: string): string {
+    if (!val || val === 'NONE') return '';
+    const found = RECURRENCE_OPTIONS.find(o => o.value === val);
+    return found ? found.label : '';
+  }
+
+  function calculateNextRecurrenceDate(baseTimestamp: number, recurrence: string): number {
+    const date = new Date(baseTimestamp);
+    if (isNaN(date.getTime())) return Date.now() + 86400000;
+
+    if (recurrence === 'DAILY') {
+      date.setDate(date.getDate() + 1);
+    } else if (recurrence === 'WEEKDAYS') {
+      const day = date.getDay(); // 0 Sun, 1 Mon, ... 5 Fri, 6 Sat
+      if (day === 5) {
+        date.setDate(date.getDate() + 3); // Viernes -> Lunes
+      } else if (day === 6) {
+        date.setDate(date.getDate() + 2); // Sábado -> Lunes
+      } else {
+        date.setDate(date.getDate() + 1); // Dom-Jue -> Siguiente día
+      }
+    } else if (recurrence === 'WEEKLY') {
+      date.setDate(date.getDate() + 7);
+    } else if (recurrence === 'MONTHLY') {
+      const currentDay = date.getDate();
+      date.setMonth(date.getMonth() + 1);
+      if (date.getDate() !== currentDay) {
+        date.setDate(0); // Ajustar si el siguiente mes tiene menos días
+      }
+    } else if (recurrence === 'YEARLY') {
+      date.setFullYear(date.getFullYear() + 1);
+    } else {
+      date.setDate(date.getDate() + 1);
+    }
+
+    return date.getTime();
+  }
+
+  function isToday(ts?: number): boolean {
+    if (!ts || isNaN(ts)) return false;
+    const d = new Date(ts);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() &&
+           d.getMonth() === now.getMonth() &&
+           d.getDate() === now.getDate();
+  }
+
+  function isTodayOrOverdue(ts?: number): boolean {
+    if (!ts || isNaN(ts)) return false;
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    return ts <= todayEnd.getTime();
+  }
+
+  function isOverdue(ts?: number): boolean {
+    if (!ts || isNaN(ts)) return false;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return ts < todayStart.getTime();
+  }
+
   let todos: Todo[] = [];
   $: pendingTodosCount = todos.filter(t => !t.isCompleted && !isIgnoredEvent(t.task)).length;
-  let todo: TodoFormState = {}; // Usar el tipo de estado del formulario
+  let todo: TodoFormState = { recurrence: 'NONE' }; // Usar el tipo de estado del formulario
   let showForm = false;
   let isLoading = true;
   let error: string | null = null;
+  let showCompletedAccordion = false;
 
   // Estado para el modal de Reloj con manecillas
   let showClockModal = false;
@@ -165,18 +238,26 @@
     );
   }
 
-  let selectedFilter: 'ALL' | 'TASKS' | 'CALENDAR' | 'CRM' = 'ALL';
+  let selectedFilter: 'MY_DAY' | 'ALL' | 'TASKS' | 'CALENDAR' | 'CRM' = 'MY_DAY';
   let hideCompleted: boolean = false;
 
-  $: tasksCount = todos.filter(t => !isIgnoredEvent(t.task) && (t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId))).length;
-  $: calendarCount = todos.filter(t => !isIgnoredEvent(t.task) && (t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
-  $: crmCount = todos.filter(t => !isIgnoredEvent(t.task) && !(t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId)) && !(t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
+  $: myDayPendingCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && isTodayOrOverdue(Number(t.endTask))).length;
+  $: tasksCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && (t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId))).length;
+  $: calendarCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && (t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
+  $: crmCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && !(t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId)) && !(t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
+  $: allPendingCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted).length;
 
-  // Reactive statement para ordenar los todos por fecha y aplicar filtros de origen/estado
-  $: sortedTodos = todos
+  // Filtrado reactivo base según pestaña seleccionada
+  $: baseFilteredTodos = todos
       .filter(t => !isIgnoredEvent(t.task))
       .filter(t => {
-        if (hideCompleted && t.isCompleted) return false;
+        if (selectedFilter === 'MY_DAY') {
+          if (!t.isCompleted) {
+            return isTodayOrOverdue(Number(t.endTask));
+          } else {
+            return isToday(t.completedAt) || isToday(Number(t.endTask));
+          }
+        }
         if (selectedFilter === 'TASKS') {
           return t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId);
         }
@@ -187,12 +268,20 @@
           return !(t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId)) && !(t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId));
         }
         return true;
-      })
-      .sort((a, b) => {
-          const dateA = Number(a.endTask);
-          const dateB = Number(b.endTask);
-          return dateA - dateB;
       });
+
+  // Lista de pendientes arriba (ordenadas cronológicamente)
+  $: pendingTodosList = baseFilteredTodos
+      .filter(t => !t.isCompleted)
+      .sort((a, b) => Number(a.endTask) - Number(b.endTask));
+
+  // Lista de completadas abajo (ordenadas por fecha de finalización descendente)
+  $: completedTodosList = baseFilteredTodos
+      .filter(t => t.isCompleted)
+      .sort((a, b) => (Number(b.completedAt || b.endTask)) - (Number(a.completedAt || a.endTask)));
+
+  // Compatibilidad
+  $: sortedTodos = [...pendingTodosList, ...completedTodosList];
 
   let isSyncingGoogle = false;
 
@@ -311,7 +400,9 @@
           if (result.success) {
               const allDocs = (result.data as any[]).map(t => ({
                   ...t,
-                  endTask: Number(t.endTask)
+                  endTask: Number(t.endTask),
+                  completedAt: t.completedAt ? Number(t.completedAt) : undefined,
+                  recurrence: t.recurrence || 'NONE'
               })).filter(t => !isNaN(t.endTask));
 
               const cleanDocs: Todo[] = [];
@@ -480,6 +571,8 @@
           source: (todo as any).source || 'google_tasks',
           user: todo.user || '',
           timeString: finalTimeStringForDb,
+          recurrence: todo.recurrence || 'NONE',
+          completedAt: todo.isCompleted ? (todo.completedAt || Date.now()) : undefined,
           ...(todo.googleTaskId ? { googleTaskId: todo.googleTaskId } : {}),
           ...(todo.googleEventId ? { googleEventId: todo.googleEventId } : {})
       };
@@ -529,7 +622,7 @@
           }
 
           await loadTodos();
-          todo = {};
+          todo = { recurrence: 'NONE' };
           $systStatus = "";
           showForm = false;
 
@@ -567,27 +660,71 @@
   }
 
   async function handleUpdateTodo(todoToUpdate: Todo) {
-      const result = await firebase.update('todos', todoToUpdate.id, { isCompleted: todoToUpdate.isCompleted });
+      const willBeCompleted = !todoToUpdate.isCompleted;
+      const now = Date.now();
+      const updateData: any = { 
+        isCompleted: willBeCompleted,
+        completedAt: willBeCompleted ? now : null
+      };
+
+      const result = await firebase.update('todos', todoToUpdate.id, updateData);
       if (result.success) {
+          // Si se completó una tarea periódica (recurrente), programamos automáticamente el siguiente ciclo
+          if (willBeCompleted && todoToUpdate.recurrence && todoToUpdate.recurrence !== 'NONE') {
+              const nextTimestamp = calculateNextRecurrenceDate(Number(todoToUpdate.endTask), todoToUpdate.recurrence);
+              const nextDateObj = new Date(nextTimestamp);
+              const dueIso = `${nextDateObj.getFullYear()}-${String(nextDateObj.getMonth() + 1).padStart(2, '0')}-${String(nextDateObj.getDate()).padStart(2, '0')}T00:00:00.000Z`;
+
+              const nextTodoData: any = {
+                  task: todoToUpdate.task,
+                  endTask: nextTimestamp,
+                  timeString: todoToUpdate.timeString || '',
+                  notes: todoToUpdate.notes || '',
+                  isCompleted: false,
+                  createdAt: Date.now(),
+                  type: todoToUpdate.type || 'Google Tasks',
+                  source: (todoToUpdate as any).source || 'google_tasks',
+                  user: todoToUpdate.user || '',
+                  recurrence: todoToUpdate.recurrence
+              };
+
+              if ((todoToUpdate as any)?.googleTaskId || todoToUpdate.source === 'google_tasks' || todoToUpdate.type === 'Google Tasks') {
+                  const gRes = await syncTaskWithGoogle('CREATE', {
+                      title: nextTodoData.task,
+                      notes: nextTodoData.notes,
+                      dueDate: dueIso,
+                      isCompleted: false
+                  });
+                  if (gRes?.googleTaskId) {
+                      nextTodoData.googleTaskId = gRes.googleTaskId;
+                  }
+              }
+
+              await firebase.add('todos', nextTodoData);
+          }
+
           if ((todoToUpdate as any)?.googleTaskId) {
               syncTaskWithGoogle('UPDATE', {
                   googleTaskId: (todoToUpdate as any).googleTaskId,
-                  isCompleted: todoToUpdate.isCompleted,
-                  status: todoToUpdate.isCompleted ? 'completed' : 'needsAction'
+                  isCompleted: willBeCompleted,
+                  status: willBeCompleted ? 'completed' : 'needsAction'
               });
           }
 
           const index = todos.findIndex(t => t.id === todoToUpdate.id);
           if (index !== -1) {
-              todos[index] = { ...todos[index], isCompleted: todoToUpdate.isCompleted };
-              todos = todos;
+              todos[index] = { 
+                ...todos[index], 
+                isCompleted: willBeCompleted,
+                completedAt: willBeCompleted ? now : undefined
+              };
+              todos = [...todos];
 
               const newMap = new Map(activeActions);
               newMap.delete(todoToUpdate.id);
               activeActions = newMap;
-          } else {
-              await loadTodos();
           }
+          await loadTodos();
       } else {
           alert('Error al actualizar estado: ' + result.error);
       }
@@ -608,7 +745,9 @@
           type: todoToEdit.type,
           user: todoToEdit.user,
           googleTaskId: (todoToEdit as any).googleTaskId || '',
-          googleEventId: (todoToEdit as any).googleEventId || ''
+          googleEventId: (todoToEdit as any).googleEventId || '',
+          recurrence: todoToEdit.recurrence || 'NONE',
+          completedAt: todoToEdit.completedAt
       };
 
       $systStatus = "editing";
@@ -633,7 +772,7 @@
   }
 
   function cancel() {
-      todo = {};
+      todo = { recurrence: 'NONE' };
       $systStatus = "";
       showForm = false;
   }
@@ -644,7 +783,8 @@
       } else {
           todo = {
               endTask: formatTimestampToLocalDateInputString(Date.now()),
-              timeTask: ''
+              timeTask: '',
+              recurrence: 'NONE'
           };
           $systStatus = "";
           showForm = true;
@@ -789,6 +929,36 @@
                 <button type="button" class="picker-addon-icon clock-btn" on:click|stopPropagation={openClockModal} aria-label="Abrir reloj de manecillas">
                   <i class="fa-solid fa-clock-rotate-left"></i>
                 </button>
+              </div>
+            </div>
+
+            <!-- Repetición (Tareas periódicas como Google Tasks) -->
+            <div class="form-group full-width">
+              <label for="taskRecurrence">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span>Repetición (Tareas periódicas estilo Google Tasks)</span>
+              </label>
+              <div class="recurrence-picker-container">
+                <div class="recurrence-select-wrap">
+                  <select
+                    id="taskRecurrence"
+                    class="form-input form-select recurrence-select"
+                    bind:value={todo.recurrence}
+                  >
+                    {#each RECURRENCE_OPTIONS as opt}
+                      <option value={opt.value}>{opt.label}</option>
+                    {/each}
+                  </select>
+                  <div class="recurrence-icon-hint">
+                    <i class={todo.recurrence && todo.recurrence !== 'NONE' ? "fa-solid fa-repeat text-brand-pulse" : "fa-solid fa-repeat"}></i>
+                  </div>
+                </div>
+                {#if todo.recurrence && todo.recurrence !== 'NONE'}
+                  <div class="recurrence-status-pill">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span>Se programará automáticamente el siguiente ciclo ({getRecurrenceLabel(todo.recurrence)}) cada vez que la completes.</span>
+                  </div>
+                {/if}
               </div>
             </div>
 
@@ -999,12 +1169,22 @@
           <div class="filter-tabs">
             <button
               type="button"
+              class="tab-btn tab-my-day"
+              class:active={selectedFilter === 'MY_DAY'}
+              on:click={() => selectedFilter = 'MY_DAY'}
+              title="Ver tareas programadas para hoy y atrasadas"
+            >
+              <i class="fa-solid fa-sun"></i>
+              <span>Mi Día ({myDayPendingCount})</span>
+            </button>
+            <button
+              type="button"
               class="tab-btn"
               class:active={selectedFilter === 'ALL'}
               on:click={() => selectedFilter = 'ALL'}
             >
               <i class="fa-solid fa-list"></i>
-              <span>Todas ({todos.filter(t => !isIgnoredEvent(t.task)).length})</span>
+              <span>Todas ({allPendingCount})</span>
             </button>
             <button
               type="button"
@@ -1036,106 +1216,255 @@
             </button>
             {/if}
           </div>
-
-          <label class="toggle-hide-completed">
-            <input type="checkbox" bind:checked={hideCompleted} />
-            <span>Ocultar completadas</span>
-          </label>
         </div>
 
-        <div class="table-card glass">
-          <div class="table-responsive">
-            <table class="agenda-table">
-              <thead>
-                <tr>
-                  <th class="th-status">Estado</th>
-                  <th class="th-datetime">Fecha y Hora</th>
-                  <th class="th-task">Actividad / Tarea</th>
-                  <th class="th-notes">Notas</th>
-                  <th class="th-actions">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each sortedTodos as currentTodo (currentTodo.id)}
-                  <tr
-                    class="todo-tr"
-                    class:is-completed={currentTodo.isCompleted}
-                    on:click={() => toggleActions(currentTodo.id)}
-                  >
-                    <!-- Checkbox de estado -->
-                    <td class="td-status" on:click|stopPropagation={() => handleUpdateTodo({...currentTodo, isCompleted: !currentTodo.isCompleted})}>
-                      <button 
-                        class="btn-check-toggle" 
-                        class:checked={currentTodo.isCompleted}
-                        title={currentTodo.isCompleted ? "Marcar como pendiente" : "Marcar como completada"}
-                      >
-                        <i class={currentTodo.isCompleted ? "fa-solid fa-circle-check" : "fa-regular fa-circle"}></i>
-                      </button>
-                    </td>
-
-                    <!-- Fecha y Hora -->
-                    <td class="td-datetime">
-                      <div class="datetime-pill">
-                        <i class="fa-regular fa-clock"></i>
-                        <span>{formatDateTime(currentTodo)}</span>
-                      </div>
-                    </td>
-
-                    <!-- Tarea -->
-                    <td class="td-task">
-                      <div class="task-title-wrap">
-                        {#if currentTodo.googleEventId || currentTodo.type === 'Google Calendar' || currentTodo.source === 'google_calendar'}
-                          <span class="badge-source badge-calendar" title="Cita sincronizada de Google Calendar">
-                            <i class="fa-solid fa-calendar-day"></i> Cita
-                          </span>
-                        {:else if currentTodo.googleTaskId || currentTodo.type === 'Google Tasks' || currentTodo.source === 'google_tasks'}
-                          <span class="badge-source badge-tasks" title="Tarea sincronizada de Google Tasks">
-                            <i class="fa-solid fa-list-check"></i> Tasks
-                          </span>
-                        {/if}
-                        <div class="task-title-text" class:completed-text={currentTodo.isCompleted}>
-                          {currentTodo.task}
-                        </div>
-                      </div>
-                    </td>
-
-                    <!-- Notas -->
-                    <td class="td-notes" class:empty-notes={!currentTodo.notes}>
-                      {#if currentTodo.notes}
-                        <span class="notes-badge" title={currentTodo.notes}>
-                          <i class="fa-regular fa-comment-dots notes-icon"></i>
-                          <span>{currentTodo.notes}</span>
-                        </span>
-                      {:else}
-                        <span class="text-muted-empty">—</span>
-                      {/if}
-                    </td>
-
-                    <!-- Acciones -->
-                    <td class="td-actions" on:click|stopPropagation>
-                      <div class="actions-group">
-                        <button
-                          class="action-btn edit-btn"
-                          title="Editar tarea"
-                          on:click={() => editTodo(currentTodo)}
-                        >
-                          <i class="fa-regular fa-pen-to-square"></i>
-                        </button>
-                        <button
-                          class="action-btn delete-btn"
-                          title="Eliminar tarea"
-                          on:click={() => handleDeleteTodo(currentTodo.id)}
-                        >
-                          <i class="fa-regular fa-trash-can"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
+        <!-- LISTA DE TAREAS PENDIENTES (ARRIBA) -->
+        {#if pendingTodosList.length === 0}
+          <div class="empty-state-card glass">
+            {#if selectedFilter === 'MY_DAY'}
+              <div class="my-day-celebrate">
+                <i class="fa-solid fa-sun celebrate-sun"></i>
+                <div class="celebrate-text">
+                  <h3>¡Estás al día por hoy!</h3>
+                  <p>No tienes tareas pendientes para el día de hoy. Puedes relajarte o programar una nueva tarea.</p>
+                </div>
+              </div>
+            {:else}
+              <div class="no-pending-hint">
+                <i class="fa-solid fa-check-double"></i>
+                <p>No hay tareas pendientes en esta categoría.</p>
+              </div>
+            {/if}
           </div>
-        </div>
+        {:else}
+          <div class="table-card glass">
+            <div class="table-responsive">
+              <table class="agenda-table">
+                <thead>
+                  <tr>
+                    <th class="th-status">Estado</th>
+                    <th class="th-datetime">Fecha y Hora</th>
+                    <th class="th-task">Actividad / Tarea</th>
+                    <th class="th-notes">Notas</th>
+                    <th class="th-actions">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each pendingTodosList as currentTodo (currentTodo.id)}
+                    <tr
+                      class="todo-tr"
+                      on:click={() => toggleActions(currentTodo.id)}
+                    >
+                      <!-- Checkbox de estado -->
+                      <td class="td-status" on:click|stopPropagation={() => handleUpdateTodo(currentTodo)}>
+                        <button 
+                          class="btn-check-toggle" 
+                          title="Marcar como completada"
+                        >
+                          <i class="fa-regular fa-circle"></i>
+                        </button>
+                      </td>
+
+                      <!-- Fecha y Hora -->
+                      <td class="td-datetime">
+                        <div class="datetime-pill" class:is-overdue-pill={isOverdue(Number(currentTodo.endTask))}>
+                          {#if isOverdue(Number(currentTodo.endTask))}
+                            <i class="fa-solid fa-triangle-exclamation text-rose-500"></i>
+                          {:else}
+                            <i class="fa-regular fa-clock"></i>
+                          {/if}
+                          <span>{formatDateTime(currentTodo)}</span>
+                        </div>
+                      </td>
+
+                      <!-- Tarea -->
+                      <td class="td-task">
+                        <div class="task-title-wrap">
+                          {#if currentTodo.googleEventId || currentTodo.type === 'Google Calendar' || currentTodo.source === 'google_calendar'}
+                            <span class="badge-source badge-calendar" title="Cita sincronizada de Google Calendar">
+                              <i class="fa-solid fa-calendar-day"></i> Cita
+                            </span>
+                          {:else if currentTodo.googleTaskId || currentTodo.type === 'Google Tasks' || currentTodo.source === 'google_tasks'}
+                            <span class="badge-source badge-tasks" title="Tarea sincronizada de Google Tasks">
+                              <i class="fa-solid fa-list-check"></i> Tasks
+                            </span>
+                          {/if}
+                          {#if currentTodo.recurrence && currentTodo.recurrence !== 'NONE'}
+                            <span class="badge-source badge-recurrence" title="Tarea periódica: {getRecurrenceLabel(currentTodo.recurrence)}">
+                              <i class="fa-solid fa-arrows-rotate"></i> {getRecurrenceLabel(currentTodo.recurrence)}
+                            </span>
+                          {/if}
+                          {#if isOverdue(Number(currentTodo.endTask))}
+                            <span class="badge-source badge-overdue" title="Tarea con fecha vencida">
+                              Atrasada
+                            </span>
+                          {/if}
+                          <div class="task-title-text">
+                            {currentTodo.task}
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- Notas -->
+                      <td class="td-notes" class:empty-notes={!currentTodo.notes}>
+                        {#if currentTodo.notes}
+                          <span class="notes-badge" title={currentTodo.notes}>
+                            <i class="fa-regular fa-comment-dots notes-icon"></i>
+                            <span>{currentTodo.notes}</span>
+                          </span>
+                        {:else}
+                          <span class="text-muted-empty">—</span>
+                        {/if}
+                      </td>
+
+                      <!-- Acciones -->
+                      <td class="td-actions" on:click|stopPropagation>
+                        <div class="actions-group">
+                          <button
+                            class="action-btn edit-btn"
+                            title="Editar tarea"
+                            on:click={() => editTodo(currentTodo)}
+                          >
+                            <i class="fa-regular fa-pen-to-square"></i>
+                          </button>
+                          <button
+                            class="action-btn delete-btn"
+                            title="Eliminar tarea"
+                            on:click={() => handleDeleteTodo(currentTodo.id)}
+                          >
+                            <i class="fa-regular fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {/if}
+
+        <!-- SECCIÓN DE COMPLETADAS (ABAJO - ACORDEÓN COLAPSABLE) -->
+        {#if completedTodosList.length > 0}
+          <div class="completed-accordion-container">
+            <button
+              type="button"
+              class="completed-accordion-header glass"
+              class:is-open={showCompletedAccordion}
+              on:click={() => showCompletedAccordion = !showCompletedAccordion}
+            >
+              <div class="accordion-left">
+                <i class={showCompletedAccordion ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-right"}></i>
+                <span class="accordion-title">
+                  {selectedFilter === 'MY_DAY' ? 'Completadas Hoy' : 'Tareas Completadas'}
+                </span>
+                <span class="completed-pill-count">{completedTodosList.length}</span>
+              </div>
+              <span class="accordion-hint-text">
+                {showCompletedAccordion ? 'Ocultar completadas' : 'Mostrar completadas'}
+              </span>
+            </button>
+
+            {#if showCompletedAccordion}
+              <div class="table-card glass completed-table-card">
+                <div class="table-responsive">
+                  <table class="agenda-table completed-agenda-table">
+                    <thead>
+                      <tr>
+                        <th class="th-status">Estado</th>
+                        <th class="th-datetime">Fecha y Hora</th>
+                        <th class="th-task">Actividad / Tarea</th>
+                        <th class="th-notes">Notas</th>
+                        <th class="th-actions">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each completedTodosList as currentTodo (currentTodo.id)}
+                        <tr
+                          class="todo-tr is-completed"
+                          on:click={() => toggleActions(currentTodo.id)}
+                        >
+                          <!-- Checkbox para desmarcar -->
+                          <td class="td-status" on:click|stopPropagation={() => handleUpdateTodo(currentTodo)}>
+                            <button 
+                              class="btn-check-toggle checked" 
+                              title="Desmarcar (volver a pendientes)"
+                            >
+                              <i class="fa-solid fa-circle-check"></i>
+                            </button>
+                          </td>
+
+                          <!-- Fecha y Hora -->
+                          <td class="td-datetime">
+                            <div class="datetime-pill">
+                              <i class="fa-regular fa-clock"></i>
+                              <span>{formatDateTime(currentTodo)}</span>
+                            </div>
+                          </td>
+
+                          <!-- Tarea -->
+                          <td class="td-task">
+                            <div class="task-title-wrap">
+                              {#if currentTodo.googleEventId || currentTodo.type === 'Google Calendar' || currentTodo.source === 'google_calendar'}
+                                <span class="badge-source badge-calendar" title="Cita sincronizada de Google Calendar">
+                                  <i class="fa-solid fa-calendar-day"></i> Cita
+                                </span>
+                              {:else if currentTodo.googleTaskId || currentTodo.type === 'Google Tasks' || currentTodo.source === 'google_tasks'}
+                                <span class="badge-source badge-tasks" title="Tarea sincronizada de Google Tasks">
+                                  <i class="fa-solid fa-list-check"></i> Tasks
+                                </span>
+                              {/if}
+                              {#if currentTodo.recurrence && currentTodo.recurrence !== 'NONE'}
+                                <span class="badge-source badge-recurrence" title="Tarea periódica: {getRecurrenceLabel(currentTodo.recurrence)}">
+                                  <i class="fa-solid fa-arrows-rotate"></i> {getRecurrenceLabel(currentTodo.recurrence)}
+                                </span>
+                              {/if}
+                              <div class="task-title-text completed-text">
+                                {currentTodo.task}
+                              </div>
+                            </div>
+                          </td>
+
+                          <!-- Notas -->
+                          <td class="td-notes" class:empty-notes={!currentTodo.notes}>
+                            {#if currentTodo.notes}
+                              <span class="notes-badge" title={currentTodo.notes}>
+                                <i class="fa-regular fa-comment-dots notes-icon"></i>
+                                <span>{currentTodo.notes}</span>
+                              </span>
+                            {:else}
+                              <span class="text-muted-empty">—</span>
+                            {/if}
+                          </td>
+
+                          <!-- Acciones -->
+                          <td class="td-actions" on:click|stopPropagation>
+                            <div class="actions-group">
+                              <button
+                                class="action-btn edit-btn"
+                                title="Editar tarea"
+                                on:click={() => editTodo(currentTodo)}
+                              >
+                                <i class="fa-regular fa-pen-to-square"></i>
+                              </button>
+                              <button
+                                class="action-btn delete-btn"
+                                title="Eliminar tarea permanentemente"
+                                on:click={() => handleDeleteTodo(currentTodo.id)}
+                              >
+                                <i class="fa-regular fa-trash-can"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/if}
       {/if}
     </div>
 
@@ -2589,20 +2918,248 @@
     box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
   }
 
-  .toggle-hide-completed {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-muted, #94a3b8);
-    font-size: 0.85rem;
-    cursor: pointer;
-    user-select: none;
+  .tab-btn.tab-my-day.active {
+    background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+    box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+    color: #ffffff;
   }
 
-  .toggle-hide-completed input[type="checkbox"] {
-    accent-color: #3b82f6;
-    width: 1rem;
-    height: 1rem;
+  .tab-btn.tab-my-day:hover {
+    color: #fef08a;
+  }
+
+  /* ESTADO VACÍO ELEGANTE */
+  .empty-state-card {
+    padding: 2.25rem 1.5rem;
+    text-align: center;
+    border-radius: var(--radius-xl, 16px);
+    margin-bottom: 1.5rem;
+  }
+
+  .my-day-celebrate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .celebrate-sun {
+    font-size: 2.5rem;
+    color: #f59e0b;
+    filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.4));
+    animation: pulseSun 3s ease-in-out infinite;
+  }
+
+  @keyframes pulseSun {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .celebrate-text h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--color, #0f172a);
+  }
+
+  .celebrate-text p {
+    margin: 0.35rem 0 0;
+    font-size: 0.88rem;
+    color: var(--text-muted, #64748b);
+  }
+
+  .no-pending-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    color: var(--text-muted, #64748b);
+    font-size: 0.9rem;
+  }
+
+  .no-pending-hint i {
+    font-size: 1.25rem;
+    color: #10b981;
+  }
+
+  /* BADGES DE RECURRENCIA Y ATRASADA */
+  .badge-recurrence {
+    background: rgba(6, 182, 212, 0.12);
+    color: #0891b2;
+    border: 1px solid rgba(6, 182, 212, 0.28);
+  }
+
+  :global([data-theme="dark"]) .badge-recurrence {
+    background: rgba(6, 182, 212, 0.18);
+    color: #22d3ee;
+    border-color: rgba(6, 182, 212, 0.35);
+  }
+
+  .badge-overdue {
+    background: rgba(239, 68, 68, 0.12);
+    color: #e11d48;
+    border: 1px solid rgba(239, 68, 68, 0.28);
+    font-weight: 800;
+  }
+
+  :global([data-theme="dark"]) .badge-overdue {
+    background: rgba(239, 68, 68, 0.18);
+    color: #fda4af;
+    border-color: rgba(239, 68, 68, 0.35);
+  }
+
+  .datetime-pill.is-overdue-pill {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #be123c;
+  }
+
+  :global([data-theme="dark"]) .datetime-pill.is-overdue-pill {
+    background: rgba(239, 68, 68, 0.16);
+    color: #fca5a5;
+  }
+
+  /* SELECTOR DE REPETICIÓN EN FORMULARIO */
+  .recurrence-picker-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .recurrence-select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .recurrence-select {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
     cursor: pointer;
+    padding-right: 2.5rem;
+  }
+
+  .recurrence-icon-hint {
+    position: absolute;
+    right: 0.9rem;
+    pointer-events: none;
+    color: var(--brand, #6366f1);
+    font-size: 0.95rem;
+  }
+
+  .text-brand-pulse {
+    color: #06b6d4 !important;
+    animation: rotateSlow 8s linear infinite;
+  }
+
+  @keyframes rotateSlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .recurrence-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #0891b2;
+    background: rgba(6, 182, 212, 0.08);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    width: fit-content;
+  }
+
+  :global([data-theme="dark"]) .recurrence-status-pill {
+    color: #67e8f9;
+    background: rgba(6, 182, 212, 0.15);
+  }
+
+  /* ACORDEÓN DE COMPLETADAS (SECCIÓN INFERIOR) */
+  .completed-accordion-container {
+    margin-top: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .completed-accordion-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--surface-card, #ffffff);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  :global([data-theme="dark"]) .completed-accordion-header {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .completed-accordion-header:hover {
+    border-color: var(--brand, #6366f1);
+    background: rgba(99, 102, 241, 0.04);
+  }
+
+  .accordion-left {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .accordion-left i {
+    font-size: 0.85rem;
+    color: var(--text-muted, #64748b);
+    transition: transform 0.2s ease;
+  }
+
+  .accordion-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--color, #0f172a);
+  }
+
+  .completed-pill-count {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+  }
+
+  :global([data-theme="dark"]) .completed-pill-count {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+  }
+
+  .accordion-hint-text {
+    font-size: 0.8rem;
+    color: var(--text-muted, #64748b);
+  }
+
+  .completed-table-card {
+    border-left: 3px solid #10b981;
+    opacity: 0.85;
+    animation: fadeInSlide 0.2s ease;
+  }
+
+  .completed-agenda-table tbody tr.is-completed {
+    opacity: 0.75;
+  }
+
+  .completed-agenda-table tbody tr.is-completed:hover {
+    opacity: 1;
   }
 </style>
