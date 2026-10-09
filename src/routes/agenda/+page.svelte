@@ -932,13 +932,41 @@
               </div>
             </div>
 
-            <!-- Repetición (Tareas periódicas como Google Tasks) -->
+            <!-- Repetición (Tareas periódicas estilo Google Tasks) -->
             <div class="form-group full-width">
               <label for="taskRecurrence">
                 <i class="fa-solid fa-arrows-rotate"></i>
                 <span>Repetición (Tareas periódicas estilo Google Tasks)</span>
               </label>
               <div class="recurrence-picker-container">
+                <!-- Chips Táctiles de 1 Clic (Ultra legibles y sin fallas de contraste) -->
+                <div class="recurrence-chips-grid">
+                  {#each RECURRENCE_OPTIONS as opt}
+                    <button
+                      type="button"
+                      class="chip-recurrence-btn"
+                      class:is-active={todo.recurrence === opt.value}
+                      on:click={() => todo.recurrence = opt.value}
+                    >
+                      {#if opt.value === 'NONE'}
+                        <i class="fa-regular fa-circle-xmark"></i>
+                      {:else if opt.value === 'DAILY'}
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                      {:else if opt.value === 'WEEKDAYS'}
+                        <i class="fa-solid fa-briefcase"></i>
+                      {:else if opt.value === 'WEEKLY'}
+                        <i class="fa-solid fa-calendar-week"></i>
+                      {:else if opt.value === 'MONTHLY'}
+                        <i class="fa-solid fa-calendar-days"></i>
+                      {:else}
+                        <i class="fa-solid fa-calendar"></i>
+                      {/if}
+                      <span>{opt.label}</span>
+                    </button>
+                  {/each}
+                </div>
+
+                <!-- Selector desplegable alternativo con contraste reforzado -->
                 <div class="recurrence-select-wrap">
                   <select
                     id="taskRecurrence"
@@ -953,6 +981,7 @@
                     <i class={todo.recurrence && todo.recurrence !== 'NONE' ? "fa-solid fa-repeat text-brand-pulse" : "fa-solid fa-repeat"}></i>
                   </div>
                 </div>
+
                 {#if todo.recurrence && todo.recurrence !== 'NONE'}
                   <div class="recurrence-status-pill">
                     <i class="fa-solid fa-rotate"></i>
@@ -3023,8 +3052,56 @@
   .recurrence-picker-container {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.65rem;
     width: 100%;
+  }
+
+  .recurrence-chips-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .chip-recurrence-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--border, #cbd5e1);
+    background: var(--surface-card, #ffffff);
+    color: var(--text-muted, #475569);
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  :global([data-theme="dark"]) .chip-recurrence-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+  }
+
+  .chip-recurrence-btn:hover {
+    border-color: var(--brand, #6366f1);
+    color: var(--brand, #6366f1);
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  .chip-recurrence-btn.is-active {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border-color: #4f46e5;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+  }
+
+  :global([data-theme="dark"]) .chip-recurrence-btn.is-active {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border-color: #6366f1;
+    color: #ffffff;
   }
 
   .recurrence-select-wrap {
@@ -3040,6 +3117,18 @@
     -webkit-appearance: none;
     cursor: pointer;
     padding-right: 2.5rem;
+    color-scheme: dark !important;
+  }
+
+  .recurrence-select option {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0.5rem;
+  }
+
+  :global([data-theme="dark"]) .recurrence-select option {
+    background-color: #1e1b4b !important;
+    color: #f8fafc !important;
   }
 
   .recurrence-icon-hint {
