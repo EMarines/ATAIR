@@ -19,6 +19,7 @@
       googleEventId?: string;
       recurrence?: string;
       completedAt?: number;
+      order?: number;
   }
 
   const RECURRENCE_OPTIONS = [
@@ -270,10 +271,19 @@
         return true;
       });
 
-  // Lista de pendientes arriba (ordenadas cronológicamente)
+  // Lista de pendientes arriba (ordenadas por orden personalizado o cronológicamente)
   $: pendingTodosList = baseFilteredTodos
       .filter(t => !t.isCompleted)
-      .sort((a, b) => Number(a.endTask) - Number(b.endTask));
+      .sort((a, b) => {
+        const orderA = a.order !== undefined && a.order !== null ? a.order : null;
+        const orderB = b.order !== undefined && b.order !== null ? b.order : null;
+        if (orderA !== null && orderB !== null && orderA !== orderB) {
+          return orderA - orderB;
+        }
+        if (orderA !== null && orderB === null) return -1;
+        if (orderA === null && orderB !== null) return 1;
+        return Number(a.endTask) - Number(b.endTask);
+      });
 
   // Lista de completadas abajo (ordenadas por fecha de finalización descendente)
   $: completedTodosList = baseFilteredTodos
@@ -282,6 +292,92 @@
 
   // Compatibilidad
   $: sortedTodos = [...pendingTodosList, ...completedTodosList];
+
+  // Control de Reordenamiento Vertical (Drag & Drop y Flechas)
+  let draggedTodoId: string | null = null;
+  let dragOverTodoId: string | null = null;
+
+  function handleDragStart(e: DragEvent, id: string) {
+    draggedTodoId = id;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', id);
+    }
+  }
+
+  function handleDragOver(e: DragEvent, id: string) {
+    e.preventDefault();
+    if (draggedTodoId && draggedTodoId !== id) {
+      dragOverTodoId = id;
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'move';
+      }
+    }
+  }
+
+  function handleDragLeave(id: string) {
+    if (dragOverTodoId === id) {
+      dragOverTodoId = null;
+    }
+  }
+
+  async function handleDrop(e: DragEvent, targetId: string) {
+    e.preventDefault();
+    if (!draggedTodoId || draggedTodoId === targetId) {
+      draggedTodoId = null;
+      dragOverTodoId = null;
+      return;
+    }
+
+    const list = [...pendingTodosList];
+    const fromIdx = list.findIndex(t => t.id === draggedTodoId);
+    const toIdx = list.findIndex(t => t.id === targetId);
+
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const [moved] = list.splice(fromIdx, 1);
+      list.splice(toIdx, 0, moved);
+      await applyAndPersistOrder(list);
+    }
+
+    draggedTodoId = null;
+    dragOverTodoId = null;
+  }
+
+  function handleDragEnd() {
+    draggedTodoId = null;
+    dragOverTodoId = null;
+  }
+
+  async function moveTodoVertical(id: string, direction: 'UP' | 'DOWN') {
+    const list = [...pendingTodosList];
+    const idx = list.findIndex(t => t.id === id);
+    if (idx === -1) return;
+
+    const targetIdx = direction === 'UP' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= list.length) return;
+
+    const temp = list[idx];
+    list[idx] = list[targetIdx];
+    list[targetIdx] = temp;
+
+    await applyAndPersistOrder(list);
+  }
+
+  async function applyAndPersistOrder(reorderedList: Todo[]) {
+    // Optimistic UI update
+    reorderedList.forEach((item, index) => {
+      const newOrder = (index + 1) * 10;
+      item.order = newOrder;
+
+      const masterIdx = todos.findIndex(t => t.id === item.id);
+      if (masterIdx !== -1) {
+        todos[masterIdx].order = newOrder;
+      }
+      firebase.update('todos', item.id, { order: newOrder }).catch((e) => console.warn('Error guardando order en Firestore:', e));
+    });
+
+    todos = [...todos];
+  }
 
   let isSyncingGoogle = false;
 
@@ -402,7 +498,8 @@
                   ...t,
                   endTask: Number(t.endTask),
                   completedAt: t.completedAt ? Number(t.completedAt) : undefined,
-                  recurrence: t.recurrence || 'NONE'
+                  recurrence: t.recurrence || 'NONE',
+                  order: t.order !== undefined && t.order !== null ? Number(t.order) : undefined
               })).filter(t => !isNaN(t.endTask));
 
               const cleanDocs: Todo[] = [];
@@ -573,6 +670,7 @@
           timeString: finalTimeStringForDb,
           recurrence: todo.recurrence || 'NONE',
           completedAt: todo.isCompleted ? (todo.completedAt || Date.now()) : undefined,
+          ...(todo.order !== undefined ? { order: todo.order } : {}),
           ...(todo.googleTaskId ? { googleTaskId: todo.googleTaskId } : {}),
           ...(todo.googleEventId ? { googleEventId: todo.googleEventId } : {})
       };
@@ -747,7 +845,8 @@
           googleTaskId: (todoToEdit as any).googleTaskId || '',
           googleEventId: (todoToEdit as any).googleEventId || '',
           recurrence: todoToEdit.recurrence || 'NONE',
-          completedAt: todoToEdit.completedAt
+          completedAt: todoToEdit.completedAt,
+          order: todoToEdit.order
       };
 
       $systStatus = "editing";
@@ -1271,6 +1370,7 @@
               <table class="agenda-table">
                 <thead>
                   <tr>
+                    <th class="th-drag" title="Mover verticalmente">Orden</th>
                     <th class="th-status">Estado</th>
                     <th class="th-datetime">Fecha y Hora</th>
                     <th class="th-task">Actividad / Tarea</th>
@@ -1279,11 +1379,48 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {#each pendingTodosList as currentTodo (currentTodo.id)}
+                  {#each pendingTodosList as currentTodo, idx (currentTodo.id)}
                     <tr
                       class="todo-tr"
+                      class:is-dragged={draggedTodoId === currentTodo.id}
+                      class:is-drag-over={dragOverTodoId === currentTodo.id}
+                      draggable="true"
+                      on:dragstart={(e) => handleDragStart(e, currentTodo.id)}
+                      on:dragover={(e) => handleDragOver(e, currentTodo.id)}
+                      on:dragleave={() => handleDragLeave(currentTodo.id)}
+                      on:drop={(e) => handleDrop(e, currentTodo.id)}
+                      on:dragend={handleDragEnd}
                       on:click={() => toggleActions(currentTodo.id)}
                     >
+                      <!-- Columna de Arrastre Vertical y Flechas de Movimiento -->
+                      <td class="td-drag" on:click|stopPropagation>
+                        <div class="drag-reorder-group">
+                          <span class="drag-grip-handle" title="Arrastra para mover verticalmente">
+                            <i class="fa-solid fa-grip-vertical"></i>
+                          </span>
+                          <div class="move-arrows-wrap">
+                            <button
+                              type="button"
+                              class="btn-arrow-move"
+                              disabled={idx === 0}
+                              on:click={() => moveTodoVertical(currentTodo.id, 'UP')}
+                              title="Subir tarea"
+                            >
+                              <i class="fa-solid fa-chevron-up"></i>
+                            </button>
+                            <button
+                              type="button"
+                              class="btn-arrow-move"
+                              disabled={idx === pendingTodosList.length - 1}
+                              on:click={() => moveTodoVertical(currentTodo.id, 'DOWN')}
+                              title="Bajar tarea"
+                            >
+                              <i class="fa-solid fa-chevron-down"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+
                       <!-- Checkbox de estado -->
                       <td class="td-status" on:click|stopPropagation={() => handleUpdateTodo(currentTodo)}>
                         <button 
@@ -1955,6 +2092,80 @@
 
   .todo-tr.is-completed {
     opacity: 0.65;
+  }
+
+  /* COLUMNA Y CONTROLES DE ARRASTRE VERTICAL */
+  .th-drag, .td-drag {
+    width: 60px;
+    text-align: center;
+    padding: 0.5rem 0.25rem !important;
+  }
+
+  .drag-reorder-group {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    user-select: none;
+  }
+
+  .drag-grip-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted, #94a3b8);
+    cursor: grab;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+  }
+
+  .drag-grip-handle:hover {
+    color: var(--brand, #6366f1);
+    background: rgba(99, 102, 241, 0.1);
+  }
+
+  .drag-grip-handle:active {
+    cursor: grabbing;
+  }
+
+  .move-arrows-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .btn-arrow-move {
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #94a3b8);
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+    font-size: 0.62rem;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+  }
+
+  .btn-arrow-move:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--brand, #6366f1);
+  }
+
+  .btn-arrow-move:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+  }
+
+  /* ESTADOS DRAG AND DROP */
+  .todo-tr.is-dragged {
+    opacity: 0.35;
+    background: rgba(99, 102, 241, 0.08) !important;
+  }
+
+  .todo-tr.is-drag-over {
+    border-top: 3px solid #6366f1 !important;
+    background: rgba(99, 102, 241, 0.06) !important;
   }
 
   .th-status, .td-status {
@@ -2746,10 +2957,10 @@
     .todo-tr {
       display: grid;
       grid-template-areas:
-        "status datetime actions"
-        "task task task"
-        "notes notes notes";
-      grid-template-columns: auto 1fr auto;
+        "drag status datetime actions"
+        "task task task task"
+        "notes notes notes notes";
+      grid-template-columns: auto auto 1fr auto;
       align-items: center;
       gap: 0.65rem 0.75rem;
       padding: 0.95rem 1rem;
@@ -2764,6 +2975,16 @@
       background: rgba(255, 255, 255, 0.035);
       border-color: rgba(255, 255, 255, 0.08);
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .td-drag {
+      grid-area: drag;
+      padding: 0 !important;
+      border: none !important;
+      width: auto !important;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
     }
 
     .td-status {

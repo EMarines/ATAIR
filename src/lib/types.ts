@@ -189,6 +189,7 @@ export interface Todo {
   source?: string;
   recurrence?: 'NONE' | 'DAILY' | 'WEEKDAYS' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | string;
   completedAt?: number;
+  order?: number;
 }
 
 
