@@ -260,17 +260,15 @@
         endTask: Number(d.data().endTask)
       })) as AgendaTodo[];
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrowEnd = new Date(today);
-      tomorrowEnd.setDate(tomorrowEnd.getDate() + 2); // Inicio del día después de mañana (00:00:00)
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
 
       pendingTodos = list
         .filter((t) => {
           if (t.isCompleted || !t.task) return false;
           if (!t.endTask || isNaN(Number(t.endTask))) return true;
           const itemDate = new Date(Number(t.endTask));
-          return itemDate.getTime() < tomorrowEnd.getTime();
+          return itemDate.getTime() <= todayEnd.getTime();
         })
         .sort((a, b) => {
           const dA = Number(a.endTask) || 0;
@@ -647,7 +645,7 @@
             {#if pendingTodos.length === 0}
               <div class="todos-empty-state">
                 <i class="fa-regular fa-circle-check"></i>
-                <p>¡Al día! No hay compromisos ni tareas pendientes.</p>
+                <p>No hay tareas pendientes para hoy</p>
                 <button class="btn-create-todo" on:click={() => goto('/agenda')}>+ Programar cita</button>
               </div>
             {:else}
