@@ -18,7 +18,7 @@
       googleTaskId?: string;
       googleEventId?: string;
       recurrence?: string;
-      completedAt?: number;
+      completedAt?: number | null;
       order?: number;
   }
 
@@ -669,7 +669,7 @@
           user: todo.user || '',
           timeString: finalTimeStringForDb,
           recurrence: todo.recurrence || 'NONE',
-          completedAt: todo.isCompleted ? (todo.completedAt || Date.now()) : undefined,
+          completedAt: todo.isCompleted ? (todo.completedAt || Date.now()) : null,
           ...(todo.order !== undefined ? { order: todo.order } : {}),
           ...(todo.googleTaskId ? { googleTaskId: todo.googleTaskId } : {}),
           ...(todo.googleEventId ? { googleEventId: todo.googleEventId } : {})

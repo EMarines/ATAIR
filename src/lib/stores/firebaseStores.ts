@@ -9,6 +9,22 @@ interface FirebaseCondition {
     value: unknown;
 }
 
+function sanitizeForFirestore<T>(data: T): T {
+    if (data === undefined) return null as any;
+    if (data === null || typeof data !== 'object') return data;
+    if (data instanceof Date || typeof (data as any).toMillis === 'function') return data;
+    if (Array.isArray(data)) {
+        return data.map(sanitizeForFirestore).filter((item) => item !== undefined) as any;
+    }
+    const clean: Record<string, any> = {};
+    for (const [key, val] of Object.entries(data as Record<string, any>)) {
+        if (val !== undefined) {
+            clean[key] = sanitizeForFirestore(val);
+        }
+    }
+    return clean as T;
+}
+
 function createFirebaseStore() {
     const { subscribe } = writable({});
 
@@ -27,7 +43,8 @@ function createFirebaseStore() {
         },
         update: async (collectionName: string, id: string, data: DocumentData) => {
             try {
-                await updateDoc(doc(db, collectionName, id), data);
+                const cleanData = sanitizeForFirestore(data);
+                await updateDoc(doc(db, collectionName, id), cleanData);
                 return { success: true };
             } catch (error) {
                 console.error('Error updating document:', error);
@@ -37,8 +54,8 @@ function createFirebaseStore() {
         // Método para crear o sobrescribir un documento con un ID específico
         set: async (collectionName: string, id: string, data: DocumentData) => {
             try {
-                // Usar setDoc en lugar de updateDoc para crear o sobrescribir un documento
-                await setDoc(doc(db, collectionName, id), data);
+                const cleanData = sanitizeForFirestore(data);
+                await setDoc(doc(db, collectionName, id), cleanData);
                 return { success: true, id };
             } catch (error) {
                 console.error('Error setting document:', error);
@@ -47,7 +64,8 @@ function createFirebaseStore() {
         },
         add: async (collectionName: string, data: DocumentData) => {
             try {
-                const docRef = await addDoc(collection(db, collectionName), data);
+                const cleanData = sanitizeForFirestore(data);
+                const docRef = await addDoc(collection(db, collectionName), cleanData);
                 return { success: true, id: docRef.id };
             } catch (error) {
                 console.error('Error adding document:', error);
@@ -72,7 +90,8 @@ function createFirebaseStore() {
                 }
                 
                 // Añadir el documento con el ID específico
-                await setDoc(docRef, data);
+                const cleanData = sanitizeForFirestore(data);
+                await setDoc(docRef, cleanData);
                 return { success: true, id };
             } catch (error) {
                 console.error('Error adding document with ID:', error);

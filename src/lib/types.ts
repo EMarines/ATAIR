@@ -188,7 +188,7 @@ export interface Todo {
   googleEventId?: string;
   source?: string;
   recurrence?: 'NONE' | 'DAILY' | 'WEEKDAYS' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | string;
-  completedAt?: number;
+  completedAt?: number | null;
   order?: number;
 }
 
