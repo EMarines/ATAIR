@@ -127,7 +127,6 @@
 	}
 </script>
 
-{#if $authInitialized && !$userStore && !$userProfile}
 <div class="container">
 	<div class="authContainer">
 		<form on:submit|preventDefault={() => handleAuth(email, password)}>
@@ -198,11 +197,6 @@
 		</div>
 	</div>
 </div>
-{:else}
-<div class="container">
-	<div class="spinner"></div>
-</div>
-{/if}
 
 <!-- Estilos -->
 <style>
