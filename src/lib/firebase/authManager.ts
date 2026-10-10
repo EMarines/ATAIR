@@ -161,6 +161,14 @@ export async function initializeAuthManager() {
 	if (!browser || listenerAttached) return;
 	listenerAttached = true;
 
+	// Fallback de seguridad: si Firebase Auth tarda más de 2.5s, liberar el bloqueo de pantalla
+	setTimeout(() => {
+		if (get(authLoading)) {
+			authLoading.set(false);
+			authInitialized.set(true);
+		}
+	}, 2500);
+
 	onAuthStateChanged(auth, async (user) => {
 		if (user) {
 			userStore.set(user);

@@ -39,7 +39,7 @@
 <div class="app-container">
 	<NotificationContainer />
 
-	{#if $authLoading && !$userStore && !$userProfile}
+	{#if $authLoading && !$userStore && !$userProfile && $page.url.pathname !== '/login'}
 		<div class="loading-overlay">
 			<div class="spinner"></div>
 			<p>Iniciando ATAIR CRM...</p>
