@@ -24,6 +24,7 @@ import type { UserProfile, UserRole } from '$lib/types/auth';
 // Correos fundadores con privilegio inicial de admin (Bootstrap)
 const BOOTSTRAP_ADMIN_EMAILS = [
 	'marines.enrique@gmail.com',
+	'emarines@live.com.mx',
 	'matchhomebr@gmail.com',
 	'matchhome@hotmail.com'
 ];
@@ -221,7 +222,7 @@ export async function initializeAuthManager() {
 export async function setDevRole(role: 'admin' | 'asociado' = 'admin') {
 	const profile: UserProfile = {
 		uid: role === 'admin' ? 'dev-admin-enrique' : 'dev-asociada-claudia',
-		email: role === 'admin' ? 'marines.enrique@gmail.com' : 'claudia.asociada@matchhome.net',
+		email: role === 'admin' ? 'emarines@live.com.mx' : 'claudia.asociada@matchhome.net',
 		name: role === 'admin' ? 'Enrique Marines' : 'Claudia Asociada',
 		displayName: role === 'admin' ? 'Enrique Marines' : 'Claudia Asociada',
 		role: role,
