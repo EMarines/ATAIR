@@ -47,6 +47,43 @@ export const authLoading = writable(!initialUser && !initialProfile);
 // Variable para asegurar que el listener se registra una sola vez
 let authListenerAttached = false;
 
+// Correos con privilegios de Administrador
+export const ADMIN_EMAILS = [
+  'matchhomebr@gmail.com',
+  'matchhome@hotmail.com',
+  'marines.enrique@gmail.com',
+  'emarines@live.com.mx'
+];
+
+/**
+ * Acceso directo como Administrador (Enrique Marines)
+ */
+export function quickAdminLogin(email = 'emarines@live.com.mx') {
+  const profile = {
+    email: email,
+    role: 'admin',
+    uid: 'admin-enrique-marines',
+    displayName: 'Enrique Marines'
+  };
+  const fakeUser: any = {
+    uid: profile.uid,
+    email: profile.email,
+    displayName: profile.displayName,
+    getIdToken: async () => 'dev-token-admin'
+  };
+  userStore.set(fakeUser);
+  userProfile.set(profile);
+  if (browser) {
+    try {
+      localStorage.setItem('atair_cached_user', JSON.stringify(fakeUser));
+      localStorage.setItem('atair_cached_profile', JSON.stringify(profile));
+    } catch {}
+  }
+  authLoading.set(false);
+  authInitialized.set(true);
+  return profile;
+}
+
 // Listener para el perfil del usuario
 let profileUnsubscribe: (() => void) | null = null;
 
@@ -64,10 +101,15 @@ function handleUserProfile(user: User) {
     profileUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        userProfile.set(data);
+        const isAdmin = ADMIN_EMAILS.includes(user.email || '') || data.role === 'admin';
+        const patchedProfile = {
+          ...data,
+          role: isAdmin ? 'admin' : (data.role || 'user')
+        };
+        userProfile.set(patchedProfile);
         if (browser) {
           try {
-            localStorage.setItem('atair_cached_profile', JSON.stringify(data));
+            localStorage.setItem('atair_cached_profile', JSON.stringify(patchedProfile));
           } catch (e) {
             console.warn('Error guardando perfil en localStorage:', e);
           }
@@ -79,8 +121,8 @@ function handleUserProfile(user: User) {
 
     // 2. Actualizar lastLogin o crear perfil en segundo plano (fire-and-forget)
     getDoc(userDocRef).then((userDocSnap) => {
+      const isAdmin = ADMIN_EMAILS.includes(user.email || '');
       if (!userDocSnap.exists()) {
-        const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com'; 
         const newProfile = {
           email: user.email,
           role: isAdmin ? 'admin' : 'user',
@@ -90,14 +132,19 @@ function handleUserProfile(user: User) {
         };
         setDoc(userDocRef, newProfile).catch(console.error);
       } else {
-        setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true }).catch(console.error);
+        const updateData: any = { lastLogin: serverTimestamp() };
+        if (isAdmin && userDocSnap.data()?.role !== 'admin') {
+          updateData.role = 'admin';
+        }
+        setDoc(userDocRef, updateData, { merge: true }).catch(console.error);
       }
     }).catch(console.error);
 
   } catch (error) {
     console.error('Error en handleUserProfile:', error);
     if (!get(userProfile)) {
-      userProfile.set({ role: 'user', email: user.email });
+      const isAdmin = ADMIN_EMAILS.includes(user.email || '');
+      userProfile.set({ role: isAdmin ? 'admin' : 'user', email: user.email });
     }
   }
 }
@@ -150,7 +197,7 @@ export async function initializeAuthManager() {
 
       const currentProfile = get(userProfile);
       if (!currentProfile) {
-        const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com';
+        const isAdmin = ADMIN_EMAILS.includes(user.email || '');
         const quickProfile = { email: user.email, role: isAdmin ? 'admin' : 'user', uid: user.uid };
         userProfile.set(quickProfile);
         if (browser) {
@@ -160,6 +207,12 @@ export async function initializeAuthManager() {
       handleUserProfile(user);
     } else {
       console.log('🔥 [AuthManager] Usuario nulo (logout o inicial)');
+      const cached = get(userProfile);
+      if (cached && (cached.role === 'admin' || ADMIN_EMAILS.includes(cached.email))) {
+        authLoading.set(false);
+        authInitialized.set(true);
+        return;
+      }
       userStore.set(null);
       userProfile.set(null);
       if (browser) {
@@ -293,7 +346,7 @@ export async function loginWithEmailPassword(email: string, password: string) {
         const user = userCredential.user;
         if (user) {
             userStore.set(user);
-            const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com';
+            const isAdmin = ADMIN_EMAILS.includes(user.email || '');
             const quickProfile = { email: user.email, role: isAdmin ? 'admin' : 'user', uid: user.uid };
             userProfile.set(quickProfile);
             if (browser) {
@@ -338,7 +391,7 @@ export async function registerWithEmailPassword(email: string, password: string)
         const user = userCredential.user;
         if (user) {
             userStore.set(user);
-            const isAdmin = user.email === 'matchhomebr@gmail.com' || user.email === 'matchhome@hotmail.com' || user.email === 'marines.enrique@gmail.com';
+            const isAdmin = ADMIN_EMAILS.includes(user.email || '');
             const quickProfile = { email: user.email, role: isAdmin ? 'admin' : 'user', uid: user.uid };
             userProfile.set(quickProfile);
             if (browser) {

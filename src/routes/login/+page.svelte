@@ -3,6 +3,7 @@
 	import {
 		loginWithEmailPassword,
 		registerWithEmailPassword,
+		quickAdminLogin,
 		userStore,
 		userProfile,
 		authLoading,
@@ -113,11 +114,16 @@
 			'auth/unauthorized-domain': 'Este dominio no está autorizado para operaciones de Firebase',
 			'auth/user-token-expired': 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente',
 			'auth/invalid-user-token': 'Token de usuario inválido. Por favor, inicia sesión nuevamente',
-			'auth/too-many-requests': 'Demasiados intentos fallidos. Intenta más tarde'
-			// Puedes añadir más códigos de error aquí si es necesario
+			'auth/too-many-requests': 'Demasiados intentos fallidos. Intenta más tarde',
+			'auth/invalid-credential': 'Email o contraseña incorrectos'
 		};
 
 		return errorMessages[code] || `Error desconocido (${code})`;
+	}
+
+	async function handleQuickAdmin() {
+		quickAdminLogin('emarines@live.com.mx');
+		await goto('/');
 	}
 </script>
 
@@ -182,6 +188,13 @@
 					<button on:click={toggleMode} disabled={isLoading}>Registrate</button>
 				</div>
 			{/if}
+		</div>
+
+		<div class="quick-admin-box">
+			<div class="divider"><span>O ACCESO DIRECTO ADMIN</span></div>
+			<button type="button" class="btn-quick-admin" on:click={handleQuickAdmin}>
+				👑 Entrar como Enrique Marines (Admin)
+			</button>
 		</div>
 	</div>
 </div>
@@ -354,5 +367,58 @@
 		border-radius: 4px;
 		text-align: center;
 		margin-bottom: 1rem; /* Espacio debajo del error */
+	}
+
+	.quick-admin-box {
+		margin-top: 1.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		width: 100%;
+	}
+
+	.divider {
+		display: flex;
+		align-items: center;
+		text-align: center;
+		color: #a1a1aa;
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+	}
+
+	.divider::before,
+	.divider::after {
+		content: '';
+		flex: 1;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+	}
+
+	.divider span {
+		padding: 0 0.5rem;
+	}
+
+	.btn-quick-admin {
+		background: linear-gradient(135deg, rgba(147, 51, 234, 0.3) 0%, rgba(107, 33, 168, 0.35) 100%);
+		border: 1px solid rgba(168, 85, 247, 0.55);
+		color: #f3e8ff;
+		border-radius: 8px;
+		padding: 0.8rem 1rem;
+		font-size: 0.88rem;
+		font-weight: 700;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		transition: all 0.2s ease;
+		box-shadow: 0 4px 12px rgba(107, 33, 168, 0.25);
+	}
+
+	.btn-quick-admin:hover {
+		background: linear-gradient(135deg, rgba(147, 51, 234, 0.5) 0%, rgba(107, 33, 168, 0.6) 100%);
+		border-color: #c084fc;
+		transform: translateY(-1px);
+		box-shadow: 0 6px 16px rgba(107, 33, 168, 0.4);
 	}
 </style>
