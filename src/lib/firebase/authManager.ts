@@ -22,12 +22,20 @@ import { auth, db } from './config';
 import type { UserProfile, UserRole } from '$lib/types/auth';
 
 // Correos fundadores con privilegio inicial de admin (Bootstrap)
-const BOOTSTRAP_ADMIN_EMAILS = [
+export const BOOTSTRAP_ADMIN_EMAILS = [
 	'marines.enrique@gmail.com',
 	'emarines@live.com.mx',
 	'matchhomebr@gmail.com',
-	'matchhome@hotmail.com'
+	'matchhome@hotmail.com',
+	'enrique@matchhome.net',
+	'director@matchhome.net'
 ];
+
+export function isBootstrapAdmin(email: string | null | undefined): boolean {
+	if (!email) return false;
+	const clean = email.toLowerCase().trim();
+	return BOOTSTRAP_ADMIN_EMAILS.some((e) => e.toLowerCase().trim() === clean);
+}
 
 function getCachedItem<T>(key: string): T | null {
 	if (!browser) return null;
@@ -41,6 +49,9 @@ function getCachedItem<T>(key: string): T | null {
 
 const initialCachedUser = getCachedItem<any>('atair_user');
 const initialCachedProfile = getCachedItem<UserProfile>('atair_profile');
+if (initialCachedProfile && isBootstrapAdmin(initialCachedProfile.email)) {
+	initialCachedProfile.role = 'admin';
+}
 
 // Stores Reactivos
 export const userStore = writable<User | null>(initialCachedUser);
@@ -51,7 +62,7 @@ export const authInitialized = writable<boolean>(false);
 // Stores Derivados de Roles
 export const isAdmin = derived(
 	userProfile,
-	($profile) => $profile?.role === 'admin' && $profile?.isActive !== false
+	($profile) => ($profile?.role === 'admin' || isBootstrapAdmin($profile?.email)) && $profile?.isActive !== false
 );
 
 export const isAsociado = derived(
@@ -104,11 +115,13 @@ function attachProfileListener(user: User) {
 		async (snapshot) => {
 			if (snapshot.exists()) {
 				const data = snapshot.data() as UserProfile;
+				const isBootstrap = isBootstrapAdmin(user.email || data.email);
+				const roleToAssign: UserRole = isBootstrap || data.role === 'admin' ? 'admin' : (data.role || 'user');
 				const fullProfile: UserProfile = {
 					...data,
 					uid: user.uid,
 					email: user.email || data.email,
-					role: data.role || (BOOTSTRAP_ADMIN_EMAILS.includes(user.email || '') ? 'admin' : 'user'),
+					role: roleToAssign,
 					isActive: data.isActive !== undefined ? data.isActive : true
 				};
 
@@ -117,12 +130,16 @@ function attachProfileListener(user: User) {
 					localStorage.setItem('atair_profile', JSON.stringify(fullProfile));
 				}
 
+				if (isBootstrap && data.role !== 'admin') {
+					setDoc(userDocRef, { role: 'admin' }, { merge: true }).catch(console.warn);
+				}
+
 				const token = await user.getIdToken();
 				syncSessionWithServer(token, fullProfile);
 			} else {
 				// Crear perfil inicial si no existe
-				const isBootstrapAdmin = BOOTSTRAP_ADMIN_EMAILS.includes(user.email || '');
-				const initialRole: UserRole = isBootstrapAdmin ? 'admin' : 'user';
+				const isBootstrap = isBootstrapAdmin(user.email);
+				const initialRole: UserRole = isBootstrap ? 'admin' : 'user';
 
 				const newProfile: UserProfile = {
 					uid: user.uid,
@@ -284,7 +301,7 @@ export async function registerWithEmailPassword(
 		const userCredential = await createUserWithEmailAndPassword(auth, emailVal.trim(), passwordVal);
 		const user = userCredential.user;
 
-		const roleToAssign: UserRole = options.role || (BOOTSTRAP_ADMIN_EMAILS.includes(emailVal.trim()) ? 'admin' : 'asociado');
+		const roleToAssign: UserRole = options.role || (isBootstrapAdmin(emailVal) ? 'admin' : 'asociado');
 
 		const profileData: UserProfile = {
 			uid: user.uid,
