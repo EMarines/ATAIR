@@ -29,10 +29,34 @@ function getInitialProfile() {
   if (!browser) return null;
   try {
     const raw = localStorage.getItem('atair_cached_profile');
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && (isEmailAdmin(parsed.email) || parsed.role === 'admin')) {
+      parsed.role = 'admin';
+    }
+    return parsed;
   } catch {
     return null;
   }
+}
+
+// Correos con privilegios de Administrador
+export const ADMIN_EMAILS = [
+  'matchhomebr@gmail.com',
+  'matchhome@hotmail.com',
+  'marines.enrique@gmail.com',
+  'emarines@live.com.mx',
+  'enrique@matchhome.net',
+  'director@matchhome.net'
+];
+
+/**
+ * Validador canónico insensible a mayúsculas/espacios
+ */
+export function isEmailAdmin(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  return ADMIN_EMAILS.some((e) => e.toLowerCase().trim() === clean);
 }
 
 const initialUser = getInitialUser();
@@ -46,14 +70,6 @@ export const authLoading = writable(!initialUser && !initialProfile);
 
 // Variable para asegurar que el listener se registra una sola vez
 let authListenerAttached = false;
-
-// Correos con privilegios de Administrador
-export const ADMIN_EMAILS = [
-  'matchhomebr@gmail.com',
-  'matchhome@hotmail.com',
-  'marines.enrique@gmail.com',
-  'emarines@live.com.mx'
-];
 
 /**
  * Acceso directo como Administrador (Enrique Marines)
@@ -95,16 +111,18 @@ function handleUserProfile(user: User) {
     if (!db) return;
 
     const userDocRef = doc(db, 'users', user.uid);
+    const userIsAdmin = isEmailAdmin(user.email);
 
     // 1. Escucha en tiempo real (lee instantáneamente de IndexedDB cache en 0ms)
     if (profileUnsubscribe) profileUnsubscribe();
     profileUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        const isAdmin = ADMIN_EMAILS.includes(user.email || '') || data.role === 'admin';
+        const roleToAssign = userIsAdmin || data.role === 'admin' ? 'admin' : (data.role || 'user');
         const patchedProfile = {
           ...data,
-          role: isAdmin ? 'admin' : (data.role || 'user')
+          email: user.email || data.email,
+          role: roleToAssign
         };
         userProfile.set(patchedProfile);
         if (browser) {
@@ -114,18 +132,39 @@ function handleUserProfile(user: User) {
             console.warn('Error guardando perfil en localStorage:', e);
           }
         }
+
+        // Auto-reparación en Firestore: si en base de datos dice 'user' pero es correo admin, actualizar a 'admin'
+        if (userIsAdmin && data.role !== 'admin') {
+          setDoc(userDocRef, { role: 'admin' }, { merge: true }).catch(console.warn);
+        }
+      } else {
+        // Documento no existe aún en Firestore
+        if (userIsAdmin) {
+          const newAdminDoc = {
+            email: user.email,
+            role: 'admin',
+            createdAt: serverTimestamp(),
+            lastLogin: serverTimestamp(),
+            uid: user.uid,
+            displayName: user.displayName || user.email?.split('@')[0] || 'Enrique Marines'
+          };
+          setDoc(userDocRef, newAdminDoc, { merge: true }).catch(console.warn);
+          userProfile.set(newAdminDoc);
+        }
       }
     }, (error) => {
       console.warn('Error en onSnapshot de user profile:', error);
+      if (userIsAdmin) {
+        userProfile.set({ role: 'admin', email: user.email, uid: user.uid });
+      }
     });
 
     // 2. Actualizar lastLogin o crear perfil en segundo plano (fire-and-forget)
     getDoc(userDocRef).then((userDocSnap) => {
-      const isAdmin = ADMIN_EMAILS.includes(user.email || '');
       if (!userDocSnap.exists()) {
         const newProfile = {
           email: user.email,
-          role: isAdmin ? 'admin' : 'user',
+          role: userIsAdmin ? 'admin' : 'user',
           createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
           uid: user.uid
@@ -133,7 +172,7 @@ function handleUserProfile(user: User) {
         setDoc(userDocRef, newProfile).catch(console.error);
       } else {
         const updateData: any = { lastLogin: serverTimestamp() };
-        if (isAdmin && userDocSnap.data()?.role !== 'admin') {
+        if (userIsAdmin && userDocSnap.data()?.role !== 'admin') {
           updateData.role = 'admin';
         }
         setDoc(userDocRef, updateData, { merge: true }).catch(console.error);
@@ -143,8 +182,7 @@ function handleUserProfile(user: User) {
   } catch (error) {
     console.error('Error en handleUserProfile:', error);
     if (!get(userProfile)) {
-      const isAdmin = ADMIN_EMAILS.includes(user.email || '');
-      userProfile.set({ role: isAdmin ? 'admin' : 'user', email: user.email });
+      userProfile.set({ role: isEmailAdmin(user.email) ? 'admin' : 'user', email: user.email });
     }
   }
 }
@@ -195,10 +233,15 @@ export async function initializeAuthManager() {
         } catch {}
       }
 
+      const isAdmin = isEmailAdmin(user.email);
       const currentProfile = get(userProfile);
-      if (!currentProfile) {
-        const isAdmin = ADMIN_EMAILS.includes(user.email || '');
-        const quickProfile = { email: user.email, role: isAdmin ? 'admin' : 'user', uid: user.uid };
+      if (!currentProfile || (isAdmin && currentProfile.role !== 'admin')) {
+        const quickProfile = { 
+          ...(currentProfile || {}), 
+          email: user.email, 
+          role: isAdmin ? 'admin' : (currentProfile?.role || 'user'), 
+          uid: user.uid 
+        };
         userProfile.set(quickProfile);
         if (browser) {
           try { localStorage.setItem('atair_cached_profile', JSON.stringify(quickProfile)); } catch {}
@@ -208,7 +251,7 @@ export async function initializeAuthManager() {
     } else {
       console.log('🔥 [AuthManager] Usuario nulo (logout o inicial)');
       const cached = get(userProfile);
-      if (cached && (cached.role === 'admin' || ADMIN_EMAILS.includes(cached.email))) {
+      if (cached && (cached.role === 'admin' || isEmailAdmin(cached.email))) {
         authLoading.set(false);
         authInitialized.set(true);
         return;

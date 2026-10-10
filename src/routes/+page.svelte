@@ -3,7 +3,9 @@
   import { collection, getDocs, doc, updateDoc, addDoc } from 'firebase/firestore';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { userProfile } from '$lib/firebase/authManager';
+  import { userProfile, userStore, isEmailAdmin } from '$lib/firebase/authManager';
+
+  $: isAdmin = isEmailAdmin($userProfile?.email) || isEmailAdmin($userStore?.email) || $userProfile?.role === 'admin';
 
   // ============================================================
   // QUICK ACTIONS / NAVIGATION HUB (Tarjetas de Home)
@@ -84,7 +86,7 @@
   ];
 
   function handleNavigate(action: NavAction) {
-    if (action.adminOnly && $userProfile?.role !== 'admin') {
+    if (action.adminOnly && !isAdmin) {
       console.warn(`Acceso restringido a ${action.title} para usuarios no-admin`);
       return;
     }
@@ -595,7 +597,7 @@
 
     <div class="nav-cards-grid">
       {#each navActions as action}
-        {@const isRestricted = action.adminOnly && $userProfile?.role !== 'admin'}
+        {@const isRestricted = action.adminOnly && !isAdmin}
         <button
           class="nav-card"
           class:disabled={isRestricted}

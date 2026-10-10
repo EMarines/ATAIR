@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../../styles/main.css';
-	import { handleLogout, userStore, userProfile } from '$lib/firebase/authManager';
+	import { handleLogout, userStore, userProfile, isEmailAdmin } from '$lib/firebase/authManager';
 	import { derived } from 'svelte/store';
 	import { onMount } from 'svelte';
 	import Moon from './icons/moon.svelte';
@@ -12,6 +12,7 @@
 	let menuOpen = false;
 	let logoutLoading = false;
 	const isAuthenticated = derived([userStore, userProfile], ([$u, $p]) => !!$u || !!$p);
+	const isAdmin = derived([userStore, userProfile], ([$u, $p]) => isEmailAdmin($u?.email) || isEmailAdmin($p?.email) || $p?.role === 'admin');
 	async function logout() {
 		logoutLoading = true;
 		try {
@@ -87,7 +88,7 @@
 		<ul class={nav__links} id="menu" role="menu">
 			{#if $isAuthenticated}
 				<li role="menuitem"><a href="/" class="nav__link" on:click={handleLinkClick}>Dashboard</a></li>
-				{#if !$userProfile || $userProfile.role === 'admin'}
+				{#if $isAdmin}
 					<li role="menuitem">
 						<a href="/contacts" class="nav__link" on:click={handleLinkClick}>Contacto</a>
 					</li>
@@ -97,7 +98,7 @@
 					<a href="/properties" class="nav__link" on:click={handleLinkClick}>Propiedades</a>
 				</li>
 
-				{#if !$userProfile || $userProfile.role === 'admin'}
+				{#if $isAdmin}
 					<li role="menuitem">
 						<a href="/agenda" class="nav__link" on:click={handleLinkClick}>Agenda</a>
 					</li>

@@ -12,7 +12,8 @@
 		authInitialized,
 		userStore,
 		userProfile,
-		authLoading
+		authLoading,
+		isEmailAdmin
 	} from '$lib/firebase/authManager';
 	import { isPublicRoute, isUserRoute, isAdminOnlyRoute } from '$lib/config/routes';
 	import { normalizeProperty } from '$lib/functions/normalizeProperty';
@@ -34,7 +35,8 @@
 
 	// Si tenemos perfil o usuario (desde caché local o autenticado), inicializar listeners de inmediato sin esperar
 	$: if ($userProfile || $userStore) {
-		const role = $userProfile?.role || 'user';
+		const isAdmin = isEmailAdmin($userProfile?.email) || isEmailAdmin($userStore?.email) || $userProfile?.role === 'admin';
+		const role = isAdmin ? 'admin' : ($userProfile?.role || 'user');
 		if (currentSetupRole !== role) {
 			currentSetupRole = role;
 			setupFirestoreListeners($userProfile);
@@ -68,14 +70,11 @@
 		}
 
 		// 3. Caso: Usuario autenticado, verificar roles si el perfil está cargado
-		if (profile) {
-			const role = profile.role || 'user';
-
-			if (role === 'user') {
-				// Si es un usuario básico y está en una ruta de admin, redirigir a propiedades
-				if (isAdminOnlyRoute(path)) {
-					goto('/properties');
-				}
+		const isAdmin = isEmailAdmin(user?.email) || isEmailAdmin(profile?.email) || profile?.role === 'admin';
+		if ((profile || user) && !isAdmin) {
+			// Si es un usuario básico y está en una ruta de admin, redirigir a propiedades
+			if (isAdminOnlyRoute(path)) {
+				goto('/properties');
 			}
 		}
 	}
@@ -86,7 +85,7 @@
 	}
 
 	function setupFirestoreListeners(profile: any) {
-		const isAdmin = profile?.role === 'admin';
+		const isAdmin = isEmailAdmin(profile?.email) || isEmailAdmin($userStore?.email) || profile?.role === 'admin';
 
 		// Limpiar listeners existentes para evitar duplicados
 		cleanupListeners();
