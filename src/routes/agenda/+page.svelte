@@ -1812,10 +1812,10 @@
   }
 
   :global([data-theme="dark"]) .glass {
-    background: rgba(255, 255, 255, 0.03);
+    background: #181c24;
     backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    border: 2px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   }
 
   /* ===== FORMULARIO REDISEÑADO ===== */
@@ -2966,15 +2966,21 @@
       padding: 0.95rem 1rem;
       border-radius: 14px;
       background: var(--surface-card, #ffffff);
-      border: 1px solid var(--border, #e2e8f0);
+      border: 1.5px solid var(--border, #cbd5e1);
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
       cursor: default;
+      transition: all 0.2s ease;
     }
 
     :global([data-theme="dark"]) .todo-tr {
-      background: rgba(255, 255, 255, 0.035);
-      border-color: rgba(255, 255, 255, 0.08);
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+      background: #1e222d;
+      border: 2px solid #475569;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    :global([data-theme="dark"]) .todo-tr:hover {
+      background: #252a37;
+      border-color: rgba(99, 102, 241, 0.55);
     }
 
     .td-drag {
@@ -3412,8 +3418,8 @@
   }
 
   :global([data-theme="dark"]) .completed-accordion-header {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.08);
+    background: #181c24;
+    border: 1.5px solid rgba(255, 255, 255, 0.14);
   }
 
   .completed-accordion-header:hover {
