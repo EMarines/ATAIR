@@ -22,17 +22,22 @@ export async function sendTemplateMessage(
 
     const url = `${BASE_URL}/${env.META_PHONE_ID}/messages`;
 
+    const templatePayload: Record<string, any> = {
+        name: templateName,
+        language: {
+            code: languageCode
+        }
+    };
+
+    if (Array.isArray(components) && components.length > 0) {
+        templatePayload.components = components;
+    }
+
     const body = {
         messaging_product: 'whatsapp',
         to: to,
         type: 'template',
-        template: {
-            name: templateName,
-            language: {
-                code: languageCode
-            },
-            components: components
-        }
+        template: templatePayload
     };
 
     console.log(`[WhatsApp Service] Sending template '${templateName}' to ${to}`);

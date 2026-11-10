@@ -298,10 +298,14 @@ h1.name {
    ========================================================= */
 
 .action-icon,
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.action-btn,
+i.action-icon,
+.fa-regular.action-icon,
+.fa-solid.action-icon {
+  --fa-display: inline-flex;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -311,12 +315,13 @@ h1.name {
   padding: 0 !important;
   margin: 0;
   font-size: 1.05rem;
-  line-height: 1;
+  line-height: 1 !important;
+  text-align: center;
   text-decoration: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   vertical-align: middle;
-  box-sizing: border-box;
+  box-sizing: border-box !important;
 }
 
 :root[data-theme="dark"] .action-icon,

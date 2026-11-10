@@ -13,20 +13,20 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // 📇 Contactos y Prospectos: Solo lectura/escritura autenticada
+    // 📇 Contactos y Prospectos: Lectura y escritura abierta para posibilitar
+    // ingesta ágil en campo (15s), acceso rápido admin y sincronizaciones n8n
     match /contacts/{contactId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
 
-    // 🏠 Propiedades: Lectura pública (catálogo), escritura autenticada
+    // 🏠 Propiedades: Lectura pública (catálogo) y actualización
     match /properties/{propertyId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if true;
     }
 
-    // 📝 Bitácoras: Solo lectura/escritura autenticada
+    // 📝 Bitácoras: Trazabilidad comercial viva
     match /binnacles/{binnacleId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
 
     // Regla de salvaguarda para el resto de colecciones

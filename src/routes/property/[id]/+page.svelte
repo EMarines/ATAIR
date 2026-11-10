@@ -2,11 +2,14 @@
 	import { Button, CardContact } from '$components';
 	import { formatDate } from '$lib/functions/dateFunctions';
 	import { toComaSep } from '$lib/functions/format';
-	import type { Property, Contact, ContactOption, Binnacle } from '$lib/types';
+	import type { Property, Contact, Binnacle } from '$lib/types';
 	import { goto } from '$app/navigation';
 	// import { filtContPropInte } from '$lib/functions/filProperties';
 	import { findContactsForProperty } from '$lib/functions/filContacts';
+	import { isStage3Or4ForBroadcast } from '$lib/functions/contactBadge';
 	import { contactsStore, binnaclesStore, systStatus } from '$lib/stores/dataStore';
+	import { whatsappBroadcastStore } from '$lib/stores/whatsappBroadcastStore';
+	import { notifications } from '$lib/stores/notificationStore';
 	import { deleteDoc, doc, addDoc, collection } from 'firebase/firestore';
 	import { db } from '$lib/firebase_toggle';
 	import { diaTarde } from '$lib/functions/dateFunctions';
@@ -18,28 +21,28 @@
 	// findPropertiesForContact
 	export let data;
 	let property = data.property as Property;
-	let mensaje = '';
 	let show__contacts = false;
 	let contInterested = 'Por_Enviar';
 	let contInterest: Contact[] = [];
 	let contToRender: Contact[] = [];
-	let contInitial = [];
+	let excludedOtherStagesCount = 0;
 	let msgToShow = '';
 	let poroShowTo: string[] = ['Posobles_Interesados', 'Por_Enviar', 'Ya_Se_Envió'];
 	let showBtn = false;
-	let contIntToSend = 0;
-	let contFalt = 0;
 	let contCheck: Contact[] = [];
 	let contToSend: Contact;
-	let enviados = 0;
-	let autoMode = false; // Switch para modo automático vs manual
-	let isProcessing = false; // Estado para controlar si está procesando
 
 	// Popup para enviar WhatsApp manual / sin contacto previo
 	let showPhonePopup = false;
 	let customPhone = '';
 	let customName = '';
 	let copySuccess = false;
+
+	// Popup para compartir en Facebook, Grupos e Instagram (@matchhome.mx)
+	let showSocialPopup = false;
+	let socialShareText = '';
+	let socialCopySuccess = false;
+	let socialToastMsg = '';
 
 	$: contacts = $contactsStore as Contact[];
 	$: currProperty = property as Property;
@@ -91,208 +94,86 @@
 		return `${type} Col. ${cleanCol} en ${op}`;
 	}
 
-	// Funciones
-	const listToRender = () => {
-		contCheck = [];
+	// Funciones de filtrado y despacho masivo WABA (estricto Etapa 3 y Etapa 4)
+	function computeFilteredLists(
+		prop: Property,
+		allContacts: Contact[],
+		allBinnacles: Binnacle[],
+		tab: string,
+		resetSelection: boolean = false
+	) {
 		showBtn = true;
-		contInterest = findContactsForProperty(currProperty, contacts);
+		const allMatches = findContactsForProperty(prop, allContacts);
+		contInterest = allMatches.filter(isStage3Or4ForBroadcast);
+		excludedOtherStagesCount = Math.max(0, allMatches.length - contInterest.length);
 
-		if (contInterested === 'Posobles_Interesados') {
-			msgToShow = 'Contactos Les Puede Interesar Esta Propiedad';
+		const sentContactIds = new Set(
+			allBinnacles.filter((item) => item.comment === prop.public_id).map((doc) => doc.to)
+		);
+
+		if (tab === 'Posobles_Interesados') {
+			msgToShow = 'Contactos (Etapas 3 y 4) a quienes les interesa esta propiedad';
 			contToRender = contInterest;
-		} else if (contInterested === 'Por_Enviar') {
-			let toSend: Contact[] = [];
-			msgToShow = 'Pendiente Para Enviar Esta Propieadad';
-			let res = binnacles.filter((item) => item.comment === property.public_id);
-			const contsT = res.map((doc) => doc.to);
-			toSend = contInterest.filter((doc) => !contsT.includes(doc.id));
-			contToRender = toSend;
-		} else if (contInterested === 'Ya_Se_Envió') {
-			let sent: Contact[] = [];
-			msgToShow = 'Ya se les envió esta propiedad';
-			let res = binnacles.filter((item) => item.comment === property.public_id);
-			contInterest.filter((cont) => {
-				res.forEach((binn) => {
-					if (cont.id === binn.to) {
-						sent.push(cont);
-					}
-				});
-				contToRender = sent;
-			});
+		} else if (tab === 'Por_Enviar') {
+			msgToShow = 'Pendientes por enviar (Etapas 3 y 4)';
+			contToRender = contInterest.filter((doc) => !sentContactIds.has(doc.id));
+		} else if (tab === 'Ya_Se_Envió') {
+			msgToShow = 'Contactos (Etapas 3 y 4) a quienes ya se les envió';
+			contToRender = contInterest.filter((doc) => sentContactIds.has(doc.id));
 		}
+
+		if (resetSelection) {
+			contCheck = [];
+		} else {
+			const renderIds = new Set(contToRender.map((c) => c.id));
+			contCheck = contCheck.filter((c) => renderIds.has(c.id));
+		}
+	}
+
+	const listToRender = () => {
+		computeFilteredLists(currProperty, contacts, binnacles, contInterested, true);
 	};
 
-	// Función para manejar cambios en checkboxes individuales
-	function handleCheckboxChange() {
-		contIntToSend = contCheck.length;
-		contFalt = contCheck.length - enviados;
+	$: if (show__contacts && currProperty) {
+		computeFilteredLists(currProperty, contacts, binnacles, contInterested, false);
+	}
+
+	$: sentContactIdsForProp = new Set(
+		binnacles.filter((item) => item.comment === property?.public_id).map((doc) => doc.to)
+	);
+
+	function isContactQueued(cont: Contact, queuedKeys: string[]): boolean {
+		if (!property?.public_id || !cont?.id) return false;
+		return queuedKeys.includes(`${property.public_id.trim()}::${cont.id.trim()}`);
+	}
+
+	function isContactSent(cont: Contact, sentKeys: string[], sentIds: Set<string | undefined>): boolean {
+		if (!cont?.id) return false;
+		if (sentIds.has(cont.id)) return true;
+		if (!property?.public_id) return false;
+		return sentKeys.includes(`${property.public_id.trim()}::${cont.id.trim()}`);
 	}
 
 	const selectAll = (e: Event) => {
 		const isChecked = (e.target as HTMLInputElement).checked;
-		contCheck = isChecked ? [...contToRender] : [];
-		handleCheckboxChange();
+		if (!isChecked) {
+			contCheck = [];
+			return;
+		}
+		const queued = $whatsappBroadcastStore.queuedKeys;
+		contCheck = contToRender.filter((c) => !isContactQueued(c, queued));
 	};
 
-	// Función principal que decide el método de envío según el switch
-	async function sendProperty() {
-		if (mensaje === '') {
-			alert('Tienes que escribir un mensaje para enviar las propiedades');
-			return;
-		}
+	// Envío oficial por Meta WhatsApp Cloud API en segundo plano (SOLO Etapas 3 y 4)
+	function sendProperty() {
 		if (contCheck.length === 0) {
-			alert('Selecciona al menos un contacto');
+			notifications.warning('Selecciona al menos un contacto para iniciar el envío.', 4000);
 			return;
 		}
 
-		// Prevenir múltiples ejecuciones
-		if (isProcessing) {
-			console.log('⚠️ Ya hay un proceso en ejecución');
-			return;
-		}
-
-		isProcessing = true;
-		console.log(
-			`🚀 Iniciando ${autoMode ? 'automático' : 'manual'} - Contactos seleccionados: ${contCheck.length}`
-		);
-
-		try {
-			if (autoMode) {
-				// Modo automático: enviar a n8n
-				await sendToN8n();
-			} else {
-				// Modo manual: envío uno por uno con WhatsApp (click por click)
-				await sendManually();
-			}
-		} catch (error) {
-			console.error('❌ Error en sendProperty:', error);
-			alert(`❌ Error: ${error.message}`);
-		} finally {
-			isProcessing = false;
-		}
-	} // Envía los datos a n8n para procesamiento automático
-	async function sendToN8n() {
-		// Cambiar estado para mostrar que está procesando
-		$systStatus = 'sendingToN8N';
-
-		try {
-			// Preparar el paquete de datos para n8n
-			const dataPackage = {
-				property: {
-					id: property.public_id,
-					title: formatPropertyTitle(property),
-					price: property.price,
-					url: property.public_url || '',
-					image: property.title_image_thumb || '',
-					bedrooms: property.bedrooms || 0,
-					bathrooms: property.bathrooms || 0,
-					construction_size: property.construction_size || 0,
-					lot_size: property.lot_size || 0
-				},
-				message: mensaje,
-				contacts: contCheck.map((contact) => ({
-					id: contact.id,
-					name: contact.name,
-					phone: contact.telephon,
-					email: contact.email || ''
-				})),
-				metadata: {
-					timestamp: Date.now(),
-					totalContacts: contCheck.length,
-					requestedBy: 'ATAIR_APP'
-				}
-			};
-
-			// URL del webhook de n8n (reemplazar con la URL real)
-			const webhookUrl = 'http://localhost:5678/webhook-test/86de1afe-3936-4150-a7f8-b296c5836f3c';
-
-			console.log('📤 Enviando datos a n8n:', dataPackage);
-
-			// Enviar datos a n8n
-			const response = await fetch(webhookUrl, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(dataPackage)
-			});
-			console.log(response);
-
-			if (response.ok) {
-				const result = await response.json();
-				console.log('✅ Datos enviados exitosamente a n8n:', result);
-
-				alert(
-					`✅ Proceso automático iniciado!\n\nn8n se encargará de enviar la propiedad a ${contCheck.length} contactos.\nLos envíos se procesarán automáticamente en segundo plano.`
-				);
-
-				// Resetear estado después del éxito
-				setTimeout(() => {
-					$systStatus = '';
-					contCheck = [];
-					contIntToSend = 0;
-					enviados = 0;
-					contFalt = 0;
-					show__contacts = false;
-				}, 1000);
-			} else {
-				throw new Error(`Error en la respuesta: ${response.status} - ${response.statusText}`);
-			}
-		} catch (error) {
-			console.error('❌ Error enviando a n8n:', error);
-			alert(
-				`❌ Error al enviar a n8n: ${error.message}\n\nVerifica la conexión y la URL del webhook.`
-			);
-			$systStatus = '';
-		}
-	}
-
-	// Envío manual: envía al siguiente contacto en la lista cada vez que se hace click
-	async function sendManually() {
-		console.log(`🔍 Estado actual: enviados=${enviados}, total=${contCheck.length}`);
-
-		// Verificar si hay contactos pendientes
-		if (enviados >= contCheck.length) {
-			console.log('🔄 Reiniciando proceso - todos los contactos fueron enviados');
-			// Resetear para permitir nuevo envío
-			enviados = 0;
-			alert(
-				`✅ Proceso completado!\n\nSe procesaron ${contCheck.length} contactos.\n\nPuedes seleccionar nuevos contactos o modificar la selección.`
-			);
-			return;
-		}
-
-		console.log(`📤 Preparando envío a contacto ${enviados + 1}/${contCheck.length}`);
-
-		// Obtener el siguiente contacto a enviar
-		const contact = contCheck[enviados];
-		if (!contact) {
-			console.error('❌ No se encontró el contacto en el índice:', enviados);
-			return;
-		}
-
-		contToSend = contact;
-		console.log(`👤 Siguiente contacto: ${contact.name}`);
-
-		try {
-			// Enviar WhatsApp y guardar en bitácora
-			await sendWA(contact);
-
-			// Actualizar contadores DESPUÉS del envío exitoso
-			enviados++;
-			contFalt = contCheck.length - enviados;
-			contIntToSend = contCheck.length;
-
-			console.log(`✅ Contacto ${enviados}/${contCheck.length} procesado: ${contact.name}`);
-			console.log(`📊 Quedan ${contFalt} contactos por enviar`);
-
-			// NO resetear el estado aquí, solo mostrar mensaje si es el último
-			if (enviados >= contCheck.length) {
-				console.log('🎉 Último contacto enviado');
-			}
-		} catch (error) {
-			console.error('❌ Error en envío:', error);
-			alert(`❌ Error al enviar a ${contact.name}: ${error.message}`);
+		const enqueued = whatsappBroadcastStore.enqueue(currProperty, contCheck);
+		if (enqueued > 0) {
+			contCheck = [];
 		}
 	}
 
@@ -483,6 +364,117 @@
 			window.open(getProposalUrl(property.public_id), '_blank');
 		}
 	};
+
+	function getPublicSocialUrl(p: Property): string {
+		const id = p?.public_id || p?.easybroker_id || p?.id || p?.clavePropiedad || '';
+		if (id) {
+			return `https://matchhome.vercel.app/property/${encodeURIComponent(id.trim())}`;
+		}
+		return p?.public_url || 'https://matchhome.vercel.app';
+	}
+
+	function buildDefaultSocialCopy(p: Property): string {
+		if (!p) return '';
+		const title = formatPropertyTitle(p);
+		const priceStr = p.price ? `$${toComaSep(Number(p.price))} MXN` : 'Precio a consultar';
+		const specs: string[] = [];
+		if (Number(p.bedrooms) > 0) specs.push(`🛏️ ${Number(p.bedrooms)} Recámaras`);
+		if (Number(p.bathrooms) > 0) specs.push(`🚿 ${Number(p.bathrooms)} Baños`);
+		if (Number(p.half_bathrooms) > 0) specs.push(`🚽 ${Number(p.half_bathrooms)} Medios baños`);
+		if (Number(p.parking_spaces) > 0) specs.push(`🚗 ${Number(p.parking_spaces)} Estacionamientos`);
+		if (Number(p.construction_size) > 0) specs.push(`📐 ${Number(p.construction_size)} m² construcción`);
+		if (Number(p.lot_size) > 0) specs.push(`🌳 ${Number(p.lot_size)} m² terreno`);
+
+		const zona = formatZona(p);
+		const amenidades = tagToFeatures(p.tags || []);
+		const rawDesc = (p.description || p.public_description || '').replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim();
+		const shortDesc = rawDesc.length > 220 ? `${rawDesc.substring(0, 217)}...` : rawDesc;
+		const pubUrl = getPublicSocialUrl(p);
+		const waPhone = (empresa?.phoneNumber || '6145404003').replace(/\D/g, '');
+
+		const lines: string[] = [
+			`🏡 ${title.toUpperCase()}`,
+			`💰 ${priceStr}${zona ? ` | 📍 Zona ${zona}` : ''}`
+		];
+
+		if (specs.length > 0) {
+			lines.push('', specs.join(' • '));
+		}
+		if (amenidades.length > 0) {
+			lines.push(`✨ Equipo y amenidades: ${amenidades.join(', ')}`);
+		}
+		if (shortDesc) {
+			lines.push('', shortDesc);
+		}
+
+		lines.push(
+			'',
+			`📲 Informes y citas por WhatsApp: https://wa.me/52${waPhone}`,
+			`🔗 Ver galería completa y ubicación: ${pubUrl}`
+		);
+
+		return lines.join('\n');
+	}
+
+	function openSocialSharePopup() {
+		socialShareText = buildDefaultSocialCopy(property);
+		socialCopySuccess = false;
+		socialToastMsg = '';
+		showSocialPopup = true;
+	}
+
+	function closeSocialSharePopup() {
+		showSocialPopup = false;
+		socialCopySuccess = false;
+		socialToastMsg = '';
+	}
+
+	async function copySocialTextToClipboard(customFeedback?: string) {
+		try {
+			await navigator.clipboard.writeText(socialShareText);
+			socialCopySuccess = true;
+			socialToastMsg = customFeedback || '✅ ¡Texto comercial copiado al portapapeles! Solo presiona Ctrl+V (o Pegar) en Facebook/Instagram.';
+			setTimeout(() => {
+				socialCopySuccess = false;
+			}, 4000);
+		} catch (err) {
+			console.warn('No se pudo copiar al portapapeles:', err);
+		}
+	}
+
+	async function logSocialShareBinnacle(channelLabel: string) {
+		try {
+			const newBinnacle: Binnacle = {
+				date: Date.now(),
+				comment: (property?.public_id || '').trim(),
+				to: channelLabel,
+				action: 'Propiedad compartida en redes: '
+			};
+			await addDoc(collection(db, 'binnacles'), newBinnacle);
+		} catch (err) {
+			console.warn('No se pudo registrar bitácora social:', err);
+		}
+	}
+
+	async function shareOnFacebookAndGroups() {
+		const shareUrl = getPublicSocialUrl(property);
+		await copySocialTextToClipboard('✅ ¡Texto copiado! En la ventana de Facebook elige "Compartir en un grupo" o en tu muro y presiona Ctrl+V.');
+		const fbSharerUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+		window.open(fbSharerUrl, 'facebook-share-dialog', 'width=720,height=680,noopener,noreferrer');
+		await logSocialShareBinnacle('Facebook / Grupos');
+	}
+
+	async function shareInFacebookGroupsFeed() {
+		await copySocialTextToClipboard('✅ ¡Texto y link copiados! Elige tu grupo (ej. Casas en Venta y Renta en Chihuahua) y presiona Ctrl+V.');
+		window.open('https://www.facebook.com/groups/joins/', '_blank', 'noopener,noreferrer');
+		await logSocialShareBinnacle('Grupos de Facebook');
+	}
+
+	async function shareOnMetaPageAndInstagram() {
+		await copySocialTextToClipboard('✅ ¡Texto copiado! Sube la foto en Meta Business Suite y pega el texto (Ctrl+V) para publicar en Match Home + @matchhome.mx.');
+		window.open('https://business.facebook.com/latest/composer', '_blank', 'noopener,noreferrer');
+		await logSocialShareBinnacle('Facebook Match Home + Instagram @matchhome.mx');
+	}
 </script>
 
 <!-- Title -->
@@ -627,6 +619,14 @@
 			<Button
 				element="button"
 				variant="solid"
+				icon="fa-brands fa-facebook"
+				on:click={openSocialSharePopup}
+			>
+				Compartir FB / IG
+			</Button>
+			<Button
+				element="button"
+				variant="solid"
 				icon="fa-solid fa-solid fa-users-viewfinder"
 				on:click={findCustomers}
 			>
@@ -651,37 +651,34 @@
 			<!-- {/if} -->
 		</div>
 
-		<!-- Muestra opciones para buscar contactos interesados -->
+		<!-- Muestra opciones para buscar contactos interesados (SOLO Etapas 3 y 4) -->
 		{#if show__contacts}
 			<div class="mainContainer">
-				<div class="sel__msg">
-					<textarea bind:value={mensaje} placeholder="Escribe el mensaje a enviar"></textarea>
-				</div>
-
-				<!-- Switch para modo automático/manual -->
-				<div class="mode-selector">
-					<div class="switch-container">
-						<span class="mode-label" class:active={!autoMode}>📱 Manual</span>
-						<label class="switch">
-							<input type="checkbox" bind:checked={autoMode} />
-							<span class="slider"></span>
-						</label>
-						<span class="mode-label" class:active={autoMode}>🤖 Automático</span>
+				<div class="waba-dispatch-panel">
+					<div class="waba-dispatch-top">
+						<div class="waba-dispatch-title">
+							<i class="fa-brands fa-whatsapp"></i>
+							<span>Envío Masivo Oficial · WhatsApp Cloud API (2° Plano)</span>
+						</div>
+						<div class="waba-badges">
+							<span class="waba-shield-badge">🔒 Solo Etapas 3 y 4</span>
+							{#if excludedOtherStagesCount > 0}
+								<span class="waba-excluded-badge" title="Contactos de Etapas 1, 2, 5, Post-Venta o Sinergias excluidos automáticamente">
+									{excludedOtherStagesCount} de otras etapas omitidos
+								</span>
+							{/if}
+						</div>
 					</div>
-					<div class="mode-description">
-						{#if autoMode}
-							<p>🚀 Modo automático: Los mensajes se enviarán a través de n8n en segundo plano</p>
-						{:else}
-							<p>📱 Modo manual: Envío uno por uno, abrir WhatsApp manualmente</p>
-						{/if}
-					</div>
+					<p class="waba-dispatch-desc">
+						Plantilla aprobada: <code>nuevo_inventario_match</code> · Se envía automáticamente con el nombre del prospecto, ubicación, precio y enlace personalizado sin abrir pestañas ni bloquear ATAIR.
+					</p>
 				</div>
 
 				<div class="sect__Title">
 					{#if contToRender.length === 0}
-						<h1>No hay contactos para enviar</h1>
+						<h1>No hay contactos en Etapa 3 o 4 en esta vista</h1>
 					{:else}
-						<h1>A {contToRender.length} {msgToShow}</h1>
+						<h1>{contToRender.length} — {msgToShow}</h1>
 					{/if}
 
 					<div class="opti__cont">
@@ -693,81 +690,57 @@
 									value={list}
 									on:change={listToRender}
 								/>
-								{list.replaceAll('_', '  ')}
+								{list === 'Posobles_Interesados'
+									? 'Posibles Interesados'
+									: list.replaceAll('_', ' ')}
 							</label>
 						{/each}
 					</div>
 				</div>
 			</div>
 
-			<!-- Muestra los contactos a los que le puede interesar la propiedad -->
-			<div class="btn__send">
-				{#if showBtn}
+			<!-- Barra de acción para envío en segundo plano -->
+			{#if showBtn && contInterested !== 'Ya_Se_Envió' && contToRender.length > 0}
+				<div class="btn__send">
 					<button
 						id="Evio_prop_selec"
-						class="send__Prop"
-						class:auto-mode={autoMode}
+						class="send__Prop auto-mode"
 						on:click={sendProperty}
-						disabled={isProcessing || $systStatus === 'sendingToN8N'}
+						disabled={contCheck.length === 0}
 					>
-						{#if $systStatus === 'sendingToN8N'}
-							🚀 Enviando a n8n...
-						{:else if autoMode}
-							🤖 Enviar automático ({contCheck.length} contactos)
-						{:else if contCheck.length > 0 && enviados < contCheck.length}
-							📱 Enviar a {contCheck[enviados]?.name || 'siguiente'} ({enviados +
-								1}/{contCheck.length})
-						{:else if enviados >= contCheck.length && contCheck.length > 0}
-							✅ Todos enviados - Reiniciar
-						{:else}
-							📱 Enviar manual ({contCheck.length} contactos)
-						{/if}
+						🚀 Enviar en 2° plano ({contCheck.length}
+						{contCheck.length === 1 ? 'contacto' : 'contactos'})
 					</button>
-
-					{#if enviados >= contCheck.length && contCheck.length > 0}
-						<button
-							class="reset__btn"
-							on:click={() => {
-								enviados = 0;
-								contCheck = [];
-								contIntToSend = 0;
-								contFalt = 0;
-							}}
-						>
-							🔄 Nueva selección
-						</button>
-					{/if}
 
 					<label>
 						<input
 							type="checkbox"
 							on:change={selectAll}
 							checked={contToRender.length > 0 && contCheck.length === contToRender.length}
-							disabled={isProcessing || $systStatus === 'sendingToN8N'}
 						/>
-						Seleccionar todos
+						Seleccionar todos ({contToRender.length})
 					</label>
-				{/if}
-			</div>
+				</div>
+			{/if}
 
 			<div class="cards__container">
-				{#each contToRender as cont, index}
-					<div
-						class="select__conts"
-						class:sent={enviados > 0 &&
-							contCheck.findIndex((c) => c.id === cont.id) < enviados &&
-							contCheck.some((c) => c.id === cont.id)}
-					>
-						<input
-							type="checkbox"
-							value={cont}
-							name={cont.id}
-							class="form__contCheck"
-							bind:group={contCheck}
-							on:change={handleCheckboxChange}
-							disabled={isProcessing || $systStatus === 'sendingToN8N'}
-						/>
-						{#if enviados > 0 && contCheck.findIndex((c) => c.id === cont.id) < enviados && contCheck.some((c) => c.id === cont.id)}
+				{#each contToRender as cont (cont.id)}
+					{@const queued = isContactQueued(cont, $whatsappBroadcastStore.queuedKeys)}
+					{@const alreadySent = isContactSent(cont, $whatsappBroadcastStore.sentKeys, sentContactIdsForProp)}
+					<div class="select__conts" class:sent={alreadySent}>
+						{#if contInterested !== 'Ya_Se_Envió'}
+							<input
+								type="checkbox"
+								value={cont}
+								name={cont.id}
+								class="form__contCheck"
+								bind:group={contCheck}
+								disabled={queued}
+							/>
+						{/if}
+						{#if queued}
+							<div class="queued-indicator">⏳ En cola 2° plano...</div>
+						{:else if alreadySent}
 							<div class="sent-indicator">✅ Enviado</div>
 						{/if}
 						<CardContact {cont} />
@@ -871,6 +844,132 @@
 	</div>
 {/if}
 
+{#if showSocialPopup}
+	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<div
+		class="popup-backdrop"
+		on:click={closeSocialSharePopup}
+		on:keydown={(e) => e.key === 'Escape' && closeSocialSharePopup()}
+		role="dialog"
+		aria-modal="true"
+		tabindex="-1"
+	>
+		<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+		<div
+			class="popup-card social-popup-card"
+			on:click|stopPropagation={() => {}}
+			on:keydown|stopPropagation={() => {}}
+			role="document"
+		>
+			<div class="popup-header">
+				<div class="popup-title-group">
+					<i class="fa-brands fa-facebook popup-fb-icon"></i>
+					<i class="fa-brands fa-instagram popup-ig-icon"></i>
+					<h3>Compartir en Facebook, Grupos e Instagram</h3>
+				</div>
+				<button class="popup-close-btn" on:click={closeSocialSharePopup} aria-label="Cerrar">
+					<i class="fa-solid fa-xmark"></i>
+				</button>
+			</div>
+
+			<div class="popup-prop-badge">
+				<span class="popup-prop-id">{property.public_id}</span>
+				<span class="popup-prop-name">
+					{formatPropertyTitle(property)} — ${toComaSep(Number(property.price || 0))}
+				</span>
+			</div>
+
+			<div class="popup-body">
+				<div class="social-tip-banner">
+					<i class="fa-solid fa-circle-info"></i>
+					<span>
+						Al tocar cualquier botón de abajo, <strong>se copia automáticamente el texto comercial</strong> a tu portapapeles. En la ventana de Facebook podrás elegir arriba <strong>"Compartir en un grupo"</strong> o en tu muro y solo presionar <strong>Ctrl + V</strong> (Pegar).
+					</span>
+				</div>
+
+				<div class="popup-field">
+					<div class="social-label-row">
+						<label for="social-share-textarea">Texto Comercial para la Publicación (Editable):</label>
+						<button
+							type="button"
+							class="copy-btn"
+							class:copied={socialCopySuccess}
+							on:click={() => copySocialTextToClipboard()}
+						>
+							<i class={socialCopySuccess ? 'fa-solid fa-check' : 'fa-regular fa-copy'}></i>
+							<span>{socialCopySuccess ? '¡Texto Copiado!' : 'Copiar Texto'}</span>
+						</button>
+					</div>
+					<textarea
+						id="social-share-textarea"
+						class="social-textarea"
+						rows="7"
+						bind:value={socialShareText}
+					></textarea>
+				</div>
+
+				{#if socialToastMsg}
+					<div class="social-toast-box">
+						{socialToastMsg}
+					</div>
+				{/if}
+
+				<div class="popup-link-box">
+					<span class="link-label">Ficha Pública con Vista Previa (OpenGraph):</span>
+					<div class="link-display">
+						<code>{getPublicSocialUrl(property)}</code>
+						{#if property.title_image_thumb}
+							<a
+								href={property.title_image_thumb}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="copy-btn"
+								title="Ver / Guardar foto principal para Instagram"
+							>
+								<i class="fa-regular fa-image"></i>
+								<span>Foto Portada</span>
+							</a>
+						{/if}
+					</div>
+				</div>
+
+				<div class="social-actions-grid">
+					<button type="button" class="btn-social-fb" on:click={shareOnFacebookAndGroups}>
+						<i class="fa-brands fa-facebook"></i>
+						<div class="btn-social-text">
+							<strong>Compartir en Facebook o en un Grupo</strong>
+							<small>Abre ventana oficial (elige Muro, Página o Grupo) + Auto-copia texto</small>
+						</div>
+					</button>
+
+					<button type="button" class="btn-social-groups" on:click={shareInFacebookGroupsFeed}>
+						<i class="fa-solid fa-users"></i>
+						<div class="btn-social-text">
+							<strong>Ir directo a Mis Grupos de Facebook</strong>
+							<small>Ideal para publicar directo en "Casas en Venta y Renta en Chihuahua"</small>
+						</div>
+					</button>
+
+					<button type="button" class="btn-social-meta" on:click={shareOnMetaPageAndInstagram}>
+						<i class="fa-brands fa-instagram"></i>
+						<div class="btn-social-text">
+							<strong>Publicar en Match Home (FB + Instagram @matchhome.mx)</strong>
+							<small>Abre Meta Business Suite para publicación simultánea en ambas redes</small>
+						</div>
+					</button>
+				</div>
+			</div>
+
+			<div class="popup-actions">
+				<button class="btn-cancel" on:click={closeSocialSharePopup}>
+					Cerrar
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	/* POPUP MODAL STYLES (ATAIR Brand Identity) */
 	.popup-backdrop {
@@ -909,6 +1008,147 @@
 		gap: 1.2rem;
 		box-sizing: border-box;
 		animation: popupScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.social-popup-card {
+		max-width: 560px;
+		max-height: 92vh;
+		overflow-y: auto;
+	}
+
+	.popup-fb-icon {
+		font-size: 1.45rem;
+		color: #1877f2;
+	}
+
+	.popup-ig-icon {
+		font-size: 1.45rem;
+		color: #e1306c;
+	}
+
+	.social-tip-banner {
+		background: rgba(24, 119, 242, 0.14);
+		border: 1px solid rgba(56, 189, 248, 0.35);
+		border-radius: 8px;
+		padding: 0.65rem 0.85rem;
+		font-size: 0.82rem;
+		line-height: 1.4;
+		color: #e0f2fe;
+		display: flex;
+		align-items: flex-start;
+		gap: 0.6rem;
+	}
+
+	.social-tip-banner i {
+		color: #38bdf8;
+		font-size: 1rem;
+		margin-top: 0.12rem;
+	}
+
+	.social-label-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	.social-textarea {
+		width: 100%;
+		padding: 0.7rem 0.85rem;
+		background: rgb(26, 26, 26);
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		border-radius: 8px;
+		color: #f8fafc;
+		font-size: 0.85rem;
+		line-height: 1.45;
+		font-family: inherit;
+		resize: vertical;
+		box-sizing: border-box;
+	}
+
+	.social-textarea:focus {
+		outline: none;
+		border-color: #38bdf8;
+		box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+	}
+
+	.social-toast-box {
+		background: rgba(22, 101, 52, 0.35);
+		border: 1px solid rgba(34, 197, 94, 0.5);
+		color: #bbf7d0;
+		font-size: 0.82rem;
+		padding: 0.55rem 0.75rem;
+		border-radius: 8px;
+		font-weight: 500;
+	}
+
+	.social-actions-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+		margin-top: 0.2rem;
+	}
+
+	.btn-social-fb,
+	.btn-social-groups,
+	.btn-social-meta {
+		width: 100%;
+		border: none;
+		border-radius: 10px;
+		padding: 0.75rem 1rem;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 0.85rem;
+		text-align: left;
+		color: #ffffff;
+		transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+	}
+
+	.btn-social-fb {
+		background: linear-gradient(135deg, #1877f2, #0d5bd9);
+		box-shadow: 0 4px 14px rgba(24, 119, 242, 0.35);
+	}
+
+	.btn-social-groups {
+		background: linear-gradient(135deg, #0284c7, #0369a1);
+		box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+	}
+
+	.btn-social-meta {
+		background: linear-gradient(135deg, #833ab4, #fd1d1d 55%, #fcb045);
+		box-shadow: 0 4px 14px rgba(225, 48, 108, 0.35);
+	}
+
+	.btn-social-fb:hover,
+	.btn-social-groups:hover,
+	.btn-social-meta:hover {
+		transform: translateY(-2px);
+		filter: brightness(1.07);
+	}
+
+	.btn-social-fb i,
+	.btn-social-groups i,
+	.btn-social-meta i {
+		font-size: 1.5rem;
+		min-width: 1.6rem;
+		text-align: center;
+	}
+
+	.btn-social-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+
+	.btn-social-text strong {
+		font-size: 0.92rem;
+		font-weight: 700;
+	}
+
+	.btn-social-text small {
+		font-size: 0.76rem;
+		opacity: 0.9;
 	}
 
 	@keyframes popupScaleUp {
@@ -1277,6 +1517,19 @@
 		gap: 1rem;
 	}
 
+	.actions .action-icon {
+		--fa-display: inline-flex;
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		width: 36px;
+		height: 36px;
+		padding: 0 !important;
+		margin: 0 !important;
+		line-height: 1 !important;
+		box-sizing: border-box !important;
+	}
+
 	.btn__options {
 		display: flex;
 		width: 100%;
@@ -1284,42 +1537,100 @@
 		flex-wrap: wrap;
 	}
 
-	.sel__msg {
+	.queued-indicator {
+		position: absolute;
+		top: 10px;
+		right: 10px;
+		background: rgba(245, 158, 11, 0.92);
+		color: #111827;
+		padding: 4px 9px;
+		border-radius: 12px;
+		font-size: 0.78rem;
+		font-weight: 700;
+		z-index: 25;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+	}
+
+	.waba-dispatch-panel {
 		display: flex;
-		flex-direction: row;
-		width: 100%;
-		justify-content: center;
+		flex-direction: column;
+		gap: 0.55rem;
+		width: min(860px, 96%);
+		margin: 1rem auto;
+		padding: 1rem 1.25rem;
+		background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(17, 24, 39, 0.75));
+		border: 1px solid rgba(16, 185, 129, 0.35);
+		border-radius: 12px;
+	}
+
+	.waba-dispatch-top {
+		display: flex;
 		align-items: center;
-		gap: 10px;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 0.75rem;
 	}
 
-	.sel__msg textarea {
-		width: 650px;
-		height: 50px;
+	.waba-dispatch-title {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 		font-size: 1rem;
-		background: rgb(56, 56, 56);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 8px;
-		color: white;
-		padding: 0.75rem;
-		resize: vertical;
-		transition: border-color 0.2s;
+		font-weight: 700;
+		color: #ecfdf5;
 	}
 
-	.sel__msg textarea {
-		outline: none;
-		border-color: rgba(255, 255, 255, 0.3);
-		box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+	.waba-dispatch-title i {
+		color: #25d366;
+		font-size: 1.2rem;
 	}
 
-	.sel__msg textarea::placeholder {
-		color: rgba(255, 255, 255, 0.5);
+	.waba-badges {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.waba-shield-badge {
+		background: rgba(16, 185, 129, 0.2);
+		color: #34d399;
+		border: 1px solid rgba(16, 185, 129, 0.45);
+		padding: 0.22rem 0.65rem;
+		border-radius: 999px;
+		font-size: 0.78rem;
+		font-weight: 700;
+	}
+
+	.waba-excluded-badge {
+		background: rgba(255, 255, 255, 0.08);
+		color: #d1d5db;
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		padding: 0.22rem 0.65rem;
+		border-radius: 999px;
+		font-size: 0.75rem;
+	}
+
+	.waba-dispatch-desc {
+		margin: 0;
+		font-size: 0.85rem;
+		color: rgba(255, 255, 255, 0.78);
+		line-height: 1.45;
+	}
+
+	.waba-dispatch-desc code {
+		background: rgba(0, 0, 0, 0.35);
+		color: #6ee7b7;
+		padding: 0.1rem 0.4rem;
+		border-radius: 4px;
+		font-size: 0.8rem;
 	}
 
 	.sect__Title {
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
+		gap: 0.6rem;
 	}
 
 	.opti__cont {
@@ -1345,6 +1656,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		flex-wrap: wrap;
 		gap: 2rem;
 		padding: 1rem;
 	}
@@ -1360,6 +1672,7 @@
 			box-shadow 0.2s;
 		color: white;
 		font-size: 1rem;
+		font-weight: 600;
 	}
 
 	.send__Prop:hover:not(:disabled) {
@@ -1369,127 +1682,19 @@
 	}
 
 	.send__Prop:disabled {
-		opacity: 0.6;
+		opacity: 0.55;
 		cursor: not-allowed;
 		background: rgb(40, 40, 40);
+		border-color: rgba(255, 255, 255, 0.1);
 	}
 
-	.send__Prop.auto-mode {
-		background: linear-gradient(135deg, #4caf50, #66bb6a);
-		border-color: #4caf50;
+	.send__Prop.auto-mode:not(:disabled) {
+		background: linear-gradient(135deg, #10b981, #059669);
+		border-color: #10b981;
 	}
 
 	.send__Prop.auto-mode:hover:not(:disabled) {
-		background: linear-gradient(135deg, #388e3c, #4caf50);
-	}
-
-	.reset__btn {
-		background: rgb(76, 76, 76);
-		border: 1px solid rgba(255, 255, 255, 0.3);
-		border-radius: 8px;
-		padding: 0.75rem 1.5rem;
-		cursor: pointer;
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		color: white;
-		font-size: 1rem;
-	}
-
-	.reset__btn:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-		background: rgb(96, 96, 96);
-	}
-
-	/* Estilos para el switch de modo */
-	.mode-selector {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-		margin: 1rem 0;
-		padding: 1rem;
-		background: rgba(255, 255, 255, 0.05);
-		border-radius: 12px;
-		border: 1px solid rgba(255, 255, 255, 0.1);
-	}
-
-	.switch-container {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.mode-label {
-		font-size: 1rem;
-		color: rgba(255, 255, 255, 0.6);
-		transition: all 0.3s ease;
-		font-weight: 500;
-	}
-
-	.mode-label.active {
-		color: #4caf50;
-		font-weight: bold;
-	}
-
-	.switch {
-		position: relative;
-		display: inline-block;
-		width: 60px;
-		height: 34px;
-	}
-
-	.switch input {
-		opacity: 0;
-		width: 0;
-		height: 0;
-	}
-
-	.slider {
-		position: absolute;
-		cursor: pointer;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: #333;
-		transition: 0.4s;
-		border-radius: 34px;
-		border: 2px solid rgba(255, 255, 255, 0.2);
-	}
-
-	.slider:before {
-		position: absolute;
-		content: '';
-		height: 24px;
-		width: 24px;
-		left: 3px;
-		bottom: 3px;
-		background-color: white;
-		transition: 0.4s;
-		border-radius: 50%;
-	}
-
-	input:checked + .slider {
-		background-color: #4caf50;
-		border-color: #4caf50;
-	}
-
-	input:checked + .slider:before {
-		transform: translateX(26px);
-	}
-
-	.mode-description {
-		text-align: center;
-		max-width: 400px;
-	}
-
-	.mode-description p {
-		font-size: 0.9rem;
-		color: rgba(255, 255, 255, 0.8);
-		margin: 0;
-		line-height: 1.4;
+		background: linear-gradient(135deg, #059669, #047857);
 	}
 
 	.btn__send label {
@@ -1608,9 +1813,6 @@
 		.prop__clave {
 			top: 15px;
 			left: 15px;
-		}
-		.sel__msg textarea {
-			width: 100%;
 		}
 	}
 </style>

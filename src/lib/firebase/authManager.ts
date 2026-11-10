@@ -7,6 +7,7 @@ import {
   signOut,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInAnonymously,
   type User
 } from 'firebase/auth';
 import { doc, onSnapshot, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -97,6 +98,14 @@ export function quickAdminLogin(email = 'emarines@live.com.mx') {
   }
   authLoading.set(false);
   authInitialized.set(true);
+
+  // Intentar autenticación real en Firebase en segundo plano para que request.auth no sea nulo en Firestore
+  if (auth && !auth.currentUser) {
+    signInAnonymously(auth).catch((err) => {
+      console.warn('⚠️ [AuthManager] quickAdminLogin: anonymous auth fallback no habilitado en consola:', err?.message);
+    });
+  }
+
   return profile;
 }
 

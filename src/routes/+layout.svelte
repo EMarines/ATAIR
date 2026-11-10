@@ -7,6 +7,7 @@
 	import type { Contact, Binnacle, Property } from '$types';
 	import { Navbar, Footer } from '$components';
 	import NotificationContainer from '$lib/components/NotificationContainer.svelte';
+	import WhatsappBroadcastMonitor from '$lib/components/WhatsappBroadcastMonitor.svelte';
 	import {
 		initializeAuthManager,
 		authInitialized,
@@ -183,6 +184,7 @@
 
 <div class="app-container">
 	<NotificationContainer />
+	<WhatsappBroadcastMonitor />
 
 	{#if $authLoading && !$userStore && !$userProfile}
 		<div class="loading-overlay">

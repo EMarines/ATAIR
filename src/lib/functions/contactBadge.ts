@@ -14,25 +14,24 @@ export function normalizeStage(stage: any): number | string {
 		if (s === 'NA') return 'NA';
 		if (s.startsWith('A1')) return 'A1';
 		if (s.startsWith('A2')) return 'A2';
+		if (s === 'CIERRE') return 5;
+		if (s.startsWith('POST')) return 6;
+		if (s.startsWith('ETAPA')) {
+			const num = parseInt(s.replace('ETAPA', '').trim(), 10) || 1;
+			return num <= 0 ? 1 : num;
+		}
+		if (s.startsWith('E')) {
+			const num = parseInt(s.replace('E', '').trim(), 10) || 1;
+			return num <= 0 ? 1 : num;
+		}
+		const num = parseInt(s, 10) || 1;
+		return num <= 0 ? 1 : num;
 	}
 
 	if (stage === undefined || stage === null || stage === 0) return 1;
 
 	if (typeof stage === 'number') {
 		return stage <= 0 ? 1 : stage;
-	}
-
-	if (typeof stage === 'string') {
-		if (stage.startsWith('Etapa')) {
-			const num = parseInt(stage.replace('Etapa', '')) || 1;
-			return num <= 0 ? 1 : num;
-		}
-		if (stage.startsWith('E')) {
-			const num = parseInt(stage.replace('E', '')) || 1;
-			return num <= 0 ? 1 : num;
-		}
-		const num = parseInt(stage) || 1;
-		return num <= 0 ? 1 : num;
 	}
 
 	return 1;
@@ -134,4 +133,28 @@ export function getContactBadgeInfo(cont: Contact | null | undefined): ContactBa
 		default:
 			return { isAgent: false, shape: 'circle', text: `E${normalizedStage}`, color: '#ff4444', tooltip: 'Etapa 1' };
 	}
+}
+
+/**
+ * Valida estrictamente si un contacto es elegible para envíos masivos por Meta WhatsApp Cloud API (WABA).
+ * Regla de Negocio Inquebrantable: SOLO contactos activos de Comprador/Cliente en Etapa 3 o Etapa 4.
+ * Quedan excluidos: Etapa 1, Etapa 2, Etapa 5/Cierre, Etapa 6/Post-Venta, Vendedores, Agentes (S1-S3/MH) y Arrendatarios (A1/A2).
+ */
+export function isStage3Or4ForBroadcast(cont: Contact | null | undefined): boolean {
+	if (!cont) return false;
+	if (cont.isActive === false) return false;
+
+	const raw = cont as any;
+	const type = String(cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
+	if (type.includes('vendedor') || type.includes('propietario')) {
+		return false;
+	}
+
+	const cleanPhone = String(cont.telephon || '').replace(/\D/g, '');
+	if (cleanPhone.length < 10) return false;
+
+	const badge = getContactBadgeInfo(cont);
+	if (badge.isAgent) return false;
+
+	return badge.text === 'E3' || badge.text === 'E4';
 }
