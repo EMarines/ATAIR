@@ -472,8 +472,8 @@
 
 	async function shareOnMetaPageAndInstagram() {
 		await copySocialTextToClipboard('✅ ¡Texto copiado! Sube la foto en Meta Business Suite y pega el texto (Ctrl+V) para publicar en Match Home + @matchhome.mx.');
-		// Forzar ID oficial de la Página Match Home (296651260964331) y Portfolio (1581402678658951)
-		window.open('https://business.facebook.com/latest/composer?asset_id=296651260964331&business_id=1581402678658951', '_blank', 'noopener,noreferrer');
+		// Forzar ID oficial verificado: Portfolio MatchHome (823519881333281) y Página (296651260964331)
+		window.open('https://business.facebook.com/latest/composer?business_id=823519881333281&page_id=296651260964331&asset_id=296651260964331', '_blank', 'noopener,noreferrer');
 		await logSocialShareBinnacle('Facebook Match Home + Instagram @matchhome.mx');
 	}
 </script>
