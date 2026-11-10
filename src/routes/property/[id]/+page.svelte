@@ -1014,14 +1014,24 @@
 	.social-popup-card {
 		max-width: 560px;
 		max-height: 88vh;
-		overflow-y: auto;
+		overflow: hidden;
 		margin: auto;
-		padding: 1.25rem 1.4rem;
-		gap: 0.9rem;
+		padding: 1.15rem 1.35rem;
+		gap: 0.75rem;
 	}
 
-	.social-popup-card > * {
+	.social-popup-card .popup-header,
+	.social-popup-card .popup-prop-badge,
+	.social-popup-card .popup-actions {
 		flex-shrink: 0;
+	}
+
+	.social-popup-card .popup-body {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		padding-right: 0.35rem;
+		gap: 0.75rem;
 	}
 
 	.popup-fb-icon {
