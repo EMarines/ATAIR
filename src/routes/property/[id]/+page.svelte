@@ -472,7 +472,8 @@
 
 	async function shareOnMetaPageAndInstagram() {
 		await copySocialTextToClipboard('✅ ¡Texto copiado! Sube la foto en Meta Business Suite y pega el texto (Ctrl+V) para publicar en Match Home + @matchhome.mx.');
-		window.open('https://business.facebook.com/latest/composer', '_blank', 'noopener,noreferrer');
+		// Forzar ID oficial de la Página Match Home (296651260964331) y Portfolio (1581402678658951)
+		window.open('https://business.facebook.com/latest/composer?asset_id=296651260964331&business_id=1581402678658951', '_blank', 'noopener,noreferrer');
 		await logSocialShareBinnacle('Facebook Match Home + Instagram @matchhome.mx');
 	}
 </script>
