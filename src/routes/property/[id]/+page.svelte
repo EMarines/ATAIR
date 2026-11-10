@@ -904,7 +904,7 @@
 					<textarea
 						id="social-share-textarea"
 						class="social-textarea"
-						rows="7"
+						rows="5"
 						bind:value={socialShareText}
 					></textarea>
 				</div>
@@ -985,6 +985,7 @@
 		justify-content: center;
 		z-index: 9999;
 		padding: 1rem;
+		overflow-y: auto;
 		box-sizing: border-box;
 		animation: popupFadeIn 0.2s ease-out;
 	}
@@ -1012,8 +1013,15 @@
 
 	.social-popup-card {
 		max-width: 560px;
-		max-height: 92vh;
+		max-height: 88vh;
 		overflow-y: auto;
+		margin: auto;
+		padding: 1.25rem 1.4rem;
+		gap: 0.9rem;
+	}
+
+	.social-popup-card > * {
+		flex-shrink: 0;
 	}
 
 	.popup-fb-icon {

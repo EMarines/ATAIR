@@ -257,7 +257,6 @@
 	main {
 		flex: 1;
 		position: relative;
-		z-index: 2;
 		width: 100%; /* Asegurar que main ocupe exactamente el ancho disponible */
 	}
 
