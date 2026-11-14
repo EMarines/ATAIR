@@ -5,7 +5,7 @@
 	// @ts-ignore
 	import { dbBinnacle, db } from '../../firebase';
     import { formatDate } from '$lib/functions/dateFunctions.js';
-    import { collection, onSnapshot } from 'firebase/firestore';
+    import { collection, onSnapshot, query, limit } from 'firebase/firestore';
     import { onDestroy } from 'svelte';
     // @ts-ignore
     import { systStatus } from '$lib/stores/store';
@@ -39,7 +39,7 @@
 
 // Renderizar Binaccle
         const unsubs = onSnapshot(
-            collection(db, "binnacles"),
+            query(collection(db, "binnacles"), limit(50)),
             (querySnapshot) => {
                 // @ts-ignore
                 toRenBinn = querySnapshot.docs.map(doc => {
@@ -72,8 +72,10 @@
                               
 
                                 <td class="icon__binnacle">
-                                    {#if item.action === "WhatsApp enviado: "}
-                                        <i class="fa-brands fa-square-whatsapp"/>
+                                    {#if item.action === "WhatsApp enviado: " || item.direction === 'outbound'}
+                                        <i class="fa-brands fa-square-whatsapp" style="color: #22c55e; font-size: 1.15rem;" title="WhatsApp enviado"/>
+                                    {:else if item.action === "WhatsApp recibido: " || item.direction === 'inbound' || String(item.action || '').toLowerCase().includes('recibido')}
+                                        <i class="fa-brands fa-whatsapp" style="color: #22c55e; font-size: 1.15rem;" title="WhatsApp recibido"/>
                                     {:else if item.action === "Se editó a: "}
                                         <i class="fa-solid fa-file-pen"/>
                                     {:else if item.action === "Nota agregada: "}
@@ -83,8 +85,7 @@
                                     {:else if item.action === "Propiedad enviada: "}
                                         <i class="fa-solid fa-house-circle-check" />
                                     {:else}
-                                        {item.action}          
-
+                                        <i class="fa-solid fa-comment-dots" title={item.action || 'Nota'}/>
                                     {/if}
                                 </td>
                             </div>

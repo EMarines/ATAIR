@@ -11,5 +11,27 @@ export { sendWhatsApp } from './whatsapp';
 export { resetContact } from './contactErase';
 export { ranPrice } from './rangeValue';
 export { getProposalUrl, ensureContactInProposalUrl } from './urlUtils';
-export { getContactBadgeInfo, normalizeStage } from './contactBadge';
+export {
+	getContactBadgeInfo,
+	normalizeStage,
+	isStage4Base,
+	isStage4ForBroadcast,
+	isStage3Or4ForBroadcast,
+	isWithinMaxAgeYears
+} from './contactBadge';
 export type { ContactBadgeInfo } from './contactBadge';
+export {
+	AUDIT_BUCKET_LABELS,
+	normalizeRawContactForAudit,
+	classifyContactForAudit,
+	runContactsPortfolioAudit,
+	filterAuditedContacts,
+	buildAuditCsv
+} from './contactAudit';
+export type {
+	AuditBucketKey,
+	AuditedContact,
+	ColdSubFilter,
+	ContactsPortfolioAudit,
+	ProtectedSubFilter
+} from './contactAudit';

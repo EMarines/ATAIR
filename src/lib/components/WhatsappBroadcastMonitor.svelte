@@ -52,7 +52,7 @@
 			</div>
 			<p class="waba-sub">
 				Enviando <strong>{state.currentPropertyId}</strong> a <strong>{state.currentContactName || '...'}</strong>
-				<span class="safe-tag">E3/E4</span>
+				<span class="safe-tag">E4</span>
 			</p>
 		{:else if state.failedItems.length > 0}
 			<div class="error-actions">

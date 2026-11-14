@@ -66,10 +66,19 @@
 	}
 </script>
 
-<div class="binnacle__row" class:is-editing={isEditing}>
+<div
+	class="binnacle__row"
+	class:is-editing={isEditing}
+	class:is-inbound={binn.action === 'WhatsApp recibido: ' || binn.direction === 'inbound' || String(binn.action || '').toLowerCase().includes('recibido')}
+>
 	<div class="cell__icon">
-		{#if binn.action === 'WhatsApp enviado: '}
-			<i class="fa-brands fa-square-whatsapp"></i>
+		{#if binn.action === 'WhatsApp enviado: ' || binn.direction === 'outbound' || String(binn.action || '').toLowerCase().includes('enviado')}
+			<i class="fa-brands fa-square-whatsapp" style="color: #22c55e; font-size: 1.15rem;" title="WhatsApp enviado"></i>
+		{:else if binn.action === 'WhatsApp recibido: ' || binn.direction === 'inbound' || String(binn.action || '').toLowerCase().includes('recibido')}
+			<i
+				class="fa-brands fa-whatsapp whatsapp-inbound-icon"
+				title="WhatsApp recibido del cliente"
+			></i>
 		{:else if binn.action === 'Se editó a: '}
 			<i class="fa-solid fa-file-pen"></i>
 		{:else if binn.action === 'Nota agregada: '}
@@ -79,7 +88,7 @@
 		{:else if binn.action === 'Propiedad enviada: '}
 			<i class="fa-solid fa-house-circle-check"></i>
 		{:else}
-			{binn.action}
+			<i class="fa-solid fa-comment-dots" title={binn.action || 'Nota'}></i>
 		{/if}
 	</div>
 
@@ -154,15 +163,16 @@
 <style>
 	.binnacle__row {
 		display: grid;
-		grid-template-columns: 35px minmax(75px, 15%) 1fr auto;
+		grid-template-columns: 32px 75px 1fr auto;
 		align-items: center;
 		grid-row-gap: 0;
 		width: 100%;
 		max-width: 100%;
-		padding: 6px 4px;
+		padding: 6px 6px;
 		margin-bottom: 6px;
 		border-radius: 6px;
 		column-gap: 10px;
+		box-sizing: border-box;
 		transition: background-color 0.18s ease;
 	}
 
@@ -175,12 +185,26 @@
 		border: 1px solid rgba(37, 99, 235, 0.25);
 	}
 
+	.binnacle__row.is-inbound {
+		background: rgba(34, 197, 94, 0.08);
+		border-left: 3px solid #22c55e;
+		padding-left: 6px;
+	}
+
+	.whatsapp-inbound-icon {
+		color: #22c55e;
+		font-size: 1.15rem;
+	}
+
 	.cell__icon {
 		width: 32px;
+		min-width: 32px;
 		align-self: flex-start;
 		display: flex;
 		justify-content: center;
 		padding-top: 2px;
+		font-size: 1.1rem;
+		color: #cbd5e1;
 	}
 
 	.cell__date {

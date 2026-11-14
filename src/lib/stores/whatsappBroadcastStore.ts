@@ -2,7 +2,7 @@ import { writable, get } from 'svelte/store';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '$lib/firebase_toggle';
 import type { Contact, Property, Binnacle } from '$lib/types';
-import { isStage3Or4ForBroadcast } from '$lib/functions/contactBadge';
+import { isStage4ForBroadcast, isStage4Base, isWithinMaxAgeYears } from '$lib/functions/contactBadge';
 import { notifications } from '$lib/stores/notificationStore';
 
 export interface BroadcastQueueItem {
@@ -71,8 +71,12 @@ async function processQueue(): Promise<void> {
 			currentPropertyId: property.public_id || ''
 		}));
 
-		// Doble verificación de seguridad: SOLO Etapa 3 y Etapa 4
-		if (!isStage3Or4ForBroadcast(contact)) {
+		// Doble verificación de seguridad: SOLO Etapa 4 (E4) y alta <= 2 años
+		if (!isStage4ForBroadcast(contact)) {
+			const reason =
+				isStage4Base(contact) && !isWithinMaxAgeYears(contact, 2)
+					? 'Omitido: el contacto tiene más de 2 años desde su alta.'
+					: 'Omitido: el contacto no pertenece a Etapa 4 (E4).';
 			internalStore.update((s) => ({
 				...s,
 				processed: s.processed + 1,
@@ -85,7 +89,7 @@ async function processQueue(): Promise<void> {
 						contactName: fullName,
 						phone: contact.telephon || '',
 						propertyId: property.public_id || '',
-						error: 'Omitido: el contacto no pertenece a Etapa 3 ni Etapa 4.'
+						error: reason
 					}
 				]
 			}));
@@ -182,12 +186,12 @@ export function enqueuePropertyBroadcast(property: Property, contacts: Contact[]
 		return 0;
 	}
 
-	const eligible = contacts.filter(isStage3Or4ForBroadcast);
+	const eligible = contacts.filter(isStage4ForBroadcast);
 	const skippedCount = contacts.length - eligible.length;
 
 	if (eligible.length === 0) {
 		notifications.warning(
-			'Ninguno de los contactos seleccionados cumple con el filtro obligatorio de Etapa 3 o Etapa 4.',
+			'Ninguno de los contactos seleccionados cumple con Etapa 4 (E4) y alta menor o igual a 2 años.',
 			6000
 		);
 		return 0;
@@ -232,9 +236,9 @@ export function enqueuePropertyBroadcast(property: Property, contacts: Contact[]
 	}));
 
 	const extraNote =
-		skippedCount > 0 ? ` (${skippedCount} omitidos por no ser Etapa 3/4)` : '';
+		skippedCount > 0 ? ` (${skippedCount} omitidos por etapa o antigüedad > 2 años)` : '';
 	notifications.info(
-		`🚀 Enviando en segundo plano a ${addedCount} ${addedCount === 1 ? 'contacto' : 'contactos'} (Etapas 3 y 4)${extraNote}. Puedes seguir usando ATAIR.`,
+		`🚀 Enviando en segundo plano a ${addedCount} ${addedCount === 1 ? 'contacto' : 'contactos'} (Etapa 4, ≤ 2 años)${extraNote}. Puedes seguir usando ATAIR.`,
 		6000
 	);
 

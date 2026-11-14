@@ -2,7 +2,12 @@ import { json } from '@sveltejs/kit';
 import { sendTemplateMessage } from '$lib/services/whatsapp';
 import { env } from '$env/dynamic/private';
 import { getProposalUrl, ensureContactInProposalUrl } from '$lib/functions/urlUtils';
-import { isStage3Or4ForBroadcast } from '$lib/functions/contactBadge';
+import {
+	isStage4ForBroadcast,
+	isStage4Base,
+	isWithinMaxAgeYears,
+	isStage3Or4ForBroadcast
+} from '$lib/functions/contactBadge';
 import { capitalize } from '$lib/functions/capitalize';
 import { formatZona } from '$lib/functions/tagConverters';
 
@@ -76,16 +81,28 @@ export async function POST({ request }) {
 			return json({ success: false, error: 'Falta el teléfono del contacto.' }, { status: 400 });
 		}
 
-		// Candado estricto de negocio para envíos masivos de propiedades: SOLO Etapas 3 y 4
-		if (mode === 'broadcast' && !isStage3Or4ForBroadcast(contact)) {
-			return json(
-				{
-					success: false,
-					error:
-						'Envío bloqueado por regla de negocio: Los envíos masivos solo están permitidos para contactos activos en Etapa 3 y Etapa 4.'
-				},
-				{ status: 403 }
-			);
+		const template = templateName || env.TEMPLATE_NAME || 'nuevo_inventario_match';
+
+		// Candado estricto de negocio para envíos masivos:
+		// - Difusión de propiedades ('nuevo_inventario_match' / por defecto): SOLO Etapa 4 (E4) y alta <= 2 años
+		// - Plantilla de reactivación E3 ('reactivacion_permiso_matchhome'): Etapa 3 o 4
+		if (mode === 'broadcast') {
+			const allowed =
+				template === 'reactivacion_permiso_matchhome'
+					? isStage3Or4ForBroadcast(contact)
+					: isStage4ForBroadcast(contact);
+
+			if (!allowed) {
+				let errorReason =
+					'Envío bloqueado por regla de negocio: la difusión masiva de propiedades por API solo está permitida para contactos activos en Etapa 4 (E4) con hasta 2 años de alta.';
+				if (template === 'reactivacion_permiso_matchhome') {
+					errorReason = 'Envío bloqueado: la reactivación solo aplica para Etapa 3 o Etapa 4.';
+				} else if (isStage4Base(contact) && !isWithinMaxAgeYears(contact, 2)) {
+					errorReason =
+						'Envío bloqueado por regla de negocio: el contacto supera el límite máximo de 2 años desde su alta.';
+				}
+				return json({ success: false, error: errorReason }, { status: 403 });
+			}
 		}
 
 		const to = formatPhoneForMeta(contact.telephon);
@@ -99,7 +116,6 @@ export async function POST({ request }) {
 		const rawFirstName = String(contact.name || 'Cliente').trim().split(/\s+/)[0] || 'Cliente';
 		const firstName = sanitizeParam(capitalize(rawFirstName), 'Cliente');
 
-		const template = templateName || env.TEMPLATE_NAME || 'nuevo_inventario_match';
 		let lang = 'es_MX';
 		let components: any[] = [];
 

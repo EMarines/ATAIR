@@ -6,7 +6,7 @@
 	import { goto } from '$app/navigation';
 	// import { filtContPropInte } from '$lib/functions/filProperties';
 	import { findContactsForProperty } from '$lib/functions/filContacts';
-	import { isStage3Or4ForBroadcast } from '$lib/functions/contactBadge';
+	import { isStage4Base, isStage4ForBroadcast } from '$lib/functions/contactBadge';
 	import { contactsStore, binnaclesStore, systStatus } from '$lib/stores/dataStore';
 	import { whatsappBroadcastStore } from '$lib/stores/whatsappBroadcastStore';
 	import { notifications } from '$lib/stores/notificationStore';
@@ -26,11 +26,15 @@
 	let contInterest: Contact[] = [];
 	let contToRender: Contact[] = [];
 	let excludedOtherStagesCount = 0;
+	let excludedTooOldCount = 0;
 	let msgToShow = '';
 	let poroShowTo: string[] = ['Posobles_Interesados', 'Por_Enviar', 'Ya_Se_Envió'];
 	let showBtn = false;
 	let contCheck: Contact[] = [];
 	let contToSend: Contact;
+	let autoMode = false; // Switch: false = Manual 1 a 1 (wa.me, pocos envíos); true = API WhatsApp (2° plano, muchos envíos)
+	let isManualSending = false;
+	let manualDispatchedIds = new Set<string>();
 
 	// Popup para enviar WhatsApp manual / sin contacto previo
 	let showPhonePopup = false;
@@ -94,7 +98,7 @@
 		return `${type} Col. ${cleanCol} en ${op}`;
 	}
 
-	// Funciones de filtrado y despacho masivo WABA (estricto Etapa 3 y Etapa 4)
+	// Funciones de filtrado y despacho (Estricto Etapa 4 + Alta ≤ 2 años: Manual 1 a 1 o WhatsApp Cloud API en 2° plano)
 	function computeFilteredLists(
 		prop: Property,
 		allContacts: Contact[],
@@ -104,26 +108,29 @@
 	) {
 		showBtn = true;
 		const allMatches = findContactsForProperty(prop, allContacts);
-		contInterest = allMatches.filter(isStage3Or4ForBroadcast);
-		excludedOtherStagesCount = Math.max(0, allMatches.length - contInterest.length);
+		const stage4Matches = allMatches.filter(isStage4Base);
+		contInterest = stage4Matches.filter(isStage4ForBroadcast);
+		excludedOtherStagesCount = Math.max(0, allMatches.length - stage4Matches.length);
+		excludedTooOldCount = Math.max(0, stage4Matches.length - contInterest.length);
 
 		const sentContactIds = new Set(
 			allBinnacles.filter((item) => item.comment === prop.public_id).map((doc) => doc.to)
 		);
 
 		if (tab === 'Posobles_Interesados') {
-			msgToShow = 'Contactos (Etapas 3 y 4) a quienes les interesa esta propiedad';
+			msgToShow = 'Contactos en Etapa 4 (E4) interesados en esta propiedad';
 			contToRender = contInterest;
 		} else if (tab === 'Por_Enviar') {
-			msgToShow = 'Pendientes por enviar (Etapas 3 y 4)';
+			msgToShow = 'Pendientes por enviar (Solo Etapa 4)';
 			contToRender = contInterest.filter((doc) => !sentContactIds.has(doc.id));
 		} else if (tab === 'Ya_Se_Envió') {
-			msgToShow = 'Contactos (Etapas 3 y 4) a quienes ya se les envió';
+			msgToShow = 'Contactos Etapa 4 a quienes ya se les envió';
 			contToRender = contInterest.filter((doc) => sentContactIds.has(doc.id));
 		}
 
 		if (resetSelection) {
 			contCheck = [];
+			manualDispatchedIds = new Set();
 		} else {
 			const renderIds = new Set(contToRender.map((c) => c.id));
 			contCheck = contCheck.filter((c) => renderIds.has(c.id));
@@ -154,46 +161,93 @@
 		return sentKeys.includes(`${property.public_id.trim()}::${cont.id.trim()}`);
 	}
 
+	$: pendingManualContacts = contCheck.filter(
+		(c) =>
+			!isContactSent(c, $whatsappBroadcastStore.sentKeys, sentContactIdsForProp) &&
+			!(c.id && manualDispatchedIds.has(c.id))
+	);
+	$: nextManualContact = pendingManualContacts[0] || null;
+
 	const selectAll = (e: Event) => {
 		const isChecked = (e.target as HTMLInputElement).checked;
 		if (!isChecked) {
 			contCheck = [];
+			manualDispatchedIds = new Set();
 			return;
 		}
 		const queued = $whatsappBroadcastStore.queuedKeys;
 		contCheck = contToRender.filter((c) => !isContactQueued(c, queued));
 	};
 
-	// Envío oficial por Meta WhatsApp Cloud API en segundo plano (SOLO Etapas 3 y 4)
-	function sendProperty() {
+	// Decide entre envío Manual (1 a 1 vía wa.me) o Automático por WhatsApp Cloud API en 2° plano (SOLO Etapa 4)
+	async function sendProperty() {
 		if (contCheck.length === 0) {
-			notifications.warning('Selecciona al menos un contacto para iniciar el envío.', 4000);
+			notifications.warning('Selecciona al menos un contacto de Etapa 4 para enviar.', 4000);
 			return;
 		}
 
-		const enqueued = whatsappBroadcastStore.enqueue(currProperty, contCheck);
-		if (enqueued > 0) {
+		if (autoMode) {
+			const enqueued = whatsappBroadcastStore.enqueue(currProperty, contCheck);
+			if (enqueued > 0) {
+				contCheck = [];
+			}
+			return;
+		}
+
+		// Modo Manual (1 a 1): ideal cuando son pocos WAs
+		if (isManualSending) return;
+		const target = nextManualContact;
+		if (!target) {
+			notifications.success('✅ Todos los contactos seleccionados ya fueron atendidos.', 4500);
 			contCheck = [];
+			manualDispatchedIds = new Set();
+			return;
+		}
+
+		isManualSending = true;
+		contToSend = target;
+		try {
+			const sentOk = await sendWA(target);
+			if (sentOk && target.id) {
+				const nextDispatched = new Set(manualDispatchedIds);
+				nextDispatched.add(target.id);
+				manualDispatchedIds = nextDispatched;
+
+				const remaining = contCheck.filter(
+					(c) =>
+						c.id !== target.id &&
+						!isContactSent(c, $whatsappBroadcastStore.sentKeys, sentContactIdsForProp) &&
+						!(c.id && nextDispatched.has(c.id))
+				);
+
+				if (remaining.length === 0) {
+					notifications.success('✅ Envío manual completado para los contactos seleccionados.', 5000);
+					contCheck = [];
+					manualDispatchedIds = new Set();
+				}
+			}
+		} finally {
+			isManualSending = false;
 		}
 	}
 
-	const sendWA = async (contact: Contact) => {
+	const sendWA = async (contact: Contact): Promise<boolean> => {
 		// Validaciones más robustas
 		if (!contact || !contact.telephon) {
 			alert('El contacto debe tener un número de teléfono');
-			return;
+			return false;
 		}
 
 		if (!contact.id) {
 			alert('Error: El contacto no tiene un ID válido');
 			console.error('Contacto sin ID:', contact);
-			return;
+			return false;
 		}
 
 		if (!property || !property.public_id) {
 			alert('Error: La propiedad no tiene un ID válido');
 			console.error('Propiedad sin public_id:', property);
-			return;
+			return false;
 		}
 
 		console.log('📤 Enviando propiedad:', {
@@ -232,19 +286,15 @@
 			await addDoc(binnacleToAdd, newBinnacle);
 
 			console.log(`✅ Bitácora guardada exitosamente: ${contact.name} - ${property.public_id}`);
+			return true;
 		} catch (error) {
 			console.error('❌ Error al guardar en bitácora:', error);
 			// Mostrar error al usuario pero no interrumpir el flujo
 			alert(
 				`Advertencia: El mensaje se envió pero hubo un error al guardar el registro. Error: ${error}`
 			);
+			return false;
 		}
-
-		// COMENTADO: Esta línea estaba causando que se reseteara el estado
-		// if($systStatus === "sendPropToContacts"){
-		//     contToSend = {} as Contact;
-		//     listToRender();
-		// }
 	};
 
 	function handleWhatsAppClick() {
@@ -652,32 +702,73 @@
 			<!-- {/if} -->
 		</div>
 
-		<!-- Muestra opciones para buscar contactos interesados (SOLO Etapas 3 y 4) -->
+		<!-- Muestra opciones para buscar contactos interesados (SOLO Etapa 4) -->
 		{#if show__contacts}
 			<div class="mainContainer">
 				<div class="waba-dispatch-panel">
 					<div class="waba-dispatch-top">
 						<div class="waba-dispatch-title">
 							<i class="fa-brands fa-whatsapp"></i>
-							<span>Envío Masivo Oficial · WhatsApp Cloud API (2° Plano)</span>
+							<span>Difusión de Propiedad · Etapa 4 (E4) · Alta ≤ 2 años</span>
 						</div>
 						<div class="waba-badges">
-							<span class="waba-shield-badge">🔒 Solo Etapas 3 y 4</span>
+							<span class="waba-shield-badge">🔒 Solo Etapa 4 (E4)</span>
+							<span class="waba-shield-badge">📅 Alta ≤ 2 años</span>
 							{#if excludedOtherStagesCount > 0}
-								<span class="waba-excluded-badge" title="Contactos de Etapas 1, 2, 5, Post-Venta o Sinergias excluidos automáticamente">
+								<span
+									class="waba-excluded-badge"
+									title="Contactos de E1, E2, E3 (llamadas/form), Cierre, Post-Venta o Sinergias omitidos automáticamente"
+								>
 									{excludedOtherStagesCount} de otras etapas omitidos
+								</span>
+							{/if}
+							{#if excludedTooOldCount > 0}
+								<span
+									class="waba-excluded-badge"
+									title="Contactos en E4 con más de 2 años desde su fecha de alta omitidos automáticamente"
+								>
+									{excludedTooOldCount} con +2 años omitidos
 								</span>
 							{/if}
 						</div>
 					</div>
-					<p class="waba-dispatch-desc">
-						Plantilla aprobada: <code>nuevo_inventario_match</code> · Se envía automáticamente con el nombre del prospecto, ubicación, precio y enlace personalizado sin abrir pestañas ni bloquear ATAIR.
-					</p>
+
+					<!-- Switch Manual (1 a 1) vs Automático (API WhatsApp en 2° plano) -->
+					<div class="mode-selector">
+						<div class="switch-container">
+							<span class="mode-label" class:active={!autoMode}>📱 Manual (1 a 1)</span>
+							<label
+								class="switch"
+								title="Manual para pocos envíos (wa.me); Activar API WhatsApp cuando sean muchos"
+							>
+								<input type="checkbox" bind:checked={autoMode} />
+								<span class="slider"></span>
+							</label>
+							<span class="mode-label api" class:active={autoMode}>🤖 API WhatsApp (2° plano)</span>
+						</div>
+						<div class="mode-description">
+							{#if autoMode}
+								<p>
+									🚀 <strong>Modo API Automático:</strong> Envía en segundo plano con la plantilla aprobada
+									<code>nuevo_inventario_match</code> sin abrir pestañas ni bloquear ATAIR.
+								</p>
+							{:else}
+								<p>
+									📱 <strong>Modo Manual (pocos envíos):</strong> Abre WhatsApp directo (<code>wa.me</code>) clic por clic desde tu cuenta con el enlace personalizado y guarda en bitácora sin consumir API.
+								</p>
+							{/if}
+						</div>
+						{#if !autoMode && contToRender.length >= 10 && contInterested !== 'Ya_Se_Envió'}
+							<p class="many-hint">
+								💡 Tienes {contToRender.length} prospectos E4 compatibles: si son demasiados para hacerlo manual, enciende el switch a <strong>API WhatsApp</strong>.
+							</p>
+						{/if}
+					</div>
 				</div>
 
 				<div class="sect__Title">
 					{#if contToRender.length === 0}
-						<h1>No hay contactos en Etapa 3 o 4 en esta vista</h1>
+						<h1>No hay contactos en Etapa 4 (E4 · Alta ≤ 2 años) en esta vista</h1>
 					{:else}
 						<h1>{contToRender.length} — {msgToShow}</h1>
 					{/if}
@@ -700,24 +791,36 @@
 				</div>
 			</div>
 
-			<!-- Barra de acción para envío en segundo plano -->
+			<!-- Barra de acción para envío Manual o API en segundo plano -->
 			{#if showBtn && contInterested !== 'Ya_Se_Envió' && contToRender.length > 0}
+				{@const selectableCount = contToRender.filter((c) => !isContactQueued(c, $whatsappBroadcastStore.queuedKeys)).length}
 				<div class="btn__send">
 					<button
 						id="Evio_prop_selec"
-						class="send__Prop auto-mode"
+						class="send__Prop"
+						class:auto-mode={autoMode}
+						class:manual-mode={!autoMode}
 						on:click={sendProperty}
-						disabled={contCheck.length === 0}
+						disabled={contCheck.length === 0 || (!autoMode && isManualSending)}
 					>
-						🚀 Enviar en 2° plano ({contCheck.length}
-						{contCheck.length === 1 ? 'contacto' : 'contactos'})
+						{#if autoMode}
+							🚀 Enviar por API WhatsApp ({contCheck.length}
+							{contCheck.length === 1 ? 'contacto' : 'contactos'})
+						{:else if isManualSending}
+							⏳ Abriendo WhatsApp...
+						{:else if nextManualContact}
+							📱 Enviar manual a {capitalize(nextManualContact.name || 'siguiente')} (faltan {pendingManualContacts.length})
+						{:else}
+							📱 Enviar manual ({contCheck.length}
+							{contCheck.length === 1 ? 'contacto' : 'contactos'})
+						{/if}
 					</button>
 
 					<label>
 						<input
 							type="checkbox"
 							on:change={selectAll}
-							checked={contToRender.length > 0 && contCheck.length === contToRender.length}
+							checked={selectableCount > 0 && contCheck.length === selectableCount}
 						/>
 						Seleccionar todos ({contToRender.length})
 					</label>
@@ -1630,19 +1733,116 @@
 		font-size: 0.75rem;
 	}
 
-	.waba-dispatch-desc {
+	.mode-selector {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.65rem;
+		margin-top: 0.25rem;
+		padding: 0.85rem 1rem;
+		background: rgba(0, 0, 0, 0.28);
+		border-radius: 10px;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+	}
+
+	.switch-container {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 0.9rem;
+	}
+
+	.mode-label {
+		font-size: 0.92rem;
+		color: rgba(255, 255, 255, 0.55);
+		transition: all 0.25s ease;
+		font-weight: 500;
+	}
+
+	.mode-label.active {
+		color: #38bdf8;
+		font-weight: 700;
+	}
+
+	.mode-label.api.active {
+		color: #34d399;
+		font-weight: 700;
+	}
+
+	.switch {
+		position: relative;
+		display: inline-block;
+		width: 56px;
+		height: 30px;
+	}
+
+	.switch input {
+		opacity: 0;
+		width: 0;
+		height: 0;
+	}
+
+	.slider {
+		position: absolute;
+		cursor: pointer;
+		inset: 0;
+		background-color: #0284c7;
+		transition: 0.3s;
+		border-radius: 30px;
+		border: 2px solid rgba(255, 255, 255, 0.22);
+	}
+
+	.slider:before {
+		position: absolute;
+		content: '';
+		height: 20px;
+		width: 20px;
+		left: 3px;
+		bottom: 3px;
+		background-color: white;
+		transition: 0.3s;
+		border-radius: 50%;
+	}
+
+	.switch input:checked + .slider {
+		background-color: #10b981;
+		border-color: #34d399;
+	}
+
+	.switch input:checked + .slider:before {
+		transform: translateX(26px);
+	}
+
+	.mode-description {
+		text-align: center;
+		max-width: 680px;
+	}
+
+	.mode-description p {
 		margin: 0;
-		font-size: 0.85rem;
-		color: rgba(255, 255, 255, 0.78);
+		font-size: 0.84rem;
+		color: rgba(255, 255, 255, 0.8);
 		line-height: 1.45;
 	}
 
-	.waba-dispatch-desc code {
+	.mode-description code {
 		background: rgba(0, 0, 0, 0.35);
 		color: #6ee7b7;
 		padding: 0.1rem 0.4rem;
 		border-radius: 4px;
+		font-size: 0.78rem;
+	}
+
+	.many-hint {
+		margin: 0;
 		font-size: 0.8rem;
+		color: #fde68a;
+		background: rgba(245, 158, 11, 0.12);
+		border: 1px solid rgba(245, 158, 11, 0.3);
+		padding: 0.4rem 0.75rem;
+		border-radius: 8px;
+		text-align: center;
 	}
 
 	.sect__Title {
@@ -1714,6 +1914,15 @@
 
 	.send__Prop.auto-mode:hover:not(:disabled) {
 		background: linear-gradient(135deg, #059669, #047857);
+	}
+
+	.send__Prop.manual-mode:not(:disabled) {
+		background: linear-gradient(135deg, #0284c7, #0369a1);
+		border-color: #38bdf8;
+	}
+
+	.send__Prop.manual-mode:hover:not(:disabled) {
+		background: linear-gradient(135deg, #0369a1, #075985);
 	}
 
 	.btn__send label {

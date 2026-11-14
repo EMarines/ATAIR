@@ -135,26 +135,102 @@ export function getContactBadgeInfo(cont: Contact | null | undefined): ContactBa
 	}
 }
 
-/**
- * Valida estrictamente si un contacto es elegible para envíos masivos por Meta WhatsApp Cloud API (WABA).
- * Regla de Negocio Inquebrantable: SOLO contactos activos de Comprador/Cliente en Etapa 3 o Etapa 4.
- * Quedan excluidos: Etapa 1, Etapa 2, Etapa 5/Cierre, Etapa 6/Post-Venta, Vendedores, Agentes (S1-S3/MH) y Arrendatarios (A1/A2).
- */
-export function isStage3Or4ForBroadcast(cont: Contact | null | undefined): boolean {
-	if (!cont) return false;
-	if (cont.isActive === false) return false;
+function isEligibleLeadBase(cont: Contact | null | undefined): ContactBadgeInfo | null {
+	if (!cont) return null;
+	if (cont.isActive === false) return null;
 
 	const raw = cont as any;
 	const type = String(cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
-	if (type.includes('vendedor') || type.includes('propietario')) {
-		return false;
+	if (type.includes('vendedor') || type.includes('propietario') || type.includes('arrendador')) {
+		return null;
 	}
 
 	const cleanPhone = String(cont.telephon || '').replace(/\D/g, '');
-	if (cleanPhone.length < 10) return false;
+	if (cleanPhone.length < 10) return null;
 
 	const badge = getContactBadgeInfo(cont);
-	if (badge.isAgent) return false;
+	if (badge.isAgent) return null;
 
-	return badge.text === 'E3' || badge.text === 'E4';
+	return badge;
+}
+
+/**
+ * Extrae el timestamp en milisegundos de `createdAt` soportando milisegundos, segundos Unix,
+ * strings ISO/numéricos o Firestore Timestamp.
+ */
+export function getContactCreatedAtMs(rawCreatedAt: any): number | null {
+	if (rawCreatedAt === undefined || rawCreatedAt === null || rawCreatedAt === '') return null;
+
+	if (typeof rawCreatedAt === 'number' && Number.isFinite(rawCreatedAt)) {
+		if (rawCreatedAt <= 0) return null;
+		return rawCreatedAt < 1e11 ? rawCreatedAt * 1000 : rawCreatedAt;
+	}
+
+	if (typeof rawCreatedAt === 'object') {
+		if (typeof rawCreatedAt.toMillis === 'function') {
+			const ms = rawCreatedAt.toMillis();
+			return Number.isFinite(ms) && ms > 0 ? ms : null;
+		}
+		if (typeof rawCreatedAt.seconds === 'number') {
+			return rawCreatedAt.seconds * 1000;
+		}
+	}
+
+	if (typeof rawCreatedAt === 'string') {
+		const trimmed = rawCreatedAt.trim();
+		if (!trimmed) return null;
+		if (/^\d+(\.\d+)?$/.test(trimmed)) {
+			const num = Number(trimmed);
+			return num > 0 ? (num < 1e11 ? num * 1000 : num) : null;
+		}
+		const parsed = Date.parse(trimmed);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+
+	return null;
+}
+
+/**
+ * Valida que el contacto tenga como máximo `maxYears` años desde su fecha de alta (`createdAt`).
+ */
+export function isWithinMaxAgeYears(
+	cont: Contact | null | undefined,
+	maxYears: number = 2,
+	nowMs: number = Date.now()
+): boolean {
+	if (!cont) return false;
+	const createdMs = getContactCreatedAtMs((cont as any).createdAt);
+	if (createdMs === null) return false;
+
+	const cutoff = new Date(nowMs);
+	cutoff.setFullYear(cutoff.getFullYear() - maxYears);
+	return createdMs >= cutoff.getTime();
+}
+
+/**
+ * Valida perfil base de Etapa 4 (E4) antes de aplicar el límite de antigüedad.
+ */
+export function isStage4Base(cont: Contact | null | undefined): boolean {
+	const badge = isEligibleLeadBase(cont);
+	return badge !== null && badge.text === 'E4';
+}
+
+/**
+ * Valida estrictamente si un contacto es elegible para difusión de propiedades (Manual o WhatsApp Cloud API).
+ * Regla de Negocio Inquebrantable:
+ * 1) SOLO contactos activos de Comprador/Cliente en Etapa 4 (E4).
+ * 2) Antigüedad máxima de 2 años desde su alta (`createdAt`).
+ * Quedan excluidos: Etapa 1, Etapa 2, Etapa 3, Cierre, Post-Venta, Vendedores, Arrendadores, Agentes y Arrendatarios,
+ * así como contactos con más de 2 años desde su registro.
+ */
+export function isStage4ForBroadcast(cont: Contact | null | undefined): boolean {
+	return isStage4Base(cont) && isWithinMaxAgeYears(cont, 2);
+}
+
+/**
+ * Valida contactos en Etapa 3 o Etapa 4 (reservado exclusivamente para plantillas de reactivación E3).
+ */
+export function isStage3Or4ForBroadcast(cont: Contact | null | undefined): boolean {
+	const badge = isEligibleLeadBase(cont);
+	return badge !== null && (badge.text === 'E3' || badge.text === 'E4');
 }
