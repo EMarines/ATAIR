@@ -10,6 +10,74 @@
 	let editedComment = '';
 	let isSaving = false;
 
+	function getActionMeta(b: any) {
+		const act = String(b?.action || '').trim().toLowerCase();
+		const dir = String(b?.direction || '').trim().toLowerCase();
+
+		// 1. WhatsApp Recibido / Inbound (Verde WhatsApp)
+		if (act.includes('recibido') || dir === 'inbound') {
+			return {
+				type: 'wa-inbound',
+				icon: 'fa-brands fa-whatsapp',
+				title: 'WhatsApp recibido del cliente'
+			};
+		}
+
+		// 2. WhatsApp Enviado / Outbound (Mismo ícono WhatsApp, color Azul Cielo / Sky Blue)
+		if (act.includes('whatsapp') || dir === 'outbound') {
+			return {
+				type: 'wa-outbound',
+				icon: 'fa-brands fa-whatsapp',
+				title: 'WhatsApp enviado al cliente'
+			};
+		}
+
+		// 3. Propiedad enviada (Ámbar / Naranja)
+		if (act.includes('propiedad') || act.includes('inmueble')) {
+			return {
+				type: 'property-sent',
+				icon: 'fa-solid fa-house-circle-check',
+				title: 'Propiedad enviada'
+			};
+		}
+
+		// 4. Se editó (Púrpura / Violeta)
+		if (act.includes('editó') || act.includes('edito')) {
+			return {
+				type: 'edited',
+				icon: 'fa-solid fa-file-pen',
+				title: 'Edición en expediente'
+			};
+		}
+
+		// 5. Nota agregada (Amarillo dorado)
+		if (act.includes('nota')) {
+			return {
+				type: 'note-added',
+				icon: 'fa-solid fa-square-poll-horizontal',
+				title: 'Nota agregada'
+			};
+		}
+
+		// 6. Se agregó a (Teal / Turquesa)
+		if (act.includes('agregó') || act.includes('agrego') || act.includes('asign')) {
+			return {
+				type: 'user-assigned',
+				icon: 'fa-solid fa-user-check',
+				title: 'Asignado / Agregado'
+			};
+		}
+
+		// 7. General / Por defecto (Pizarra suave)
+		return {
+			type: 'default',
+			icon: 'fa-solid fa-comment-dots',
+			title: b?.action || 'Nota'
+		};
+	}
+
+	$: meta = getActionMeta(binn);
+
 	function startEdit() {
 		if (binn.action === 'WhatsApp enviado: ' || String(binn.action || '').toLowerCase().includes('whatsapp')) return;
 		editedComment = binn.comment || '';
@@ -67,29 +135,11 @@
 </script>
 
 <div
-	class="binnacle__row"
+	class="binnacle__row type-{meta.type}"
 	class:is-editing={isEditing}
-	class:is-inbound={binn.action === 'WhatsApp recibido: ' || binn.direction === 'inbound' || String(binn.action || '').toLowerCase().includes('recibido')}
 >
 	<div class="cell__icon">
-		{#if binn.action === 'WhatsApp enviado: ' || binn.direction === 'outbound' || String(binn.action || '').toLowerCase().includes('enviado')}
-			<i class="fa-brands fa-square-whatsapp" style="color: #22c55e; font-size: 1.15rem;" title="WhatsApp enviado"></i>
-		{:else if binn.action === 'WhatsApp recibido: ' || binn.direction === 'inbound' || String(binn.action || '').toLowerCase().includes('recibido')}
-			<i
-				class="fa-brands fa-whatsapp whatsapp-inbound-icon"
-				title="WhatsApp recibido del cliente"
-			></i>
-		{:else if binn.action === 'Se editó a: '}
-			<i class="fa-solid fa-file-pen"></i>
-		{:else if binn.action === 'Nota agregada: '}
-			<i class="fa-solid fa-square-poll-horizontal"></i>
-		{:else if binn.action === 'Se agregó a: '}
-			<i class="fa-solid fa-user-check"></i>
-		{:else if binn.action === 'Propiedad enviada: '}
-			<i class="fa-solid fa-house-circle-check"></i>
-		{:else}
-			<i class="fa-solid fa-comment-dots" title={binn.action || 'Nota'}></i>
-		{/if}
+		<i class="{meta.icon} action-glyph" title={meta.title}></i>
 	</div>
 
 	<div class="cell__date">
@@ -185,26 +235,89 @@
 		border: 1px solid rgba(37, 99, 235, 0.25);
 	}
 
-	.binnacle__row.is-inbound {
+	/* 1. WhatsApp Recibido / Inbound (Verde WhatsApp) */
+	.binnacle__row.type-wa-inbound {
 		background: rgba(34, 197, 94, 0.08);
 		border-left: 3px solid #22c55e;
-		padding-left: 6px;
+	}
+	.binnacle__row.type-wa-inbound .action-glyph {
+		color: #22c55e;
 	}
 
-	.whatsapp-inbound-icon {
-		color: #22c55e;
-		font-size: 1.15rem;
+	/* 2. WhatsApp Enviado / Outbound (Azul cielo / Celeste) */
+	.binnacle__row.type-wa-outbound {
+		background: rgba(56, 189, 248, 0.08);
+		border-left: 3px solid #38bdf8;
+	}
+	.binnacle__row.type-wa-outbound .action-glyph {
+		color: #38bdf8;
+	}
+
+	/* 3. Propiedad enviada (Ámbar / Naranja) */
+	.binnacle__row.type-property-sent {
+		background: rgba(245, 158, 11, 0.08);
+		border-left: 3px solid #f59e0b;
+	}
+	.binnacle__row.type-property-sent .action-glyph {
+		color: #f59e0b;
+	}
+
+	/* 4. Se editó (Púrpura / Violeta) */
+	.binnacle__row.type-edited {
+		background: rgba(168, 85, 247, 0.08);
+		border-left: 3px solid #a855f7;
+	}
+	.binnacle__row.type-edited .action-glyph {
+		color: #a855f7;
+	}
+
+	/* 5. Nota agregada (Amarillo dorado) */
+	.binnacle__row.type-note-added {
+		background: rgba(234, 179, 8, 0.08);
+		border-left: 3px solid #eab308;
+	}
+	.binnacle__row.type-note-added .action-glyph {
+		color: #eab308;
+	}
+
+	/* 6. Se agregó / Asignado (Teal / Turquesa) */
+	.binnacle__row.type-user-assigned {
+		background: rgba(20, 184, 166, 0.08);
+		border-left: 3px solid #14b8a6;
+	}
+	.binnacle__row.type-user-assigned .action-glyph {
+		color: #14b8a6;
+	}
+
+	/* 7. General / Por defecto (Pizarra suave) */
+	.binnacle__row.type-default {
+		background: rgba(148, 163, 184, 0.06);
+		border-left: 3px solid #94a3b8;
+	}
+	.binnacle__row.type-default .action-glyph {
+		color: #94a3b8;
 	}
 
 	.cell__icon {
 		width: 32px;
 		min-width: 32px;
+		height: 28px;
 		align-self: flex-start;
 		display: flex;
+		align-items: center;
 		justify-content: center;
 		padding-top: 2px;
-		font-size: 1.1rem;
-		color: #cbd5e1;
+	}
+
+	.action-glyph {
+		font-size: 1.15rem !important;
+		line-height: 1 !important;
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		width: 22px !important;
+		height: 22px !important;
+		text-align: center !important;
 	}
 
 	.cell__date {
@@ -328,10 +441,6 @@
 		color: #ef4444 !important;
 		box-shadow: 0 0 8px rgba(239, 68, 68, 0.35) !important;
 		transform: scale(1.1);
-	}
-
-	i {
-		font-size: 1.4rem;
 	}
 
 	/* Responsive */

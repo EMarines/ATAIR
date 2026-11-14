@@ -54,9 +54,67 @@
             }
             );
             
-            onDestroy(unsubs)
-   
+            onDestroy(unsubs);
 
+	function getActionMeta(b: any) {
+		const act = String(b?.action || '').trim().toLowerCase();
+		const dir = String(b?.direction || '').trim().toLowerCase();
+
+		if (act.includes('recibido') || dir === 'inbound') {
+			return {
+				type: 'wa-inbound',
+				icon: 'fa-brands fa-whatsapp',
+				color: '#22c55e',
+				title: 'WhatsApp recibido del cliente'
+			};
+		}
+		if (act.includes('whatsapp') || dir === 'outbound') {
+			return {
+				type: 'wa-outbound',
+				icon: 'fa-brands fa-whatsapp',
+				color: '#38bdf8',
+				title: 'WhatsApp enviado al cliente'
+			};
+		}
+		if (act.includes('propiedad') || act.includes('inmueble')) {
+			return {
+				type: 'property-sent',
+				icon: 'fa-solid fa-house-circle-check',
+				color: '#f59e0b',
+				title: 'Propiedad enviada'
+			};
+		}
+		if (act.includes('editó') || act.includes('edito')) {
+			return {
+				type: 'edited',
+				icon: 'fa-solid fa-file-pen',
+				color: '#a855f7',
+				title: 'Edición en expediente'
+			};
+		}
+		if (act.includes('nota')) {
+			return {
+				type: 'note-added',
+				icon: 'fa-solid fa-square-poll-horizontal',
+				color: '#eab308',
+				title: 'Nota agregada'
+			};
+		}
+		if (act.includes('agregó') || act.includes('agrego') || act.includes('asign')) {
+			return {
+				type: 'user-assigned',
+				icon: 'fa-solid fa-user-check',
+				color: '#14b8a6',
+				title: 'Asignado / Agregado'
+			};
+		}
+		return {
+			type: 'default',
+			icon: 'fa-solid fa-comment-dots',
+			color: '#94a3b8',
+			title: b?.action || 'Nota'
+		};
+	}
 </script>
 
 
@@ -66,27 +124,12 @@
             <div class="schedule">
                 <div class="binnacleHome">
                     {#each toRenBinn as item, i}
-                    <div class="in__binnacle">
+                    {@const meta = getActionMeta(item)}
+                    <div class="in__binnacle type-{meta.type}">
                         <tr>
                             <div class="date__binnacle">
-                              
-
                                 <td class="icon__binnacle">
-                                    {#if item.action === "WhatsApp enviado: " || item.direction === 'outbound'}
-                                        <i class="fa-brands fa-square-whatsapp" style="color: #22c55e; font-size: 1.15rem;" title="WhatsApp enviado"/>
-                                    {:else if item.action === "WhatsApp recibido: " || item.direction === 'inbound' || String(item.action || '').toLowerCase().includes('recibido')}
-                                        <i class="fa-brands fa-whatsapp" style="color: #22c55e; font-size: 1.15rem;" title="WhatsApp recibido"/>
-                                    {:else if item.action === "Se editó a: "}
-                                        <i class="fa-solid fa-file-pen"/>
-                                    {:else if item.action === "Nota agregada: "}
-                                        <i class="fa-solid fa-square-poll-horizontal"/>
-                                    {:else if item.action === "Se agregó a: "}
-                                        <i class="fa-solid fa-user-check"/>
-                                    {:else if item.action === "Propiedad enviada: "}
-                                        <i class="fa-solid fa-house-circle-check" />
-                                    {:else}
-                                        <i class="fa-solid fa-comment-dots" title={item.action || 'Nota'}/>
-                                    {/if}
+                                    <i class="{meta.icon} action-glyph" style="color: {meta.color};" title={meta.title}/>
                                 </td>
                             </div>
                             <td>
@@ -96,7 +139,7 @@
                                 {item.comment}
                             </td>
                         </tr>
-                            </div>
+                    </div>
                     {/each}
                     
                 </div>
@@ -129,42 +172,83 @@
 
 
 <style>
-
     .binnacleHome {
         width: 100%;
         max-width: 100%;
         overflow-x: hidden;
     }
 
+    .in__binnacle {
+        margin-bottom: 6px;
+        border-radius: 6px;
+        transition: background-color 0.18s ease;
+    }
+
+    .in__binnacle.type-wa-inbound {
+        background: rgba(34, 197, 94, 0.08);
+        border-left: 3px solid #22c55e;
+    }
+
+    .in__binnacle.type-wa-outbound {
+        background: rgba(56, 189, 248, 0.08);
+        border-left: 3px solid #38bdf8;
+    }
+
+    .in__binnacle.type-property-sent {
+        background: rgba(245, 158, 11, 0.08);
+        border-left: 3px solid #f59e0b;
+    }
+
+    .in__binnacle.type-edited {
+        background: rgba(168, 85, 247, 0.08);
+        border-left: 3px solid #a855f7;
+    }
+
+    .in__binnacle.type-note-added {
+        background: rgba(234, 179, 8, 0.08);
+        border-left: 3px solid #eab308;
+    }
+
+    .in__binnacle.type-user-assigned {
+        background: rgba(20, 184, 166, 0.08);
+        border-left: 3px solid #14b8a6;
+    }
+
+    .in__binnacle.type-default {
+        background: rgba(148, 163, 184, 0.06);
+        border-left: 3px solid #94a3b8;
+    }
+
     .date__binnacle {
         display: flex;
         flex-direction: row;
         width: 100%;
-
     }
 
-   td {
-    font-size: .8em;
-    font-weight: 300;
-    color: rgb(137, 136, 136);
-    padding: 8px;
-    align-items: center;
-    border: 1px solid rgb(42, 41, 41, .3);
-   }
+    td {
+        font-size: .8em;
+        font-weight: 300;
+        color: rgb(137, 136, 136);
+        padding: 8px;
+        align-items: center;
+        border: 1px solid rgb(42, 41, 41, .3);
+    }
     
-   i {
-    font-size: 2rem;
-    align-items: center;
-    color: rgb(137, 136, 136);
-   }
+    .action-glyph {
+        font-size: 1.15rem !important;
+        line-height: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 22px !important;
+        height: 22px !important;
+        text-align: center !important;
+    }
 
     .icon__binnacle {
-    display: flex;
-    /* width: 20%; */
-    color: rgb(137, 136, 136);
-    padding: 8px;
-    align-items: center;
-    /* border: 1px solid rgb(42, 41, 41, .3) */
-   }
-
+        display: flex;
+        color: rgb(137, 136, 136);
+        padding: 8px;
+        align-items: center;
+    }
 </style>
