@@ -23,7 +23,8 @@
 		sortBinnacle,
 		getProposalUrl,
 		ensureContactInProposalUrl,
-		getContactBadgeInfo
+		getContactBadgeInfo,
+		wasPropertySentToContact
 	} from '$lib/functions';
 	import { empresa } from '$lib/config/empresa';
 
@@ -265,29 +266,21 @@
 
 	// Muestra las propiedades que le podrían intesar
 	function filtProp() {
-		console.log('Estas en filtProp');
 		// Obtener todas las propiedades recomendadas para este contacto
 		propToRender = findPropertiesForContact(contact);
 
-		// Obtener IDs de propiedades ya enviadas desde la bitácora
-		const sentPropertyIds = sortedBinn
-			.filter((item) => item.action?.includes('Propiedad enviada'))
-			.map((item) => item.comment?.trim())
-			.filter(Boolean);
-
-		// Filtrar las propiedades que ya fueron enviadas
-		alreadySentProperties = properties.filter((prop) => sentPropertyIds.includes(prop.public_id));
+		// Filtrar las propiedades que ya fueron enviadas (bitácora + sendedProperties)
+		alreadySentProperties = properties.filter((prop) =>
+			wasPropertySentToContact(prop, contact, sortedBinn)
+		);
 
 		// Ordenar las propiedades enviadas de la más reciente a la más antigua
 		alreadySentProperties = orderSentPropertiesByDate(alreadySentProperties);
 
 		// Filtrar propiedades recomendadas quitando las ya enviadas
 		recommendedProperties = propToRender.filter(
-			(prop) => !sentPropertyIds.includes(prop.public_id)
+			(prop) => !wasPropertySentToContact(prop, contact, sortedBinn)
 		);
-
-		console.log('Propiedades recomendadas:', recommendedProperties.length);
-		console.log('Propiedades ya enviadas:', alreadySentProperties.length);
 
 		showProp = true;
 		layOut = 'sendProps';

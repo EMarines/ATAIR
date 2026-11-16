@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>COMPASS — ATAIR Copiloto (Tablero Vivo WBS)</title>
+  <style>
+    :root {
+      --bg-top: #182338;
+      --bg-mid: #0b1120;
+      --bg-deep: #030712;
+      --card-bg: rgba(17, 24, 39, 0.82);
+      --card-inner: rgba(9, 14, 27, 0.88);
+      --border-soft: rgba(255, 255, 255, 0.08);
+      --border-gold: rgba(212, 175, 55, 0.32);
+      --gold: #d4af37;
+      --gold-light: #f3e5ab;
+      --emerald: #10b981;
+      --emerald-soft: rgba(16, 185, 129, 0.16);
+      --amber: #f59e0b;
+      --amber-soft: rgba(245, 158, 11, 0.16);
+      --sky: #38bdf8;
+      --sky-soft: rgba(56, 189, 248, 0.14);
+      --slate: #94a3b8;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px 16px 48px;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Plus Jakarta Sans", sans-serif;
+      background: radial-gradient(circle at 50% 0%, var(--bg-top) 0%, var(--bg-mid) 65%, var(--bg-deep) 100%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-soft);
+      border-radius: 18px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+      padding: 24px;
+      margin-bottom: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header-glow {
+      position: absolute;
+      right: -50px;
+      top: -60px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.18), transparent 70%);
+      pointer-events: none;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header-main { flex: 1 1 600px; }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pill-gold {
+      background: rgba(212, 175, 55, 0.14);
+      color: var(--gold-light);
+      border: 1px solid var(--border-gold);
+    }
+
+    .pill-emerald {
+      background: var(--emerald-soft);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .pill-sky {
+      background: var(--sky-soft);
+      color: #7dd3fc;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .dot-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px var(--emerald);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 3vw, 2.25rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    h1 span.sub {
+      color: var(--gold);
+      font-weight: 400;
+      font-size: 0.72em;
+    }
+
+    .vision-text {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.94rem;
+      max-width: 780px;
+    }
+
+    .kpi-box {
+      min-width: 225px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-gold);
+      border-radius: 14px;
+      padding: 16px 18px;
+      text-align: right;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .kpi-value {
+      font-size: 2.3rem;
+      font-weight: 800;
+      color: var(--amber);
+      line-height: 1.1;
+      margin: 4px 0 2px;
+    }
+
+    .kpi-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--emerald) 0%, var(--amber) 100%);
+      transition: width 0.5s ease;
+    }
+
+    .dod-box {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .dod-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--amber);
+      font-weight: 800;
+      margin-bottom: 3px;
+    }
+
+    .dod-text {
+      margin: 0;
+      font-size: 0.88rem;
+      color: #e2e8f0;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .info-box {
+      background: var(--card-inner);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .info-box h3 {
+      margin: 0 0 6px;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--sky);
+    }
+
+    .info-box p, .info-box li {
+      margin: 0;
+      font-size: 0.84rem;
+      color: #cbd5e1;
+    }
+
+    .info-box ul {
+      margin: 6px 0 0;
+      padding-left: 18px;
+    }
+
+    .info-box li + li { margin-top: 4px; }
+
+    .stage-card {
+      background: var(--card-inner);
+      border-radius: 12px;
+      padding: 13px 14px;
+      border: 1px solid var(--border-soft);
+      border-top: 3px solid var(--gold);
+    }
+
+    .stage-e1 { border-top-color: #ff4444; }
+    .stage-e2 { border-top-color: #ff8844; }
+    .stage-e3 { border-top-color: #ffcc44; }
+    .stage-e4 { border-top-color: #44cc44; }
+
+    .stage-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+
+    .stage-freq {
+      font-size: 10.5px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      color: #e2e8f0;
+    }
+
+    .stage-card p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .filter-btn {
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(30, 41, 59, 0.75);
+      color: #e2e8f0;
+      padding: 6px 12px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--border-gold);
+      color: #ffffff;
+    }
+
+    .filter-btn.active {
+      background: var(--amber);
+      color: #0f172a;
+      border-color: var(--amber);
+      font-weight: 800;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #cbd5e1;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .pipeline {
+      position: relative;
+      padding-left: 34px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .pipeline::before {
+      content: "";
+      position: absolute;
+      left: 11px;
+      top: 14px;
+      bottom: 14px;
+      width: 2px;
+      background: linear-gradient(180deg, var(--emerald) 0%, var(--amber) 32%, #475569 100%);
+    }
+
+    .node-wrap {
+      position: relative;
+    }
+
+    .node-dot {
+      position: absolute;
+      left: -30px;
+      top: 18px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 3px solid #0b1120;
+      z-index: 1;
+    }
+
+    .node-dot.completed {
+      background: var(--emerald);
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
+    }
+
+    .node-dot.in_progress {
+      background: var(--amber);
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.28);
+    }
+
+    .node-dot.pending {
+      background: #64748b;
+      box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.2);
+    }
+
+    details.task-card {
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--border-soft);
+      border-radius: 14px;
+      padding: 16px 18px;
+      transition: border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    details.task-card:hover {
+      border-color: var(--border-gold);
+    }
+
+    details.task-card.is-completed {
+      border-left: 3px solid var(--emerald);
+    }
+
+    details.task-card.is-progress {
+      border-left: 3px solid var(--amber);
+    }
+
+    details.task-card.is-pending {
+      border-left: 3px solid #475569;
+    }
+
+    details summary {
+      list-style: none;
+      cursor: pointer;
+    }
+
+    details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .task-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .task-meta-left {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .task-id {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--amber);
+    }
+
+    .task-layer {
+      font-size: 10.5px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    .task-phase {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+
+    .status-completed {
+      background: var(--emerald-soft);
+      color: #6ee7b7;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    .status-in_progress {
+      background: var(--amber-soft);
+      color: #fcd34d;
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    .status-pending {
+      background: rgba(100, 116, 139, 0.2);
+      color: #cbd5e1;
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+
+    .task-title {
+      margin: 0 0 5px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .task-desc {
+      margin: 0;
+      font-size: 0.86rem;
+      color: #cbd5e1;
+    }
+
+    .task-foot-preview {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .squad-mini-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .squad-chip {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: var(--gold-light);
+    }
+
+    .expand-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .task-details-body {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-soft);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .detail-block-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .tech-item {
+      background: rgba(3, 7, 18, 0.65);
+      border: 1px solid var(--border-soft);
+      border-radius: 9px;
+      padding: 9px 11px;
+      margin-bottom: 8px;
+    }
+
+    .tech-item-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 3px;
+    }
+
+    .tech-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fcd34d;
+    }
+
+    .tech-cat {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #1e293b;
+      color: #cbd5e1;
+      text-transform: uppercase;
+    }
+
+    .tech-reason {
+      margin: 0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .log-box {
+      background: rgba(3, 7, 18, 0.65);
+      border: 1px solid var(--border-soft);
+      border-radius: 9px;
+      padding: 11px 12px;
+      margin-bottom: 9px;
+      font-size: 12.5px;
+      color: #cbd5e1;
+    }
+
+    .squad-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+      gap: 10px;
+    }
+
+    .squad-card {
+      background: var(--card-inner);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 11px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: left;
+      color: inherit;
+      width: 100%;
+    }
+
+    .squad-card:hover, .squad-card.active {
+      border-color: var(--gold);
+      background: rgba(212, 175, 55, 0.1);
+    }
+
+    .squad-avatar { font-size: 1.45rem; }
+    .squad-name { font-size: 0.88rem; font-weight: 700; color: #fff; }
+    .squad-role { font-size: 0.72rem; color: var(--text-muted); }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- HEADER -->
+    <header class="glass-card">
+      <div class="header-glow"></div>
+      <div class="header-top">
+        <div class="header-main">
+          <div class="badge-row">
+            <span class="pill pill-emerald"><span class="dot-pulse"></span> COMPASS Paso 5 Formalizado</span>
+            <span class="pill pill-gold mono" id="projectIdBadge">COMPASS-ATAIR-COPILOTO</span>
+            <span class="pill pill-sky mono" id="updatedAtBadge">Actualizado: 2026-11-16</span>
+          </div>
+          <h1>🧭 ATAIR Copiloto <span class="sub">| Rutina Inteligente de Seguimiento en Agenda</span></h1>
+          <p class="vision-text" id="visionText"></p>
+        </div>
+
+        <div class="kpi-box">
+          <div class="kpi-label mono">⚡ Avance WBS</div>
+          <div class="kpi-value mono" id="progressText">91%</div>
+          <div class="kpi-sub mono" id="taskCountLabel">10/11 micro-tareas completadas</div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressBar" style="width: 91%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dod-box">
+        <div style="font-size: 1.25rem;">🎯</div>
+        <div>
+          <div class="dod-title mono">Definition of Done (Meta Final Innegociable)</div>
+          <p class="dod-text" id="dodText"></p>
+        </div>
+      </div>
+    </header>
+
+    <!-- RESUMEN ESTRATÉGICO & REGLAS DEL EMBUDO -->
+    <section class="glass-card">
+      <div class="section-heading">
+        <h2>💡 Arquitectura 2-Tier & Reglas Comerciales (E1–E4)</h2>
+        <span class="pill pill-gold mono">Solo Clientes Interesados</span>
+      </div>
+
+      <div class="grid-2" style="margin-bottom: 14px;">
+        <div class="info-box">
+          <h3>🎯 Objetivo del Sistema</h3>
+          <p id="systemGoalText"></p>
+        </div>
+        <div class="info-box">
+          <h3>📌 Foco Actual</h3>
+          <p id="currentFocusText"></p>
+        </div>
+      </div>
+
+      <div class="grid-4">
+        <div class="stage-card stage-e1">
+          <div class="stage-head"><span>🔴 E1 · Primer Contacto</span><span class="stage-freq mono">Diario</span></div>
+          <p><strong>Meta:</strong> Salir rápido. Concretar llamada + sacar info sin presionar (venta si le gustó; empatía si no). Pasa a <strong>E2</strong>. Tras 2 llamadas + 2–3 envíos sin respuesta → <strong>E3</strong>.</p>
+        </div>
+        <div class="stage-card stage-e2">
+          <div class="stage-head"><span>🟠 E2 · Seguimiento</span><span class="stage-freq mono">Diario</span></div>
+          <p><strong>Meta:</strong> Completar perfil de búsqueda y promover a <strong>E4</strong>. Si ignora 2 llamadas + 2–3 envíos de propiedades → <strong>E3</strong>.</p>
+        </div>
+        <div class="stage-card stage-e3">
+          <div class="stage-head"><span>🟡 E3 · Filtro / Rescate</span><span class="stage-freq mono">15 / día</span></div>
+          <p><strong>Orden:</strong> Reciente→antiguo (<strong>&le;2 años</strong> primero; <strong>&gt;2 años</strong> después). Envío de web ligera <code>/buscar</code>. Si llena → <strong>E4</strong>; si ignora → <strong>Inactivo</strong>.</p>
+        </div>
+        <div class="stage-card stage-e4">
+          <div class="stage-head"><span>🟢 E4 · Búsqueda Activa</span><span class="stage-freq mono">Diario</span></div>
+          <p><strong>Meta:</strong> Cruce inverso contra sinergias no presentes en <code>sendedProperties</code>. Máximo <strong>3 propiedades</strong> nuevas por envío con link <code>getProposalUrl</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FILTROS -->
+    <section class="glass-card">
+      <div class="section-heading">
+        <h2>🎛️ Filtros de Auditoría WBS</h2>
+        <div class="legend mono">
+          <span class="legend-item"><span class="dot" style="background: var(--emerald);"></span> Logrado (<span id="countCompleted">0</span>)</span>
+          <span class="legend-item"><span class="dot" style="background: var(--amber);"></span> En Curso (<span id="countProgress">0</span>)</span>
+          <span class="legend-item"><span class="dot" style="background: #64748b;"></span> Pendiente (<span id="countPending">0</span>)</span>
+        </div>
+      </div>
+
+      <div class="filter-row" style="margin-bottom: 10px;">
+        <div class="btn-group" id="layerFilterBar">
+          <button class="filter-btn active" data-layer="ALL">Todas las Capas</button>
+          <button class="filter-btn" data-layer="CORE">🧭 Core & Forense</button>
+          <button class="filter-btn" data-layer="MATCHING">🔍 Matching E4</button>
+          <button class="filter-btn" data-layer="IA_ENGINE">⚡ Motor IA</button>
+          <button class="filter-btn" data-layer="AGENDA_UI">📅 UI Agenda</button>
+          <button class="filter-btn" data-layer="E3_FORM">📝 Form E3</button>
+          <button class="filter-btn" data-layer="WA_SYNC">💬 Sync Móvil WA</button>
+          <button class="filter-btn" data-layer="QA_DEPLOY">🛡️ QA & Deploy</button>
+        </div>
+
+        <div class="btn-group" id="statusFilterBar">
+          <button class="filter-btn active" data-status="ALL">Todos</button>
+          <button class="filter-btn" data-status="completed">✓ Logrados</button>
+          <button class="filter-btn" data-status="in_progress">⚡ En Curso</button>
+          <button class="filter-btn" data-status="pending">⏳ Pendientes</button>
+        </div>
+      </div>
+      <div id="activeSquadNotice" class="mono" style="font-size: 11.5px; color: var(--gold); display: none;"></div>
+    </section>
+
+    <!-- PIPELINE WBS -->
+    <section class="glass-card">
+      <div class="section-heading">
+        <h2>🔀 Ruta Crítica Atómica (11 Micro-Nodos)</h2>
+        <span class="mono" style="font-size: 11.5px; color: var(--text-muted);">Clic en cualquier nodo para desplegar Stack Técnico y Bitácora</span>
+      </div>
+      <div id="pipelineContainer" class="pipeline"></div>
+    </section>
+
+    <!-- SQUAD -->
+    <section class="glass-card">
+      <div class="section-heading">
+        <h2>👥 Squad COMPASS Asignado</h2>
+        <span class="mono" style="font-size: 11.5px; color: var(--text-muted);">Clic en un integrante para filtrar sus tareas</span>
+      </div>
+      <div id="squadContainer" class="squad-grid"></div>
+    </section>
+
+    <footer class="footer mono">
+      🧭 COMPASS Project Navigator • Fuente de Verdad: <strong>compass-copiloto/compass.json</strong> • Investigación Forense: <strong>INVESTIGACION_FORENSE_MACRO.md</strong>
+    </footer>
+  </div>
+
+  <script>
+    const COMPASS_FALLBACK_DATA = {
+      projectId: "COMPASS-ATAIR-COPILOTO",
+      projectName: "ATAIR Copiloto — Rutina Inteligente de Seguimiento en Agenda",
+      vision: "Dotar a ATAIR CRM de un copiloto inteligente accionado por un botón en Agenda que analiza determinísticamente las etapas (E1–E4), lee el historial y bitácora de cada lead con Gemini, y genera tarjetas uniformes expandibles con Acción, Objetivo, Porqué, borrador de WhatsApp con links de propuesta y botón de ejecución directa en 1 clic, trabajando únicamente con clientes interesados.",
+      strategicSummary: {
+        systemGoal: "Maximizar la velocidad de atención en E1/E2, nutrir diariamente a los calificados E4 con hasta 3 propiedades de sinergia no enviadas, depurar E3 mediante una cuota diaria de 15 leads con formulario ligero, y mantener sincronizada la bitácora incluso cuando el asesor responde desde su WhatsApp móvil.",
+        currentFocus: "Proyecto 100% completado (11/11 micro-tareas). ATAIR Copiloto, MatchHomeSite /buscar, n8n GOWA outbound + backfill y optimización de binnacles listos para producción."
+      },
+      updatedAt: "2026-11-16",
+      definitionOfDone: "Botón 'ATAIR Copiloto' operativo en /agenda generando tarjetas idempotentes por micro-lotes para E1, E2, E4 (máx 3 sinergias nuevas vía motor corregido) y cuota configurable de 15 E3 diarios (<2 años reciente→antiguo primero, >2 años al final); tarjetas de altura uniforme expandibles con Acción, Objetivo, Porqué, borrador WhatsApp + getProposalUrl y botón de ejecución directa; página pública ligera E3 promoviendo leads a E4; captura de respuestas móviles en n8n GOWA con cierre propuesto confirmable en 1 clic; y build/auditoría Lince aprobados en producción.",
+      squad: [
+        { name: "Mina", role: "Jefa de Gabinete & Memoria Viva", avatar: "💼" },
+        { name: "Maya", role: "Master Orchestrator & Réferi", avatar: "🧠" },
+        { name: "Apolo", role: "Arquitecto Técnico & WBS", avatar: "🏛️" },
+        { name: "Wero", role: "Arquitecto de Bucles & Prompts IA", avatar: "⚡" },
+        { name: "Beto", role: "Filtro Comercial & Trinchera Chihuahua", avatar: "🤝" },
+        { name: "Argos", role: "Radar Tecnológico & I+D", avatar: "🔭" },
+        { name: "Lince", role: "Auditor Técnico & Seguridad", avatar: "🛡️" },
+        { name: "Clara", role: "Diseño Visual & UX Agenda", avatar: "🎨" },
+        { name: "Nexo", role: "Copywriting & Conversión WhatsApp", avatar: "✍️" },
+        { name: "Eva", role: "Seguimiento Conversacional", avatar: "👩‍⚖️" }
+      ],
+      tasks: [
+        {
+          id: "TASK-001", layer: "CORE", phase: "Fase 1 — Kickoff Dialógico",
+          title: "Kickoff Secuencial COMPASS (16 Rondas 1 a 1) y Reglas de Negocio E1–E4",
+          description: "Definición completa con Enrique Marines: botón en /agenda, tarjetas de altura uniforme expandibles (Acción + Objetivo + Porqué + Botón 1-clic), cadencia diaria E1/E2/E4, cuota inicial 15/día en E3 (<2 años primero, >2 años después), caída a E3 tras 2 llamadas y 2–3 envíos sin respuesta, máx. 3 propiedades en E4, página ligera E3 y cierre propuesto en 1 clic.",
+          status: "completed", owner: "Enrique Marines, Mina & Maya",
+          squadBadges: ["Mina", "Maya", "Beto", "Eva"],
+          techStack: [
+            { name: "Protocolo COMPASS (1 Pregunta/Turno)", category: "Gobernanza", reason: "Umbral 95% certidumbre sin suposiciones ni sobreingeniería" },
+            { name: "Bitácora Central (#035, #036, #037)", category: "Trazabilidad", reason: "Registro atómico sincronizado en POR_ARREGLAR.md y PENDIENTES_Y_TAREAS.md" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026 tras 16 turnos dialógicos y bautizo oficial como 'ATAIR Copiloto'.",
+          deliverable: "Acuerdos #035, #036 y #037 en Bitácora", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-002", layer: "CORE", phase: "Fase 2 — Investigación Forense Macro",
+          title: "Benchmarking Activo 2025–2026, Auditoría de Código ATAIR y Circuit Breaker",
+          description: "Investigación web activa (arquitectura 2-Tier CRM Real Estate, Gemini Structured Outputs, Vercel batching/timeouts) + auditoría forense de agenda/+page.svelte, cont-filter/+page.svelte, +layout.svelte, contactBadge.ts, binnSaver.ts, urlUtils.ts, routes.ts, firestore.rules, vercel.json y GOWA/n8n.",
+          status: "completed", owner: "Wero, Argos, Lince & Apolo",
+          squadBadges: ["Wero", "Argos", "Lince", "Apolo"],
+          techStack: [
+            { name: "Arquitectura 2-Tier (Determinístico + LLM)", category: "Patrón Top 1%", reason: "Cero alucinaciones en reglas de negocio y ahorro >80% de tokens" },
+            { name: "Auditoría Forense en Vivo", category: "Calidad", reason: "Detectó bug contact.tags vs tagsProperty, CSP vercel.json y listener sin limit()" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026. Circuit Breaker de Wero aprobó 5 salvaguardas obligatorias (idempotencia diaria, aislamiento de Google Tasks, confirmación de pase a E3, fallback sin public_id, deduplicación GOWA).",
+          deliverable: "compass-copiloto/INVESTIGACION_FORENSE_MACRO.md", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-003", layer: "CORE", phase: "Fase 3 — Formalización COMPASS",
+          title: "Fuente de Verdad (compass.json) y Tablero Visual Interactivo (index.html)",
+          description: "Generación del árbol WBS de 11 micro-tareas atómicas en compass.json y renderizado del tablero visual autónomo (CSS puro compatible con CSP y file://) con filtros por capa, estado y miembro del Squad.",
+          status: "completed", owner: "Apolo, Clara & Mina",
+          squadBadges: ["Apolo", "Clara", "Mina"],
+          techStack: [
+            { name: "compass.json (Fuente de Verdad)", category: "Gobernanza", reason: "Control de avance, DoD y stack verificado por tarea" },
+            { name: "HTML5 + CSS Glassmorphic Autocontenido", category: "Visualización", reason: "Compatible offline (file://) y con CSP estricta de Vercel" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026 en compass-copiloto/compass.json y compass-copiloto/index.html.",
+          deliverable: "compass-copiloto/compass.json + index.html", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-004", layer: "MATCHING", phase: "Fase 4 — Cimientos y Filtro Compartido",
+          title: "Motor Compartido de Cruce Propiedad-Lead y Reparación de 'Buscar Contactos' (#036)",
+          description: "Extraer la lógica de cruce a $lib/functions/propertyMatching.ts: corregir el bug de cont-filter (contact.tags vs contact.tagsProperty), alinear criterio de recámaras/presupuesto/zona, conectar cont-filter/+page.svelte al módulo limpio y habilitar modo inverso (Lead E4 → propiedades de sinergia no presentes en sendedProperties).",
+          status: "completed", owner: "Apolo & Lince",
+          squadBadges: ["Apolo", "Lince", "Beto"],
+          techStack: [
+            { name: "TypeScript Puro ($lib/functions/propertyMatching.ts)", category: "Dominio", reason: "Reutilizable en cliente, servidor y /actions/cont-filter sin duplicar lógica" },
+            { name: "Deduplicación sendedProperties + isSinergy", category: "Regla E4", reason: "Garantiza cero envíos repetidos y tope de 3 propiedades por tarjeta" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026: creado propertyMatching.ts y conectados filContacts.ts, filProperties.ts, property/[id], contact/[id] y cont-filter. Se corrigieron 5 bugs reales (tags case-sensitive, sale vs Venta, rangeProp texto vs códigos, zona y Sureste/Sur, y sync sendedProperties). Tests y svelte-check OK en archivos tocados.",
+          deliverable: "src/lib/functions/propertyMatching.ts + parches en filContacts, filProperties, property/[id], contact/[id] y cont-filter", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-005", layer: "IA_ENGINE", phase: "Fase 5 — Control Plane Determinístico",
+          title: "Planificador Determinístico de Candidatos Diarios (/api/copiloto/plan-candidates)",
+          description: "Crear $lib/functions/copilotoPlanner.ts y endpoint rápido POST /api/copiloto/plan-candidates: filtra contactos activos en E1, E2, E4 (solo si tienen ≥1 propiedad de sinergia nueva compatible) y cuota configurable de E3 (default 15, orden reciente→antiguo, <2 años primero y >2 años al agotar <2 años), excluyendo leads que ya tienen tarjeta copiloto abierta hoy (idempotencia).",
+          status: "completed", owner: "Apolo, Wero & Beto",
+          squadBadges: ["Apolo", "Wero", "Beto"],
+          techStack: [
+            { name: "contactBadge.ts & contactAudit.ts", category: "Reutilización", reason: "Usa normalizeStage, getContactCreatedAtMs e isWithinMaxAgeYears ya probados" },
+            { name: "SvelteKit API Route (Tier 1)", category: "Backend", reason: "Respuesta <2s antes de invocar al LLM" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026: creado copilotoPlanner.ts (prioridad E1→E2→E4→E3, idempotencia diaria, cuota E3 2 niveles) y endpoint /api/copiloto/plan-candidates/+server.ts. Tests unitarios OK (ALL_PLANNER_TESTS_PASSED).",
+          deliverable: "src/lib/functions/copilotoPlanner.ts + /api/copiloto/plan-candidates/+server.ts", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-006", layer: "IA_ENGINE", phase: "Fase 6 — Reasoning Plane con Gemini",
+          title: "Analizador IA de Bitácora por Micro-Lotes (/api/copiloto/analyze-batch)",
+          description: "Endpoint POST /api/copiloto/analyze-batch que recibe lotes de 3–5 candidatos, consulta sus últimas entradas de binnacles (acotado), y llama a Gemini v1beta con responseSchema estricto para generar: action, objective, why, whatsappDraft (con links getProposalUrl), recommendedExecution ('call' | 'whatsapp' | 'e3_form') y sugerencia opcional de pase a E3 si detecta 2 llamadas y 2–3 envíos sin respuesta.",
+          status: "completed", owner: "Wero, Nexo & Lince",
+          squadBadges: ["Wero", "Nexo", "Lince"],
+          techStack: [
+            { name: "Gemini REST v1beta + responseSchema", category: "IA Estructurada", reason: "Esquema JSON estricto sin parsers frágiles ni llaves hardcoded" },
+            { name: "getProposalUrl (urlUtils.ts)", category: "Privacidad Links", reason: "Incluye ?c={contactId} y soporta hasta 3 links en E4" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026: creado copilotoAnalyzer.ts (Gemini responseSchema, detección 2 llamadas + 2 envíos sin respuesta, links garantizados y fallback determinístico) y /api/copiloto/analyze-batch/+server.ts. Tests OK.",
+          deliverable: "src/lib/functions/copilotoAnalyzer.ts + /api/copiloto/analyze-batch/+server.ts", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-007", layer: "AGENDA_UI", phase: "Fase 7 — Interfaz en Agenda (/agenda)",
+          title: "Botón Copiloto en Cabecera de Agenda + Tarjetas Uniformes Expandibles con Ejecución 1-Clic",
+          description: "Integrar botón '⚡ Copiloto IA' y pestaña 'Copiloto IA' en /agenda con progreso en vivo por micro-lotes; persistir tarjetas en todos (source: 'atair_copiloto', excluidas de Google Tasks); renderizar filas/tarjetas de altura fija uniforme que al clic se expanden con Acción, Objetivo, Porqué, borrador editable de WhatsApp, alerta de cierre propuesto y botón directo de ejecución (wa.me + registro automático en binnacles y sendedProperties).",
+          status: "completed", owner: "Clara, Apolo & Nexo",
+          squadBadges: ["Clara", "Apolo", "Nexo", "Beto"],
+          techStack: [
+            { name: "Svelte 4 + CSS Glassmorphic ATAIR", category: "Frontend UI", reason: "Coherente con agenda/+page.svelte y altura uniforme sin saltos visuales" },
+            { name: "infoToBinnacle (binnSaver.ts)", category: "Persistencia", reason: "Registra ejecución y actualiza sendedProperties en 1 clic" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026: botón Copiloto IA en /agenda, filas uniformes expandibles y CopilotoCardDetails.svelte con ejecución 1-clic wa.me/llamada y cierre propuesto.",
+          deliverable: "src/lib/types.ts + CopilotoCardDetails.svelte + src/routes/agenda/+page.svelte", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-008", layer: "E3_FORM", phase: "Fase 8 — Embudo Público E3 → E4",
+          title: "Página Pública Ligera de Requerimientos E3 en MatchHomeSite (/buscar + /api/buscar)",
+          description: "Construir en MatchHomeSite (matchhome.vercel.app/buscar?c={contactId}) el formulario móvil veloz para leads E3 y endpoint POST /api/buscar con campos exactos de ATAIR, promoviendo contactStage a 'Etapa 4' con fecha reactivada y registro en binnacles.",
+          status: "completed", owner: "Clara, Nexo & Lince",
+          squadBadges: ["Clara", "Nexo", "Lince", "Apolo"],
+          techStack: [
+            { name: "MatchHomeSite (/buscar)", category: "Conversión E3", reason: "Dominio público de marca MatchHome que ya conocen los leads" },
+            { name: "Firebase Admin SDK (/api/buscar)", category: "Seguridad", reason: "Escritura validada server-side directo a matchhome-crm-46de4" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026 en MatchHomeSite (/buscar + /api/buscar) con link actualizado en copilotoPlanner.ts.",
+          deliverable: "MatchHomeSite/src/routes/buscar/+page.svelte + /api/buscar/+server.js", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-009", layer: "WA_SYNC", phase: "Fase 9 — Sincronización Saliente Móvil (#037)",
+          title: "Captura de Mensajes Salientes desde Celular en n8n (GOWA is_from_me) + Propuesta de Cierre",
+          description: "Actualizar el workflow GfiTqq8lh9an9cIX en n8n para permitir mensajes salientes de GOWA (is_from_me === true) hacia contactos registrados, guardarlos como enviados en binnacles sin duplicar envíos hechos desde ATAIR, detectar links de propiedad para sumarlos a sendedProperties, y marcar proposedClose=true en su tarjeta abierta de Copiloto en todos para confirmación en 1 clic.",
+          status: "completed", owner: "Wero, Apolo & Lince",
+          squadBadges: ["Wero", "Apolo", "Lince"],
+          techStack: [
+            { name: "n8n Workflow GfiTqq8lh9an9cIX + GOWA", category: "Webhook WA", reason: "Mantiene bitácora completa incluso cuando respondes directo desde el teléfono" },
+            { name: "Firestore REST Patch (todos)", category: "Cierre Asistido", reason: "Activa banner de confirmación en 1 clic en /agenda" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026: GfiTqq8lh9an9cIX captura is_from_me=true, deduplica ATAIR (120s), actualiza sendedProperties y marca proposedClose=true en todos. Probado en vivo.",
+          deliverable: "Workflow GfiTqq8lh9an9cIX actualizado + prueba webhook en vivo", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-010", layer: "WA_SYNC", phase: "Fase 10 — Backfill Histórico Opcional",
+          title: "Importación Única, Lenta y Solo Lectura de Respuestas Históricas desde GOWA",
+          description: "Fase aparte: recorrer de manera paginada y con pausas seguras (500–1000ms) los 1,309 chats almacenados en GOWA (solo chats individuales 1:1 anteriores al 14-nov-2026) que coincidan con teléfonos en contacts, e importar sus respuestas históricas a binnacles con deduplicación determinística (cero envíos ni llamadas a servidores de WA).",
+          status: "completed", owner: "Wero & Lince",
+          squadBadges: ["Wero", "Lince", "Argos"],
+          techStack: [
+            { name: "GOWA REST Local Cache (/chats + /chat/:jid/messages)", category: "Solo Lectura", reason: "Consulta base local de GOWA sin molestar sesión WhatsApp" },
+            { name: "ID Determinístico wain_{contactId}_{msgId}", category: "Idempotencia", reason: "Evita duplicar notas en binnacles" }
+          ],
+          assemblyLog: "Completado el 16-nov-2026: 27 páginas sobre 1,309 chats; 163 chats con leads de ATAIR e importadas 1,203 respuestas históricas a binnacles. Workflow desactivado.",
+          deliverable: "1,203 respuestas históricas en binnacles + workflow KIYCGvqkvw5b4PEm desactivado", completedAt: "2026-11-16"
+        },
+        {
+          id: "TASK-011", layer: "QA_DEPLOY", phase: "Fase 11 — Auditoría Lince, Performance & Producción",
+          title: "Optimización de Listener binnacles, Auditoría Integral Lince y Despliegue Vercel",
+          description: "Auditar seguridad (cero claves expuestas, sanitización XSS en tarjetas, validación de inputs en /buscar), verificar compatibilidad con CSP de vercel.json, acotar carga inicial de binnacles en +layout.svelte, correr svelte-check y vite build, validar flujo completo end-to-end y desplegar a producción (atair.app).",
+          status: "completed", owner: "Lince, Apolo & Maya",
+          squadBadges: ["Lince", "Apolo", "Maya", "Beto"],
+          techStack: [
+            { name: "svelte-check + vite build", category: "Verificación", reason: "Cero errores en módulos Copiloto y build de producción limpio" },
+            { name: "Firestore Query Limit (800)", category: "Performance", reason: "Listener de binnacles acotado con orderBy('date','desc') y limit(800)" }
+          ],
+          assemblyLog: "COMPLETADA (16-Nov-2026): Listener binnacles en +layout.svelte acotado a los 800 más recientes; pruebas unitarias (matching, planner, analyzer) en verde; MatchHomeSite build verde; ATAIR npm run vercel-build verde (exit 0); svelte-check con 0 errores en módulos Copiloto/Agenda/+layout (solo 2 errores preexistentes en Binnacle.svelte).",
+          deliverable: "ATAIR Copiloto listo para despliegue a producción (https://atair.app)", completedAt: "2026-11-16"
+        }
+      ]
+    };
+
+    let state = COMPASS_FALLBACK_DATA;
+    let activeLayer = "ALL";
+    let activeStatus = "ALL";
+    let activeSquad = null;
+
+    const statusMeta = {
+      completed: { label: "✓ Logrado", badgeClass: "status-completed", cardClass: "is-completed" },
+      in_progress: { label: "⚡ En Curso", badgeClass: "status-in_progress", cardClass: "is-progress" },
+      pending: { label: "⏳ Pendiente", badgeClass: "status-pending", cardClass: "is-pending" }
+    };
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderSummary() {
+      document.getElementById("projectIdBadge").textContent = state.projectId || "COMPASS-ATAIR-COPILOTO";
+      document.getElementById("updatedAtBadge").textContent = "Actualizado: " + (state.updatedAt || "2026-11-16");
+      document.getElementById("visionText").textContent = state.vision || "";
+      document.getElementById("dodText").textContent = state.definitionOfDone || "";
+      document.getElementById("systemGoalText").textContent = state.strategicSummary?.systemGoal || "";
+      document.getElementById("currentFocusText").textContent = state.strategicSummary?.currentFocus || "";
+
+      const tasks = state.tasks || [];
+      const total = tasks.length || 1;
+      const done = tasks.filter(t => t.status === "completed").length;
+      const prog = tasks.filter(t => t.status === "in_progress").length;
+      const pend = tasks.filter(t => t.status === "pending").length;
+      const pct = Math.round((done / total) * 100);
+
+      document.getElementById("progressText").textContent = pct + "%";
+      document.getElementById("taskCountLabel").textContent = `${done}/${tasks.length} micro-tareas completadas`;
+      document.getElementById("progressBar").style.width = pct + "%";
+      document.getElementById("countCompleted").textContent = done;
+      document.getElementById("countProgress").textContent = prog;
+      document.getElementById("countPending").textContent = pend;
+    }
+
+    function renderPipeline() {
+      const container = document.getElementById("pipelineContainer");
+      const filtered = (state.tasks || []).filter(t => {
+        const matchLayer = activeLayer === "ALL" || t.layer === activeLayer;
+        const matchStatus = activeStatus === "ALL" || t.status === activeStatus;
+        const matchSquad = !activeSquad || (t.squadBadges || []).includes(activeSquad);
+        return matchLayer && matchStatus && matchSquad;
+      });
+
+      const notice = document.getElementById("activeSquadNotice");
+      if (activeSquad) {
+        notice.style.display = "block";
+        notice.textContent = `Filtrando tareas asignadas a: ${activeSquad} (vuelve a hacer clic en ${activeSquad} para limpiar el filtro)`;
+      } else {
+        notice.style.display = "none";
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="info-box mono" style="text-align:center;">No hay micro-tareas que coincidan con los filtros actuales.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(task => {
+        const meta = statusMeta[task.status] || statusMeta.pending;
+        const squadHtml = (task.squadBadges || []).map(s => `<span class="squad-chip mono">${escapeHtml(s)}</span>`).join("");
+        const stackHtml = (task.techStack || []).map(st => `
+          <div class="tech-item">
+            <div class="tech-item-head">
+              <span class="tech-name mono">${escapeHtml(st.name)}</span>
+              <span class="tech-cat mono">${escapeHtml(st.category)}</span>
+            </div>
+            <p class="tech-reason">${escapeHtml(st.reason)}</p>
+          </div>
+        `).join("");
+
+        return `
+          <div class="node-wrap">
+            <div class="node-dot ${escapeHtml(task.status)}"></div>
+            <details class="task-card ${meta.cardClass}">
+              <summary>
+                <div class="task-meta">
+                  <div class="task-meta-left">
+                    <span class="task-id mono">${escapeHtml(task.id)}</span>
+                    <span class="task-layer mono">${escapeHtml(task.layer)}</span>
+                    <span class="task-phase mono">${escapeHtml(task.phase)}</span>
+                  </div>
+                  <span class="status-badge mono ${meta.badgeClass}">${meta.label}</span>
+                </div>
+                <h3 class="task-title">${escapeHtml(task.title)}</h3>
+                <p class="task-desc">${escapeHtml(task.description)}</p>
+                <div class="task-foot-preview">
+                  <div class="squad-mini-list">${squadHtml}</div>
+                  <span class="expand-hint mono">Clic para desplegar Stack & Bitácora ▼</span>
+                </div>
+              </summary>
+              <div class="task-details-body">
+                <div>
+                  <div class="detail-block-title mono" style="color: var(--sky);">🛠️ Stack & Herramientas</div>
+                  ${stackHtml || '<div class="log-box">Por definir en Micro-Investigación JIT.</div>'}
+                </div>
+                <div>
+                  <div class="detail-block-title mono" style="color: var(--emerald);">📝 Bitácora de Ensamble</div>
+                  <div class="log-box">
+                    <div class="mono" style="font-size:11px; color:var(--text-muted); margin-bottom:5px;">
+                      Responsable: <strong style="color:#fff;">${escapeHtml(task.owner)}</strong>
+                      ${task.completedAt ? ` • Concluido: <span style="color:var(--emerald);">${escapeHtml(task.completedAt)}</span>` : ""}
+                    </div>
+                    ${escapeHtml(task.assemblyLog)}
+                  </div>
+                  <div class="detail-block-title mono" style="color: var(--amber);">📦 Entregable</div>
+                  <div class="log-box mono" style="margin-bottom:0; color:var(--gold-light);">${escapeHtml(task.deliverable || "Por definir")}</div>
+                </div>
+              </div>
+            </details>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderSquad() {
+      const container = document.getElementById("squadContainer");
+      container.innerHTML = (state.squad || []).map(member => `
+        <button type="button" class="squad-card ${activeSquad === member.name ? "active" : ""}" data-squad="${escapeHtml(member.name)}">
+          <span class="squad-avatar">${escapeHtml(member.avatar)}</span>
+          <div>
+            <div class="squad-name">${escapeHtml(member.name)}</div>
+            <div class="squad-role">${escapeHtml(member.role)}</div>
+          </div>
+        </button>
+      `).join("");
+
+      container.querySelectorAll(".squad-card").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const name = btn.getAttribute("data-squad");
+          activeSquad = activeSquad === name ? null : name;
+          renderSquad();
+          renderPipeline();
+        });
+      });
+    }
+
+    document.querySelectorAll("#layerFilterBar .filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeLayer = btn.getAttribute("data-layer");
+        document.querySelectorAll("#layerFilterBar .filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderPipeline();
+      });
+    });
+
+    document.querySelectorAll("#statusFilterBar .filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeStatus = btn.getAttribute("data-status");
+        document.querySelectorAll("#statusFilterBar .filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderPipeline();
+      });
+    });
+
+    async function init() {
+      try {
+        const res = await fetch("compass.json", { cache: "no-store" });
+        if (res.ok) {
+          const remote = await res.json();
+          if (remote && Array.isArray(remote.tasks) && remote.tasks.length > 0) {
+            state = remote;
+          }
+        }
+      } catch (e) {
+        // Fallback seguro cuando se abre directamente vía file://
+      }
+      renderSummary();
+      renderPipeline();
+      renderSquad();
+    }
+
+    init();
+  </script>
+</body>
+</html>

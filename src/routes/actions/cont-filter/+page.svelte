@@ -6,6 +6,7 @@
     import { contactsStore, propertiesStore, systStatus, contact } from '$lib/stores/dataStore';    
     import { InputOptions, InputOptionsMultiple, InputNumber, Button } from '$components';
     import { formatDate } from '$lib/functions/dateFunctions';
+    import { filterContactsByCriteria } from '$lib/functions/propertyMatching';
     import {
         AUDIT_BUCKET_LABELS,
         buildAuditCsv,
@@ -152,7 +153,7 @@
     const locaProperty = {
         operation: {
             name: "Ubicación de la Propiedad",
-            choices: ["Norte", "Noroeste", "Noreste", "Oeste", "Centronorte", "Este", "CentroSur", "Suroeste", "Suroeste"]
+            choices: ["Norte", "Noroeste", "Noreste", "Oeste", "Centronorte", "Este", "Centrosur", "Suroeste", "Sureste", "Sur"]
         }
     };
 
@@ -218,121 +219,21 @@
         }
     }
 
-    // Modificar la lógica de filtrado para que sea en cascada
-    $: {
-        // Comenzar con todos los contactos
-        filteredContacts = contacts;
-
-        // Filtrar por rango de fechas
-        if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            filteredContacts = filteredContacts.filter(contact => {
-                const contactDate = new Date(contact.createdAt);
-                return contactDate >= start && contactDate <= end;
-            });
-        }
-
-        // Filtrar por tipo de contacto
-        if (selectedtypeContact) {
-            filteredContacts = filteredContacts.filter(contact => {
-                const tc = contact.typeContact || '';
-                if (tc === selectedtypeContact) return true;
-                if (selectedtypeContact === 'Vendedor' && tc === 'Propietario') return true;
-                if (selectedtypeContact === 'Comprador' && (tc === 'Cliente' || tc === 'Venta')) return true;
-                if (selectedtypeContact === 'Arrendatario' && tc === 'Renta') return true;
-                if (selectedtypeContact === 'Agente Inmobiliario' && (tc === 'Inmobiliaria' || tc === 'Colaborador' || tc === 'Inmobiliario')) return true;
-                return false;
-            });
-        }
-
-        // Filtrar por tipo de propiedad
-        if (selectedtypeProperty) {
-            filteredContacts = filteredContacts.filter(contact => 
-                contact.selecTP === selectedtypeProperty
-            );
-        }
-
-        // Filtrar por presupuesto
-        if (budget && budget > 0) {
-            const maxBudget = budget * 1.10; // 10% más
-            const minBudget = budget * 0.70; // 30% menos
-            filteredContacts = filteredContacts.filter(contact => {
-                const contactBudget = Number(contact.budget || 0);
-                return contactBudget >= minBudget && contactBudget <= maxBudget;
-            });
-        } else {
-            // Si no hay budget específico, usar el rango de propiedad
-            let maxBudgetByRange = 0;
-            
-            switch(selectedrangeProp) {
-                case 'PRM': maxBudgetByRange = 1000000; break;
-                case 'SGN': maxBudgetByRange = 2500000; break;
-                case 'TRC': maxBudgetByRange = 4500000; break;
-                case 'CRT': maxBudgetByRange = 8500000; break;
-                case 'QNT': maxBudgetByRange = 12000000; break;
-                case 'SXT': maxBudgetByRange = 15000000; break;
-            }
-
-            if (maxBudgetByRange > 0) {
-                filteredContacts = filteredContacts.filter(contact => {
-                    const contactBudget = Number(contact.budget || 0);
-                    return contactBudget <= maxBudgetByRange;
-                });
-            }
-        }
-
-        // Filtrar por recámaras
-        if (selectedBedrooms) {
-            filteredContacts = filteredContacts.filter(contact => 
-                Number(contact.numBeds) <= Number(selectedBedrooms.replace('+', ''))
-            );
-        }
-
-        if (selectedcontactStage) {
-            filteredContacts = filteredContacts.filter(contact => 
-                contact.contactStage === selectedcontactStage
-            );
-        }
-
-        // Filtrar por baños
-        if (selectedBathrooms) {
-            filteredContacts = filteredContacts.filter(contact => 
-                Number(contact.numBaths) <= Number(selectedBathrooms.replace('+', ''))
-            );
-        }
-
-        // Filtrar por estacionamientos
-        if (selectedParking) {
-            filteredContacts = filteredContacts.filter(contact => 
-                Number(contact.numParks) <= Number(selectedParking.replace('+', ''))
-            );
-        }
-
-        // Filtrar por ubicación
-        if (selectedlocaProperty) {
-            filteredContacts = filteredContacts.filter(contact => {
-                // Verifica si locaProperty es un array
-                if (Array.isArray(contact.locaProperty)) {
-                    return contact.locaProperty.includes(selectedlocaProperty);
-                }
-                // Si no es array, compara directamente
-                return contact.locaProperty === selectedlocaProperty;
-            });
-        }
-
-        // Filtrar por tags (preferencias)
-        if (selectedtagsProperty.length > 0) {
-            filteredContacts = filteredContacts.filter(contact => {
-                // Verifica si el contacto tiene tags y si es un array
-                if (contact.tags && Array.isArray(contact.tags)) {
-                    // Verifica si al menos uno de los tags seleccionados está presente
-                    return selectedtagsProperty.some(tag => contact.tagsProperty.includes(tag));
-                }
-                return false;
-            });
-        }
-    }
+    // Lógica unificada de filtrado multicriterio (#036: corrige tags/tagsProperty, etapas, zonas y rangos)
+    $: filteredContacts = filterContactsByCriteria(contacts, {
+        startDate,
+        endDate,
+        typeContact: selectedtypeContact,
+        typeProperty: selectedtypeProperty,
+        contactStage: selectedcontactStage,
+        budget,
+        rangeProp: selectedrangeProp,
+        bedrooms: selectedBedrooms,
+        bathrooms: selectedBathrooms,
+        parking: selectedParking,
+        locaProperty: selectedlocaProperty,
+        tagsProperty: selectedtagsProperty
+    }) as ExtendedContact[];
 
     // function handleFilter() {
     //     const filters = {
@@ -375,17 +276,7 @@
                         startDate !== '' ||
                         endDate !== '';
 
-    // Agregar variable reactiva para verificar si hay filtros activos
-    $: hasActiveFilters = selectedBedrooms !== '' || 
-                         selectedBathrooms !== '' || 
-                         selectedParking !== '' || 
-                         selectedtypeContact !== '' || 
-                         selectedtypeProperty !== '' ||
-                         selectedlocaProperty !== '' ||
-                         selectedtagsProperty.length > 0 ||
-                         budget !== 0 ||
-                         startDate !== '' ||
-                         endDate !== '';
+    $: hasActiveFilters = showClearButton || selectedrangeProp !== '';
 </script>
 
 <h1 class="title">Radiografía y Filtro de Contactos</h1>

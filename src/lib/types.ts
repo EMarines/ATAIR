@@ -172,6 +172,30 @@ export interface Binnacle {
   to?: string;
 }
 
+export interface CopilotoTodoMeta {
+  contactId: string;
+  fullName: string;
+  telephon: string;
+  stage: 'E1' | 'E2' | 'E3' | 'E4' | string;
+  priority?: number;
+  runDate: string;
+  action: string;
+  objective: string;
+  why: string;
+  recommendedExecution: 'call' | 'whatsapp' | 'e3_form' | string;
+  whatsappDraft: string;
+  suggestedStageChange?: 'NONE' | 'E2' | 'E3' | 'E4' | string;
+  propertyIds?: string[];
+  propertyLinks?: string[];
+  e3FormUrl?: string;
+  callsWithoutReply?: number;
+  propertySendsWithoutReply?: number;
+  proposedClose?: boolean;
+  proposedCloseReason?: string;
+  proposedCloseAt?: number;
+  executedAt?: number;
+}
+
 export interface Todo {
   id: string;
   task: string;
@@ -190,6 +214,7 @@ export interface Todo {
   recurrence?: 'NONE' | 'DAILY' | 'WEEKDAYS' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | string;
   completedAt?: number | null;
   order?: number;
+  copilotoMeta?: CopilotoTodoMeta;
 }
 
 

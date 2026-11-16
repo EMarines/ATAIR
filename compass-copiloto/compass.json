@@ -1,0 +1,224 @@
+{
+  "projectId": "COMPASS-ATAIR-COPILOTO",
+  "projectName": "ATAIR Copiloto — Rutina Inteligente de Seguimiento en Agenda",
+  "vision": "Dotar a ATAIR CRM de un copiloto inteligente accionado por un botón en Agenda que analiza determinísticamente las etapas (E1–E4), lee el historial y bitácora de cada lead con Gemini, y genera tarjetas uniformes expandibles con Acción, Objetivo, Porqué, borrador de WhatsApp con links de propuesta y botón de ejecución directa en 1 clic, trabajando únicamente con clientes interesados.",
+  "strategicSummary": {
+    "systemGoal": "Maximizar la velocidad de atención en E1/E2, nutrir diariamente a los calificados E4 con hasta 3 propiedades de sinergia no enviadas, depurar E3 mediante una cuota diaria de 15 leads con formulario ligero, y mantener sincronizada la bitácora incluso cuando el asesor responde desde su WhatsApp móvil.",
+    "currentFocus": "Proyecto 100% completado (11/11 micro-tareas). ATAIR Copiloto, MatchHomeSite /buscar, n8n GOWA outbound + backfill y optimización de binnacles listos para producción.",
+    "howWeAchieveIt": [
+      "Arquitectura 2-Tier (Blueprint First, Model Second): Reglas determinísticas en código + razonamiento acotado con Gemini Structured Output (responseSchema)",
+      "Motor compartido de cruce inverso ($lib/functions/propertyMatching.ts) reparando el bug contact.tags vs contact.tagsProperty (#036) y deduplicando contra sendedProperties (máx. 3 propiedades por envío en E4)",
+      "Procesamiento por micro-lotes desde /agenda para cero timeouts 504 en Vercel, barra de progreso en tiempo real e idempotencia diaria por contacto",
+      "Tarjetas de altura fija en Agenda (source: 'atair_copiloto', sin contaminar Google Tasks) expandibles al clic con Acción, Objetivo, Porqué y botón 1-clic de disparo wa.me / llamada",
+      "Página pública ligera en ATAIR (/buscar) para autocalificación de E3 → E4 directa a Firestore vía API validada",
+      "Captura de mensajes salientes desde móvil en n8n GOWA (#037) con propuesta de cierre de tarjeta confirmable en 1 clic"
+    ]
+  },
+  "status": "completed",
+  "priority": "ALTA",
+  "createdAt": "2026-11-16",
+  "updatedAt": "2026-11-16",
+  "progressPercentage": 100,
+  "definitionOfDone": "Botón 'ATAIR Copiloto' operativo en /agenda generando tarjetas idempotentes por micro-lotes para E1, E2, E4 (máx 3 sinergias nuevas vía motor corregido) y cuota configurable de 15 E3 diarios (<2 años reciente→antiguo primero, >2 años al final); tarjetas de altura uniforme expandibles con Acción, Objetivo, Porqué, borrador WhatsApp + getProposalUrl y botón de ejecución directa; página pública ligera E3 promoviendo leads a E4; captura de respuestas móviles en n8n GOWA con cierre propuesto confirmable en 1 clic; y build/auditoría Lince aprobados en producción.",
+  "squad": [
+    { "name": "Mina", "role": "Jefa de Gabinete & Memoria Viva", "avatar": "💼" },
+    { "name": "Maya", "role": "Master Orchestrator & Réferi", "avatar": "🧠" },
+    { "name": "Apolo", "role": "Arquitecto Técnico & WBS", "avatar": "🏛️" },
+    { "name": "Wero", "role": "Arquitecto de Bucles & Prompts IA", "avatar": "⚡" },
+    { "name": "Beto", "role": "Filtro Comercial & Trinchera Chihuahua", "avatar": "🤝" },
+    { "name": "Argos", "role": "Radar Tecnológico & I+D", "avatar": "🔭" },
+    { "name": "Lince", "role": "Auditor Técnico & Seguridad", "avatar": "🛡️" },
+    { "name": "Clara", "role": "Diseño Visual & UX Agenda", "avatar": "🎨" },
+    { "name": "Nexo", "role": "Copywriting & Conversión WhatsApp", "avatar": "✍️" },
+    { "name": "Eva", "role": "Seguimiento Conversacional", "avatar": "👩‍⚖️" }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "layer": "CORE",
+      "phase": "Fase 1 — Kickoff Dialógico",
+      "title": "Kickoff Secuencial COMPASS (16 Rondas 1 a 1) y Reglas de Negocio E1–E4",
+      "description": "Definición completa con Enrique Marines: botón en /agenda, tarjetas de altura uniforme expandibles (Acción + Objetivo + Porqué + Botón 1-clic), cadencia diaria E1/E2/E4, cuota inicial 15/día en E3 (<2 años primero, >2 años después), caída a E3 tras 2 llamadas y 2–3 envíos sin respuesta, máx. 3 propiedades en E4, página ligera E3 y cierre propuesto en 1 clic.",
+      "status": "completed",
+      "owner": "Enrique Marines, Mina & Maya",
+      "squadBadges": ["Mina", "Maya", "Beto", "Eva"],
+      "techStack": [
+        { "name": "Protocolo COMPASS (1 Pregunta/Turno)", "category": "Gobernanza", "reason": "Umbral 95% certidumbre sin suposiciones ni sobreingeniería" },
+        { "name": "Bitácora Central (#035, #036, #037)", "category": "Trazabilidad", "reason": "Registro atómico sincronizado en POR_ARREGLAR.md y PENDIENTES_Y_TAREAS.md" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026 tras 16 turnos dialógicos y bautizo oficial como 'ATAIR Copiloto'.",
+      "deliverable": "Acuerdos #035, #036 y #037 en Bitácora",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-002",
+      "layer": "CORE",
+      "phase": "Fase 2 — Investigación Forense Macro",
+      "title": "Benchmarking Activo 2025–2026, Auditoría de Código ATAIR y Circuit Breaker",
+      "description": "Investigación web activa (arquitectura 2-Tier CRM Real Estate, Gemini Structured Outputs, Vercel batching/timeouts) + auditoría forense de agenda/+page.svelte, cont-filter/+page.svelte, +layout.svelte, contactBadge.ts, binnSaver.ts, urlUtils.ts, routes.ts, firestore.rules, vercel.json y GOWA/n8n.",
+      "status": "completed",
+      "owner": "Wero, Argos, Lince & Apolo",
+      "squadBadges": ["Wero", "Argos", "Lince", "Apolo"],
+      "techStack": [
+        { "name": "Arquitectura 2-Tier (Determinístico + LLM)", "category": "Patrón Top 1%", "reason": "Cero alucinaciones en reglas de negocio y ahorro >80% de tokens" },
+        { "name": "Auditoría Forense en Vivo", "category": "Calidad", "reason": "Detectó bug contact.tags vs tagsProperty, CSP vercel.json y listener sin limit()" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026. Circuit Breaker de Wero aprobó 5 salvaguardas obligatorias (idempotencia diaria, aislamiento de Google Tasks, confirmación de pase a E3, fallback sin public_id, deduplicación GOWA).",
+      "deliverable": "compass-copiloto/INVESTIGACION_FORENSE_MACRO.md",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-003",
+      "layer": "CORE",
+      "phase": "Fase 3 — Formalización COMPASS",
+      "title": "Fuente de Verdad (compass.json) y Tablero Visual Interactivo (index.html)",
+      "description": "Generación del árbol WBS de 11 micro-tareas atómicas en compass.json y renderizado del tablero visual autónomo (CSS puro compatible con CSP y file://) con filtros por capa, estado y miembro del Squad.",
+      "status": "completed",
+      "owner": "Apolo, Clara & Mina",
+      "squadBadges": ["Apolo", "Clara", "Mina"],
+      "techStack": [
+        { "name": "compass.json (Fuente de Verdad)", "category": "Gobernanza", "reason": "Control de avance, DoD y stack verificado por tarea" },
+        { "name": "HTML5 + CSS Glassmorphic Autocontenido", "category": "Visualización", "reason": "Compatible offline (file://) y con CSP estricta de Vercel" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026 en compass-copiloto/compass.json y compass-copiloto/index.html.",
+      "deliverable": "compass-copiloto/compass.json + index.html",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-004",
+      "layer": "MATCHING",
+      "phase": "Fase 4 — Cimientos y Filtro Compartido",
+      "title": "Motor Compartido de Cruce Propiedad-Lead y Reparación de 'Buscar Contactos' (#036)",
+      "description": "Extraer la lógica de cruce a $lib/functions/propertyMatching.ts: corregir el bug de cont-filter (contact.tags vs contact.tagsProperty), alinear criterio de recámaras/presupuesto/zona, conectar cont-filter/+page.svelte al módulo limpio y habilitar modo inverso (Lead E4 → propiedades de sinergia no presentes en sendedProperties).",
+      "status": "completed",
+      "owner": "Apolo & Lince",
+      "squadBadges": ["Apolo", "Lince", "Beto"],
+      "techStack": [
+        { "name": "TypeScript Puro ($lib/functions/propertyMatching.ts)", "category": "Dominio", "reason": "Reutilizable en cliente, servidor y /actions/cont-filter sin duplicar lógica" },
+        { "name": "Deduplicación sendedProperties + isSinergy", "category": "Regla E4", "reason": "Garantiza cero envíos repetidos y tope de 3 propiedades por tarjeta" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026: creado propertyMatching.ts y conectados filContacts.ts, filProperties.ts, property/[id], contact/[id] y cont-filter. Se corrigieron 5 bugs reales: (1) comparación case-sensitive de tagToFeatures en tags; (2) desajuste sale vs Venta en selecTO; (3) rangeProp en formato texto vs códigos PRM-SXT; (4) zona leída desde todo el objeto Property y opción Sureste/Sur en cont-filter; (5) sync unificada de sendedProperties + binnacles en Buscar Contactos y sendWA vía infoToBinnacle. Pruebas unitarias (6 casos) y svelte-check sin errores en archivos tocados.",
+      "deliverable": "src/lib/functions/propertyMatching.ts + parches en filContacts, filProperties, property/[id], contact/[id] y cont-filter",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-005",
+      "layer": "IA_ENGINE",
+      "phase": "Fase 5 — Control Plane Determinístico",
+      "title": "Planificador Determinístico de Candidatos Diarios (/api/copiloto/plan-candidates)",
+      "description": "Crear $lib/functions/copilotoPlanner.ts y endpoint rápido POST /api/copiloto/plan-candidates: filtra contactos activos en E1, E2, E4 (solo si tienen ≥1 propiedad de sinergia nueva compatible) y cuota configurable de E3 (default 15, orden reciente→antiguo, <2 años primero y >2 años al agotar <2 años), excluyendo leads que ya tienen tarjeta copiloto abierta hoy (idempotencia).",
+      "status": "completed",
+      "owner": "Apolo, Wero & Beto",
+      "squadBadges": ["Apolo", "Wero", "Beto"],
+      "techStack": [
+        { "name": "contactBadge.ts & contactAudit.ts", "category": "Reutilización", "reason": "Usa normalizeStage, getContactCreatedAtMs e isWithinMaxAgeYears ya probados" },
+        { "name": "SvelteKit API Route (Tier 1)", "category": "Backend", "reason": "Respuesta <2s antes de invocar al LLM" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026: creado copilotoPlanner.ts (prioridad E1→E2→E4→E3, idempotencia por tarjeta abierta o runDate Chihuahua, cuota E3 en 2 niveles <2 años vs >2 años, links getProposalUrl y /buscar?c=) y endpoint /api/copiloto/plan-candidates/+server.ts. Tests unitarios OK (ALL_PLANNER_TESTS_PASSED).",
+      "deliverable": "src/lib/functions/copilotoPlanner.ts + /api/copiloto/plan-candidates/+server.ts",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-006",
+      "layer": "IA_ENGINE",
+      "phase": "Fase 6 — Reasoning Plane con Gemini",
+      "title": "Analizador IA de Bitácora por Micro-Lotes (/api/copiloto/analyze-batch)",
+      "description": "Endpoint POST /api/copiloto/analyze-batch que recibe lotes de 3–5 candidatos, consulta sus últimas entradas de binnacles (acotado), y llama a Gemini v1beta con responseSchema estricto para generar: action, objective, why, whatsappDraft (con links getProposalUrl), recommendedExecution ('call' | 'whatsapp' | 'e3_form') y sugerencia opcional de pase a E3 si detecta 2 llamadas y 2–3 envíos sin respuesta.",
+      "status": "completed",
+      "owner": "Wero, Nexo & Lince",
+      "squadBadges": ["Wero", "Nexo", "Lince"],
+      "techStack": [
+        { "name": "Gemini REST v1beta + responseSchema", "category": "IA Estructurada", "reason": "Esquema JSON estricto sin parsers frágiles ni llaves hardcoded" },
+        { "name": "getProposalUrl (urlUtils.ts)", "category": "Privacidad Links", "reason": "Incluye ?c={contactId} y soporta hasta 3 links en E4" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026: creado copilotoAnalyzer.ts (summarizeContactBinnacles, detección automática 2 llamadas + 2 envíos sin respuesta para sugerir pase a E3, Gemini responseSchema + thinkingBudget=0, inyección garantizada de links E4/E3 y fallback determinístico) y endpoint /api/copiloto/analyze-batch/+server.ts. Tests unitarios OK (ALL_ANALYZER_TESTS_PASSED).",
+      "deliverable": "src/lib/functions/copilotoAnalyzer.ts + /api/copiloto/analyze-batch/+server.ts",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-007",
+      "layer": "AGENDA_UI",
+      "phase": "Fase 7 — Interfaz en Agenda (/agenda)",
+      "title": "Botón Copiloto en Cabecera de Agenda + Tarjetas Uniformes Expandibles con Ejecución 1-Clic",
+      "description": "Integrar botón '⚡ Copiloto IA' y pestaña 'Copiloto IA' en /agenda con progreso en vivo por micro-lotes; persistir tarjetas en todos (source: 'atair_copiloto', excluidas de Google Tasks); renderizar filas/tarjetas de altura fija uniforme que al clic se expanden con Acción, Objetivo, Porqué, borrador editable de WhatsApp, alerta de cierre propuesto y botón directo de ejecución (wa.me + registro automático en binnacles y sendedProperties).",
+      "status": "completed",
+      "owner": "Clara, Apolo & Nexo",
+      "squadBadges": ["Clara", "Apolo", "Nexo", "Beto"],
+      "techStack": [
+        { "name": "Svelte 4 + CSS Glassmorphic ATAIR", "category": "Frontend UI", "reason": "Coherente con agenda/+page.svelte y altura uniforme sin saltos visuales" },
+        { "name": "infoToBinnacle (binnSaver.ts)", "category": "Persistencia", "reason": "Registra ejecución y actualiza sendedProperties en 1 clic" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026: añadido botón Copiloto IA con micro-lotes en /agenda, pestaña dedicada, filas uniformes expandibles y componente CopilotoCardDetails.svelte (Acción, Objetivo, Porqué, borrador editable, ejecución 1-clic wa.me/llamada, cierre propuesto desde móvil y cambio de etapa sugerido).",
+      "deliverable": "src/lib/types.ts + src/lib/components/CopilotoCardDetails.svelte + src/routes/agenda/+page.svelte",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-008",
+      "layer": "E3_FORM",
+      "phase": "Fase 8 — Embudo Público E3 → E4",
+      "title": "Página Pública Ligera de Requerimientos E3 en MatchHomeSite (/buscar + /api/buscar)",
+      "description": "Construir en MatchHomeSite (matchhome.vercel.app/buscar?c={contactId}) el formulario móvil veloz para leads E3 (zona, presupuesto, tipo de propiedad, operación, recámaras, amenidades, comentarios) y endpoint POST /api/buscar con campos exactos de ATAIR (selecTP, selecTO, budget, numBeds, locaProperty[], tagsProperty[]), promoviendo contactStage a 'Etapa 4' con fecha reactivada y registro en binnacles.",
+      "status": "completed",
+      "owner": "Clara, Nexo & Lince",
+      "squadBadges": ["Clara", "Nexo", "Lince", "Apolo"],
+      "techStack": [
+        { "name": "MatchHomeSite (/buscar)", "category": "Conversión E3", "reason": "Dominio público de marca MatchHome que ya conocen los leads" },
+        { "name": "Firebase Admin SDK (/api/buscar)", "category": "Seguridad", "reason": "Escritura validada server-side directo a matchhome-crm-46de4" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026: por recomendación estratégica de marca, el formulario E3 vive en MatchHomeSite (src/routes/buscar/+page.svelte + src/routes/api/buscar/+server.js) con enlace actualizado en copilotoPlanner.ts (https://matchhome.vercel.app/buscar?c=...).",
+      "deliverable": "MatchHomeSite/src/routes/buscar/+page.svelte + src/routes/api/buscar/+server.js",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-009",
+      "layer": "WA_SYNC",
+      "phase": "Fase 9 — Sincronización Saliente Móvil (#037)",
+      "title": "Captura de Mensajes Salientes desde Celular en n8n (GOWA is_from_me) + Propuesta de Cierre",
+      "description": "Actualizar el workflow GfiTqq8lh9an9cIX en n8n para permitir mensajes salientes de GOWA (is_from_me === true) hacia contactos registrados, guardarlos como enviados en binnacles sin duplicar envíos hechos desde ATAIR, detectar links de propiedad para sumarlos a sendedProperties, y marcar proposedClose=true en su tarjeta abierta de Copiloto en todos para confirmación en 1 clic.",
+      "status": "completed",
+      "owner": "Wero, Apolo & Lince",
+      "squadBadges": ["Wero", "Apolo", "Lince"],
+      "techStack": [
+        { "name": "n8n Workflow GfiTqq8lh9an9cIX + GOWA", "category": "Webhook WA", "reason": "Mantiene bitácora completa incluso cuando respondes directo desde el teléfono" },
+        { "name": "Firestore REST Patch (todos)", "category": "Cierre Asistido", "reason": "Activa banner de confirmación en 1 clic en /agenda" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026: actualizados ExtraerMensajesEntrantes y GuardarEnFirestoreBitacora en workflow GfiTqq8lh9an9cIX. Captura is_from_me === true como outbound, deduplica envíos recientes hechos desde ATAIR (120s), extrae links /propuesta/ y /property/ para sendedProperties, y marca proposedClose=true en tarjetas abiertas de Copiloto en todos. Probado en vivo contra webhook (HTTP 200 OK).",
+      "deliverable": "Workflow GfiTqq8lh9an9cIX actualizado + prueba webhook en vivo",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-010",
+      "layer": "WA_SYNC",
+      "phase": "Fase 10 — Backfill Histórico Opcional",
+      "title": "Importación Única, Lenta y Solo Lectura de Respuestas Históricas desde GOWA",
+      "description": "Fase aparte: recorrer de manera paginada y con pausas seguras (500–1000ms) los 1,309 chats almacenados en GOWA (solo chats individuales 1:1 anteriores al 14-nov-2026) que coincidan con teléfonos en contacts, e importar sus respuestas históricas a binnacles con deduplicación determinística (cero envíos ni llamadas a servidores de WA).",
+      "status": "completed",
+      "owner": "Wero & Lince",
+      "squadBadges": ["Wero", "Lince", "Argos"],
+      "techStack": [
+        { "name": "GOWA REST Local Cache (/chats + /chat/:jid/messages)", "category": "Solo Lectura", "reason": "Consulta base local de GOWA sin molestar sesión WhatsApp" },
+        { "name": "ID Determinístico wain_{contactId}_{msgId}", "category": "Idempotencia", "reason": "Evita duplicar notas en binnacles" }
+      ],
+      "assemblyLog": "Completado el 16-nov-2026: ejecutado flujo paginado KIYCGvqkvw5b4PEm en 27 páginas de solo lectura sobre los 1,309 chats de GOWA. Coincidieron 163 chats con contactos de ATAIR, importando 1,203 respuestas históricas a binnacles (23 grupos y 1,123 números no registrados saltados). Flujo desactivado tras la carga.",
+      "deliverable": "1,203 respuestas históricas en binnacles + workflow KIYCGvqkvw5b4PEm desactivado",
+      "completedAt": "2026-11-16"
+    },
+    {
+      "id": "TASK-011",
+      "layer": "QA_DEPLOY",
+      "phase": "Fase 11 — Auditoría Lince, Performance & Producción",
+      "title": "Optimización de Listener binnacles, Auditoría Integral Lince y Despliegue Vercel",
+      "description": "Auditar seguridad (cero claves expuestas, sanitización XSS en tarjetas, validación de inputs en /buscar), verificar compatibilidad con CSP de vercel.json, acotar carga inicial de binnacles en +layout.svelte, correr svelte-check y vite build, validar flujo completo end-to-end y desplegar a producción (atair.app).",
+      "status": "completed",
+      "owner": "Lince, Apolo & Maya",
+      "squadBadges": ["Lince", "Apolo", "Maya", "Beto"],
+      "techStack": [
+        { "name": "svelte-check + vite build", "category": "Verificación", "reason": "Cero errores en módulos Copiloto y build de producción limpio" },
+        { "name": "Firestore Query Limit (800)", "category": "Performance", "reason": "Listener de binnacles acotado con orderBy('date','desc') y limit(800)" }
+      ],
+      "assemblyLog": "COMPLETADA (16-Nov-2026): Listener binnacles en +layout.svelte acotado a los 800 más recientes; pruebas unitarias (matching, planner, analyzer) en verde; MatchHomeSite build verde; ATAIR npm run vercel-build verde (exit 0); svelte-check con 0 errores en módulos Copiloto/Agenda/+layout (solo 2 errores preexistentes en Binnacle.svelte).",
+      "deliverable": "ATAIR Copiloto listo para despliegue a producción (https://atair.app)",
+      "completedAt": "2026-11-16"
+    }
+  ]
+}

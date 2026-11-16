@@ -3,6 +3,48 @@ export { toComaSep, toTele } from './format';
 export { infoToBinnacle } from './binnSaver';
 export { findPropertiesForContact } from './filProperties';
 export { findContactsForProperty } from './filContacts';
+export {
+	evaluatePropertyContactMatch,
+	filterContactsByCriteria,
+	getSentContactIdsForProperty,
+	getSentPropertyIdsForContact,
+	isAvailableProperty,
+	isSynergyProperty,
+	matchContactsForProperty,
+	matchPropertiesForContact,
+	normalizeAmenityToken,
+	normalizeOperation,
+	normalizePropertyType,
+	normalizeZoneToken,
+	parseRangeBounds,
+	wasPropertySentToContact
+} from './propertyMatching';
+export { getChihuahuaDateKey, planCopilotoCandidates } from './copilotoPlanner';
+export type {
+	CopilotoCandidate,
+	CopilotoMatchedPropertySummary,
+	CopilotoPlanOptions,
+	CopilotoPlanResult,
+	CopilotoStage
+} from './copilotoPlanner';
+export {
+	analyzeCandidateWithGemini,
+	buildCopilotoPrompt,
+	buildFallbackCopilotoCard,
+	summarizeContactBinnacles
+} from './copilotoAnalyzer';
+export type {
+	BinnacleSummary,
+	CopilotoAnalyzedCard,
+	CopilotoExecutionType,
+	CopilotoSuggestedStage
+} from './copilotoAnalyzer';
+export type {
+	ContactFilterCriteria,
+	ContactMatchOptions,
+	MatchEvaluation,
+	PropertyMatchOptions
+} from './propertyMatching';
 export { sortBinnacle } from './sort';
 export { mosRange } from './rangeValue';
 export { convertOperationEbFb, convertOperation } from './converterEb-Fb';

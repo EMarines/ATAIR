@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../styles/main.css';
 	import { db, isSandbox, currentProjectId } from '$lib/firebase_toggle';
-	import { collection, onSnapshot } from 'firebase/firestore';
+	import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 	import type { QuerySnapshot, DocumentData } from 'firebase/firestore';
 	import { contactsStore, binnaclesStore, propertiesStore } from '$lib/stores/dataStore';
 	import type { Contact, Binnacle, Property } from '$types';
@@ -157,13 +157,16 @@
 			);
 
 			unsubscribes.push(
-				onSnapshot(collection(getDb(), 'binnacles'), (snapshot: QuerySnapshot<DocumentData>) => {
-					const binnacles = snapshot.docs.map((doc) => ({
-						id: doc.id,
-						...doc.data()
-					})) as Binnacle[];
-					binnaclesStore.set(binnacles);
-				})
+				onSnapshot(
+					query(collection(getDb(), 'binnacles'), orderBy('date', 'desc'), limit(800)),
+					(snapshot: QuerySnapshot<DocumentData>) => {
+						const binnacles = snapshot.docs.map((doc) => ({
+							id: doc.id,
+							...doc.data()
+						})) as Binnacle[];
+						binnaclesStore.set(binnacles);
+					}
+				)
 			);
 		} else {
 			// Limpiar stores por seguridad si el rol cambia a no-admin

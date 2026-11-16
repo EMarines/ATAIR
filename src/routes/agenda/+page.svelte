@@ -4,6 +4,8 @@
   import type { Todo } from '$lib/types';
   import schedule from '$lib/images/schedule.png';
   import { systStatus, todoStore } from '$lib/stores/dataStore'
+  import CopilotoCardDetails from '$lib/components/CopilotoCardDetails.svelte';
+  import type { CopilotoAnalyzedCard } from '$lib/functions/copilotoAnalyzer';
  
   interface TodoFormState {
       id?: string;
@@ -239,13 +241,19 @@
     );
   }
 
-  let selectedFilter: 'MY_DAY' | 'ALL' | 'TASKS' | 'CALENDAR' | 'CRM' = 'MY_DAY';
+  let selectedFilter: 'MY_DAY' | 'ALL' | 'COPILOTO' | 'TASKS' | 'CALENDAR' | 'CRM' = 'MY_DAY';
   let hideCompleted: boolean = false;
+  let expandedCopilotoId: string | null = null;
+  let isRunningCopiloto: boolean = false;
+  let copilotoProgressText: string = '';
+  let copilotoBannerMsg: string = '';
+  let copilotoE3Quota: number = 15;
 
   $: myDayPendingCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && isTodayOrOverdue(Number(t.endTask))).length;
+  $: copilotoCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && (t.source === 'atair_copiloto' || t.type === 'ATAIR Copiloto')).length;
   $: tasksCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && (t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId))).length;
   $: calendarCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && (t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
-  $: crmCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && !(t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId)) && !(t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
+  $: crmCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted && t.source !== 'atair_copiloto' && t.type !== 'ATAIR Copiloto' && !(t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId)) && !(t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId))).length;
   $: allPendingCount = todos.filter(t => !isIgnoredEvent(t.task) && !t.isCompleted).length;
 
   // Filtrado reactivo base según pestaña seleccionada
@@ -259,6 +267,9 @@
             return isToday(t.completedAt) || isToday(Number(t.endTask));
           }
         }
+        if (selectedFilter === 'COPILOTO') {
+          return t.source === 'atair_copiloto' || t.type === 'ATAIR Copiloto';
+        }
         if (selectedFilter === 'TASKS') {
           return t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId);
         }
@@ -266,7 +277,7 @@
           return t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId);
         }
         if (selectedFilter === 'CRM') {
-          return !(t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId)) && !(t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId));
+          return t.source !== 'atair_copiloto' && t.type !== 'ATAIR Copiloto' && !(t.source === 'google_tasks' || t.type === 'Google Tasks' || Boolean(t.googleTaskId)) && !(t.source === 'google_calendar' || t.type === 'Google Calendar' || Boolean(t.googleEventId));
         }
         return true;
       });
@@ -860,6 +871,11 @@
   let activeActions = new Map<string, boolean>();
 
   function toggleActions(todoId: string) {
+      const target = todos.find(t => t.id === todoId);
+      if (target && (target.source === 'atair_copiloto' || target.type === 'ATAIR Copiloto')) {
+          expandedCopilotoId = expandedCopilotoId === todoId ? null : todoId;
+          return;
+      }
       const newMap = new Map(activeActions);
       if (newMap.get(todoId)) {
           newMap.delete(todoId);
@@ -868,6 +884,100 @@
           newMap.set(todoId, true);
       }
       activeActions = newMap;
+  }
+
+  async function runCopilotoRoutine() {
+      if (isRunningCopiloto) return;
+      isRunningCopiloto = true;
+      copilotoBannerMsg = '';
+      copilotoProgressText = 'Planificando...';
+
+      try {
+          const planRes = await fetch('/api/copiloto/plan-candidates', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ e3Quota: copilotoE3Quota })
+          });
+          const planData = await planRes.json();
+          if (!planRes.ok || !planData.success) {
+              throw new Error(planData.error || 'No se pudo planificar la rutina del Copiloto.');
+          }
+
+          const candidates = Array.isArray(planData.candidates) ? planData.candidates : [];
+          if (candidates.length === 0) {
+              copilotoBannerMsg = '✅ Todo al día: no hay leads pendientes nuevos para Copiloto hoy.';
+              return;
+          }
+
+          selectedFilter = 'COPILOTO';
+          const BATCH_SIZE = 4;
+          let createdCount = 0;
+
+          for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+              const batch = candidates.slice(i, i + BATCH_SIZE);
+              copilotoProgressText = `Analizando ${Math.min(i + batch.length, candidates.length)}/${candidates.length}...`;
+
+              const analyzeRes = await fetch('/api/copiloto/analyze-batch', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ candidates: batch })
+              });
+              const analyzeData = await analyzeRes.json();
+              if (!analyzeRes.ok || !analyzeData.success) {
+                  throw new Error(analyzeData.error || 'Error analizando lote con IA.');
+              }
+
+              const cards: CopilotoAnalyzedCard[] = Array.isArray(analyzeData.results) ? analyzeData.results : [];
+              for (const card of cards) {
+                  const newTodoPayload: Record<string, any> = {
+                      task: card.taskTitle,
+                      endTask: Date.now(),
+                      notes: card.objective,
+                      isCompleted: false,
+                      createdAt: Date.now(),
+                      type: 'ATAIR Copiloto',
+                      source: 'atair_copiloto',
+                      user: '',
+                      timeString: '',
+                      recurrence: 'NONE',
+                      completedAt: null,
+                      order: createdCount + 1,
+                      copilotoMeta: {
+                          contactId: card.contactId,
+                          fullName: card.fullName,
+                          telephon: card.telephon,
+                          stage: card.stage,
+                          priority: card.priority,
+                          runDate: planData.runDate,
+                          action: card.action,
+                          objective: card.objective,
+                          why: card.why,
+                          recommendedExecution: card.recommendedExecution,
+                          whatsappDraft: card.whatsappDraft,
+                          suggestedStageChange: card.suggestedStageChange,
+                          propertyIds: card.propertyIds,
+                          propertyLinks: card.propertyLinks,
+                          e3FormUrl: card.e3FormUrl,
+                          callsWithoutReply: card.callsWithoutReply,
+                          propertySendsWithoutReply: card.propertySendsWithoutReply,
+                          proposedClose: false
+                      }
+                  };
+                  await firebase.add('todos', newTodoPayload);
+                  createdCount++;
+              }
+
+              await loadTodos();
+          }
+
+          copilotoBannerMsg = `⚡ Copiloto listo: ${createdCount} ${createdCount === 1 ? 'tarjeta generada' : 'tarjetas generadas'} (E1: ${planData.counts?.e1 || 0}, E2: ${planData.counts?.e2 || 0}, E4: ${planData.counts?.e4 || 0}, E3: ${(planData.counts?.e3Recent || 0) + (planData.counts?.e3Cold || 0)}).`;
+      } catch (err: any) {
+          console.error('[Agenda Copiloto] Error:', err);
+          copilotoBannerMsg = '⚠️ ' + (err?.message || 'Error ejecutando ATAIR Copiloto.');
+      } finally {
+          isRunningCopiloto = false;
+          copilotoProgressText = '';
+      }
   }
 
   function cancel() {
@@ -910,6 +1020,17 @@
 
       <div class="agenda-header-actions">
         <button 
+          class="btn-copiloto-run"
+          class:is-running={isRunningCopiloto}
+          on:click={runCopilotoRoutine}
+          disabled={isRunningCopiloto}
+          title="Analizar leads y bitácora para generar acciones del día (E1–E4)"
+        >
+          <i class={isRunningCopiloto ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-bolt'}></i>
+          <span>{isRunningCopiloto ? (copilotoProgressText || 'Analizando...') : 'Copiloto IA'}</span>
+        </button>
+
+        <button 
           class="btn-sync-google"
           class:is-syncing={isSyncingGoogle}
           on:click={syncFromGoogle}
@@ -936,6 +1057,13 @@
         </button>
       </div>
     </div>
+
+    {#if copilotoBannerMsg}
+      <div class="copiloto-banner glass">
+        <span>{copilotoBannerMsg}</span>
+        <button type="button" class="btn-dismiss-banner" on:click={() => copilotoBannerMsg = ''} aria-label="Cerrar aviso">✕</button>
+      </div>
+    {/if}
 
     <!-- FORMULARIO REDISEÑADO CON GLASS CARD -->
     {#if showForm || $systStatus === "editing"}
@@ -1316,6 +1444,16 @@
             </button>
             <button
               type="button"
+              class="tab-btn tab-copiloto"
+              class:active={selectedFilter === 'COPILOTO'}
+              on:click={() => selectedFilter = 'COPILOTO'}
+              title="Acciones inteligentes generadas por ATAIR Copiloto"
+            >
+              <i class="fa-solid fa-bolt"></i>
+              <span>Copiloto IA ({copilotoCount})</span>
+            </button>
+            <button
+              type="button"
               class="tab-btn tab-tasks"
               class:active={selectedFilter === 'TASKS'}
               on:click={() => selectedFilter = 'TASKS'}
@@ -1446,7 +1584,16 @@
                       <!-- Tarea -->
                       <td class="td-task">
                         <div class="task-title-wrap">
-                          {#if currentTodo.googleEventId || currentTodo.type === 'Google Calendar' || currentTodo.source === 'google_calendar'}
+                          {#if currentTodo.source === 'atair_copiloto' || currentTodo.type === 'ATAIR Copiloto'}
+                            <span class="badge-source badge-copiloto" title="Acción planificada por ATAIR Copiloto (clic en la fila para expandir)">
+                              <i class="fa-solid fa-bolt"></i> {currentTodo.copilotoMeta?.stage || 'IA'}
+                            </span>
+                            {#if currentTodo.copilotoMeta?.proposedClose}
+                              <span class="badge-source badge-proposed-close" title="Respondiste desde móvil — Clic para confirmar cierre">
+                                📱 ¿Cerrar?
+                              </span>
+                            {/if}
+                          {:else if currentTodo.googleEventId || currentTodo.type === 'Google Calendar' || currentTodo.source === 'google_calendar'}
                             <span class="badge-source badge-calendar" title="Cita sincronizada de Google Calendar">
                               <i class="fa-solid fa-calendar-day"></i> Cita
                             </span>
@@ -1503,6 +1650,18 @@
                         </div>
                       </td>
                     </tr>
+                    {#if expandedCopilotoId === currentTodo.id && (currentTodo.source === 'atair_copiloto' || currentTodo.type === 'ATAIR Copiloto')}
+                      <tr class="copiloto-expand-row">
+                        <td colspan="6">
+                          <CopilotoCardDetails
+                            todoItem={currentTodo}
+                            on:complete={(e) => handleUpdateTodo(e.detail)}
+                            on:close={() => expandedCopilotoId = null}
+                            on:updated={() => loadTodos()}
+                          />
+                        </td>
+                      </tr>
+                    {/if}
                   {/each}
                 </tbody>
               </table>
@@ -1571,7 +1730,11 @@
                           <!-- Tarea -->
                           <td class="td-task">
                             <div class="task-title-wrap">
-                              {#if currentTodo.googleEventId || currentTodo.type === 'Google Calendar' || currentTodo.source === 'google_calendar'}
+                              {#if currentTodo.source === 'atair_copiloto' || currentTodo.type === 'ATAIR Copiloto'}
+                                <span class="badge-source badge-copiloto">
+                                  <i class="fa-solid fa-bolt"></i> {currentTodo.copilotoMeta?.stage || 'IA'}
+                                </span>
+                              {:else if currentTodo.googleEventId || currentTodo.type === 'Google Calendar' || currentTodo.source === 'google_calendar'}
                                 <span class="badge-source badge-calendar" title="Cita sincronizada de Google Calendar">
                                   <i class="fa-solid fa-calendar-day"></i> Cita
                                 </span>
@@ -1623,6 +1786,18 @@
                             </div>
                           </td>
                         </tr>
+                        {#if expandedCopilotoId === currentTodo.id && (currentTodo.source === 'atair_copiloto' || currentTodo.type === 'ATAIR Copiloto')}
+                          <tr class="copiloto-expand-row">
+                            <td colspan="5">
+                              <CopilotoCardDetails
+                                todoItem={currentTodo}
+                                on:complete={(e) => handleUpdateTodo(e.detail)}
+                                on:close={() => expandedCopilotoId = null}
+                                on:updated={() => loadTodos()}
+                              />
+                            </td>
+                          </tr>
+                        {/if}
                       {/each}
                     </tbody>
                   </table>
@@ -1767,6 +1942,53 @@
   .btn-sync-google:disabled {
     opacity: 0.75;
     cursor: wait;
+  }
+
+  .btn-copiloto-run {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.2rem;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #0f172a;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .btn-copiloto-run:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+  }
+
+  .btn-copiloto-run:disabled {
+    opacity: 0.8;
+    cursor: wait;
+  }
+
+  .copiloto-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1.1rem;
+    border-color: rgba(245, 158, 11, 0.45);
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+
+  .btn-dismiss-banner {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.95rem;
+    opacity: 0.75;
   }
 
   /* BOTÓN + TAREA */
@@ -2265,6 +2487,36 @@
     font-weight: 600;
     color: var(--color, #0f172a);
     line-height: 1.4;
+    max-width: 420px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .badge-copiloto {
+    background: rgba(245, 158, 11, 0.16);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+  }
+
+  :global([data-theme="dark"]) .badge-copiloto {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+  }
+
+  .badge-proposed-close {
+    background: rgba(16, 185, 129, 0.18);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+  }
+
+  :global([data-theme="dark"]) .badge-proposed-close {
+    color: #6ee7b7;
+  }
+
+  .copiloto-expand-row td {
+    padding: 0.25rem 0.5rem 0.75rem !important;
+    background: transparent !important;
   }
 
   .task-title-text.completed-text {
@@ -2274,10 +2526,12 @@
 
   .notes-badge {
     display: inline-flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.4rem;
-    max-width: 420px;
-    white-space: normal;
+    max-width: 340px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     word-break: break-word;
     line-height: 1.45;
     font-size: 0.8rem;

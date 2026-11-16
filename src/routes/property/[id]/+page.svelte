@@ -6,6 +6,8 @@
 	import { goto } from '$app/navigation';
 	// import { filtContPropInte } from '$lib/functions/filProperties';
 	import { findContactsForProperty } from '$lib/functions/filContacts';
+	import { getSentContactIdsForProperty } from '$lib/functions/propertyMatching';
+	import { infoToBinnacle } from '$lib/functions/binnSaver';
 	import { isStage4Base, isStage4ForBroadcast } from '$lib/functions/contactBadge';
 	import { contactsStore, binnaclesStore, systStatus } from '$lib/stores/dataStore';
 	import { whatsappBroadcastStore } from '$lib/stores/whatsappBroadcastStore';
@@ -113,9 +115,7 @@
 		excludedOtherStagesCount = Math.max(0, allMatches.length - stage4Matches.length);
 		excludedTooOldCount = Math.max(0, stage4Matches.length - contInterest.length);
 
-		const sentContactIds = new Set(
-			allBinnacles.filter((item) => item.comment === prop.public_id).map((doc) => doc.to)
-		);
+		const sentContactIds = getSentContactIdsForProperty(prop, allContacts, allBinnacles);
 
 		if (tab === 'Posobles_Interesados') {
 			msgToShow = 'Contactos en Etapa 4 (E4) interesados en esta propiedad';
@@ -145,9 +145,7 @@
 		computeFilteredLists(currProperty, contacts, binnacles, contInterested, false);
 	}
 
-	$: sentContactIdsForProp = new Set(
-		binnacles.filter((item) => item.comment === property?.public_id).map((doc) => doc.to)
-	);
+	$: sentContactIdsForProp = getSentContactIdsForProperty(property, contacts, binnacles);
 
 	function isContactQueued(cont: Contact, queuedKeys: string[]): boolean {
 		if (!property?.public_id || !cont?.id) return false;
@@ -281,9 +279,8 @@
 				action: 'Propiedad enviada: ' // ✅ Espacio al final consistente con otros archivos
 			};
 
-			// Guardar en bitácora
-			const binnacleToAdd = collection(db, 'binnacles');
-			await addDoc(binnacleToAdd, newBinnacle);
+			// Guardar en bitácora y registrar en sendedProperties del contacto
+			await infoToBinnacle(newBinnacle);
 
 			console.log(`✅ Bitácora guardada exitosamente: ${contact.name} - ${property.public_id}`);
 			return true;
