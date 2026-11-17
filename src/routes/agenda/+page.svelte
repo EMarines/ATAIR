@@ -2517,6 +2517,8 @@
   .copiloto-expand-row td {
     padding: 0.25rem 0.5rem 0.75rem !important;
     background: transparent !important;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .task-title-text.completed-text {
@@ -3206,6 +3208,18 @@
       flex-direction: column;
       gap: 0.85rem;
       width: 100%;
+    }
+
+    .copiloto-expand-row {
+      display: block !important;
+      width: 100% !important;
+    }
+
+    .copiloto-expand-row td {
+      display: block !important;
+      width: 100% !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
     }
 
     .todo-tr {

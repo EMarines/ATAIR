@@ -188,71 +188,69 @@
 		</div>
 	</div>
 
-	<div class="drawer-grid">
-		<div class="info-column">
-			<div class="info-card">
-				<div class="info-label">🎯 Acción Sugerida</div>
-				<p class="info-text strong">{meta.action}</p>
-			</div>
+	<div class="info-cards-grid">
+		<div class="info-card">
+			<div class="info-label">🎯 Acción Sugerida</div>
+			<p class="info-text strong">{meta.action}</p>
+		</div>
 
-			<div class="info-card">
-				<div class="info-label">🧭 Qué se pretende (Objetivo)</div>
-				<p class="info-text">{meta.objective}</p>
-			</div>
+		<div class="info-card">
+			<div class="info-label">🧭 Qué se pretende (Objetivo)</div>
+			<p class="info-text">{meta.objective}</p>
+		</div>
 
-			<div class="info-card">
-				<div class="info-label">🧠 Porqué (Análisis de Bitácora)</div>
-				<p class="info-text">{meta.why}</p>
-			</div>
+		<div class="info-card">
+			<div class="info-label">🧠 Porqué (Análisis de Bitácora)</div>
+			<p class="info-text">{meta.why}</p>
+		</div>
+	</div>
 
-			{#if meta.suggestedStageChange && meta.suggestedStageChange !== 'NONE'}
-				<div class="stage-suggest-box">
-					<span>⚡ Sugerencia de embudo: mover a <strong>{meta.suggestedStageChange}</strong></span>
-					<button type="button" class="btn-stage-move" on:click={applySuggestedStageChange} disabled={isBusy}>
-						Mover a {meta.suggestedStageChange}
-					</button>
-				</div>
+	{#if meta.suggestedStageChange && meta.suggestedStageChange !== 'NONE'}
+		<div class="stage-suggest-box">
+			<span>⚡ Sugerencia de embudo: mover a <strong>{meta.suggestedStageChange}</strong></span>
+			<button type="button" class="btn-stage-move" on:click={applySuggestedStageChange} disabled={isBusy}>
+				Mover a {meta.suggestedStageChange}
+			</button>
+		</div>
+	{/if}
+
+	<div class="action-section">
+		<div class="info-label">💬 Mensaje WhatsApp Redactado (Editable)</div>
+		<textarea
+			class="draft-textarea"
+			rows="4"
+			bind:value={draftText}
+			placeholder="Borrador del mensaje..."
+		></textarea>
+
+		<div class="execute-bar">
+			{#if meta.recommendedExecution === 'call'}
+				<a class="btn-exec btn-call" href={`tel:${cleanPhone(meta.telephon)}`}>
+					<i class="fa-solid fa-phone"></i> Llamar
+				</a>
+				<button type="button" class="btn-exec btn-answered" on:click={() => logCallOutcome(true)} disabled={isBusy}>
+					✓ Contestó
+				</button>
+				<button type="button" class="btn-exec btn-no-answer" on:click={() => logCallOutcome(false)} disabled={isBusy}>
+					✗ No contestó
+				</button>
+				<button type="button" class="btn-exec btn-wa-alt" on:click={executeWhatsAppSend} disabled={isBusy || !meta.telephon}>
+					<i class="fa-brands fa-whatsapp"></i> Enviar WA
+				</button>
+			{:else}
+				<button type="button" class="btn-exec btn-wa-primary" on:click={executeWhatsAppSend} disabled={isBusy || !meta.telephon}>
+					<i class="fa-brands fa-whatsapp"></i>
+					{meta.stage === 'E3' ? 'Enviar Formulario E3 (1 Clic)' : 'Enviar WhatsApp (1 Clic)'}
+				</button>
+				<a class="btn-exec btn-call-alt" href={`tel:${cleanPhone(meta.telephon)}`}>
+					<i class="fa-solid fa-phone"></i> Llamar
+				</a>
 			{/if}
 		</div>
 
-		<div class="action-column">
-			<div class="info-label">💬 Mensaje WhatsApp Redactado (Editable)</div>
-			<textarea
-				class="draft-textarea"
-				rows="5"
-				bind:value={draftText}
-				placeholder="Borrador del mensaje..."
-			></textarea>
-
-			<div class="execute-bar">
-				{#if meta.recommendedExecution === 'call'}
-					<a class="btn-exec btn-call" href={`tel:${cleanPhone(meta.telephon)}`}>
-						<i class="fa-solid fa-phone"></i> Llamar
-					</a>
-					<button type="button" class="btn-exec btn-answered" on:click={() => logCallOutcome(true)} disabled={isBusy}>
-						✓ Contestó
-					</button>
-					<button type="button" class="btn-exec btn-no-answer" on:click={() => logCallOutcome(false)} disabled={isBusy}>
-						✗ No contestó
-					</button>
-					<button type="button" class="btn-exec btn-wa-alt" on:click={executeWhatsAppSend} disabled={isBusy || !meta.telephon}>
-						<i class="fa-brands fa-whatsapp"></i> Enviar WA
-					</button>
-				{:else}
-					<button type="button" class="btn-exec btn-wa-primary" on:click={executeWhatsAppSend} disabled={isBusy || !meta.telephon}>
-						<i class="fa-brands fa-whatsapp"></i>
-						{meta.stage === 'E3' ? 'Enviar Formulario E3 (1 Clic)' : 'Enviar WhatsApp (1 Clic)'}
-					</button>
-					<a class="btn-exec btn-call-alt" href={`tel:${cleanPhone(meta.telephon)}`}>
-						<i class="fa-solid fa-phone"></i> Llamar
-					</a>
-				{/if}
-			</div>
-
-			{#if feedbackMsg}
-				<div class="feedback-line">{feedbackMsg}</div>
-			{/if}
-		</div>
+		{#if feedbackMsg}
+			<div class="feedback-line">{feedbackMsg}</div>
+		{/if}
 	</div>
 </div>
 
@@ -266,11 +264,10 @@
 		border-radius: 12px;
 		padding: 1rem 1.15rem;
 		margin: 0.25rem 0 0.5rem;
-		overflow-x: hidden;
 	}
 
 	:global([data-theme="dark"]) .copiloto-drawer {
-		background: rgba(15, 23, 42, 0.9);
+		background: rgba(15, 23, 42, 0.95);
 		border-color: rgba(212, 175, 55, 0.35);
 	}
 
@@ -320,6 +317,8 @@
 		margin-bottom: 0.85rem;
 		padding-bottom: 0.6rem;
 		border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+		width: 100%;
+		box-sizing: border-box;
 	}
 
 	.drawer-badges {
@@ -327,6 +326,7 @@
 		align-items: center;
 		flex-wrap: wrap;
 		gap: 0.5rem;
+		min-width: 0;
 	}
 
 	.stage-pill {
@@ -369,6 +369,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		flex-shrink: 0;
 	}
 
 	.link-ficha {
@@ -376,9 +377,13 @@
 		font-weight: 600;
 		color: #6366f1;
 		text-decoration: none;
-		padding: 0.3rem 0.65rem;
+		padding: 0.35rem 0.7rem;
 		border-radius: 7px;
 		border: 1px solid rgba(99, 102, 241, 0.35);
+		white-space: nowrap;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
 	}
 
 	:global([data-theme="dark"]) .link-ficha {
@@ -394,34 +399,28 @@
 		cursor: pointer;
 	}
 
-	.drawer-grid {
+	.info-cards-grid {
 		display: grid;
-		grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-		gap: 1rem;
-		width: 100%;
-		min-width: 0;
-	}
-
-	@media (max-width: 820px) {
-		.drawer-grid {
-			grid-template-columns: minmax(0, 1fr);
-		}
-	}
-
-	.info-column, .action-column {
-		display: flex;
-		flex-direction: column;
-		gap: 0.55rem;
-		min-width: 0;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.75rem;
+		margin-bottom: 0.85rem;
 		width: 100%;
 		box-sizing: border-box;
+	}
+
+	@media (max-width: 860px) {
+		.info-cards-grid {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	.info-card {
 		background: rgba(255, 255, 255, 0.6);
 		border: 1px solid rgba(148, 163, 184, 0.22);
 		border-radius: 9px;
-		padding: 0.55rem 0.75rem;
+		padding: 0.65rem 0.85rem;
+		box-sizing: border-box;
+		min-width: 0;
 	}
 
 	:global([data-theme="dark"]) .info-card {
@@ -435,7 +434,7 @@
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		color: #6366f1;
-		margin-bottom: 2px;
+		margin-bottom: 4px;
 	}
 
 	:global([data-theme="dark"]) .info-label {
@@ -462,6 +461,8 @@
 		border-radius: 9px;
 		padding: 0.5rem 0.75rem;
 		font-size: 0.8rem;
+		margin-bottom: 0.85rem;
+		box-sizing: border-box;
 	}
 
 	.btn-stage-move {
@@ -475,6 +476,14 @@
 		cursor: pointer;
 	}
 
+	.action-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+		width: 100%;
+		box-sizing: border-box;
+	}
+
 	.draft-textarea {
 		box-sizing: border-box;
 		width: 100%;
@@ -482,11 +491,12 @@
 		min-width: 0;
 		border-radius: 9px;
 		border: 1px solid rgba(148, 163, 184, 0.35);
-		padding: 0.6rem 0.75rem;
+		padding: 0.75rem 0.9rem;
 		font-family: inherit;
-		font-size: 0.83rem;
-		line-height: 1.45;
+		font-size: 0.86rem;
+		line-height: 1.5;
 		overflow-wrap: break-word;
+		word-break: break-word;
 		resize: vertical;
 		background: rgba(255, 255, 255, 0.85);
 		color: #0f172a;
@@ -501,33 +511,46 @@
 	.execute-bar {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.45rem;
-		margin-top: 0.2rem;
+		align-items: center;
+		gap: 0.55rem;
+		margin-top: 0.25rem;
+		width: 100%;
+		box-sizing: border-box;
 	}
 
 	.btn-exec {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
-		padding: 0.5rem 0.85rem;
+		justify-content: center;
+		gap: 0.45rem;
+		padding: 0.55rem 1rem;
 		border-radius: 8px;
-		font-size: 0.8rem;
+		font-size: 0.82rem;
 		font-weight: 700;
 		border: none;
 		cursor: pointer;
 		text-decoration: none;
+		box-sizing: border-box;
 	}
 
 	.btn-wa-primary {
 		background: #22c55e;
 		color: #ffffff;
 		flex: 1 1 auto;
-		justify-content: center;
+		min-width: 200px;
+	}
+
+	.btn-wa-primary:hover {
+		background: #16a34a;
 	}
 
 	.btn-call {
 		background: #4f46e5;
 		color: #ffffff;
+	}
+
+	.btn-call:hover {
+		background: #4338ca;
 	}
 
 	.btn-answered {
