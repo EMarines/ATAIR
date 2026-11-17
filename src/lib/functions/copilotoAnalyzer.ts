@@ -35,6 +35,8 @@ export interface CopilotoAnalyzedCard {
 	callsWithoutReply: number;
 	propertySendsWithoutReply: number;
 	usedFallback: boolean;
+	isE1Over10Days?: boolean;
+	e1Step?: 'send_options' | 'followup_call';
 }
 
 const GEMINI_RESPONSE_SCHEMA = {
@@ -172,7 +174,10 @@ export function summarizeContactBinnacles(
 
 function ensureRequiredLinksInDraft(draft: string, candidate: CopilotoCandidate): string {
 	let text = String(draft || '').trim();
-	if (candidate.stage === 'E4' && candidate.matchedProperties.length > 0) {
+	if (
+		(candidate.stage === 'E4' || (candidate.stage === 'E1' && candidate.e1Step === 'send_options')) &&
+		candidate.matchedProperties.length > 0
+	) {
 		const missingLinks = candidate.matchedProperties
 			.map((p) => p.proposalUrl)
 			.filter((url) => url && !text.includes(url));
@@ -199,6 +204,63 @@ export function buildFallbackCopilotoCard(
 
 	if (candidate.stage === 'E1') {
 		const propHint = candidate.propCont ? ` por ${candidate.propCont}` : '';
+
+		if (candidate.isE1Over10Days) {
+			if (candidate.e1Step === 'send_options') {
+				const linksBlock = propertyLinks.join('\n');
+				const optionsCount = candidate.matchedProperties.length;
+				return {
+					contactId: candidate.contactId,
+					fullName: candidate.fullName,
+					telephon: candidate.telephon,
+					stage: candidate.stage,
+					priority: candidate.priority,
+					taskTitle: `📲 E1 (>10d) · Enviar opciones en rango a ${candidate.fullName}`.slice(0, 75),
+					action: `Enviar por WhatsApp ${optionsCount} opciones en el rango de precio de su propiedad consultada (${candidate.propCont || 'interés'}) a ${candidate.fullName}.`,
+					objective:
+						'Reactivar el lead con alternativas atractivas en su presupuesto antes de realizar la llamada telefónica.',
+					why: `Lead en E1 con más de 10 días desde el primer contacto. Se envían opciones hoy para calentar la relación y llamarle mañana.`,
+					recommendedExecution: 'whatsapp',
+					whatsappDraft: `Hola ${firstName}, espero que estés muy bien. Te escribo para dar seguimiento a tu interés en ${candidate.propCont || 'nuestra propiedad'}. Seleccioné estas ${optionsCount} opciones similares en ese mismo rango de precio que te pueden interesar:\n\n${linksBlock}\n\n¿Cuál te llama más la atención para agendar una visita?`,
+					suggestedStageChange,
+					propertyIds,
+					propertyLinks,
+					e3FormUrl,
+					callsWithoutReply: summary.callsWithoutReply,
+					propertySendsWithoutReply: summary.propertySendsWithoutReply,
+					usedFallback: true,
+					isE1Over10Days: true,
+					e1Step: 'send_options'
+				};
+			}
+
+			// e1Step === 'followup_call'
+			return {
+				contactId: candidate.contactId,
+				fullName: candidate.fullName,
+				telephon: candidate.telephon,
+				stage: candidate.stage,
+				priority: candidate.priority,
+				taskTitle: `📞 E1 (>10d) · Llamada de seguimiento a ${candidate.fullName}`.slice(0, 75),
+				action: `Realizar llamada telefónica de seguimiento tras el envío de opciones en rango de precio.`,
+				objective:
+					'Conocer sus impresiones sobre las opciones enviadas ayer, resolver dudas y avanzar hacia cita o afinar requerimientos.',
+				why: `Lead en E1 (>10d): recientemente se le enviaron opciones afines en su presupuesto; corresponde la llamada de seguimiento.`,
+				recommendedExecution: 'call',
+				whatsappDraft: `Hola ${firstName}, soy Enrique de Match Home. Te llamé hace un momento para platicar sobre las opciones que te envié y saber qué te parecieron. ¿A qué hora te queda mejor que te marque?`,
+				suggestedStageChange,
+				propertyIds: [],
+				propertyLinks: [],
+				e3FormUrl,
+				callsWithoutReply: summary.callsWithoutReply,
+				propertySendsWithoutReply: summary.propertySendsWithoutReply,
+				usedFallback: true,
+				isE1Over10Days: true,
+				e1Step: 'followup_call'
+			};
+		}
+
+		// Fresh E1 (<10 días)
 		return {
 			contactId: candidate.contactId,
 			fullName: candidate.fullName,
@@ -220,7 +282,8 @@ export function buildFallbackCopilotoCard(
 			e3FormUrl,
 			callsWithoutReply: summary.callsWithoutReply,
 			propertySendsWithoutReply: summary.propertySendsWithoutReply,
-			usedFallback: true
+			usedFallback: true,
+			isE1Over10Days: false
 		};
 	}
 
@@ -307,7 +370,11 @@ export function buildCopilotoPrompt(
 	summary: BinnacleSummary
 ): string {
 	const stageRules: Record<CopilotoStage, string> = {
-		E1: 'Etapa E1 (Primer Contacto, prioridad máxima): el objetivo es concretar llamada y sacar más info de lo que busca sin presionar (la cita no es obligatoria; si le gustó la propiedad original buscar venta/cita, si no, empatía y perfilar).',
+		E1: candidate.isE1Over10Days
+			? candidate.e1Step === 'send_options'
+				? 'Etapa E1 (>10 días - Paso 1: Enviar opciones): el lead tiene más de 10 días desde su contacto inicial. Hoy corresponde enviarle por WhatsApp 2 a 3 opciones afines en el rango de precio (±25%) de la propiedad consultada con sus links exactos para calentar la relación antes de la llamada de mañana.'
+				: 'Etapa E1 (>10 días - Paso 2: Llamada de seguimiento): ayer o recientemente se le enviaron opciones afines; hoy corresponde llamarle para conocer sus comentarios sobre las opciones y avanzar hacia cita o perfilar mejor.'
+			: 'Etapa E1 (Primer Contacto reciente <10 días, prioridad máxima): el objetivo es concretar llamada rápida y sacar más info de lo que busca sin presionar (la cita no es obligatoria; si le gustó la propiedad original buscar venta/cita, si no, empatía y perfilar).',
 		E2: 'Etapa E2 (Seguimiento Diario): el objetivo es completar los datos requeridos de búsqueda para promoverlo a E4. Si acumula >=2 llamadas y >=2-3 envíos sin respuesta, sugiere pasar a E3.',
 		E4: 'Etapa E4 (Búsqueda Activa Calificada): enviar las propiedades de sinergia nuevas compatibles proporcionadas (máx 3) con sus links exactos y provocar cita.',
 		E3: 'Etapa E3 (Filtro / Reactivación): enviar el link exacto del formulario ligero explicando amablemente que si desea seguir recibiendo propiedades nos llene qué busca.'
@@ -331,7 +398,7 @@ ${stageRules[candidate.stage]}
 
 DATOS DEL LEAD:
 - Nombre: ${candidate.fullName}
-- Etapa actual: ${candidate.stage}${candidate.isColdOver2y ? ' (antigüedad > 2 años)' : ''}
+- Etapa actual: ${candidate.stage}${candidate.isColdOver2y ? ' (antigüedad > 2 años)' : candidate.isE1Over10Days ? ` (>10 días, paso: ${candidate.e1Step})` : ''}
 - Propiedad de interés inicial: ${candidate.propCont || 'No especificada'}
 - Tipo buscado: ${candidate.selecTP || 'No especificado'} | Presupuesto: ${candidate.budget > 0 ? `$${candidate.budget.toLocaleString('es-MX')}` : candidate.rangeProp || 'No especificado'}
 - Zonas: ${candidate.locaProperty.join(', ') || 'No especificadas'}
@@ -346,7 +413,7 @@ MÉTRICAS DE BITÁCORA DESDE ÚLTIMA RESPUESTA:
 ÚLTIMOS REGISTROS DE BITÁCORA (más reciente primero):
 ${summary.recentTimeline.length > 0 ? summary.recentTimeline.join('\n') : 'Sin registros previos en bitácora.'}
 
-PROPIEDADES NUEVAS DE SINERGIA COMPATIBLES (para E4):
+PROPIEDADES COMPATIBLES / RECOMENDADAS (para E4 o E1 >10d):
 ${propsText}
 
 LINK FORMULARIO E3 (si etapa es E3):

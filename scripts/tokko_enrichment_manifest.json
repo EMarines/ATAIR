@@ -1,0 +1,331 @@
+{
+  "executedAt": "2026-11-17T18:03:33.370Z",
+  "environment": "prod",
+  "totalContactsEnriched": 40,
+  "withEbCount": 23,
+  "withoutEbCount": 17,
+  "updatedContacts": [
+    {
+      "contactId": "082a8776-f0c6-44d9-836e-2ca587b8ac45",
+      "name": "Aarón Ortiz",
+      "phone": "6141363036",
+      "propCont": "EB-KK0679",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "938edcd1-e5cc-45fc-ad16-4350a7b570da",
+      "name": "Alan García Oikos",
+      "phone": "6141412926",
+      "propCont": "MGL7945181|MGL7948887",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "2018a0d9-46b8-4491-9c36-a3b706cf5227",
+      "name": "Alejandro Gonzalez Borja",
+      "phone": "6141427747",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "e30da96a-2d90-428b-9fbf-44040fca12b6",
+      "name": "Alonso Flores",
+      "phone": "6141995760",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "a34e7361-20de-4f35-82a7-e108049eebfc",
+      "name": "Andrea Martha",
+      "phone": "6141097426",
+      "propCont": "Ave. 20 de Noviembre (MCO7907915)",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "f440a1d2-1f63-45d8-afa9-b74c6b8179ed",
+      "name": "Antonio Calleja",
+      "phone": "6141962013",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "5b023846-365b-4c17-9332-ae5794ac45c8",
+      "name": "Anwar Atié",
+      "phone": "6141964600",
+      "propCont": "José María Morelos y Pavón 3205 (MHO7904629)",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "76a9fdf3-8da5-4dcd-a16f-ac5dcd8888c7",
+      "name": "Beatriz Franco",
+      "phone": "6142569667",
+      "propCont": "MAP7935105",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "08b1bfac-2b77-47b1-84bb-b9f1683ae365",
+      "name": "Cinthia Leyva",
+      "phone": "6141276003",
+      "propCont": "MHO7941655|MHO7943995",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "a5b4fff9-7642-47d6-9457-ebfd573dc70d",
+      "name": "Crisella",
+      "phone": "6141644254",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "fa8d46cc-525d-4a97-9faf-e71b6993821b",
+      "name": "Cristina Marquez Blu",
+      "phone": "6142355489",
+      "propCont": "MHO7979724",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "e3391863-dbd7-4bab-b9cc-d87ea1592546",
+      "name": "Daniel Cordero",
+      "phone": "6141533405",
+      "propCont": "MHO7967495",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "e4967ac8-dc5c-414d-950e-bef2c7205dae",
+      "name": "Edgar Soto",
+      "phone": "6521065065",
+      "propCont": "EB-RR8135",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "e1cc6da7-6a59-4c1a-9bc7-71a5e24fd742",
+      "name": "Edmundo Juarez",
+      "phone": "6142351651",
+      "propCont": "EB-RR8135",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "961306ff-4319-46d9-90ba-025157e91d45",
+      "name": "Eduardo Saavedra",
+      "phone": "6141303121",
+      "propCont": "EB-RR8135",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "2a58df59-6f6b-4d3b-9672-b27c0fac06a0",
+      "name": "Estefany",
+      "phone": "6144765996",
+      "propCont": "EB-QZ9723",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "88a036cc-5f32-4135-9032-85dd8fb25280",
+      "name": "Flore Muñoz",
+      "phone": "6144880747",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "85ebb9b1-cbde-42bc-9569-95fd804b0fbb",
+      "name": "Gabriel Tarín",
+      "phone": "6145105559",
+      "propCont": "EB-KK0679",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "9577c3a9-b928-40be-9678-3c4ca8d442a4",
+      "name": "Haydee Perez",
+      "phone": "6144443544",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "fd778c85-1c69-4517-b3ec-35a6f0db1c57",
+      "name": "Jerarquica Denisse Asist Ricardo Sias",
+      "phone": "6141763922",
+      "propCont": "MHO8078901|MAP8087662|MAP8101986|MAP8109335",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "u2iwPk9thHgWSS7XsGmS",
+      "name": "Jesús Sierra",
+      "phone": "6142273674",
+      "propCont": "MAP8008740|MHO8090332|MHO8164413",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "46092de2-f97d-4ee0-86ac-6068ee80ffb5",
+      "name": "Jorge Aguilar",
+      "phone": "6142400915",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "3162d968-d6bb-441f-ba00-9d31de53c7e0",
+      "name": "Julio Marines",
+      "phone": "6141636322",
+      "propCont": "EB-IE0631",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "1d5d4661-b6b5-48fc-8300-e56197f82e19",
+      "name": "Luisa Rodriguez",
+      "phone": "6143850652",
+      "propCont": "MHO7953180",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "171e3aa9-aa92-4d89-a773-f56abb13cfb2",
+      "name": "Maria Del Pilar García",
+      "phone": "6144270643",
+      "propCont": "MLO7896033|MGL7897305|MGL7897366|MCO7907915|MLO8022570",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "pHMjpIGYWaYgfOnbgPDx",
+      "name": "Mario díaz",
+      "phone": "6142781299",
+      "propCont": "MGL7977192",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "13a89435-8482-4302-aaab-35e3d80a0b4b",
+      "name": "Marisela Franco",
+      "phone": "6141922654",
+      "propCont": "EB-RR8135",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "f6390a58-bc2f-43ec-946a-18ddedb9e824",
+      "name": "Martín Lascano",
+      "phone": "6142322633",
+      "propCont": "EB-KK0679",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "1aa1c59b-8ec0-4457-8c1c-f0c7150fbf81",
+      "name": "Mayra Marmolejo",
+      "phone": "6141908362",
+      "propCont": "José María Morelos y Pavón 3205 (MHO7904629)",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "5023b715-8884-438c-b03b-242301a7a408",
+      "name": "Mayra Ochoa",
+      "phone": "6141965772",
+      "propCont": "MHO7901116|MHO7904596|MHO7904629|MHO7939331",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "0ceddbf5-d900-4f0d-b41a-2aac54526f1f",
+      "name": "Melissa",
+      "phone": "3314347899",
+      "propCont": "EB-IE0631",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "e0a790f8-b89e-4785-8eb2-e131a3cb3b83",
+      "name": "Patricia Lopez",
+      "phone": "6144047657",
+      "propCont": "EB-RR8135",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "e697ccc4-2dca-431a-9add-3cb0c344504b",
+      "name": "Paty Leos",
+      "phone": "6142837357",
+      "propCont": "MHO7929291",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "cd1224eb-af05-45b4-a4c7-adccf6dc5ec3",
+      "name": "Paul Muela",
+      "phone": "6141127490",
+      "propCont": "EB-RR8135",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "3d39e927-00f0-4b7d-b899-224aec32ac3e",
+      "name": "Paulina Miramontes",
+      "phone": "6145037030",
+      "propCont": "EB-KK0679",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "funlMXaS4cttRUsFkk9r",
+      "name": "Roberto Lira Maestro",
+      "phone": "6143025447",
+      "propCont": "MHO7893055",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "541f5ad0-ffc1-4a2c-8f52-fd475f576b96",
+      "name": "Rodrigo Alberto Rodriguez Garcia",
+      "phone": "6142354328",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "4b789bfd-b0a3-4e11-b016-b04382e65397",
+      "name": "Romina",
+      "phone": "6141048508",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    },
+    {
+      "contactId": "935f58e5-d0e8-4665-a587-47b8c18949cb",
+      "name": "Senia Saenz",
+      "phone": "6271134540",
+      "propCont": "Begonias 913 (MHO8016213)",
+      "hasEbMatch": false
+    },
+    {
+      "contactId": "ce5154a9-22de-48f7-8d0f-6310015a23a8",
+      "name": "Valeria Franco",
+      "phone": "6141849614",
+      "propCont": "EB-WD1256",
+      "hasEbMatch": true
+    }
+  ],
+  "createdBinnacleIds": [
+    "xnymd5VRIhdnFuWvCdHo",
+    "30w6UKn8TkpMVsl9Mwzr",
+    "9BczcNorpl8ugsVtwj1P",
+    "mTONV24mtERwjUxmjy0B",
+    "LpL0B1yrOtBfx6gDK53d",
+    "UTWBN0EsJ1O5ss0hHINN",
+    "3OuE0pm3pPfkW9b4tAU7",
+    "a8GY7uVfgzffRpnAqXxm",
+    "4yLmdRwWPCBaXcCQFFGG",
+    "joqBkh4PqiZuF7wB66Nb",
+    "NT1AVGYjE1euMWEWgWeh",
+    "CCcSQNPK5GePEkqn96Mb",
+    "tVkZb9IUcK3R30MaNQvH",
+    "ufk7BTEJl9uWxxDfh5TA",
+    "ONiGDM0JWKd8GDMQLmki",
+    "ZParZZJ8m4rAAJNCo9GQ",
+    "mibQ3PpBbYzt06C1chDY",
+    "PvMe7YL8YeTv4G7MhMjP",
+    "4XtDhRlbmeUMoeXXU5Le",
+    "GXrqcSFIsxN04hAnZgfb",
+    "1Fgv0o165mc6G2EDDvyz",
+    "9JGtxChKfDAD7Dt9e7Hu",
+    "zEYTDvDXUq9jwxdU8aOe",
+    "Y3Juo5ty2oliQtFylKMH",
+    "I0NdT2GdjEsFBFOzXcux",
+    "Lv4zuzl6HI1WWNM0NQsO",
+    "myUgIF0Xv05crqosE2Gq",
+    "fzpPboepZfeCH1i3liv8",
+    "EFZnuvr7fF3m9ooA9Nle",
+    "5iXHgoedP3wTaGebm8ff",
+    "YCrHScUaMikYAIY4RNTU",
+    "Y3oGhX2f9XMrAlKISMda",
+    "edwed8AIZ1eow4GcKNB2",
+    "qsC8CPyr85TCZkkB5H2R",
+    "aIzpiIJtq7qY9BXabqSH",
+    "6tFlt77ZGJtXqghWKbPm",
+    "7wFLDmSErMjQFdNFvcRg",
+    "3SxwRVZGrQ5jCPjSAoeH",
+    "hiGm4r5ChDe40ut9H129",
+    "qn008DywLQRVzoICQwrp"
+  ]
+}

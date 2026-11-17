@@ -35,7 +35,11 @@
 		try {
 			sendWhatsApp(meta.telephon, draftText);
 
-			if (meta.stage === 'E4' && Array.isArray(meta.propertyIds) && meta.propertyIds.length > 0) {
+			if (
+				(meta.stage === 'E4' || meta.stage === 'E1') &&
+				Array.isArray(meta.propertyIds) &&
+				meta.propertyIds.length > 0
+			) {
 				for (const propId of meta.propertyIds) {
 					await infoToBinnacle({
 						date: Date.now(),

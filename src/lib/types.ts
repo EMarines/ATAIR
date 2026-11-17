@@ -190,6 +190,8 @@ export interface CopilotoTodoMeta {
   e3FormUrl?: string;
   callsWithoutReply?: number;
   propertySendsWithoutReply?: number;
+  isE1Over10Days?: boolean;
+  e1Step?: 'send_options' | 'followup_call' | string;
   proposedClose?: boolean;
   proposedCloseReason?: string;
   proposedCloseAt?: number;

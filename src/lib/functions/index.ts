@@ -6,9 +6,12 @@ export { findContactsForProperty } from './filContacts';
 export {
 	evaluatePropertyContactMatch,
 	filterContactsByCriteria,
+	findPropertiesInPriceRangeForContact,
 	getSentContactIdsForProperty,
 	getSentPropertyIdsForContact,
+	hasRecentPropertySend,
 	isAvailableProperty,
+	isPropertySendBinnacle,
 	isSynergyProperty,
 	matchContactsForProperty,
 	matchPropertiesForContact,
@@ -43,6 +46,7 @@ export type {
 	ContactFilterCriteria,
 	ContactMatchOptions,
 	MatchEvaluation,
+	PriceRangeMatchOptions,
 	PropertyMatchOptions
 } from './propertyMatching';
 export { sortBinnacle } from './sort';

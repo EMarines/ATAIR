@@ -1,6 +1,10 @@
 import type { Binnacle, Contact, Property, Todo } from '$lib/types';
 import { getContactBadgeInfo, getContactCreatedAtMs, isWithinMaxAgeYears, normalizeStage } from './contactBadge';
-import { matchPropertiesForContact } from './propertyMatching';
+import {
+	findPropertiesInPriceRangeForContact,
+	hasRecentPropertySend,
+	matchPropertiesForContact
+} from './propertyMatching';
 import { getProposalUrl } from './urlUtils';
 
 export type CopilotoStage = 'E1' | 'E2' | 'E3' | 'E4';
@@ -35,6 +39,8 @@ export interface CopilotoCandidate {
 	notes: string;
 	matchedProperties: CopilotoMatchedPropertySummary[];
 	e3FormUrl?: string;
+	isE1Over10Days?: boolean;
+	e1Step?: 'send_options' | 'followup_call';
 }
 
 export interface CopilotoPlanOptions {
@@ -99,7 +105,8 @@ function buildCandidateRecord(
 	priority: number,
 	isColdOver2y: boolean,
 	matchedProperties: CopilotoMatchedPropertySummary[],
-	baseUrl: string
+	baseUrl: string,
+	extra?: { isE1Over10Days?: boolean; e1Step?: 'send_options' | 'followup_call' }
 ): CopilotoCandidate {
 	const fullName = `${contact.name || ''} ${contact.lastname || ''}`.trim() || 'Sin nombre';
 	const contactId = String(contact.id || '').trim();
@@ -124,6 +131,8 @@ function buildCandidateRecord(
 		tagsProperty: Array.isArray(contact.tagsProperty) ? contact.tagsProperty : [],
 		notes: String(contact.notes || contact.comContact || '').trim(),
 		matchedProperties,
+		isE1Over10Days: extra?.isE1Over10Days,
+		e1Step: extra?.e1Step,
 		...(stage === 'E3'
 			? { e3FormUrl: `${cleanBase}/buscar?c=${encodeURIComponent(contactId)}` }
 			: {})
@@ -193,7 +202,68 @@ export function planCopilotoCandidates(
 		}
 
 		if (badge.text === 'E1') {
-			e1List.push(buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl));
+			const createdAtMs = getContactCreatedAtMs((contact as any).createdAt);
+			const isE1Over10Days = createdAtMs !== null && nowMs - createdAtMs > 10 * 86_400_000;
+
+			if (isE1Over10Days) {
+				const contactId = String(contact.id || '').trim();
+				const sentRecently = hasRecentPropertySend(contactId, binnacles, 48 * 3600_000, nowMs);
+
+				if (sentRecently) {
+					// Paso 2: Llamada telefónica de seguimiento tras envío de opciones
+					e1List.push(
+						buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
+							isE1Over10Days: true,
+							e1Step: 'followup_call'
+						})
+					);
+				} else {
+					// Paso 1: Enviar 2 a 3 opciones en el rango de precio (±25%)
+					const matchedProps = findPropertiesInPriceRangeForContact(contact, properties, {
+						tolerance: 0.25,
+						excludeAlreadySent: true,
+						binnacles,
+						maxResults: 3
+					});
+
+					if (matchedProps.length > 0) {
+						const summaries: CopilotoMatchedPropertySummary[] = matchedProps.map((p) => ({
+							id: String(p.id || p.docId || p.public_id || ''),
+							public_id: String(p.public_id || ''),
+							title: String(
+								p.title || `${p.property_type || 'Propiedad'} en ${p.location || 'Chihuahua'}`
+							),
+							price: Number(p.price || 0),
+							zona: String((p as any).zona || p.location || ''),
+							proposalUrl: p.public_id
+								? getProposalUrl(p.public_id, contact)
+								: String((p as any).public_url || (p as any).urlProp || '')
+						}));
+
+						e1List.push(
+							buildCandidateRecord(contact, 'E1', 1, false, summaries, baseUrl, {
+								isE1Over10Days: true,
+								e1Step: 'send_options'
+							})
+						);
+					} else {
+						// Si no hay propiedades en ese rango, fallback a llamada de seguimiento
+						e1List.push(
+							buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
+								isE1Over10Days: true,
+								e1Step: 'followup_call'
+							})
+						);
+					}
+				}
+			} else {
+				// E1 reciente (<10 días): atención telefónica inmediata
+				e1List.push(
+					buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
+						isE1Over10Days: false
+					})
+				);
+			}
 		} else if (badge.text === 'E2') {
 			e2List.push(buildCandidateRecord(contact, 'E2', 2, false, [], baseUrl));
 		} else if (badge.text === 'E4') {

@@ -948,6 +948,8 @@
                           telephon: card.telephon,
                           stage: card.stage,
                           priority: card.priority,
+                          isE1Over10Days: card.isE1Over10Days,
+                          e1Step: card.e1Step,
                           runDate: planData.runDate,
                           action: card.action,
                           objective: card.objective,

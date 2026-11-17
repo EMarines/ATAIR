@@ -284,13 +284,36 @@ export function getPropertyAmenities(prop: Partial<Property> | any): string[] {
 	return Array.from(normalized);
 }
 
-function isPropertySendBinnacle(entry: Binnacle): boolean {
+export function isPropertySendBinnacle(entry: Binnacle): boolean {
 	const action = normalizeMatchText(entry.action);
 	return (
 		action.includes('propiedad enviada') ||
 		action.includes('propuesta enviada') ||
 		action.includes('enviada por whatsapp')
 	);
+}
+
+/**
+ * Detecta si se enviaron propiedades a un contacto en las últimas horas (por defecto 48h).
+ */
+export function hasRecentPropertySend(
+	contactId: string,
+	binnacles: Binnacle[] = [],
+	withinMs: number = 48 * 3600_000,
+	nowMs: number = Date.now()
+): boolean {
+	if (!contactId || !Array.isArray(binnacles)) return false;
+	const threshold = nowMs - withinMs;
+	for (const item of binnacles) {
+		if (String(item.to ?? '').trim() !== contactId) continue;
+		const binnMs = getContactCreatedAtMs((item as any).date ?? (item as any).createdAt);
+		if (binnMs && binnMs >= threshold) {
+			if (isPropertySendBinnacle(item) || /^[A-Z0-9]{2,5}-/i.test(String(item.comment ?? ''))) {
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 /**
@@ -665,4 +688,157 @@ export function filterContactsByCriteria(
 
 		return true;
 	});
+}
+
+export interface PriceRangeMatchOptions {
+	tolerance?: number;
+	excludeAlreadySent?: boolean;
+	binnacles?: Binnacle[];
+	maxResults?: number;
+	synergyOnly?: boolean;
+}
+
+/**
+ * Encuentra 2 a 3 propiedades en el rango de precio (±25% por defecto)
+ * de la propiedad que consultó el lead (propCont) o de su presupuesto (#040).
+ */
+export function findPropertiesInPriceRangeForContact(
+	contact: Partial<Contact> | null | undefined,
+	properties: Property[],
+	options: PriceRangeMatchOptions = {}
+): Property[] {
+	if (!contact || !Array.isArray(properties) || properties.length === 0) return [];
+
+	const tolerance =
+		typeof options.tolerance === 'number' && options.tolerance > 0 ? options.tolerance : 0.25;
+
+	const sentSet =
+		options.excludeAlreadySent !== false
+			? getSentPropertyIdsForContact(contact, options.binnacles || [])
+			: new Set<string>();
+
+	let targetPrice = 0;
+	let targetType = normalizePropertyType(contact.selecTP || contact.typeProperty);
+	let targetZone = '';
+	const refPropKey = String(contact.propCont || '').trim().toUpperCase();
+	const refPropIds = new Set<string>();
+
+	if (refPropKey) {
+		refPropIds.add(refPropKey);
+		const refProp = properties.find((p) => {
+			const ids = extractPropertyIdentifiers(p).map((id) => id.toUpperCase());
+			return ids.includes(refPropKey);
+		});
+		if (refProp) {
+			targetPrice = extractPropertyPrice(refProp);
+			if (!targetType) {
+				targetType = normalizePropertyType(
+					refProp.property_type || refProp.selecTP || (refProp as any).tipoPropiedad
+				);
+			}
+			targetZone = tagToUbicacion(refProp);
+			for (const id of extractPropertyIdentifiers(refProp)) {
+				refPropIds.add(id.toUpperCase());
+			}
+		}
+	}
+
+	if (targetPrice === 0) {
+		targetPrice = Number(contact.budget || 0);
+	}
+	if (targetPrice === 0 && contact.rangeProp) {
+		const bounds = parseRangeBounds(contact.rangeProp);
+		if (bounds) targetPrice = (bounds.min + bounds.max) / 2;
+	}
+
+	if (targetPrice <= 0) return [];
+
+	const minPrice = targetPrice * (1 - tolerance);
+	const maxPrice = targetPrice * (1 + tolerance);
+	const contactOp = resolveContactOperation(contact) || 'sale';
+	const contactZones = getContactZones(contact);
+	if (targetZone && !contactZones.includes(targetZone)) {
+		contactZones.push(targetZone);
+	}
+
+	const scored: Array<{
+		property: Property;
+		score: number;
+		priceDiff: number;
+		createdAtMs: number;
+	}> = [];
+
+	for (const prop of properties) {
+		if (!prop) continue;
+		if (!isAvailableProperty(prop)) continue;
+		if (options.synergyOnly && !isSynergyProperty(prop)) continue;
+
+		const propIds = extractPropertyIdentifiers(prop).map((id) => id.toUpperCase());
+		// Excluir la propiedad de referencia consultada
+		if (propIds.some((id) => refPropIds.has(id))) continue;
+		// Excluir propiedades ya enviadas
+		if (propIds.some((id) => sentSet.has(id))) continue;
+
+		// Operación (Venta / Renta)
+		const propOp = resolvePropertyOperation(prop);
+		if (propOp && propOp !== contactOp) continue;
+
+		// Rango de precio
+		const propPrice = extractPropertyPrice(prop);
+		if (propPrice < minPrice || propPrice > maxPrice) continue;
+
+		// Tipo de propiedad
+		const propType = normalizePropertyType(
+			prop.property_type || prop.selecTP || (prop as any).tipoPropiedad
+		);
+		let typeScore = 0;
+		if (targetType) {
+			if (targetType === 'casa' || targetType === 'departamento') {
+				if (propType !== 'casa' && propType !== 'departamento') continue;
+				if (propType === targetType) typeScore = 30;
+			} else if (propType === targetType) {
+				typeScore = 30;
+			} else {
+				continue;
+			}
+		}
+
+		// Proximidad de precio
+		const priceDiffRatio = Math.abs(propPrice - targetPrice) / targetPrice;
+		const priceScore = Math.max(0, Math.round(50 * (1 - priceDiffRatio)));
+
+		// Zona geográfica
+		const propZone = tagToUbicacion(prop);
+		let zoneScore = 0;
+		if (propZone && contactZones.includes(propZone)) {
+			zoneScore = 20;
+		}
+
+		let bonus = 0;
+		if (isSynergyProperty(prop)) bonus += 10;
+		if (prop.public_id) bonus += 5;
+
+		const propCreatedMs = getContactCreatedAtMs(prop.created_at);
+		if (propCreatedMs && Date.now() - propCreatedMs <= 60 * 86_400_000) {
+			bonus += 10;
+		}
+
+		const totalScore = priceScore + typeScore + zoneScore + bonus;
+		scored.push({
+			property: prop,
+			score: totalScore,
+			priceDiff: Math.abs(propPrice - targetPrice),
+			createdAtMs: propCreatedMs ?? 0
+		});
+	}
+
+	scored.sort((a, b) => {
+		if (b.score !== a.score) return b.score - a.score;
+		if (a.priceDiff !== b.priceDiff) return a.priceDiff - b.priceDiff;
+		return b.createdAtMs - a.createdAtMs;
+	});
+
+	const max =
+		typeof options.maxResults === 'number' && options.maxResults > 0 ? options.maxResults : 3;
+	return scored.slice(0, max).map((item) => item.property);
 }
