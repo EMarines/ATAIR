@@ -2259,11 +2259,12 @@
 
   .table-responsive {
     width: 100%;
-    overflow-x: auto;
+    overflow-x: hidden;
   }
 
   .agenda-table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     text-align: left;
     font-size: 0.88rem;
@@ -2280,19 +2281,21 @@
   }
 
   .agenda-table th {
-    padding: 0.85rem 1rem;
-    font-size: 0.76rem;
+    padding: 0.75rem 0.65rem;
+    font-size: 0.74rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     color: var(--text-muted, #64748b);
     white-space: nowrap;
+    box-sizing: border-box;
   }
 
   .agenda-table td {
-    padding: 0.85rem 1rem;
+    padding: 0.75rem 0.65rem;
     border-bottom: 1px solid var(--border, #f1f5f9);
     vertical-align: middle;
+    box-sizing: border-box;
   }
 
   :global([data-theme="dark"]) .agenda-table td {
@@ -2318,9 +2321,9 @@
 
   /* COLUMNA Y CONTROLES DE ARRASTRE VERTICAL */
   .th-drag, .td-drag {
-    width: 60px;
+    width: 44px;
     text-align: center;
-    padding: 0.5rem 0.25rem !important;
+    padding: 0.5rem 0.2rem !important;
   }
 
   .drag-reorder-group {
@@ -2391,8 +2394,9 @@
   }
 
   .th-status, .td-status {
-    width: 50px;
+    width: 44px;
     text-align: center;
+    padding: 0.5rem 0.2rem !important;
   }
 
   .btn-check-toggle {
@@ -2416,17 +2420,26 @@
     color: #10b981;
   }
 
+  .th-datetime, .td-datetime {
+    width: 145px;
+    padding: 0.75rem 0.5rem !important;
+    white-space: nowrap;
+  }
+
   .datetime-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    font-size: 0.8rem;
+    gap: 0.4rem;
+    font-size: 0.76rem;
     font-weight: 600;
     color: var(--text-muted, #475569);
     background: rgba(0, 0, 0, 0.04);
-    padding: 0.25rem 0.65rem;
+    padding: 0.2rem 0.55rem;
     border-radius: 6px;
     white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   :global([data-theme="dark"]) .datetime-pill {
@@ -2438,11 +2451,19 @@
     color: var(--brand, #6366f1);
   }
 
+  .th-task, .td-task {
+    width: auto;
+    padding: 0.75rem 0.65rem !important;
+    overflow: hidden;
+  }
+
   .task-title-wrap {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 0.55rem;
-    flex-wrap: wrap;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .badge-source {
@@ -2487,7 +2508,8 @@
     font-weight: 600;
     color: var(--color, #0f172a);
     line-height: 1.4;
-    max-width: 420px;
+    flex: 1 1 auto;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2526,15 +2548,24 @@
     color: var(--text-muted, #94a3b8);
   }
 
+  .th-notes, .td-notes {
+    width: 26%;
+    max-width: 260px;
+    padding: 0.75rem 0.5rem !important;
+    overflow: hidden;
+  }
+
   .notes-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    max-width: 340px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    word-break: break-word;
     line-height: 1.45;
     font-size: 0.8rem;
     color: var(--text-muted, #64748b);
@@ -2560,8 +2591,9 @@
   }
 
   .th-actions, .td-actions {
-    width: 100px;
+    width: 86px;
     text-align: right;
+    padding: 0.75rem 0.5rem !important;
   }
 
   .actions-group {
