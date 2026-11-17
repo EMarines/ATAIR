@@ -258,11 +258,15 @@
 
 <style>
 	.copiloto-drawer {
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 100%;
 		background: rgba(99, 102, 241, 0.05);
 		border: 1px solid rgba(99, 102, 241, 0.25);
 		border-radius: 12px;
 		padding: 1rem 1.15rem;
-		margin: 0.25rem 0.5rem 0.5rem;
+		margin: 0.25rem 0 0.5rem;
+		overflow-x: hidden;
 	}
 
 	:global([data-theme="dark"]) .copiloto-drawer {
@@ -392,13 +396,15 @@
 
 	.drawer-grid {
 		display: grid;
-		grid-template-columns: 1.1fr 1fr;
+		grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
 		gap: 1rem;
+		width: 100%;
+		min-width: 0;
 	}
 
 	@media (max-width: 820px) {
 		.drawer-grid {
-			grid-template-columns: 1fr;
+			grid-template-columns: minmax(0, 1fr);
 		}
 	}
 
@@ -406,6 +412,9 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.55rem;
+		min-width: 0;
+		width: 100%;
+		box-sizing: border-box;
 	}
 
 	.info-card {
@@ -467,12 +476,17 @@
 	}
 
 	.draft-textarea {
+		box-sizing: border-box;
 		width: 100%;
+		max-width: 100%;
+		min-width: 0;
 		border-radius: 9px;
 		border: 1px solid rgba(148, 163, 184, 0.35);
 		padding: 0.6rem 0.75rem;
 		font-family: inherit;
 		font-size: 0.83rem;
+		line-height: 1.45;
+		overflow-wrap: break-word;
 		resize: vertical;
 		background: rgba(255, 255, 255, 0.85);
 		color: #0f172a;
