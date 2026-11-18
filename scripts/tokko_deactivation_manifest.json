@@ -1,0 +1,977 @@
+{
+  "executedAt": "2026-11-18T00:05:23.000Z",
+  "totalDeactivatedContacts": 85,
+  "totalDeletedTodos": 48,
+  "deactivatedContacts": [
+    {
+      "contactId": "9af26c38-9c2d-4dd5-8c32-1e881ea3f342",
+      "fullName": "Adrian Montes",
+      "phone": "6143023946",
+      "createdAt": 1781546400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64362059"
+    },
+    {
+      "contactId": "88d4e552-1c5c-45ed-9ed1-eacc8ec8204b",
+      "fullName": "Adriana",
+      "phone": "6142427572",
+      "createdAt": 1779732000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63618391"
+    },
+    {
+      "contactId": "79ffbdc9-5853-4bb4-8952-7ea620c78c33",
+      "fullName": "Adriana Martínez",
+      "phone": "6481077075",
+      "createdAt": 1780077600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63772253"
+    },
+    {
+      "contactId": "6a3381a9-3ac5-4c4f-aa4a-51c3cf4f7685",
+      "fullName": "Alan Rodriguez",
+      "phone": "5619925139",
+      "createdAt": 1778695200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63263907"
+    },
+    {
+      "contactId": "7df0d751-34ec-4ca7-b822-3c40e2824f34",
+      "fullName": "Alba Chaparro",
+      "phone": "6142194437",
+      "createdAt": 1778608800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63194492"
+    },
+    {
+      "contactId": "b33047c7-092f-4b82-8820-c5e7b6492972",
+      "fullName": "Alberto González",
+      "phone": "6141767358",
+      "createdAt": 1777485600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62837301"
+    },
+    {
+      "contactId": "9357f333-b332-40e3-87c4-d64686bcb104",
+      "fullName": "Alex González Borja",
+      "phone": "6143540780",
+      "createdAt": 1781373600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64324160"
+    },
+    {
+      "contactId": "df776faa-f2b8-4da7-9741-978a8f834479",
+      "fullName": "Alexia Aragón",
+      "phone": "6141491859",
+      "createdAt": 1779472800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63574323"
+    },
+    {
+      "contactId": "deabb2d6-a37d-467a-ba7a-f87a28f48103",
+      "fullName": "Alfredo Chacón",
+      "phone": "6145490135",
+      "createdAt": 1777572000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62846667"
+    },
+    {
+      "contactId": "3261d5c8-2f0c-4cbc-9f1d-c4c24aa23dd1",
+      "fullName": "Alfredo Chavarria",
+      "phone": "6141223040",
+      "createdAt": 1781460000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64341745"
+    },
+    {
+      "contactId": "ea512f1e-89dd-4ff7-96f0-a9a76608c36e",
+      "fullName": "Almendra Flores",
+      "phone": "6391029368",
+      "createdAt": 1775498400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62116809"
+    },
+    {
+      "contactId": "341f28fd-c5c3-4900-b1a0-52b1be9bb0c2",
+      "fullName": "Ana Maria López",
+      "phone": "6145221966",
+      "createdAt": 1776189600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62371528"
+    },
+    {
+      "contactId": "bb29ceaa-a7bd-4ca3-8864-ed80cb7ac03a",
+      "fullName": "Ana Paula",
+      "phone": "6144441552",
+      "createdAt": 1778868000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63323272"
+    },
+    {
+      "contactId": "7c1aae48-3ef0-48bf-9ff4-799d2c8b3f1e",
+      "fullName": "Ana Rojas",
+      "phone": "6142217556",
+      "createdAt": 1779732000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63617570"
+    },
+    {
+      "contactId": "b8e97ca8-7dbc-4990-bfee-e77757ab739f",
+      "fullName": "Andrés Muñoz",
+      "phone": "6361323485",
+      "createdAt": 1777831200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62905794"
+    },
+    {
+      "contactId": "29789b97-00a0-440b-87cf-ba375ca142e9",
+      "fullName": "Angel Quintana",
+      "phone": "6143799958",
+      "createdAt": 1779213600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63460187"
+    },
+    {
+      "contactId": "8ecfaf6d-f4b2-428d-9e8b-043b5116f688",
+      "fullName": "Angélica Valdez",
+      "phone": "6143206931",
+      "createdAt": 1778868000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63327466"
+    },
+    {
+      "contactId": "698383f2-a64b-4c97-a4ef-1a69b5846762",
+      "fullName": "Antonio Lozoya",
+      "phone": "6142444413",
+      "createdAt": 1779991200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63711831"
+    },
+    {
+      "contactId": "c50513c8-1423-402c-865a-cf2c057b3864",
+      "fullName": "Antonio Sánchez",
+      "phone": "6144562118",
+      "createdAt": 1780423200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63908164"
+    },
+    {
+      "contactId": "88fcd8c3-74c7-43ba-8392-3b7b083c24d6",
+      "fullName": "Ariana Morales",
+      "phone": "6145094388",
+      "createdAt": 1781373600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64325202"
+    },
+    {
+      "contactId": "ed73e033-fd61-4248-8a61-2af305d9bf8f",
+      "fullName": "Armando Chavez",
+      "phone": "6141048622",
+      "createdAt": 1775844000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62251870"
+    },
+    {
+      "contactId": "d82dbbb2-9df8-4340-b019-2d60609de7e6",
+      "fullName": "Arturo González",
+      "phone": "6394655639",
+      "createdAt": 1781805600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64559700"
+    },
+    {
+      "contactId": "3d22ff30-10c6-4465-b2f2-d11dbf858ef0",
+      "fullName": "Astrid Bustillos",
+      "phone": "6141000774",
+      "createdAt": 1777140000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62717171"
+    },
+    {
+      "contactId": "8383ef3e-9e21-4474-9656-a09238547218",
+      "fullName": "Caro Castro",
+      "phone": "6142356551",
+      "createdAt": 1778781600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63292864"
+    },
+    {
+      "contactId": "a868c425-167a-4f88-ae6e-d035fc0f2bb5",
+      "fullName": "Cesar Acosta",
+      "phone": "6141876400",
+      "createdAt": 1778608800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63199940"
+    },
+    {
+      "contactId": "8cf7e4ac-332c-483e-8eb4-5b6bbbbcce28",
+      "fullName": "Cinthia Ponce",
+      "phone": "6141748200",
+      "createdAt": 1779300000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63495940"
+    },
+    {
+      "contactId": "30695854-34c9-401a-9637-3a38e07d7061",
+      "fullName": "Cristina Ceballos",
+      "phone": "6141888024",
+      "createdAt": 1778263200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63083399"
+    },
+    {
+      "contactId": "296efaa5-6ccf-4953-b7c0-dba2d6d30f33",
+      "fullName": "Daniel Loera",
+      "phone": "6145120000",
+      "createdAt": 1781373600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64325083"
+    },
+    {
+      "contactId": "f0eee41a-2a95-46a4-bca8-3134d64bcb8a",
+      "fullName": "Daniel Pérez",
+      "phone": "6141775900",
+      "createdAt": 1780596000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64045467"
+    },
+    {
+      "contactId": "9a5ae1a5-e4e9-4863-a5d3-de3345fca056",
+      "fullName": "David Flores",
+      "phone": "6145046124",
+      "createdAt": 1777226400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62726715"
+    },
+    {
+      "contactId": "e739cf91-fc56-401d-b8c3-68f7ecc399d8",
+      "fullName": "David Márquez",
+      "phone": "6565748260",
+      "createdAt": 1776880800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62619170"
+    },
+    {
+      "contactId": "dc323e2a-be1c-4515-9405-90a89d09d1c8",
+      "fullName": "Edwin Domínguez",
+      "phone": "6144058452",
+      "createdAt": 1781200800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64271830"
+    },
+    {
+      "contactId": "fc920e71-2ede-48eb-98d5-2a840782f468",
+      "fullName": "Elba Espinoza",
+      "phone": "6142700577",
+      "createdAt": 1776880800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62601365"
+    },
+    {
+      "contactId": "1ecf6b38-d873-47a3-923a-6b78525e28e7",
+      "fullName": "Erick Martel",
+      "phone": "6142157061",
+      "createdAt": 1778090400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63035835"
+    },
+    {
+      "contactId": "5169686a-7a9a-4105-82f4-7433ef97cb57",
+      "fullName": "Fernanda Cordero",
+      "phone": "6146070935",
+      "createdAt": 1779991200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63741082"
+    },
+    {
+      "contactId": "73fffe3d-bbf5-43f9-a1e8-c8f80eb42759",
+      "fullName": "Gerardo Mejía",
+      "phone": "8111661212",
+      "createdAt": 1781200800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64272068"
+    },
+    {
+      "contactId": "d9c81622-c23c-4d29-9116-adaf6d0fa872",
+      "fullName": "Héctor Flores",
+      "phone": "6143657995",
+      "createdAt": 1775412000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62075147"
+    },
+    {
+      "contactId": "9650320d-ee4f-451f-8c14-72b82906db1d",
+      "fullName": "Irene Hernández",
+      "phone": "6144270517",
+      "createdAt": 1770662777111,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62188586"
+    },
+    {
+      "contactId": "38937728-c5e2-4188-903c-11c53682e34b",
+      "fullName": "Iván Batista",
+      "phone": "6144578366",
+      "createdAt": 1776189600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62352117"
+    },
+    {
+      "contactId": "624173dc-00a2-4822-ba4b-ee89f9ce3843",
+      "fullName": "Iveth Sánchez",
+      "phone": "6141832390",
+      "createdAt": 1775671200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62190559"
+    },
+    {
+      "contactId": "5590bba4-4023-4e67-ad32-87db705b7831",
+      "fullName": "Jaime García",
+      "phone": "6145154767",
+      "createdAt": 1778004000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62992360"
+    },
+    {
+      "contactId": "16e6aeb0-e54e-48e8-bb71-f65d44e93a74",
+      "fullName": "Janeth",
+      "phone": "6142185879",
+      "createdAt": 1780164000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63794166"
+    },
+    {
+      "contactId": "9a07b75e-2170-40f9-bd47-3d4a9d50805d",
+      "fullName": "Jazmín Pérez",
+      "phone": "6145024155",
+      "createdAt": 1781978400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64619649"
+    },
+    {
+      "contactId": "a2cc48a7-d5fc-45ae-94e4-07bcd583d439",
+      "fullName": "Jesús Morales",
+      "phone": "6143948715",
+      "createdAt": 1778004000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62967264"
+    },
+    {
+      "contactId": "af8e7633-cdf6-4947-81bc-b97fed8b8c2e",
+      "fullName": "Jesús Rodríguez",
+      "phone": "6144569698",
+      "createdAt": 1780509600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63987682"
+    },
+    {
+      "contactId": "bdddcf31-d60b-4534-aa54-1ade9eb19350",
+      "fullName": "Jorge Mena",
+      "phone": "6141184334",
+      "createdAt": 1776016800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62294449"
+    },
+    {
+      "contactId": "6bb04e06-d462-48a1-9a99-057661922fd4",
+      "fullName": "Jose Angel",
+      "phone": "8713557414",
+      "createdAt": 1776103200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62327792"
+    },
+    {
+      "contactId": "09eebe5a-5db8-4a78-84d7-ae4f0fce59ff",
+      "fullName": "Jose Carlos Ronquillo",
+      "phone": "6142240865",
+      "createdAt": 1778004000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62970731"
+    },
+    {
+      "contactId": "0d65ecb5-27a2-4842-83d8-a9e0b7f5a535",
+      "fullName": "Jose Luis Yapor",
+      "phone": "6142236674",
+      "createdAt": 1773333343719,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62189608"
+    },
+    {
+      "contactId": "e6cb3b79-42ae-4183-b4bd-94e6446871aa",
+      "fullName": "Juan de Dios Muñoz",
+      "phone": "6141849392",
+      "createdAt": 1781287200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64300709"
+    },
+    {
+      "contactId": "980a39b4-e988-4ab6-b9f7-e767e9b47b18",
+      "fullName": "Karina Melgar",
+      "phone": "6391202379",
+      "createdAt": 1780077600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63770949"
+    },
+    {
+      "contactId": "f12d9e67-9a81-40e6-af4b-12127dbc4431",
+      "fullName": "Kevin Raynal",
+      "phone": "6141025578",
+      "createdAt": 1776967200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62661557"
+    },
+    {
+      "contactId": "f9106748-0824-48cf-9859-04d08f12404c",
+      "fullName": "Lourdes Calzado",
+      "phone": "4721180584",
+      "createdAt": 1781546400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64365184"
+    },
+    {
+      "contactId": "5e18e5c7-786e-47e7-add7-0d0b411e4838",
+      "fullName": "Luis Arellano",
+      "phone": "6144476498",
+      "createdAt": 1777572000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62847980"
+    },
+    {
+      "contactId": "cb71741d-dd79-47a6-8ad6-6a977b4b7eff",
+      "fullName": "Luis Chainé",
+      "phone": "6145761313",
+      "createdAt": 1776103200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62345696"
+    },
+    {
+      "contactId": "6855ecc4-a43c-489c-bd51-5cc813652d96",
+      "fullName": "Manuel Diaz",
+      "phone": "6141254879",
+      "createdAt": 1776362400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62443858"
+    },
+    {
+      "contactId": "4df566de-306d-4855-bd5e-9a16d64f710d",
+      "fullName": "Maria Castillo",
+      "phone": "6141112966",
+      "createdAt": 1777053600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62673155"
+    },
+    {
+      "contactId": "423b7198-5723-4394-8669-fbc62b7179de",
+      "fullName": "Mariana Burciaga",
+      "phone": "6142278411",
+      "createdAt": 1779213600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63470075"
+    },
+    {
+      "contactId": "7c714f61-6dad-4414-840e-a65160caa843",
+      "fullName": "Mariana Martinez",
+      "phone": "8711097311",
+      "createdAt": 1775671200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62187479"
+    },
+    {
+      "contactId": "1aa30618-bc32-4a3f-9ce7-c046f4ee3417",
+      "fullName": "Mario Duarte",
+      "phone": "6143819305",
+      "createdAt": 1775757600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62236362"
+    },
+    {
+      "contactId": "88f1ffc5-fc9b-4c03-8bd5-07eee0bd567d",
+      "fullName": "Mayra Aguirre",
+      "phone": "6145048500",
+      "createdAt": 1779213600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63413633"
+    },
+    {
+      "contactId": "c1a8f987-7b82-4733-bdbc-228a72434246",
+      "fullName": "Michel León",
+      "phone": "6145504161",
+      "createdAt": 1776535200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62486396"
+    },
+    {
+      "contactId": "06f9532f-d635-4cb1-8987-84dadd388f61",
+      "fullName": "Miriam Carreón",
+      "phone": "6141659533",
+      "createdAt": 1780509600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64006813"
+    },
+    {
+      "contactId": "19f66261-f377-4595-a009-7e033f6bd8f6",
+      "fullName": "Monica Márquez",
+      "phone": "6145210568",
+      "createdAt": 1779472800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63568280"
+    },
+    {
+      "contactId": "a92b4710-6531-400b-b8f2-5e4ee7fc1a68",
+      "fullName": "Nadia Nieto",
+      "phone": "6391332568",
+      "createdAt": 1781287200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64303795"
+    },
+    {
+      "contactId": "6127bf59-89dc-4f38-9842-88c7ea3b4ce2",
+      "fullName": "Obed González",
+      "phone": "6143730675",
+      "createdAt": 1776880800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62631365"
+    },
+    {
+      "contactId": "8e8cc618-29aa-4743-89cf-14c60fc990d8",
+      "fullName": "Obelia Santiago",
+      "phone": "5579551763",
+      "createdAt": 1775498400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62117105"
+    },
+    {
+      "contactId": "610892f6-1297-4886-93d5-00bfa5c7b01e",
+      "fullName": "Octavio Hernandez",
+      "phone": "6141498582",
+      "createdAt": 1777312800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62757918"
+    },
+    {
+      "contactId": "c82bdcbb-7738-4c0f-b6d8-840c1a33b08c",
+      "fullName": "Oscar Gutiérrez",
+      "phone": "6391332511",
+      "createdAt": 1778954400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63352016"
+    },
+    {
+      "contactId": "ca81d973-36ed-4d9c-ac2d-9bdaf1d894c6",
+      "fullName": "Oscar Olivas",
+      "phone": "6144697890",
+      "createdAt": 1779300000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63500326"
+    },
+    {
+      "contactId": "3d1b4954-2419-43c3-9c76-d2c1705a213b",
+      "fullName": "Patricia Chavez",
+      "phone": "6141100376",
+      "createdAt": 1779991200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63741837"
+    },
+    {
+      "contactId": "536f1778-e6b6-48ae-aa15-44d8653212fd",
+      "fullName": "Patricia Vargas",
+      "phone": "6141843602",
+      "createdAt": 1776708000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62561659"
+    },
+    {
+      "contactId": "1353dd83-6793-4382-9917-bdc9f0c8509b",
+      "fullName": "Rafael Ledezma",
+      "phone": "6141071766",
+      "createdAt": 1776880800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62623502"
+    },
+    {
+      "contactId": "d7b1a2e3-3ff3-4abe-b170-72c06dd3d7b4",
+      "fullName": "Raúl Herrera",
+      "phone": "6143425843",
+      "createdAt": 1780336800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63856150"
+    },
+    {
+      "contactId": "7dd5dd82-d935-4dd1-8ab7-fe91f374fe6d",
+      "fullName": "Ricardo Solis",
+      "phone": "6145149460",
+      "createdAt": 1778004000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62996177"
+    },
+    {
+      "contactId": "6c3ba8b7-cc1d-414a-a03b-6dec1978a86c",
+      "fullName": "Ricardo Terrazas",
+      "phone": "6142565109",
+      "createdAt": 1776103200000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62347132"
+    },
+    {
+      "contactId": "d7d10f30-5c7b-4249-962b-cef87b470d94",
+      "fullName": "Roberto López",
+      "phone": "6145151535",
+      "createdAt": 1780164000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63796509"
+    },
+    {
+      "contactId": "089042f3-3a91-406d-a3f5-dba0952c4116",
+      "fullName": "Rodrigo Reynal",
+      "phone": "6141751887",
+      "createdAt": 1781028000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "64208724"
+    },
+    {
+      "contactId": "9502425b-fb5a-4e86-8fe0-a4adca693c97",
+      "fullName": "Rogelio Rivera",
+      "phone": "6142393904",
+      "createdAt": 1776880800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62623376"
+    },
+    {
+      "contactId": "6c0f2adc-99b1-42e6-90a6-288f0f398f56",
+      "fullName": "Salvador Lopez",
+      "phone": "6145943828",
+      "createdAt": 1775757600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62236992"
+    },
+    {
+      "contactId": "9f0b368e-96b7-4649-b8ea-eb981f408e89",
+      "fullName": "Socorro Molinar",
+      "phone": "6141606814",
+      "createdAt": 1779904800000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63675786"
+    },
+    {
+      "contactId": "1f5f8331-09a3-40ee-a4ef-e2c29af1a246",
+      "fullName": "Verónica Zamora",
+      "phone": "6141318982",
+      "createdAt": 1779213600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63413498"
+    },
+    {
+      "contactId": "6c78c1f6-3cfa-47ac-a36c-514a1666a3d3",
+      "fullName": "Vicencio Rodríguez",
+      "phone": "6142353126",
+      "createdAt": 1776794400000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62562682"
+    },
+    {
+      "contactId": "62c73ff7-f393-480e-964c-45a3ae21c10d",
+      "fullName": "Victor Moreno",
+      "phone": "6141841872",
+      "createdAt": 1780077600000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "63761248"
+    },
+    {
+      "contactId": "53a34165-50c3-4095-9abe-8605b1335c01",
+      "fullName": "Wendy Delgado",
+      "phone": "6145800257",
+      "createdAt": 1777140000000,
+      "contactStage": "Etapa 1",
+      "tokkoId": "62703875"
+    }
+  ],
+  "deletedTodos": [
+    {
+      "todoId": "1h3ZmyraqZ8TpX1deaIm",
+      "task": "Primer contacto con Miriam Carreón",
+      "contactId": "06f9532f-d635-4cb1-8987-84dadd388f61",
+      "isCompleted": false
+    },
+    {
+      "todoId": "4m0y6UCpArWXy3EA9NqJ",
+      "task": "Primer contacto con Alexia Aragón",
+      "contactId": "df776faa-f2b8-4da7-9741-978a8f834479",
+      "isCompleted": false
+    },
+    {
+      "todoId": "59yG85aeLx0dxzGdf5pc",
+      "task": "📞 E1 · Llamar a Janeth",
+      "contactId": "16e6aeb0-e54e-48e8-bb71-f65d44e93a74",
+      "isCompleted": false
+    },
+    {
+      "todoId": "6QDZw3BS10cjRW4R7UmF",
+      "task": "Primer contacto con Fernanda Cordero",
+      "contactId": "5169686a-7a9a-4105-82f4-7433ef97cb57",
+      "isCompleted": false
+    },
+    {
+      "todoId": "8jIL0CRqy7grhuPKnnAX",
+      "task": "Primer contacto con Antonio Sánchez",
+      "contactId": "c50513c8-1423-402c-865a-cf2c057b3864",
+      "isCompleted": false
+    },
+    {
+      "todoId": "F6SmJaIBtwU3zYQEd4Cb",
+      "task": "Primer contacto con Socorro Molinar",
+      "contactId": "9f0b368e-96b7-4649-b8ea-eb981f408e89",
+      "isCompleted": false
+    },
+    {
+      "todoId": "HGTLpMOR1hU7cDolqAEr",
+      "task": "Primer contacto con Ariana Morales",
+      "contactId": "88fcd8c3-74c7-43ba-8392-3b7b083c24d6",
+      "isCompleted": false
+    },
+    {
+      "todoId": "HUaCGx47TUCat4kXHKis",
+      "task": "Primer contacto con Mariana Burciaga",
+      "contactId": "423b7198-5723-4394-8669-fbc62b7179de",
+      "isCompleted": false
+    },
+    {
+      "todoId": "IOVjK1wNDoWGFGyNaYDN",
+      "task": "Seguimiento inicial: Antonio Lozoya",
+      "contactId": "698383f2-a64b-4c97-a4ef-1a69b5846762",
+      "isCompleted": false
+    },
+    {
+      "todoId": "Imx8PXFe66R9TBE8Vmok",
+      "task": "Primer contacto con Ricardo Solis",
+      "contactId": "7dd5dd82-d935-4dd1-8ab7-fe91f374fe6d",
+      "isCompleted": false
+    },
+    {
+      "todoId": "LUqzJruqyvVNmb0VNdh3",
+      "task": "Primer contacto con Arturo González",
+      "contactId": "d82dbbb2-9df8-4340-b019-2d60609de7e6",
+      "isCompleted": false
+    },
+    {
+      "todoId": "NI29aL5rzbAzCUd9cKuI",
+      "task": "Reactivar contacto con Rodrigo Reynal",
+      "contactId": "089042f3-3a91-406d-a3f5-dba0952c4116",
+      "isCompleted": false
+    },
+    {
+      "todoId": "NW3NgelwQSppyROuXVuj",
+      "task": "Primer contacto estratégico con Caro Castro",
+      "contactId": "8383ef3e-9e21-4474-9656-a09238547218",
+      "isCompleted": false
+    },
+    {
+      "todoId": "RtyQC9a2mlX0o4KUa1Xh",
+      "task": "Primer contacto con Oscar Olivas",
+      "contactId": "ca81d973-36ed-4d9c-ac2d-9bdaf1d894c6",
+      "isCompleted": false
+    },
+    {
+      "todoId": "T9yG99tYffSxXbqLg9Oq",
+      "task": "Primer contacto con Oscar Gutiérrez",
+      "contactId": "c82bdcbb-7738-4c0f-b6d8-840c1a33b08c",
+      "isCompleted": false
+    },
+    {
+      "todoId": "TIAvk44cXS0EFwPDo369",
+      "task": "Primer contacto con Lourdes Calzado",
+      "contactId": "f9106748-0824-48cf-9859-04d08f12404c",
+      "isCompleted": false
+    },
+    {
+      "todoId": "TUZZknh81r2sNTIagrcT",
+      "task": "Seguimiento a consulta de local - Alan Rodriguez",
+      "contactId": "6a3381a9-3ac5-4c4f-aa4a-51c3cf4f7685",
+      "isCompleted": false
+    },
+    {
+      "todoId": "U6ZE4uBTVQhQHrujleCR",
+      "task": "Primer contacto con Adriana (Lead Tokko)",
+      "contactId": "88d4e552-1c5c-45ed-9ed1-eacc8ec8204b",
+      "isCompleted": false
+    },
+    {
+      "todoId": "UuRE4xZGdklLHlDlkQhy",
+      "task": "Primer contacto estratégico con Alex González",
+      "contactId": "9357f333-b332-40e3-87c4-d64686bcb104",
+      "isCompleted": false
+    },
+    {
+      "todoId": "VOi0Cg8aZTsNq4v6tdOr",
+      "task": "Primer contacto con Cristina Ceballos",
+      "contactId": "30695854-34c9-401a-9637-3a38e07d7061",
+      "isCompleted": false
+    },
+    {
+      "todoId": "VZpdagYRfX9knDrjTkiW",
+      "task": "Primer contacto con Patricia Chavez",
+      "contactId": "3d1b4954-2419-43c3-9c76-d2c1705a213b",
+      "isCompleted": true
+    },
+    {
+      "todoId": "WXp7uwn6dcB5yY9EBXPX",
+      "task": "Primer contacto con Mayra Aguirre",
+      "contactId": "88f1ffc5-fc9b-4c03-8bd5-07eee0bd567d",
+      "isCompleted": false
+    },
+    {
+      "todoId": "XupFRLjKSq9jjXHKGZ10",
+      "task": "📞 E1 · Llamar a Jesús Rodríguez",
+      "contactId": "af8e7633-cdf6-4947-81bc-b97fed8b8c2e",
+      "isCompleted": false
+    },
+    {
+      "todoId": "YPTFaECcsSZUBnoUO7g1",
+      "task": "📞 E1 · Llamar a Daniel Pérez",
+      "contactId": "f0eee41a-2a95-46a4-bca8-3134d64bcb8a",
+      "isCompleted": false
+    },
+    {
+      "todoId": "ZQUk0g0h7uXBad4Un1mZ",
+      "task": "Primer contacto con Alba Chaparro",
+      "contactId": "7df0d751-34ec-4ca7-b822-3c40e2824f34",
+      "isCompleted": false
+    },
+    {
+      "todoId": "bc2TT4Rux8H3p0UiwjGL",
+      "task": "Primer contacto con Jesús Morales (Lead Tokko)",
+      "contactId": "a2cc48a7-d5fc-45ae-94e4-07bcd583d439",
+      "isCompleted": false
+    },
+    {
+      "todoId": "biGtK7GyZT4B68nbL23W",
+      "task": "Primer contacto con Ana Rojas (Lead nuevo)",
+      "contactId": "7c1aae48-3ef0-48bf-9ff4-799d2c8b3f1e",
+      "isCompleted": false
+    },
+    {
+      "todoId": "d8VADROuCFOK6BxFyH4g",
+      "task": "Primer contacto con Ana Paula - Perfilamiento inicial",
+      "contactId": "bb29ceaa-a7bd-4ca3-8864-ed80cb7ac03a",
+      "isCompleted": false
+    },
+    {
+      "todoId": "e2iN0EO4AIncN2pgbMn7",
+      "task": "Primer contacto con Gerardo Mejía",
+      "contactId": "73fffe3d-bbf5-43f9-a1e8-c8f80eb42759",
+      "isCompleted": false
+    },
+    {
+      "todoId": "eEPsaoxV3tMLI482bLmX",
+      "task": "Primer contacto con Jaime García - Nuevo Lead",
+      "contactId": "5590bba4-4023-4e67-ad32-87db705b7831",
+      "isCompleted": false
+    },
+    {
+      "todoId": "egwX9ja7nnJlWZmtINj9",
+      "task": "Primer contacto con Adrian Montes (Lead Tokko)",
+      "contactId": "9af26c38-9c2d-4dd5-8c32-1e881ea3f342",
+      "isCompleted": false
+    },
+    {
+      "todoId": "ezv6K7okSFoagigEvJjr",
+      "task": "Primer contacto con Edwin Domínguez",
+      "contactId": "dc323e2a-be1c-4515-9405-90a89d09d1c8",
+      "isCompleted": false
+    },
+    {
+      "todoId": "hUvi4TAiEF7OHaKBsWss",
+      "task": "Primer contacto: Victor Moreno (Interés en Bodegas)",
+      "contactId": "62c73ff7-f393-480e-964c-45a3ae21c10d",
+      "isCompleted": false
+    },
+    {
+      "todoId": "i3T9WYwU5H3paZJresHQ",
+      "task": "Primer contacto estratégico con Jose Carlos Ronquillo",
+      "contactId": "09eebe5a-5db8-4a78-84d7-ae4f0fce59ff",
+      "isCompleted": false
+    },
+    {
+      "todoId": "iBYZeXhmxAXu45GriCQL",
+      "task": "Primer contacto con Verónica Zamora",
+      "contactId": "1f5f8331-09a3-40ee-a4ef-e2c29af1a246",
+      "isCompleted": false
+    },
+    {
+      "todoId": "kmapvVgQVC4eX2f1iCmR",
+      "task": "Primer contacto con Angel Quintana",
+      "contactId": "29789b97-00a0-440b-87cf-ba375ca142e9",
+      "isCompleted": false
+    },
+    {
+      "todoId": "mR4fYcTTgFRykSiSBaX6",
+      "task": "Primer contacto con Daniel Loera",
+      "contactId": "296efaa5-6ccf-4953-b7c0-dba2d6d30f33",
+      "isCompleted": false
+    },
+    {
+      "todoId": "mZtH81l1t2GZGjvKu1ZH",
+      "task": "Primer contacto estratégico con Jazmín Pérez",
+      "contactId": "9a07b75e-2170-40f9-bd47-3d4a9d50805d",
+      "isCompleted": false
+    },
+    {
+      "todoId": "mgqHV6EbOH0qexizyjLP",
+      "task": "Primer contacto: Cesar Acosta",
+      "contactId": "a868c425-167a-4f88-ae6e-d035fc0f2bb5",
+      "isCompleted": false
+    },
+    {
+      "todoId": "s71OeeFjsxxgKyvoNfwI",
+      "task": "📞 E1 · Llamar a Raúl Herrera",
+      "contactId": "d7b1a2e3-3ff3-4abe-b170-72c06dd3d7b4",
+      "isCompleted": false
+    },
+    {
+      "todoId": "sJJmpWGoejT85jSXIe0O",
+      "task": "Primer contacto con Karina Melgar",
+      "contactId": "980a39b4-e988-4ab6-b9f7-e767e9b47b18",
+      "isCompleted": false
+    },
+    {
+      "todoId": "sM7JUwVTvifWf339KaUe",
+      "task": "Seguimiento inicial y perfilamiento con Nadia Nieto",
+      "contactId": "a92b4710-6531-400b-b8f2-5e4ee7fc1a68",
+      "isCompleted": false
+    },
+    {
+      "todoId": "vRo1U2gAg90t6qS8zEcM",
+      "task": "Primer contacto con Alfredo Chavarria",
+      "contactId": "3261d5c8-2f0c-4cbc-9f1d-c4c24aa23dd1",
+      "isCompleted": false
+    },
+    {
+      "todoId": "wUVeTCz1bYmOFfA9BQxn",
+      "task": "Primer contacto: Monica Márquez",
+      "contactId": "19f66261-f377-4595-a009-7e033f6bd8f6",
+      "isCompleted": false
+    },
+    {
+      "todoId": "wWdrF4YkC1oZBZBJVODC",
+      "task": "Primer contacto con Angélica Valdez",
+      "contactId": "8ecfaf6d-f4b2-428d-9e8b-043b5116f688",
+      "isCompleted": false
+    },
+    {
+      "todoId": "xOv8JCYkaiEOKbzOEl10",
+      "task": "Primer contacto con Adriana Martínez",
+      "contactId": "79ffbdc9-5853-4bb4-8952-7ea620c78c33",
+      "isCompleted": false
+    },
+    {
+      "todoId": "ysxnSkBqdqUlZ6rMdGcW",
+      "task": "📞 E1 · Llamar a Juan de Dios Muñoz",
+      "contactId": "e6cb3b79-42ae-4183-b4bd-94e6446871aa",
+      "isCompleted": false
+    },
+    {
+      "todoId": "zQnWdt0QBb5NJD78YE2B",
+      "task": "📞 E1 · Llamar a Roberto López",
+      "contactId": "d7d10f30-5c7b-4249-962b-cef87b470d94",
+      "isCompleted": false
+    }
+  ]
+}
