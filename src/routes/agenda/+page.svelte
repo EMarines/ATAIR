@@ -948,7 +948,7 @@
                       timeString: '',
                       recurrence: 'NONE',
                       completedAt: null,
-                      order: createdCount + 1,
+                      order: (todos?.length || 0) + createdCount + 1,
                       copilotoMeta: {
                           contactId: card.contactId,
                           fullName: card.fullName,
@@ -979,7 +979,8 @@
               await loadTodos();
           }
 
-          copilotoBannerMsg = `⚡ Copiloto listo: ${createdCount} ${createdCount === 1 ? 'tarjeta generada' : 'tarjetas generadas'} (E1: ${planData.counts?.e1 || 0}, E2: ${planData.counts?.e2 || 0}, E4: ${planData.counts?.e4 || 0}, E3: ${(planData.counts?.e3Recent || 0) + (planData.counts?.e3Cold || 0)}).`;
+          const refillLabel = planData?.isRefill ? ' 🔄 (recarga adicional 50%)' : '';
+          copilotoBannerMsg = `⚡ Copiloto listo: ${createdCount} ${createdCount === 1 ? 'tarjeta generada' : 'tarjetas generadas'}${refillLabel} (E1: ${planData.counts?.e1 || 0}, E2: ${planData.counts?.e2 || 0}, E4: ${planData.counts?.e4 || 0}, E3: ${(planData.counts?.e3Recent || 0) + (planData.counts?.e3Cold || 0)}).`;
       } catch (err: any) {
           console.error('[Agenda Copiloto] Error:', err);
           copilotoBannerMsg = '⚠️ ' + (err?.message || 'Error ejecutando ATAIR Copiloto.');

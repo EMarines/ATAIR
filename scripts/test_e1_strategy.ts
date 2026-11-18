@@ -357,4 +357,39 @@ assert.ok(stagesReturned.includes('E3'), 'Plan balanceado debe incluir E3');
 assert.notStrictEqual(stagesReturned[0], stagesReturned[1], 'Las etapas deben intercalarse (Round-Robin)');
 console.log('✓ Balanceo Multi-Etapa y Round-Robin pasaron todas las aserciones.');
 
+// 7. TEST Recarga al 50% al dar clic de nuevo (isRefill)
+console.log('\n[Test 7] Validando Recarga al 50% al volver a dar clic...');
+// Lote base: 20 candidatos (5 por etapa)
+const planInitial = planCopilotoCandidates(
+	[contactDay1, contactE4, contactE2, contactE3],
+	catalogProperties,
+	[],
+	[],
+	{ nowMs, e1Quota: 4, e2Quota: 4, e4Quota: 4, e3Quota: 4, maxTotalCandidates: 16 }
+);
+assert.strictEqual(planInitial.isRefill, false, 'Primera corrida debe tener isRefill=false');
+assert.strictEqual(planInitial.scaleApplied, 1.0, 'Escala inicial debe ser 1.0');
+
+// Simular que ya existen tareas de Copiloto hoy
+const runDateKey = planInitial.runDate;
+const simulatedExistingTodos: Todo[] = [
+	{
+		id: 'todo-existing-1',
+		source: 'atair_copiloto',
+		copilotoMeta: { runDate: runDateKey, contactId: 'some-other-contact' }
+	} as any
+];
+
+const planRefill = planCopilotoCandidates(
+	[contactDay1, contactE4, contactE2, contactE3],
+	catalogProperties,
+	[],
+	simulatedExistingTodos,
+	{ nowMs, e1Quota: 4, e2Quota: 4, e4Quota: 4, e3Quota: 4, maxTotalCandidates: 16 }
+);
+
+assert.strictEqual(planRefill.isRefill, true, 'Corrida posterior debe detectar isRefill=true');
+assert.strictEqual(planRefill.scaleApplied, 0.5, 'Escala de recarga debe ser 0.5 (50%)');
+console.log('✓ Recarga al 50% validada con éxito: escala a 0.5 cuando ya existen tareas hoy.');
+
 console.log('\n🎉 ALL_COPILOTO_TESTS_PASSED! 100% de pruebas unitarias exitosas.');

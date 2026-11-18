@@ -16,6 +16,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			e4Quota?: number;
 			maxTotalCandidates?: number;
 			gracePeriodHours?: number;
+			isRefill?: boolean;
+			refillScale?: number;
 		} = {};
 		try {
 			body = await request.json();
@@ -51,6 +53,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			body.gracePeriodHours >= 0
 				? body.gracePeriodHours
 				: 20;
+		const isRefill = typeof body?.isRefill === 'boolean' ? body.isRefill : undefined;
+		const refillScale =
+			typeof body?.refillScale === 'number' &&
+			Number.isFinite(body.refillScale) &&
+			body.refillScale > 0
+				? body.refillScale
+				: 0.5;
 
 		const [contactsSnap, propertiesSnap, binnaclesSnap, todosSnap] = await Promise.all([
 			getDocs(collection(db, 'contacts')),
@@ -84,6 +93,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			e3Quota,
 			maxTotalCandidates,
 			gracePeriodHours,
+			isRefill,
+			refillScale,
 			baseUrl: 'https://matchhome.vercel.app'
 		});
 

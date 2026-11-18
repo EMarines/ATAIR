@@ -51,6 +51,8 @@ export interface CopilotoPlanOptions {
 	e3Quota?: number;
 	maxTotalCandidates?: number;
 	gracePeriodHours?: number;
+	isRefill?: boolean;
+	refillScale?: number;
 	nowMs?: number;
 	runDate?: string;
 	baseUrl?: string;
@@ -58,6 +60,8 @@ export interface CopilotoPlanOptions {
 
 export interface CopilotoPlanResult {
 	runDate: string;
+	isRefill: boolean;
+	scaleApplied: number;
 	e3Quota: number;
 	e3RemainingQuota: number;
 	counts: {
@@ -208,12 +212,32 @@ export function planCopilotoCandidates(
 	const gracePeriodMs = gracePeriodHours * 3600_000;
 	const baseUrl = options.baseUrl || 'https://matchhome.vercel.app';
 
-	// Cuotas balanceadas por etapa (default: 5 de cada etapa = 20 total)
-	const e1Quota = Math.max(0, Number(options.e1Quota ?? 5));
-	const e2Quota = Math.max(0, Number(options.e2Quota ?? 5));
-	const e4Quota = Math.max(0, Number(options.e4Quota ?? 5));
-	const e3Quota = Math.max(0, Number(options.e3Quota ?? 5));
-	const maxTotalCandidates = Math.max(1, Number(options.maxTotalCandidates ?? 20));
+	// Detección de recarga (segundo clic o posterior en el mismo día):
+	// Si ya existen tareas de Copiloto generadas hoy, cada clic adicional genera el 50% del lote original
+	const existingCopilotoTasksToday = (existingTodos || []).filter((t) => {
+		if ((t as any)?.source !== 'atair_copiloto') return false;
+		const meta = (t as any)?.copilotoMeta;
+		return String(meta?.runDate || '').trim() === runDate;
+	}).length;
+
+	const isRefill = options.isRefill ?? existingCopilotoTasksToday > 0;
+	const refillScale = options.refillScale ?? 0.5;
+	const effectiveScale = isRefill ? refillScale : 1.0;
+
+	// Cuotas balanceadas por etapa (default base: 5 de cada etapa = 20 total)
+	const baseE1 = Math.max(0, Number(options.e1Quota ?? 5));
+	const baseE2 = Math.max(0, Number(options.e2Quota ?? 5));
+	const baseE4 = Math.max(0, Number(options.e4Quota ?? 5));
+	const baseE3 = Math.max(0, Number(options.e3Quota ?? 5));
+	const baseMaxTotal = Math.max(1, Number(options.maxTotalCandidates ?? 20));
+
+	const e1Quota = isRefill ? Math.max(1, Math.round(baseE1 * effectiveScale)) : baseE1;
+	const e2Quota = isRefill ? Math.max(1, Math.round(baseE2 * effectiveScale)) : baseE2;
+	const e4Quota = isRefill ? Math.max(1, Math.round(baseE4 * effectiveScale)) : baseE4;
+	const e3Quota = isRefill ? Math.max(1, Math.round(baseE3 * effectiveScale)) : baseE3;
+	const maxTotalCandidates = isRefill
+		? Math.max(1, Math.round(baseMaxTotal * effectiveScale))
+		: baseMaxTotal;
 
 	// Idempotencia diaria: excluir leads con tarjeta abierta o ya procesados hoy
 	const blockedContactIds = new Set<string>();
@@ -375,11 +399,11 @@ export function planCopilotoCandidates(
 	e3RecentPool.sort(byMostRecent);
 	e3ColdPool.sort(byMostRecent);
 
-	// Aplicar cuotas balanceadas por etapa
+	// Aplicar cuotas balanceadas por etapa (escaladas al 50% en caso de recarga)
 	const selectedE4 = e4List.slice(0, e4Quota);
 	const selectedE2 = e2List.slice(0, e2Quota);
 	const selectedE1 = e1List.slice(0, e1Quota);
-	const selectedE3 = [...e3RecentPool, ...e3ColdPool].slice(0, e3RemainingQuota);
+	const selectedE3 = [...e3RecentPool, ...e3ColdPool].slice(0, e3Quota);
 	const e3RecentCount = selectedE3.filter((c) => !c.isColdOver2y).length;
 	const e3ColdCount = selectedE3.filter((c) => c.isColdOver2y).length;
 
@@ -406,6 +430,8 @@ export function planCopilotoCandidates(
 
 	return {
 		runDate,
+		isRefill,
+		scaleApplied: effectiveScale,
 		e3Quota,
 		e3RemainingQuota,
 		counts: {
