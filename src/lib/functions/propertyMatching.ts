@@ -294,20 +294,44 @@ export function isPropertySendBinnacle(entry: Binnacle): boolean {
 }
 
 /**
- * Detecta si se enviaron propiedades a un contacto en las últimas horas (por defecto 48h).
+ * Obtiene el timestamp más reciente (en ms) de envío de propiedad a un contacto.
+ */
+export function getMostRecentPropertySendMs(
+	contactId: string,
+	binnacles: Binnacle[] = []
+): number | null {
+	if (!contactId || !Array.isArray(binnacles)) return null;
+	let latestMs: number | null = null;
+	for (const item of binnacles) {
+		if (String(item.to ?? '').trim() !== contactId) continue;
+		if (isPropertySendBinnacle(item) || /^[A-Z0-9]{2,5}-/i.test(String(item.comment ?? ''))) {
+			const binnMs = getContactCreatedAtMs((item as any).date ?? (item as any).createdAt);
+			if (binnMs !== null && (latestMs === null || binnMs > latestMs)) {
+				latestMs = binnMs;
+			}
+		}
+	}
+	return latestMs;
+}
+
+/**
+ * Detecta si se enviaron propiedades a un contacto en una ventana de tiempo,
+ * permitiendo opcionalmente exigir una edad mínima (tiempo de gracia).
  */
 export function hasRecentPropertySend(
 	contactId: string,
 	binnacles: Binnacle[] = [],
 	withinMs: number = 48 * 3600_000,
-	nowMs: number = Date.now()
+	nowMs: number = Date.now(),
+	minAgeMs: number = 0
 ): boolean {
 	if (!contactId || !Array.isArray(binnacles)) return false;
-	const threshold = nowMs - withinMs;
+	const maxThreshold = nowMs - minAgeMs;
+	const minThreshold = nowMs - withinMs;
 	for (const item of binnacles) {
 		if (String(item.to ?? '').trim() !== contactId) continue;
 		const binnMs = getContactCreatedAtMs((item as any).date ?? (item as any).createdAt);
-		if (binnMs && binnMs >= threshold) {
+		if (binnMs && binnMs >= minThreshold && binnMs <= maxThreshold) {
 			if (isPropertySendBinnacle(item) || /^[A-Z0-9]{2,5}-/i.test(String(item.comment ?? ''))) {
 				return true;
 			}

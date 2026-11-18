@@ -896,7 +896,14 @@
           const planRes = await fetch('/api/copiloto/plan-candidates', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ e3Quota: copilotoE3Quota })
+              body: JSON.stringify({ 
+                  e1Quota: 5,
+                  e2Quota: 5,
+                  e4Quota: 5,
+                  e3Quota: Math.min(copilotoE3Quota || 5, 5),
+                  maxTotalCandidates: 20,
+                  gracePeriodHours: 20
+              })
           });
           const planData = await planRes.json();
           if (!planRes.ok || !planData.success) {

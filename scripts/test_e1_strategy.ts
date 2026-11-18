@@ -261,4 +261,100 @@ assert.strictEqual(cardFresh.isE1Over10Days, false);
 
 console.log('✓ buildFallbackCopilotoCard pasó todas las aserciones para Día 1, Día 2 y Fresh E1.');
 
-console.log('\n🎉 ALL_E1_STRATEGY_TESTS_PASSED! 100% de pruebas unitarias exitosas.');
+// 5. TEST isContactInGracePeriod y Exclusión en planCopilotoCandidates
+console.log('\n[Test 5] Validando Tiempo de Gracia (20h-24h)...');
+const contactGracePeriod: Contact = {
+	id: 'cont-grace-1',
+	name: 'Lucía',
+	lastname: 'Sánchez',
+	telephon: '6147778899',
+	propCont: 'EB-WD1256',
+	typeContact: 'comprador',
+	contactStage: 'E1',
+	createdAt: elevenDaysAgo
+} as any;
+
+const binnacleJustSent: Binnacle[] = [
+	{
+		id: 'b-just-now',
+		to: 'cont-grace-1',
+		action: 'Propiedad enviada: ',
+		comment: 'EB-SS1832',
+		date: nowMs - 2 * 3600_000 // Enviado hace 2 horas (hoy)
+	} as any
+];
+
+const planGrace = planCopilotoCandidates(
+	[contactGracePeriod],
+	catalogProperties,
+	binnacleJustSent,
+	[],
+	{ nowMs, gracePeriodHours: 20 }
+);
+
+assert.strictEqual(
+	planGrace.candidates.length,
+	0,
+	'Lead con opciones enviadas hace 2 horas DEBE estar en tiempo de gracia y omitirse hoy'
+);
+assert.strictEqual(
+	planGrace.counts.skippedGracePeriod,
+	1,
+	'skippedGracePeriod debe contabilizar 1 lead en gracia'
+);
+console.log('✓ Tiempo de gracia validado: contactos tocados recientemente (<20h) son omitidos.');
+
+// 6. TEST Balanceo Multi-Etapa y Round-Robin (E4, E2, E1, E3)
+console.log('\n[Test 6] Validando Balanceo Multi-Etapa y Round-Robin...');
+const contactE4: Contact = {
+	id: 'cont-e4-1',
+	name: 'Eduardo',
+	lastname: 'E4',
+	telephon: '6141112233',
+	typeContact: 'comprador',
+	contactStage: 'Etapa 4',
+	createdAt: fiveDaysAgo,
+	budget: 2500000,
+	selecTP: 'Casa',
+	locaProperty: ['Jacales']
+} as any;
+
+const contactE2: Contact = {
+	id: 'cont-e2-1',
+	name: 'Esteban',
+	lastname: 'E2',
+	telephon: '6142223344',
+	typeContact: 'comprador',
+	contactStage: 'Etapa 2',
+	createdAt: fiveDaysAgo
+} as any;
+
+const contactE3: Contact = {
+	id: 'cont-e3-1',
+	name: 'Elena',
+	lastname: 'E3',
+	telephon: '6143334455',
+	typeContact: 'comprador',
+	contactStage: 'Etapa 3',
+	createdAt: fiveDaysAgo
+} as any;
+
+const planBalanced = planCopilotoCandidates(
+	[contactDay1, contactE4, contactE2, contactE3],
+	catalogProperties,
+	[],
+	[],
+	{ nowMs, e1Quota: 2, e2Quota: 2, e4Quota: 2, e3Quota: 2, maxTotalCandidates: 10 }
+);
+
+const stagesReturned = planBalanced.candidates.map((c) => c.stage);
+console.log('Stages intercalados devueltos:', stagesReturned);
+
+assert.ok(stagesReturned.includes('E1'), 'Plan balanceado debe incluir E1');
+assert.ok(stagesReturned.includes('E2'), 'Plan balanceado debe incluir E2');
+assert.ok(stagesReturned.includes('E3'), 'Plan balanceado debe incluir E3');
+// El primer lote de 4 debe tener etapas balanceadas sin monopolio de E1
+assert.notStrictEqual(stagesReturned[0], stagesReturned[1], 'Las etapas deben intercalarse (Round-Robin)');
+console.log('✓ Balanceo Multi-Etapa y Round-Robin pasaron todas las aserciones.');
+
+console.log('\n🎉 ALL_COPILOTO_TESTS_PASSED! 100% de pruebas unitarias exitosas.');

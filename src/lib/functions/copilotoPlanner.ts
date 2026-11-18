@@ -2,6 +2,7 @@ import type { Binnacle, Contact, Property, Todo } from '$lib/types';
 import { getContactBadgeInfo, getContactCreatedAtMs, isWithinMaxAgeYears, normalizeStage } from './contactBadge';
 import {
 	findPropertiesInPriceRangeForContact,
+	getMostRecentPropertySendMs,
 	hasRecentPropertySend,
 	matchPropertiesForContact
 } from './propertyMatching';
@@ -44,7 +45,12 @@ export interface CopilotoCandidate {
 }
 
 export interface CopilotoPlanOptions {
+	e1Quota?: number;
+	e2Quota?: number;
+	e4Quota?: number;
 	e3Quota?: number;
+	maxTotalCandidates?: number;
+	gracePeriodHours?: number;
 	nowMs?: number;
 	runDate?: string;
 	baseUrl?: string;
@@ -61,7 +67,14 @@ export interface CopilotoPlanResult {
 		e3Recent: number;
 		e3Cold: number;
 		skippedAlreadyOpenOrToday: number;
+		skippedGracePeriod: number;
 		totalCandidates: number;
+		poolAvailable: {
+			e1: number;
+			e2: number;
+			e4: number;
+			e3: number;
+		};
 	};
 	candidates: CopilotoCandidate[];
 }
@@ -73,6 +86,43 @@ export function getChihuahuaDateKey(nowMs: number = Date.now()): string {
 		month: '2-digit',
 		day: '2-digit'
 	}).format(new Date(nowMs));
+}
+
+/**
+ * Determina si un contacto se encuentra en período de gracia (ha tenido interacción en las últimas X horas).
+ * Si fue tocado recientemente (WhatsApp saliente/entrante, llamada o última actividad < 20h), se le da tiempo
+ * de reaccionar y no se le genera una nueva tarea hoy.
+ */
+export function isContactInGracePeriod(
+	contact: Contact,
+	binnacles: Binnacle[] = [],
+	gracePeriodMs: number = 20 * 3600_000,
+	nowMs: number = Date.now()
+): boolean {
+	if (!contact) return false;
+	const threshold = nowMs - gracePeriodMs;
+
+	// 1. Verificar lastContact (último contacto registrado)
+	const lastContactMs = getContactCreatedAtMs((contact as any)?.lastContact);
+	if (lastContactMs !== null && lastContactMs >= threshold) return true;
+
+	// 2. Verificar lastResponse (última respuesta del lead)
+	const lastResponseMs = getContactCreatedAtMs((contact as any)?.lastResponse);
+	if (lastResponseMs !== null && lastResponseMs >= threshold) return true;
+
+	// 3. Verificar bitácoras dirigidas a este contacto en la ventana de gracia
+	const contactId = String(contact.id || '').trim();
+	if (contactId && Array.isArray(binnacles)) {
+		for (const b of binnacles) {
+			if (String(b.to || '').trim() !== contactId) continue;
+			const bDate = getContactCreatedAtMs((b as any)?.date ?? (b as any)?.createdAt);
+			if (bDate !== null && bDate >= threshold) {
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 function isProtectedOrNonBuyer(contact: Contact): boolean {
@@ -142,6 +192,8 @@ function buildCandidateRecord(
 /**
  * Tier 1 (Control Plane Determinístico):
  * Selecciona y prioriza los leads del día para ATAIR Copiloto sin invocar al LLM.
+ * Aplica cuotas balanceadas por etapa (E4, E2, E1, E3), tiempo de gracia de 20-24h
+ * e intercalación (Round-Robin) para que la Agenda ofrezca una visión integral del embudo.
  */
 export function planCopilotoCandidates(
 	contacts: Contact[],
@@ -152,8 +204,16 @@ export function planCopilotoCandidates(
 ): CopilotoPlanResult {
 	const nowMs = options.nowMs ?? Date.now();
 	const runDate = options.runDate || getChihuahuaDateKey(nowMs);
-	const e3Quota = Math.max(0, Number(options.e3Quota ?? 15));
+	const gracePeriodHours = options.gracePeriodHours ?? 20;
+	const gracePeriodMs = gracePeriodHours * 3600_000;
 	const baseUrl = options.baseUrl || 'https://matchhome.vercel.app';
+
+	// Cuotas balanceadas por etapa (default: 5 de cada etapa = 20 total)
+	const e1Quota = Math.max(0, Number(options.e1Quota ?? 5));
+	const e2Quota = Math.max(0, Number(options.e2Quota ?? 5));
+	const e4Quota = Math.max(0, Number(options.e4Quota ?? 5));
+	const e3Quota = Math.max(0, Number(options.e3Quota ?? 5));
+	const maxTotalCandidates = Math.max(1, Number(options.maxTotalCandidates ?? 20));
 
 	// Idempotencia diaria: excluir leads con tarjeta abierta o ya procesados hoy
 	const blockedContactIds = new Set<string>();
@@ -182,6 +242,7 @@ export function planCopilotoCandidates(
 	const e3RecentPool: CopilotoCandidate[] = [];
 	const e3ColdPool: CopilotoCandidate[] = [];
 	let skippedAlreadyOpenOrToday = 0;
+	let skippedGracePeriod = 0;
 
 	for (const contact of contacts || []) {
 		if (!contact?.id) continue;
@@ -189,6 +250,12 @@ export function planCopilotoCandidates(
 
 		if (blockedContactIds.has(contact.id)) {
 			skippedAlreadyOpenOrToday++;
+			continue;
+		}
+
+		// Tiempo de Gracia: si el contacto tuvo interacción en las últimas 20h, respetar tiempo de reacción
+		if (isContactInGracePeriod(contact, binnacles, gracePeriodMs, nowMs)) {
+			skippedGracePeriod++;
 			continue;
 		}
 
@@ -207,10 +274,17 @@ export function planCopilotoCandidates(
 
 			if (isE1Over10Days) {
 				const contactId = String(contact.id || '').trim();
-				const sentRecently = hasRecentPropertySend(contactId, binnacles, 48 * 3600_000, nowMs);
+				const lastSendMs = getMostRecentPropertySendMs(contactId, binnacles);
 
-				if (sentRecently) {
-					// Paso 2: Llamada telefónica de seguimiento tras envío de opciones
+				if (lastSendMs !== null) {
+					const sendAgeMs = nowMs - lastSendMs;
+					// Si el envío de opciones fue hace menos de 20h (hoy), está en tiempo de gracia para revisar
+					if (sendAgeMs < gracePeriodMs) {
+						skippedGracePeriod++;
+						continue;
+					}
+
+					// Si fue hace entre 20h y 72h (ayer o antier): Paso 2: Llamada telefónica de seguimiento
 					e1List.push(
 						buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
 							isE1Over10Days: true,
@@ -301,25 +375,54 @@ export function planCopilotoCandidates(
 	e3RecentPool.sort(byMostRecent);
 	e3ColdPool.sort(byMostRecent);
 
-	// E3: Primero <2 años (reciente -> antiguo), luego >2 años solo si sobra cuota
+	// Aplicar cuotas balanceadas por etapa
+	const selectedE4 = e4List.slice(0, e4Quota);
+	const selectedE2 = e2List.slice(0, e2Quota);
+	const selectedE1 = e1List.slice(0, e1Quota);
 	const selectedE3 = [...e3RecentPool, ...e3ColdPool].slice(0, e3RemainingQuota);
 	const e3RecentCount = selectedE3.filter((c) => !c.isColdOver2y).length;
 	const e3ColdCount = selectedE3.filter((c) => c.isColdOver2y).length;
 
-	const candidates = [...e1List, ...e2List, ...e4List, ...selectedE3];
+	// Intercalación balanceada (Round-Robin): E4 -> E2 -> E1 -> E3
+	// Así cada lote de 4 tarjetas presenta variedad integral del embudo comercial
+	const candidates: CopilotoCandidate[] = [];
+	const pools = [
+		{ stage: 'E4', items: [...selectedE4] },
+		{ stage: 'E2', items: [...selectedE2] },
+		{ stage: 'E1', items: [...selectedE1] },
+		{ stage: 'E3', items: [...selectedE3] }
+	];
+
+	while (candidates.length < maxTotalCandidates) {
+		let addedInRound = 0;
+		for (const pool of pools) {
+			if (pool.items.length > 0 && candidates.length < maxTotalCandidates) {
+				candidates.push(pool.items.shift()!);
+				addedInRound++;
+			}
+		}
+		if (addedInRound === 0) break;
+	}
 
 	return {
 		runDate,
 		e3Quota,
 		e3RemainingQuota,
 		counts: {
-			e1: e1List.length,
-			e2: e2List.length,
-			e4: e4List.length,
+			e1: selectedE1.length,
+			e2: selectedE2.length,
+			e4: selectedE4.length,
 			e3Recent: e3RecentCount,
 			e3Cold: e3ColdCount,
 			skippedAlreadyOpenOrToday,
-			totalCandidates: candidates.length
+			skippedGracePeriod,
+			totalCandidates: candidates.length,
+			poolAvailable: {
+				e1: e1List.length,
+				e2: e2List.length,
+				e4: e4List.length,
+				e3: e3RecentPool.length + e3ColdPool.length
+			}
 		},
 		candidates
 	};
