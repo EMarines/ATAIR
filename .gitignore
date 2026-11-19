@@ -45,3 +45,6 @@ firebase-debug.log
 .env*
 *.log
 
+
+# Word temp files
+~$*

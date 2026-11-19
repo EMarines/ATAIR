@@ -1,0 +1,127 @@
+{
+  "id": "TRAMITE-2026-001",
+  "folderName": "Espinoza - Muñoz",
+  "tipoOperacion": "Compraventa",
+  "modalidadCredito": "Infonavit Conyugal",
+  "estadoTramite": "Contrato Listo para Firma / Expediente en Integración",
+  "fechaApertura": "2026-11-19",
+  "inmueble": {
+    "calle": "Calle Cedro",
+    "numeroEscritura": "1512-A",
+    "numeroOficial": "1514-1",
+    "colonia": "Las Granjas",
+    "codigoPostal": "31100",
+    "ciudad": "Chihuahua",
+    "estado": "Chihuahua",
+    "claveCatastral": "191-016-021",
+    "folioReal": "1120676",
+    "superficieTerrenoM2": 121.0,
+    "superficieConstruccionM2": 70.0,
+    "medidasColindancias": {
+      "norte": "11.00 m con lote de la misma manzana",
+      "sur": "11.00 m con fracción de manzana",
+      "este": "11.00 m con calle privada",
+      "oeste": "11.00 m con fracción de manzana"
+    },
+    "antecedentePropiedad": {
+      "tipoActo": "Donación",
+      "numeroEscritura": "5295",
+      "volumen": "102",
+      "fecha": "1975-12-29",
+      "notario": "Lic. Armando Herrera Acosta",
+      "numeroNotaria": 12,
+      "distrito": "Morelos",
+      "rppInscripcion": "240",
+      "rppFolio": "37",
+      "rppLibro": "1389",
+      "rppSeccion": "Primera",
+      "rppFecha": "1976-03-01"
+    },
+    "equipamientoIncluido": [
+      "Cocina integral con parrilla y campana extractora",
+      "Lámparas decorativas y de iluminación",
+      "3 persianas en ventanas",
+      "Equipo de aire acondicionado",
+      "Tinaco con bomba de presión (hidroneumático/presurizador)"
+    ]
+  },
+  "partes": {
+    "vendedora": {
+      "nombre": "Flora Elena Muñoz Valenzuela",
+      "nombreEnEscritura": "Flora Elena Muñoz de Madrigal",
+      "estadoCivil": "Divorciada",
+      "curp": "MUVF510503MTSXLL08",
+      "claveElector": "MZVLFL51050328M700",
+      "vigenciaIne": "2026-2036",
+      "domicilio": "Calle Cedro 1514-1, Col. Las Granjas, C.P. 31100, Chihuahua, Chih."
+    },
+    "compradorTitular": {
+      "nombre": "Jorge Ricardo Espinosa Miranda",
+      "curp": "EIMJ710902HDFSRR17",
+      "nss": "32967205074",
+      "claveElector": "ESMRJR71090209H300",
+      "vigenciaIne": "2021-2031",
+      "domicilio": "Calle Fuente de la Diana #6604, Residencial Las Fuentes, C.P. 31207, Chihuahua, Chih.",
+      "infonavit": {
+        "montoCredito": 22312.42,
+        "saldoSubcuentaVivienda": 726158.68,
+        "gastosTitulacion": 18746.20,
+        "retencionMensual": 236.51,
+        "tasaInteres": 10.45
+      }
+    },
+    "compradoraConyuge": {
+      "nombre": "Yamel Ivette Ramírez Flores",
+      "curp": "RAFY721001MCHMLM04",
+      "nss": "35887035802",
+      "claveElector": "RMFLYM72100108M600",
+      "vigenciaIne": "2018-2028",
+      "domicilio": "Calle Fuente de la Diana #6604, Residencial Las Fuentes, C.P. 31207, Chihuahua, Chih.",
+      "infonavit": {
+        "montoCredito": 10698.68,
+        "saldoSubcuentaVivienda": 859576.42,
+        "gastosTitulacion": 0.0,
+        "retencionMensual": 133.49,
+        "tasaInteres": 10.45
+      }
+    }
+  },
+  "financiero": {
+    "precioPactado": 2150000.0,
+    "apartadoEfectivo": 100000.0,
+    "fechaApartado": "2026-11-19",
+    "saldoRestante": 2050000.0,
+    "montoNetoInfonavit": 1599999.99,
+    "gapRecursosPropios": 450000.0,
+    "estimadoGastosEscrituracionComprador": 115000.0,
+    "porcentajeComisionInmobiliaria": 4.0,
+    "comisionInmobiliariaPactada": 86000.0,
+    "penalizacionTotal": 100000.0,
+    "repartoPenalizacion": {
+      "parteAfectada": 50000.0,
+      "inmobiliaria": 50000.0
+    }
+  },
+  "documentos": [
+    { "nombre": "CONTRATO_COMPRAVENTA_ESPINOZA_MUÑOZ_ACTUALIZADO.docx", "tipo": "Contrato Definitivo", "estatus": "Listo para Firma" },
+    { "nombre": "Recibo Apartado_20261119_132225.pdf", "tipo": "Recibo de Apartado", "estatus": "Firmado" },
+    { "nombre": "Escritura.pdf", "tipo": "Título de Propiedad", "estatus": "Verificado" },
+    { "nombre": "Inscripción RPP.jpg", "tipo": "Boleta Registral RPP", "estatus": "Verificado" },
+    { "nombre": "INE.pdf", "tipo": "INE Vendedora", "estatus": "Verificado" },
+    { "nombre": "INE JORGE_20261119_131606.pdf", "tipo": "INE Comprador Titular", "estatus": "Verificado" },
+    { "nombre": "INE Yamel_20261119_131808.pdf", "tipo": "INE Cónyuge Coacreditada", "estatus": "Verificado" },
+    { "nombre": "Credito Conyugal_20261119_132118.pdf", "tipo": "Precalificación Infonavit", "estatus": "Verificado" },
+    { "nombre": "Tabla Amortizacion 1_20261119_131925.pdf", "tipo": "Tabla Amortización Cónyuge", "estatus": "Verificado" },
+    { "nombre": "Tabla Amortizacion 2_20261119_132022.pdf", "tipo": "Tabla Amortización Titular", "estatus": "Verificado" },
+    { "nombre": "Generales Propiedad.xlsx", "tipo": "Ficha Técnica", "estatus": "Verificado" }
+  ],
+  "checklistFaltantes": [
+    { "id": "REQ-001", "concepto": "Acta de Divorcio de Flora Elena Muñoz", "responsable": "Vendedora", "obligatorioPara": "Firma Notarial e Infonavit", "estatus": "Pendiente de Solicitar" },
+    { "id": "REQ-002", "concepto": "Acta de Matrimonio de Jorge Ricardo Espinosa y Yamel Ivette Ramírez", "responsable": "Compradores", "obligatorioPara": "Formalización Crédito Conyugal Infonavit", "estatus": "Pendiente de Solicitar" },
+    { "id": "REQ-003", "concepto": "Actas de Nacimiento de Jorge Espinosa y Yamel Ramírez", "responsable": "Compradores", "obligatorioPara": "Expediente Infonavit", "estatus": "Pendiente de Solicitar" },
+    { "id": "REQ-004", "concepto": "Constancia de Situación Fiscal (SAT con RFC timbrable) de Compradores y Vendedora", "responsable": "Ambas Partes", "obligatorioPara": "CFDI Notarial y Exención/Cálculo ISR", "estatus": "Pendiente de Solicitar" },
+    { "id": "REQ-005", "concepto": "Boleta Predial 2026 pagada", "responsable": "Vendedora", "obligatorioPara": "Avalúo y Notaría", "estatus": "Pendiente de Solicitar" },
+    { "id": "REQ-006", "concepto": "Recibo de Agua JMAS Chihuahua al corriente", "responsable": "Vendedora", "obligatorioPara": "Notaría", "estatus": "Pendiente de Solicitar" },
+    { "id": "REQ-007", "concepto": "Constancia de Alineamiento y Número Oficial (1512-A vs 1514-1)", "responsable": "Gestión Municipal / Vendedora", "obligatorioPara": "Unidad de Valuación Infonavit", "estatus": "En Trámite / Recomendado" }
+  ]
+}
