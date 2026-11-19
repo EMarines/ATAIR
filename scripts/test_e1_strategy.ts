@@ -392,4 +392,84 @@ assert.strictEqual(planRefill.isRefill, true, 'Corrida posterior debe detectar i
 assert.strictEqual(planRefill.scaleApplied, 0.5, 'Escala de recarga debe ser 0.5 (50%)');
 console.log('✓ Recarga al 50% validada con éxito: escala a 0.5 cuando ya existen tareas hoy.');
 
+// 8. TEST Regla Canónica de E1 (Ayer < 7 -> completar 14 con más viejos empezando por los más recientes)
+console.log('\n[Test 8] Validando Regla Canónica de E1 (Ayer + Antiguos hasta 14)...');
+const e1Yesterday1: Contact = {
+	id: 'e1-yest-1',
+	name: 'Ayer1',
+	telephon: '6141000001',
+	contactStage: 'E1',
+	createdAt: nowMs - 22 * 3600_000 // Hace 22h (ayer)
+} as any;
+const e1Yesterday2: Contact = {
+	id: 'e1-yest-2',
+	name: 'Ayer2',
+	telephon: '6141000002',
+	contactStage: 'E1',
+	createdAt: nowMs - 20 * 3600_000 // Hace 20h (ayer)
+} as any;
+
+// 15 leads viejos de E1 (antigüedad de 15 a 30 días)
+const e1OlderPool: Contact[] = Array.from({ length: 15 }, (_, i) => ({
+	id: `e1-older-${i + 1}`,
+	name: `Viejo${i + 1}`,
+	telephon: `61420000${i < 10 ? '0' + i : i}`,
+	contactStage: 'E1',
+	createdAt: nowMs - (15 + i) * 86_400_000 // Entre 15 y 30 días atrás
+})) as any;
+
+const planE1Rule = planCopilotoCandidates(
+	[e1Yesterday1, e1Yesterday2, ...e1OlderPool],
+	catalogProperties,
+	[],
+	[],
+	{ nowMs, maxTotalCandidates: 27 }
+);
+
+const e1Candidates = planE1Rule.candidates.filter((c) => c.stage === 'E1');
+assert.strictEqual(
+	e1Candidates.length,
+	14,
+	'E1 debe contener exactamente 14 leads (2 de ayer + 12 viejos completando a 14)'
+);
+assert.strictEqual(e1Candidates[0].contactId, 'e1-yest-2', 'Primer lead de ayer');
+assert.strictEqual(e1Candidates[1].contactId, 'e1-yest-1', 'Segundo lead de ayer');
+// El primer viejo seleccionado debe ser el más reciente de los viejos (15 días, no 30)
+assert.strictEqual(
+	e1Candidates[2].contactId,
+	'e1-older-1',
+	'Los viejos deben ordenarse empezando por los más recientes'
+);
+console.log('✓ Regla canónica de E1 validada con éxito: ayer (<7) completa a 14 con los viejos más recientes.');
+
+// 9. TEST Backfill a 20 con E3 cuando E1, E2 y E4 están agotados
+console.log('\n[Test 9] Validando Backfill a 20 con E3 cuando otras etapas se agotan...');
+// 25 leads en E3
+const e3OnlyPool: Contact[] = Array.from({ length: 25 }, (_, i) => ({
+	id: `e3-pool-${i + 1}`,
+	name: `E3Contact${i + 1}`,
+	telephon: `61430000${i < 10 ? '0' + i : i}`,
+	contactStage: 'E3',
+	createdAt: nowMs - (30 + i) * 86_400_000
+})) as any;
+
+const planE3Backfill = planCopilotoCandidates(
+	e3OnlyPool,
+	catalogProperties,
+	[],
+	[],
+	{ nowMs }
+);
+
+assert.strictEqual(
+	planE3Backfill.candidates.length,
+	20,
+	'Cuando E1, E2 y E4 están agotados, debe entregar exactamente 20 candidatos de E3'
+);
+assert.ok(
+	planE3Backfill.candidates.every((c) => c.stage === 'E3'),
+	'Todos los 20 candidatos deben ser de E3'
+);
+console.log('✓ Backfill a 20 con E3 validado con éxito: garantiza las 20 tareas diarias aun sin otras etapas.');
+
 console.log('\n🎉 ALL_COPILOTO_TESTS_PASSED! 100% de pruebas unitarias exitosas.');
