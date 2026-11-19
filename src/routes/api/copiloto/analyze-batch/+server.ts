@@ -9,6 +9,10 @@ import { analyzeCandidateWithGemini } from '$lib/functions/copilotoAnalyzer';
 
 const MAX_BATCH_SIZE = 8;
 
+export const config = {
+	maxDuration: 60
+};
+
 function getGeminiApiKey(): string {
 	return (
 		env?.GEMINI_API_KEY ||

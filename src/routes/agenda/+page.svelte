@@ -886,6 +886,27 @@
       activeActions = newMap;
   }
 
+  async function parseApiJsonSafe(res: Response, fallbackError: string) {
+      const rawText = await res.text();
+      let data: any = null;
+      try {
+          data = rawText ? JSON.parse(rawText) : null;
+      } catch {
+          data = null;
+      }
+      if (!res.ok || !data?.success) {
+          const message =
+              data?.error ||
+              (res.status === 504
+                  ? 'El servidor tardó demasiado en responder (504 Timeout). Intenta de nuevo en unos segundos.'
+                  : rawText
+                      ? `Error del servidor (${res.status}): ${rawText.slice(0, 140)}`
+                      : fallbackError);
+          throw new Error(message);
+      }
+      return data;
+  }
+
   async function runCopilotoRoutine() {
       if (isRunningCopiloto) return;
       isRunningCopiloto = true;
@@ -896,19 +917,19 @@
           const planRes = await fetch('/api/copiloto/plan-candidates', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                  e1Quota: 5,
-                  e2Quota: 5,
-                  e4Quota: 5,
-                  e3Quota: Math.min(copilotoE3Quota || 5, 5),
-                  maxTotalCandidates: 20,
+              body: JSON.stringify({
+                  e1Quota: 14,
+                  e2Quota: 4,
+                  e4Quota: 7,
+                  e3Quota: 2,
+                  maxTotalCandidates: 27,
                   gracePeriodHours: 20
               })
           });
-          const planData = await planRes.json();
-          if (!planRes.ok || !planData.success) {
-              throw new Error(planData.error || 'No se pudo planificar la rutina del Copiloto.');
-          }
+          const planData = await parseApiJsonSafe(
+              planRes,
+              'No se pudo planificar la rutina del Copiloto.'
+          );
 
           const candidates = Array.isArray(planData.candidates) ? planData.candidates : [];
           if (candidates.length === 0) {
@@ -929,10 +950,10 @@
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ candidates: batch })
               });
-              const analyzeData = await analyzeRes.json();
-              if (!analyzeRes.ok || !analyzeData.success) {
-                  throw new Error(analyzeData.error || 'Error analizando lote con IA.');
-              }
+              const analyzeData = await parseApiJsonSafe(
+                  analyzeRes,
+                  'Error analizando lote con IA.'
+              );
 
               const cards: CopilotoAnalyzedCard[] = Array.isArray(analyzeData.results) ? analyzeData.results : [];
               for (const card of cards) {

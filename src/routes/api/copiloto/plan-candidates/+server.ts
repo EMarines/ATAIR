@@ -1,13 +1,17 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { normalizeRawContactForAudit } from '$lib/functions/contactAudit';
 import { normalizeProperty } from '$lib/functions/normalizeProperty';
 import { planCopilotoCandidates } from '$lib/functions/copilotoPlanner';
 import type { Binnacle, Todo } from '$lib/types';
 
-export const POST: RequestHandler = async ({ request, url }) => {
+export const config = {
+	maxDuration: 60
+};
+
+export const POST: RequestHandler = async ({ request }) => {
 	try {
 		let body: {
 			e3Quota?: number;
@@ -28,25 +32,25 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		const e1Quota =
 			typeof body?.e1Quota === 'number' && Number.isFinite(body.e1Quota) && body.e1Quota >= 0
 				? Math.floor(body.e1Quota)
-				: 5;
+				: 14;
 		const e2Quota =
 			typeof body?.e2Quota === 'number' && Number.isFinite(body.e2Quota) && body.e2Quota >= 0
 				? Math.floor(body.e2Quota)
-				: 5;
+				: 4;
 		const e4Quota =
 			typeof body?.e4Quota === 'number' && Number.isFinite(body.e4Quota) && body.e4Quota >= 0
 				? Math.floor(body.e4Quota)
-				: 5;
+				: 7;
 		const e3Quota =
 			typeof body?.e3Quota === 'number' && Number.isFinite(body.e3Quota) && body.e3Quota >= 0
 				? Math.floor(body.e3Quota)
-				: 5;
+				: 2;
 		const maxTotalCandidates =
 			typeof body?.maxTotalCandidates === 'number' &&
 			Number.isFinite(body.maxTotalCandidates) &&
 			body.maxTotalCandidates > 0
 				? Math.floor(body.maxTotalCandidates)
-				: 20;
+				: 27;
 		const gracePeriodHours =
 			typeof body?.gracePeriodHours === 'number' &&
 			Number.isFinite(body.gracePeriodHours) &&
@@ -64,7 +68,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		const [contactsSnap, propertiesSnap, binnaclesSnap, todosSnap] = await Promise.all([
 			getDocs(collection(db, 'contacts')),
 			getDocs(collection(db, 'properties')),
-			getDocs(collection(db, 'binnacles')),
+			getDocs(query(collection(db, 'binnacles'), orderBy('date', 'desc'), limit(800))),
 			getDocs(collection(db, 'todos'))
 		]);
 
