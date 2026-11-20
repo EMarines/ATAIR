@@ -115,13 +115,28 @@
     { "nombre": "Tabla Amortizacion 2_20261119_132022.pdf", "tipo": "Tabla Amortización Titular", "estatus": "Verificado" },
     { "nombre": "Generales Propiedad.xlsx", "tipo": "Ficha Técnica", "estatus": "Verificado" }
   ],
-  "checklistFaltantes": [
-    { "id": "REQ-001", "concepto": "Acta de Divorcio de Flora Elena Muñoz", "responsable": "Vendedora", "obligatorioPara": "Firma Notarial e Infonavit", "estatus": "Pendiente de Solicitar" },
-    { "id": "REQ-002", "concepto": "Acta de Matrimonio de Jorge Ricardo Espinosa y Yamel Ivette Ramírez", "responsable": "Compradores", "obligatorioPara": "Formalización Crédito Conyugal Infonavit", "estatus": "Pendiente de Solicitar" },
-    { "id": "REQ-003", "concepto": "Actas de Nacimiento de Jorge Espinosa y Yamel Ramírez", "responsable": "Compradores", "obligatorioPara": "Expediente Infonavit", "estatus": "Pendiente de Solicitar" },
-    { "id": "REQ-004", "concepto": "Constancia de Situación Fiscal (SAT con RFC timbrable) de Compradores y Vendedora", "responsable": "Ambas Partes", "obligatorioPara": "CFDI Notarial y Exención/Cálculo ISR", "estatus": "Pendiente de Solicitar" },
-    { "id": "REQ-005", "concepto": "Boleta Predial 2026 pagada", "responsable": "Vendedora", "obligatorioPara": "Avalúo y Notaría", "estatus": "Pendiente de Solicitar" },
-    { "id": "REQ-006", "concepto": "Recibo de Agua JMAS Chihuahua al corriente", "responsable": "Vendedora", "obligatorioPara": "Notaría", "estatus": "Pendiente de Solicitar" },
-    { "id": "REQ-007", "concepto": "Constancia de Alineamiento y Número Oficial (1512-A vs 1514-1)", "responsable": "Gestión Municipal / Vendedora", "obligatorioPara": "Unidad de Valuación Infonavit", "estatus": "En Trámite / Recomendado" }
+  "checklistComprador": [
+    { "id": "COMP-001", "concepto": "INE Vigente de Jorge Ricardo Espinosa (Titular)", "obligatorioPara": "Identificación Notarial e Infonavit", "completado": true, "estatus": "Cotejado ✓" },
+    { "id": "COMP-002", "concepto": "INE Vigente de Yamel Ivette Ramírez (Cónyuge)", "obligatorioPara": "Identificación Notarial e Infonavit", "completado": true, "estatus": "Cotejado ✓" },
+    { "id": "COMP-003", "concepto": "Precalificación Infonavit Conyugal y Tablas con NSS", "obligatorioPara": "Dictaminación de Crédito", "completado": true, "estatus": "Cotejado ✓" },
+    { "id": "COMP-004", "concepto": "Recibo de Apartado $100,000 M.N.", "obligatorioPara": "Garantía de Compraventa", "completado": true, "estatus": "Cotejado ✓" },
+    { "id": "COMP-005", "concepto": "Acta de Matrimonio Certificada (Jorge y Yamel)", "obligatorioPara": "Formalización Crédito Conyugal Infonavit", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "COMP-006", "concepto": "Actas de Nacimiento Certificadas de Ambos", "obligatorioPara": "Expediente Infonavit y Notaría", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "COMP-007", "concepto": "Constancias de Situación Fiscal (SAT con RFC y homoclave)", "obligatorioPara": "CFDI Notarial y Complemento de Titulación", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "COMP-008", "concepto": "Comprobante de Domicilio Reciente (<3 meses, agua/luz)", "obligatorioPara": "Expediente Bancario/Infonavit", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "COMP-009", "concepto": "Constancia Taller Infonavit 'Saber más para decidir mejor'", "obligatorioPara": "Inscripción Formal en Infonavit", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "COMP-010", "concepto": "Comprobante de Fondos Saldo Recursos Propios ($450,000 M.N.)", "obligatorioPara": "Liquidación en Notaría a la Firma", "completado": false, "estatus": "Para Firma de Escritura" }
+  ],
+  "checklistVendedor": [
+    { "id": "VEND-001", "concepto": "Título de Propiedad (Escritura 5,295 Notaría 12)", "obligatorioPara": "Acreditación de Propiedad", "completado": true, "estatus": "Cotejado ✓" },
+    { "id": "VEND-002", "concepto": "Boleta de Inscripción en Registro Público (RPPyC Morelos)", "obligatorioPara": "Certeza Registral y Antecedentes", "completado": true, "estatus": "Cotejado ✓" },
+    { "id": "VEND-003", "concepto": "INE Vigente de Flora Elena Muñoz (2026-2036)", "obligatorioPara": "Identificación de Propietaria", "completado": true, "estatus": "Cotejado ✓" },
+    { "id": "VEND-004", "concepto": "Acta de Divorcio Certificada (Flora Elena Muñoz)", "obligatorioPara": "Justificación Registral ante Notaría e Infonavit", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "VEND-005", "concepto": "Acta de Nacimiento Certificada de la Vendedora", "obligatorioPara": "Expediente Notarial", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "VEND-006", "concepto": "Constancia de Situación Fiscal (SAT con RFC timbrable)", "obligatorioPara": "Cálculo y Exención de ISR Notarial", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "VEND-007", "concepto": "Boleta Predial 2026 Pagada al Corriente", "obligatorioPara": "Avalúo Infonavit y Notaría", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "VEND-008", "concepto": "Recibo de Agua JMAS Chihuahua al Corriente (No adeudo)", "obligatorioPara": "Escrituración Notarial", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "VEND-009", "concepto": "Constancia de Alineamiento y Número Oficial (1512-A vs 1514-1)", "obligatorioPara": "Unidad de Valuación Infonavit", "completado": false, "estatus": "En Trámite Municipal" },
+    { "id": "VEND-010", "concepto": "Carátula de Cuenta Bancaria con CLABE a su Nombre", "obligatorioPara": "Dispersión de Fondos de Infonavit al Vendedor", "completado": false, "estatus": "Pendiente de Solicitar" }
   ]
 }

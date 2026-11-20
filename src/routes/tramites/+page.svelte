@@ -99,13 +99,19 @@
 			};
 		};
 		documentos: Array<{ nombre: string; tipo: string; estatus: string }>;
-		checklistFaltantes: Array<{
+		checklistComprador: Array<{
 			id: string;
 			concepto: string;
-			responsable: string;
 			obligatorioPara: string;
 			estatus: string;
-			completado?: boolean;
+			completado: boolean;
+		}>;
+		checklistVendedor: Array<{
+			id: string;
+			concepto: string;
+			obligatorioPara: string;
+			estatus: string;
+			completado: boolean;
 		}>;
 	}
 
@@ -313,7 +319,10 @@
 						on:click={() => (activeTab = 'checklist')}
 					>
 						📋 Checklist de Faltantes
-						<span class="badge-alert">{selectedTramite.checklistFaltantes.filter(f => !f.completado).length}</span>
+						<span class="badge-alert">
+							{((selectedTramite.checklistComprador || []).filter(f => !f.completado).length) +
+								((selectedTramite.checklistVendedor || []).filter(f => !f.completado).length)}
+						</span>
 					</button>
 					<button
 						class="tab-btn"
@@ -498,51 +507,117 @@
 						</div>
 					{/if}
 
-					<!-- TAB 3: CHECKLIST DE FALTANTES -->
+					<!-- TAB 3: CHECKLIST DE FALTANTES (SEPARADO COMPRADOR Y VENDEDOR) -->
 					{#if activeTab === 'checklist'}
 						<div class="checklist-container" transition:fade>
-							<div class="checklist-banner">
-								<h3>Auditoría de Requisitos del Expediente</h3>
-								<p>Marca las casillas al recibir los documentos físicos o haz clic en "Solicitar por WhatsApp" para pedirlo al cliente.</p>
-							</div>
-
-							<div class="checklist-table">
-								{#each selectedTramite.checklistFaltantes as item}
-									<div class="check-row" class:completed={item.completado}>
-										<div class="check-col-box">
-											<input
-												type="checkbox"
-												checked={item.completado}
-												on:change={() => toggleChecklistItem(item)}
-											/>
-										</div>
-										<div class="check-col-main">
-											<div class="item-title">{item.concepto}</div>
-											<div class="item-meta">
-												<span class="resp">Responsable: <strong>{item.responsable}</strong></span>
-												<span class="divider">•</span>
-												<span class="target">Obligatorio para: <strong>{item.obligatorioPara}</strong></span>
-											</div>
-										</div>
-										<div class="check-col-status">
-											<span class="status-pill" class:green={item.completado} class:yellow={!item.completado}>
-												{item.estatus}
-											</span>
-										</div>
-										<div class="check-col-action">
-											{#if !item.completado}
-												<button
-													class="btn-wa-req"
-													on:click={() => requestViaWhatsapp(item.concepto, item.responsable)}
-												>
-													📲 Solicitar por WA
-												</button>
-											{:else}
-												<span class="check-done">✓ Cotejado</span>
-											{/if}
+							<!-- SECCIÓN 1: COMPRADORES -->
+							<div class="checklist-section">
+								<div class="section-badge-header buyer">
+									<div class="sec-left">
+										<span class="sec-icon">🛒</span>
+										<div>
+											<h3>Documentos de la Parte Compradora</h3>
+											<p>Jorge Ricardo Espinosa Miranda & Yamel Ivette Ramírez Flores (Infonavit Conyugal)</p>
 										</div>
 									</div>
-								{/each}
+									<div class="sec-stats">
+										<span class="stat-pill-mini green">
+											{(selectedTramite.checklistComprador || []).filter(c => c.completado).length} de {(selectedTramite.checklistComprador || []).length} listos
+										</span>
+									</div>
+								</div>
+
+								<div class="checklist-table">
+									{#each (selectedTramite.checklistComprador || []) as item}
+										<div class="check-row" class:completed={item.completado}>
+											<div class="check-col-box">
+												<input
+													type="checkbox"
+													checked={item.completado}
+													on:change={() => toggleChecklistItem(item)}
+												/>
+											</div>
+											<div class="check-col-main">
+												<div class="item-title">{item.concepto}</div>
+												<div class="item-meta">
+													<span class="target">Obligatorio para: <strong>{item.obligatorioPara}</strong></span>
+												</div>
+											</div>
+											<div class="check-col-status">
+												<span class="status-pill" class:green={item.completado} class:yellow={!item.completado}>
+													{item.estatus}
+												</span>
+											</div>
+											<div class="check-col-action">
+												{#if !item.completado}
+													<button
+														class="btn-wa-req"
+														on:click={() => requestViaWhatsapp(item.concepto, 'Jorge y Yamel')}
+													>
+														📲 Pedir a Compradores
+													</button>
+												{:else}
+													<span class="check-done">✓ En Bóveda</span>
+												{/if}
+											</div>
+										</div>
+									{/each}
+								</div>
+							</div>
+
+							<!-- SECCIÓN 2: VENDEDORA -->
+							<div class="checklist-section mt-4">
+								<div class="section-badge-header seller">
+									<div class="sec-left">
+										<span class="sec-icon">🏷️</span>
+										<div>
+											<h3>Documentos de la Parte Vendedora</h3>
+											<p>Flora Elena Muñoz Valenzuela (Propietaria • Divorciada)</p>
+										</div>
+									</div>
+									<div class="sec-stats">
+										<span class="stat-pill-mini green">
+											{(selectedTramite.checklistVendedor || []).filter(c => c.completado).length} de {(selectedTramite.checklistVendedor || []).length} listos
+										</span>
+									</div>
+								</div>
+
+								<div class="checklist-table">
+									{#each (selectedTramite.checklistVendedor || []) as item}
+										<div class="check-row" class:completed={item.completado}>
+											<div class="check-col-box">
+												<input
+													type="checkbox"
+													checked={item.completado}
+													on:change={() => toggleChecklistItem(item)}
+												/>
+											</div>
+											<div class="check-col-main">
+												<div class="item-title">{item.concepto}</div>
+												<div class="item-meta">
+													<span class="target">Obligatorio para: <strong>{item.obligatorioPara}</strong></span>
+												</div>
+											</div>
+											<div class="check-col-status">
+												<span class="status-pill" class:green={item.completado} class:yellow={!item.completado}>
+													{item.estatus}
+												</span>
+											</div>
+											<div class="check-col-action">
+												{#if !item.completado}
+													<button
+														class="btn-wa-req seller"
+														on:click={() => requestViaWhatsapp(item.concepto, 'Sra. Flora Elena')}
+													>
+														📲 Pedir a Vendedora
+													</button>
+												{:else}
+													<span class="check-done">✓ En Bóveda</span>
+												{/if}
+											</div>
+										</div>
+									{/each}
+								</div>
 							</div>
 						</div>
 					{/if}
@@ -1231,20 +1306,67 @@
 		line-height: 1.4;
 	}
 
-	/* CHECKLIST */
-	.checklist-banner {
-		margin-bottom: 1rem;
+	/* CHECKLIST SECCIONES */
+	.checklist-section {
+		background: rgba(0, 0, 0, 0.08);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 1.25rem;
+		margin-bottom: 1.5rem;
 	}
 
-	.checklist-banner h3 {
-		font-size: 1.1rem;
+	.checklist-section.mt-4 {
+		margin-top: 1.5rem;
+	}
+
+	.section-badge-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid var(--border);
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.sec-left {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.sec-icon {
+		font-size: 1.6rem;
+	}
+
+	.sec-left h3 {
+		font-size: 1.05rem;
 		font-weight: 700;
 		color: var(--text-1);
+		margin-bottom: 0.15rem;
 	}
 
-	.checklist-banner p {
-		font-size: 0.85rem;
+	.sec-left p {
+		font-size: 0.8rem;
 		color: var(--text-muted);
+	}
+
+	.stat-pill-mini {
+		font-size: 0.78rem;
+		font-weight: 700;
+		padding: 0.25rem 0.65rem;
+		border-radius: 20px;
+	}
+
+	.stat-pill-mini.green {
+		background: rgba(16, 185, 129, 0.15);
+		color: #10b981;
+		border: 1px solid rgba(16, 185, 129, 0.3);
+	}
+
+	.btn-wa-req.seller {
+		background: #0284c7;
 	}
 
 	.checklist-table {
