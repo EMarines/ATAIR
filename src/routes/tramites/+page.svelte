@@ -70,11 +70,24 @@
 				firestoreStatus = 'conectado';
 				firestoreWarning = '';
 
-				const tienePiloto = cloudList.some((t) => t.id === 'TRAMITE-2026-001');
-				if (!tienePiloto && pilotLocalCache && !pilotSyncAttempted) {
+				const pilotoCloud = cloudList.find((t) => t.id === 'TRAMITE-2026-001');
+				const tienePiloto = Boolean(pilotoCloud);
+				const eqLocal = pilotLocalCache?.inmueble?.equipamientoIncluido || [];
+				const eqCloud = pilotoCloud?.inmueble?.equipamientoIncluido || [];
+
+				if (!pilotSyncAttempted && pilotLocalCache && (!pilotoCloud || eqLocal.length > eqCloud.length)) {
 					pilotSyncAttempted = true;
-					const synced = await syncPilotToFirestore(pilotLocalCache);
-					if (synced) return; // onSnapshot volverá a disparar con el piloto ya guardado
+					const patchOrFull = !pilotoCloud
+						? pilotLocalCache
+						: ({
+								id: pilotLocalCache.id,
+								inmueble: { equipamientoIncluido: eqLocal },
+								contratoUrl: pilotLocalCache.contratoUrl,
+								contratoNombre: pilotLocalCache.contratoNombre,
+								documentos: pilotLocalCache.documentos
+							} as TramiteExpediente);
+					const synced = await syncPilotToFirestore(patchOrFull);
+					if (synced) return; // onSnapshot volverá a disparar con el piloto ya actualizado
 				}
 
 				const combined = tienePiloto
