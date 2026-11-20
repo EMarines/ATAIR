@@ -227,30 +227,36 @@
 				...(t.datosCapturados || {}),
 				[campoClave]: valor.trim()
 			};
-			const updatedPartes = { ...(t.partes || {}) };
+			const updatedPartes: TramiteExpediente['partes'] = {
+				vendedora: { ...(t.partes?.vendedora || { nombre: '' }) },
+				compradorTitular: { ...(t.partes?.compradorTitular || { nombre: '' }) },
+				...(t.partes?.compradoraConyuge
+					? { compradoraConyuge: { ...t.partes.compradoraConyuge } }
+					: {})
+			};
 			if (campoClave === 'compradorTelefono') {
 				updatedPartes.compradorTitular = {
-					...(updatedPartes.compradorTitular || { nombre: '' }),
+					...updatedPartes.compradorTitular,
 					telefono: valor.trim()
 				};
 			} else if (campoClave === 'compradorNombre') {
 				updatedPartes.compradorTitular = {
-					...(updatedPartes.compradorTitular || { nombre: '' }),
+					...updatedPartes.compradorTitular,
 					nombre: valor.trim()
 				};
 			} else if (campoClave === 'compradorCurp') {
 				updatedPartes.compradorTitular = {
-					...(updatedPartes.compradorTitular || { nombre: '' }),
+					...updatedPartes.compradorTitular,
 					curp: valor.trim()
 				};
 			} else if (campoClave === 'compradorRfc') {
 				updatedPartes.compradorTitular = {
-					...(updatedPartes.compradorTitular || { nombre: '' }),
+					...updatedPartes.compradorTitular,
 					rfc: valor.trim()
 				};
 			} else if (campoClave === 'vendedorClabe') {
 				updatedPartes.vendedora = {
-					...(updatedPartes.vendedora || { nombre: '' }),
+					...updatedPartes.vendedora,
 					clabeBancaria: valor.trim()
 				};
 			}
