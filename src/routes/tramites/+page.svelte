@@ -222,14 +222,45 @@
 		const tId = selectedTramite.id;
 		const { campoClave, valor } = e.detail;
 
-		patchLocalTramite(tId, (t) => ({
-			...t,
-			datosCapturados: {
+		patchLocalTramite(tId, (t) => {
+			const updatedDatos = {
 				...(t.datosCapturados || {}),
 				[campoClave]: valor.trim()
-			},
-			updatedAt: Date.now()
-		}));
+			};
+			const updatedPartes = { ...(t.partes || {}) };
+			if (campoClave === 'compradorTelefono') {
+				updatedPartes.compradorTitular = {
+					...(updatedPartes.compradorTitular || { nombre: '' }),
+					telefono: valor.trim()
+				};
+			} else if (campoClave === 'compradorNombre') {
+				updatedPartes.compradorTitular = {
+					...(updatedPartes.compradorTitular || { nombre: '' }),
+					nombre: valor.trim()
+				};
+			} else if (campoClave === 'compradorCurp') {
+				updatedPartes.compradorTitular = {
+					...(updatedPartes.compradorTitular || { nombre: '' }),
+					curp: valor.trim()
+				};
+			} else if (campoClave === 'compradorRfc') {
+				updatedPartes.compradorTitular = {
+					...(updatedPartes.compradorTitular || { nombre: '' }),
+					rfc: valor.trim()
+				};
+			} else if (campoClave === 'vendedorClabe') {
+				updatedPartes.vendedora = {
+					...(updatedPartes.vendedora || { nombre: '' }),
+					clabeBancaria: valor.trim()
+				};
+			}
+			return {
+				...t,
+				datosCapturados: updatedDatos,
+				partes: updatedPartes,
+				updatedAt: Date.now()
+			};
+		});
 
 		showToast('Dato guardado y validado automáticamente');
 

@@ -5,7 +5,8 @@ import {
 	deleteDoc,
 	doc,
 	onSnapshot,
-	setDoc
+	setDoc,
+	updateDoc
 } from 'firebase/firestore';
 import {
 	CONFIG_DEFAULT_VENTA,
@@ -172,20 +173,27 @@ export async function updateChecklistControlState(
 ): Promise<{ success: boolean; error?: unknown }> {
 	if (!db) return { success: false, error: 'Firestore no inicializado' };
 	try {
-		await setDoc(
-			doc(db, COLLECTION_NAME, tramiteId),
-			sanitizeForFirestore({
-				controlChecklist: {
-					[requisitoId]: {
-						...registro,
-						actualizadoEn: registro.actualizadoEn || new Date().toISOString().slice(0, 10)
-					}
-				},
+		const payload = {
+			...registro,
+			actualizadoEn: registro.actualizadoEn || new Date().toISOString().slice(0, 10)
+		};
+		try {
+			await updateDoc(doc(db, COLLECTION_NAME, tramiteId), {
+				[`controlChecklist.${requisitoId}`]: sanitizeForFirestore(payload),
 				updatedAt: Date.now()
-			}),
-			{ merge: true }
-		);
-		return { success: true };
+			});
+			return { success: true };
+		} catch {
+			await setDoc(
+				doc(db, COLLECTION_NAME, tramiteId),
+				sanitizeForFirestore({
+					controlChecklist: { [requisitoId]: payload },
+					updatedAt: Date.now()
+				}),
+				{ merge: true }
+			);
+			return { success: true };
+		}
 	} catch (error) {
 		return { success: false, error };
 	}
@@ -227,27 +235,40 @@ export async function saveCapturedDatum(
 ): Promise<{ success: boolean; error?: unknown }> {
 	if (!db) return { success: false, error: 'Firestore no inicializado' };
 	try {
-		const patch: Record<string, any> = {
-			datosCapturados: {
-				[campoClave]: valor.trim()
-			},
+		const updateData: Record<string, any> = {
+			[`datosCapturados.${campoClave}`]: valor.trim(),
 			updatedAt: Date.now()
 		};
 
 		if (CAMPO_TO_FIRESTORE_PATH[campoClave]) {
-			assignNested(patch, CAMPO_TO_FIRESTORE_PATH[campoClave], valor.trim());
+			updateData[CAMPO_TO_FIRESTORE_PATH[campoClave]] = valor.trim();
 		} else if (campoClave === 'precioORentaPactado') {
 			const monto = Number(valor.replace(/[^0-9.]/g, '')) || 0;
-			patch.financiero =
+			const field =
 				config?.tipoOperacion === 'arrendamiento'
-					? { rentaMensual: monto }
-					: { precioPactado: monto };
+					? 'financiero.rentaMensual'
+					: 'financiero.precioPactado';
+			updateData[field] = monto;
 		}
 
-		await setDoc(doc(db, COLLECTION_NAME, tramiteId), sanitizeForFirestore(patch), {
-			merge: true
-		});
-		return { success: true };
+		try {
+			await updateDoc(doc(db, COLLECTION_NAME, tramiteId), updateData);
+			return { success: true };
+		} catch {
+			const patch: Record<string, any> = {
+				datosCapturados: {
+					[campoClave]: valor.trim()
+				},
+				updatedAt: Date.now()
+			};
+			if (CAMPO_TO_FIRESTORE_PATH[campoClave]) {
+				assignNested(patch, CAMPO_TO_FIRESTORE_PATH[campoClave], valor.trim());
+			}
+			await setDoc(doc(db, COLLECTION_NAME, tramiteId), sanitizeForFirestore(patch), {
+				merge: true
+			});
+			return { success: true };
+		}
 	} catch (error) {
 		return { success: false, error };
 	}

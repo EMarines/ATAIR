@@ -16,27 +16,54 @@
 	type FiltroParte = 'todos' | 'pendientes' | ParteTrato;
 	let filtroActivo: FiltroParte = 'todos';
 
-	// Buffer local por campoClave para permitir edición fluida antes de guardar
+	// Buffer local por campoClave para permitir edición fluida sin que reactividad externa limpie el input
 	let draftDatos: Record<string, string> = {};
-	let savingFieldKey: string | null = null;
+	let activeFieldKey: string | null = null;
+	let justSavedKey: string | null = null;
+	let lastExpedienteId: string | null = null;
 
 	const dispatch = createEventDispatcher<{
 		toggleDoc: { reqId: string; nuevoEstado: EstadoControlSistema; validadoPor: string };
 		saveDato: { campoClave: string; valor: string };
 	}>();
 
-	$: {
-		// Sincronizar valores del motor cuando cambia el expediente seleccionado
-		const nextDraft: Record<string, string> = {};
-		for (const r of evaluacion.requisitos) {
+	// Sincronización inteligente: solo reacciona al cambio de expediente o a actualizaciones del motor,
+	// NUNCA a mutaciones locales de draftDatos mientras el usuario escribe.
+	$: syncDraftConExpediente(expediente?.id, evaluacion);
+
+	function syncDraftConExpediente(expId: string | undefined, ev: ResultadoEvaluacionMotor) {
+		if (!expId || !ev) return;
+
+		// 1. Cambio de expediente: re-inicializar el buffer con los valores del nuevo expediente
+		if (expId !== lastExpedienteId) {
+			lastExpedienteId = expId;
+			const initial: Record<string, string> = {};
+			for (const r of ev.requisitos) {
+				if (r.tipo === 'dato' && r.campoClave) {
+					initial[r.campoClave] =
+						r.valorActual !== undefined && r.valorActual !== null ? String(r.valorActual) : '';
+				}
+			}
+			draftDatos = initial;
+			return;
+		}
+
+		// 2. Mismo expediente: inicializar claves no registradas o actualizar si vino valor externo
+		//    siempre que el usuario no tenga el campo enfocado
+		for (const r of ev.requisitos) {
 			if (r.tipo === 'dato' && r.campoClave) {
-				nextDraft[r.campoClave] =
-					draftDatos[r.campoClave] !== undefined && savingFieldKey === r.campoClave
-						? draftDatos[r.campoClave]
-						: r.valorActual || '';
+				const k = r.campoClave;
+				const remoto =
+					r.valorActual !== undefined && r.valorActual !== null ? String(r.valorActual) : '';
+				if (draftDatos[k] === undefined) {
+					draftDatos[k] = remoto;
+				} else if (activeFieldKey !== k) {
+					if (remoto && draftDatos[k] !== remoto) {
+						draftDatos[k] = remoto;
+					}
+				}
 			}
 		}
-		draftDatos = nextDraft;
 	}
 
 	function cleanPhoneForWa(raw?: string): string {
@@ -115,16 +142,22 @@
 
 	function commitDato(req: RequisitoEvaluado) {
 		if (!req.campoClave) return;
-		const val = draftDatos[req.campoClave] ?? '';
-		if (val.trim() === (req.valorActual || '').trim()) return;
-		savingFieldKey = req.campoClave;
+		const k = req.campoClave;
+		const val = (draftDatos[k] ?? '').trim();
+		const actual = (req.valorActual || '').trim();
+		if (val === actual) return;
+
+		const saveToken = `${k}:${val}`;
+		if (justSavedKey === saveToken) return;
+		justSavedKey = saveToken;
+		setTimeout(() => {
+			if (justSavedKey === saveToken) justSavedKey = null;
+		}, 800);
+
 		dispatch('saveDato', {
-			campoClave: req.campoClave,
+			campoClave: k,
 			valor: val
 		});
-		setTimeout(() => {
-			if (savingFieldKey === req.campoClave) savingFieldKey = null;
-		}, 400);
 	}
 
 	$: requisitosFiltrados = evaluacion.requisitos.filter((r) => {
@@ -282,7 +315,13 @@
 											class:valid={req.completado}
 											bind:value={draftDatos[req.campoClave]}
 											placeholder={req.placeholder || 'Capturar dato...'}
-											on:blur={() => commitDato(req)}
+											on:focus={() => {
+												if (req.campoClave) activeFieldKey = req.campoClave;
+											}}
+											on:blur={() => {
+												if (activeFieldKey === req.campoClave) activeFieldKey = null;
+												commitDato(req);
+											}}
 											on:keydown={(e) => {
 												if (e.key === 'Enter') {
 													e.currentTarget.blur();
@@ -290,6 +329,7 @@
 											}}
 										/>
 										<button
+											type="button"
 											class="btn-save-dato"
 											on:click={() => commitDato(req)}
 											title="Guardar y validar dato"
