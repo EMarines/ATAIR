@@ -149,7 +149,7 @@ interface ReglaRequisitoDef {
 	id: string;
 	parte: ParteTrato;
 	tipo: 'documento' | 'dato';
-	concepto: string;
+	concepto: string | ((c: ConfiguracionTramite) => string);
 	obligatorioPara: string;
 	motivoRegla: (c: ConfiguracionTramite) => string;
 	aplica: (c: ConfiguracionTramite) => boolean;
@@ -368,7 +368,10 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_COMP_ACTA_NACIMIENTO',
 		parte: 'comprador',
 		tipo: 'documento',
-		concepto: 'Acta de Nacimiento Certificada (Titular)',
+		concepto: (c) =>
+			COMPRADOR_REQUIERE_CONYUGE(c)
+				? 'Actas de Nacimiento Certificadas (de AMBOS: Titular y Cónyuge)'
+				: 'Acta de Nacimiento Certificada del Comprador',
 		obligatorioPara: 'Acreditación de nacionalidad y generales en Notaría/Crédito',
 		motivoRegla: (c) => `Compraventa (${LABELS_PERSONA[c.comprador.tipoPersona]})`,
 		aplica: (c) => ES_VENTA(c) && c.comprador.tipoPersona === 'fisica'
@@ -377,7 +380,10 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_COMP_CONSTANCIA_SAT',
 		parte: 'comprador',
 		tipo: 'documento',
-		concepto: 'Constancia de Situación Fiscal SAT (mes en curso)',
+		concepto: (c) =>
+			COMPRADOR_REQUIERE_CONYUGE(c)
+				? 'Constancias de Situación Fiscal SAT con Homoclave (de AMBOS Compradores)'
+				: 'Constancia de Situación Fiscal SAT (mes en curso con homoclave)',
 		obligatorioPara: 'Emisión de CFDI de escrituración / banco / arrendamiento',
 		motivoRegla: (c) =>
 			ES_RENTA(c) ? 'Uso Comercial / Póliza' : 'Requisito Notarial e Institucional',
@@ -387,8 +393,8 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_COMP_CONYUGE_DOCS',
 		parte: 'comprador',
 		tipo: 'documento',
-		concepto: 'INE vigente + CURP + Acta de Nacimiento + CSF SAT del Cónyuge',
-		obligatorioPara: 'Comparecencia de cónyuge coacreditado / copropietario',
+		concepto: 'INE vigente y CURP del Cónyuge Coacreditado',
+		obligatorioPara: 'Identificación oficial del cónyuge coacreditado / copropietario',
 		motivoRegla: (c) =>
 			c.formaPago === 'infonavit_conyugal'
 				? 'Por: Infonavit Conyugal'
@@ -449,7 +455,10 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_COMP_TALLER_INFONAVIT',
 		parte: 'comprador',
 		tipo: 'documento',
-		concepto: 'Constancia Taller Infonavit "Saber más para decidir mejor"',
+		concepto: (c) =>
+			c.formaPago === 'infonavit_conyugal' || c.formaPago === 'infonavit_unamos'
+				? 'Constancia Taller Infonavit "Saber más para decidir mejor" (de AMBOS acreditados)'
+				: 'Constancia Taller Infonavit "Saber más para decidir mejor"',
 		obligatorioPara: 'Inscripción formal de crédito en módulo Infonavit',
 		motivoRegla: (c) => `Crédito: ${LABELS_FORMA_PAGO[c.formaPago || 'infonavit_tradicional']}`,
 		aplica: TIENE_INFONAVIT
@@ -1012,11 +1021,14 @@ export function evaluarRequisitosTramite(
 			const esValido = regla.validador ? regla.validador(valorStr) : valorStr.length > 0;
 			const estadoSistema: EstadoControlSistema = esValido ? 'validado_sistema' : 'pendiente';
 
+			const conceptoResuelto =
+				typeof regla.concepto === 'function' ? regla.concepto(config) : regla.concepto;
+
 			requisitosEvaluados.push({
 				id: regla.id,
 				parte: regla.parte,
 				tipo: 'dato',
-				concepto: regla.concepto,
+				concepto: conceptoResuelto,
 				obligatorioPara: regla.obligatorioPara,
 				motivoRegla: regla.motivoRegla(config),
 				completado: esValido,
@@ -1047,11 +1059,14 @@ export function evaluarRequisitosTramite(
 			const completado =
 				estadoSistema === 'validado_sistema' || estadoSistema === 'cotejado_admin';
 
+			const conceptoResuelto =
+				typeof regla.concepto === 'function' ? regla.concepto(config) : regla.concepto;
+
 			requisitosEvaluados.push({
 				id: regla.id,
 				parte: regla.parte,
 				tipo: 'documento',
-				concepto: regla.concepto,
+				concepto: conceptoResuelto,
 				obligatorioPara: regla.obligatorioPara,
 				motivoRegla: regla.motivoRegla(config),
 				completado,
