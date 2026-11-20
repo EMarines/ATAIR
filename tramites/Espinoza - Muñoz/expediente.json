@@ -135,8 +135,9 @@
     { "id": "VEND-005", "concepto": "Acta de Nacimiento Certificada de la Vendedora", "obligatorioPara": "Expediente Notarial", "completado": false, "estatus": "Pendiente de Solicitar" },
     { "id": "VEND-006", "concepto": "Constancia de Situación Fiscal (SAT con RFC timbrable)", "obligatorioPara": "Cálculo y Exención de ISR Notarial", "completado": false, "estatus": "Pendiente de Solicitar" },
     { "id": "VEND-007", "concepto": "Boleta Predial 2026 Pagada al Corriente", "obligatorioPara": "Avalúo Infonavit y Notaría", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "VEND-008", "concepto": "Recibo de Agua JMAS Chihuahua al Corriente (No adeudo)", "obligatorioPara": "Escrituración Notarial", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "VEND-009", "concepto": "Constancia de Alineamiento y Número Oficial (1512-A vs 1514-1)", "obligatorioPara": "Unidad de Valuación Infonavit", "completado": false, "estatus": "En Trámite Municipal" },
-    { "id": "VEND-010", "concepto": "Carátula de Cuenta Bancaria con CLABE a su Nombre", "obligatorioPara": "Dispersión de Fondos de Infonavit al Vendedor", "completado": false, "estatus": "Pendiente de Solicitar" }
+    { "id": "VEND-008", "concepto": "Recibo de Agua JMAS y Constancia de No Adeudo", "obligatorioPara": "Escrituración Notarial y Cierre Administrativo", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "VEND-009", "concepto": "Recibo de Luz CFE al Corriente (Último Bimestre Pagado)", "obligatorioPara": "Avalúo Infonavit y Exención 100% de ISR por Casa Habitación (Art. 93 LISR)", "completado": false, "estatus": "Pendiente de Solicitar" },
+    { "id": "VEND-010", "concepto": "Constancia de Alineamiento y Número Oficial (1512-A vs 1514-1)", "obligatorioPara": "Unidad de Valuación Infonavit y Notaría", "completado": false, "estatus": "En Trámite Municipal" },
+    { "id": "VEND-011", "concepto": "Carátula de Cuenta Bancaria con CLABE a su Nombre", "obligatorioPara": "Dispersión de Fondos de Infonavit al Vendedor", "completado": false, "estatus": "Pendiente de Solicitar" }
   ]
 }
