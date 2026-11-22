@@ -75,18 +75,21 @@
 				const eqLocal = pilotLocalCache?.inmueble?.equipamientoIncluido || [];
 				const eqCloud = pilotoCloud?.inmueble?.equipamientoIncluido || [];
 
-				if (!pilotSyncAttempted && pilotLocalCache && (!pilotoCloud || eqLocal.length > eqCloud.length)) {
+				const localDocsCount = pilotLocalCache?.documentos?.length || 0;
+				const cloudDocsCount = pilotoCloud?.documentos?.length || 0;
+				const localUpdated = pilotLocalCache?.updatedAt || 0;
+				const cloudUpdated = pilotoCloud?.updatedAt || 0;
+
+				if (
+					!pilotSyncAttempted &&
+					pilotLocalCache &&
+					(!pilotoCloud ||
+						localUpdated > cloudUpdated ||
+						localDocsCount > cloudDocsCount ||
+						eqLocal.length > eqCloud.length)
+				) {
 					pilotSyncAttempted = true;
-					const patchOrFull = !pilotoCloud
-						? pilotLocalCache
-						: ({
-								id: pilotLocalCache.id,
-								inmueble: { equipamientoIncluido: eqLocal },
-								contratoUrl: pilotLocalCache.contratoUrl,
-								contratoNombre: pilotLocalCache.contratoNombre,
-								documentos: pilotLocalCache.documentos
-							} as TramiteExpediente);
-					const synced = await syncPilotToFirestore(patchOrFull);
+					const synced = await syncPilotToFirestore(pilotLocalCache);
 					if (synced) return; // onSnapshot volverá a disparar con el piloto ya actualizado
 				}
 
@@ -670,7 +673,11 @@
 								</div>
 								<div class="field-row">
 									<span class="field-lbl">Teléfono:</span>
-									<span>{selectedTramite.partes.vendedora?.telefono || 'Sin registrar'}</span>
+									<span>{selectedTramite.datosCapturados?.vendedorTelefono || selectedTramite.partes.vendedora?.telefono || 'Sin registrar'}</span>
+								</div>
+								<div class="field-row">
+									<span class="field-lbl">Email:</span>
+									<span>{selectedTramite.datosCapturados?.vendedorEmail || selectedTramite.partes.vendedora?.email || 'Sin registrar'}</span>
 								</div>
 								<div class="field-row">
 									<span class="field-lbl">Domicilio:</span>
@@ -695,9 +702,21 @@
 										</span>
 									</div>
 									<div class="field-row">
-										<span class="field-lbl">NSS / Teléfono:</span>
+										<span class="field-lbl">NSS:</span>
 										<span class="code-span highlight">
-											{selectedTramite.datosCapturados?.compradorNss || selectedTramite.partes.compradorTitular?.nss || selectedTramite.partes.compradorTitular?.telefono || 'Pendiente'}
+											{selectedTramite.datosCapturados?.compradorNss || selectedTramite.partes.compradorTitular?.nss || 'Pendiente'}
+										</span>
+									</div>
+									<div class="field-row">
+										<span class="field-lbl">Teléfono:</span>
+										<span>
+											{selectedTramite.datosCapturados?.compradorTelefono || selectedTramite.partes.compradorTitular?.telefono || 'Sin registrar'}
+										</span>
+									</div>
+									<div class="field-row">
+										<span class="field-lbl">Email:</span>
+										<span>
+											{selectedTramite.datosCapturados?.compradorEmail || selectedTramite.partes.compradorTitular?.email || 'Sin registrar'}
 										</span>
 									</div>
 									{#if selectedTramite.partes.compradorTitular?.infonavit}
@@ -713,7 +732,7 @@
 								{#if selectedTramite.partes.compradoraConyuge || (configActual.comprador.estadoCivil === 'casado' && configActual.comprador.regimenConyugal === 'sociedad_conyugal')}
 									<div class="sub-party mt-2">
 										<div class="sub-party-title">
-											Cónyuge: {selectedTramite.datosCapturados?.compradorConyugeNombre || selectedTramite.partes.compradoraConyuge?.nombre || 'Por capturar'}
+											Cónyuge (Compradora): {selectedTramite.datosCapturados?.compradorConyugeNombre || selectedTramite.partes.compradoraConyuge?.nombre || 'Por capturar'}
 										</div>
 										<div class="field-row">
 											<span class="field-lbl">CURP:</span>
@@ -725,6 +744,18 @@
 											<span class="field-lbl">NSS:</span>
 											<span class="code-span highlight">
 												{selectedTramite.datosCapturados?.compradorConyugeNss || selectedTramite.partes.compradoraConyuge?.nss || 'N/A'}
+											</span>
+										</div>
+										<div class="field-row">
+											<span class="field-lbl">Teléfono:</span>
+											<span>
+												{selectedTramite.datosCapturados?.compradorConyugeTelefono || selectedTramite.partes.compradoraConyuge?.telefono || 'Sin registrar'}
+											</span>
+										</div>
+										<div class="field-row">
+											<span class="field-lbl">Email:</span>
+											<span>
+												{selectedTramite.datosCapturados?.compradorConyugeEmail || selectedTramite.partes.compradoraConyuge?.email || 'Sin registrar'}
 											</span>
 										</div>
 									</div>

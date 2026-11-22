@@ -181,6 +181,9 @@ const esMontoPositivo = (val: unknown) => {
 	return !isNaN(num) && num > 0;
 };
 
+const esEmailValido = (val: unknown) =>
+	typeof val === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+
 const getDato = (exp: TramiteExpediente, clave: string, fallback?: unknown): unknown => {
 	const custom = exp.datosCapturados?.[clave];
 	if (custom !== undefined && custom !== null && String(custom).trim() !== '') {
@@ -210,7 +213,7 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DATO_COMP_TELEFONO',
 		parte: 'comprador',
 		tipo: 'dato',
-		concepto: 'Teléfono celular / WhatsApp de contacto',
+		concepto: 'Teléfono celular / WhatsApp del Comprador Titular',
 		obligatorioPara: 'Seguimiento automatizado y notificaciones',
 		motivoRegla: () => 'Control Operativo ATAIR',
 		aplica: () => true,
@@ -218,6 +221,20 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		placeholder: '10 dígitos (ej. 6141234567)',
 		extractor: (e) => getDato(e, 'compradorTelefono', e.partes.compradorTitular?.telefono),
 		validador: (v) => typeof v === 'string' && v.replace(/\D/g, '').length >= 10
+	},
+	{
+		id: 'DATO_COMP_EMAIL',
+		parte: 'comprador',
+		tipo: 'dato',
+		concepto: 'Correo electrónico del Comprador Titular',
+		obligatorioPara: 'Notificaciones formales, CFDI y expediente digital',
+		motivoRegla: () => 'Notificaciones y CFDI Notarial',
+		aplica: () => true,
+		campoClave: 'compradorEmail',
+		placeholder: 'ejemplo@correo.com',
+		ayudaFormato: 'Correo electrónico válido',
+		extractor: (e) => getDato(e, 'compradorEmail', e.partes.compradorTitular?.email),
+		validador: esEmailValido
 	},
 	{
 		id: 'DATO_COMP_CURP',
@@ -307,6 +324,40 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		validador: esNssValido
 	},
 	{
+		id: 'DATO_COMP_CONYUGE_TELEFONO',
+		parte: 'comprador',
+		tipo: 'dato',
+		concepto: 'Teléfono celular / WhatsApp del Cónyuge Coacreditado (Compradora)',
+		obligatorioPara: 'Coordinación directa, firmas y notificaciones',
+		motivoRegla: (c) =>
+			c.formaPago === 'infonavit_conyugal'
+				? 'Infonavit Conyugal'
+				: 'Casado en Sociedad Conyugal',
+		aplica: COMPRADOR_REQUIERE_CONYUGE,
+		campoClave: 'compradorConyugeTelefono',
+		placeholder: '10 dígitos (ej. 6141234567)',
+		ayudaFormato: '10 dígitos telefónicos',
+		extractor: (e) => getDato(e, 'compradorConyugeTelefono', e.partes.compradoraConyuge?.telefono),
+		validador: (v) => typeof v === 'string' && v.replace(/\D/g, '').length >= 10
+	},
+	{
+		id: 'DATO_COMP_CONYUGE_EMAIL',
+		parte: 'comprador',
+		tipo: 'dato',
+		concepto: 'Correo electrónico del Cónyuge Coacreditado (Compradora)',
+		obligatorioPara: 'Expediente digital Infonavit y Notaría',
+		motivoRegla: (c) =>
+			c.formaPago === 'infonavit_conyugal'
+				? 'Infonavit Conyugal'
+				: 'Casado en Sociedad Conyugal',
+		aplica: COMPRADOR_REQUIERE_CONYUGE,
+		campoClave: 'compradorConyugeEmail',
+		placeholder: 'ejemplo@correo.com',
+		ayudaFormato: 'Correo electrónico válido',
+		extractor: (e) => getDato(e, 'compradorConyugeEmail', e.partes.compradoraConyuge?.email),
+		validador: esEmailValido
+	},
+	{
 		id: 'DATO_COMP_REP_LEGAL',
 		parte: 'comprador',
 		tipo: 'dato',
@@ -354,6 +405,18 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 				? 'INE del Representante Legal'
 				: 'Universal Persona Física',
 		aplica: () => true
+	},
+	{
+		id: 'DOC_COMP_CURP',
+		parte: 'comprador',
+		tipo: 'documento',
+		concepto: (c) =>
+			COMPRADOR_REQUIERE_CONYUGE(c)
+				? 'Constancias Oficiales de CURP Certificada por RENAPO (Titular y Cónyuge)'
+				: 'Constancia Oficial de CURP Certificada por RENAPO del Comprador',
+		obligatorioPara: 'Expediente Notarial e Inscripción Infonavit',
+		motivoRegla: () => 'Formato Oficial RENAPO Verificado con Registro Civil',
+		aplica: (c) => c.comprador.tipoPersona === 'fisica'
 	},
 	{
 		id: 'DOC_COMP_COMPROBANTE_DOM',
@@ -550,6 +613,34 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		validador: tieneTextoMin(5)
 	},
 	{
+		id: 'DATO_VEND_TELEFONO',
+		parte: 'vendedor',
+		tipo: 'dato',
+		concepto: 'Teléfono celular / WhatsApp de la Parte Vendedora',
+		obligatorioPara: 'Coordinación de avalúo, firma notarial y entrega',
+		motivoRegla: () => 'Contacto Propietario',
+		aplica: () => true,
+		campoClave: 'vendedorTelefono',
+		placeholder: '10 dígitos (ej. 6141234567)',
+		ayudaFormato: '10 dígitos telefónicos',
+		extractor: (e) => getDato(e, 'vendedorTelefono', e.partes.vendedora?.telefono),
+		validador: (v) => typeof v === 'string' && v.replace(/\D/g, '').length >= 10
+	},
+	{
+		id: 'DATO_VEND_EMAIL',
+		parte: 'vendedor',
+		tipo: 'dato',
+		concepto: 'Correo electrónico de la Parte Vendedora',
+		obligatorioPara: 'Envío de CFDI Notarial de retención/exención y finiquito',
+		motivoRegla: () => 'CFDI Notarial y Cierre',
+		aplica: () => true,
+		campoClave: 'vendedorEmail',
+		placeholder: 'ejemplo@correo.com',
+		ayudaFormato: 'Correo electrónico válido',
+		extractor: (e) => getDato(e, 'vendedorEmail', e.partes.vendedora?.email),
+		validador: esEmailValido
+	},
+	{
 		id: 'DATO_VEND_RFC',
 		parte: 'vendedor',
 		tipo: 'dato',
@@ -589,6 +680,15 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		obligatorioPara: 'Acreditación de identidad del propietario',
 		motivoRegla: () => 'Universal Propietario',
 		aplica: () => true
+	},
+	{
+		id: 'DOC_VEND_CURP',
+		parte: 'vendedor',
+		tipo: 'documento',
+		concepto: 'Constancia Oficial de CURP Certificada por RENAPO del Propietario',
+		obligatorioPara: 'Expediente Notarial y cotejo de identidad registral',
+		motivoRegla: () => 'Formato Oficial RENAPO Propietario',
+		aplica: (c) => c.vendedor.tipoPersona === 'fisica'
 	},
 	{
 		id: 'DOC_VEND_ESCRITURA',
@@ -827,6 +927,7 @@ const LEGACY_TO_RULE_MAP: Record<string, { part: 'comprador' | 'vendedor'; legac
 	DOC_COMP_COMPROBANTE_DOM: { part: 'comprador', legacyId: 'COMP-008' },
 	DOC_COMP_TALLER_INFONAVIT: { part: 'comprador', legacyId: 'COMP-009' },
 	DOC_COMP_ORIGEN_FONDOS_CONTADO: { part: 'comprador', legacyId: 'COMP-010' },
+	DOC_COMP_CURP: { part: 'comprador', legacyId: 'COMP-011' },
 
 	DOC_VEND_ESCRITURA: { part: 'vendedor', legacyId: 'VEND-001' },
 	DOC_VEND_BOLETA_RPP: { part: 'vendedor', legacyId: 'VEND-002' },
@@ -838,7 +939,8 @@ const LEGACY_TO_RULE_MAP: Record<string, { part: 'comprador' | 'vendedor'; legac
 	DOC_VEND_JMAS_AGUA: { part: 'vendedor', legacyId: 'VEND-008' },
 	DOC_VEND_CFE_LUZ: { part: 'vendedor', legacyId: 'VEND-009' },
 	DOC_INM_ALINEAMIENTO_NUM_OFICIAL: { part: 'vendedor', legacyId: 'VEND-010' },
-	DOC_VEND_CARATULA_BANCO: { part: 'vendedor', legacyId: 'VEND-011' }
+	DOC_VEND_CARATULA_BANCO: { part: 'vendedor', legacyId: 'VEND-011' },
+	DOC_VEND_CURP: { part: 'vendedor', legacyId: 'VEND-012' }
 };
 
 export function inferirConfiguracionDesdeExpediente(exp: TramiteExpediente): ConfiguracionTramite {
@@ -972,7 +1074,7 @@ export function generarAlertasJuridicas(config: ConfiguracionTramite): AlertaJur
 			nivel: 'info',
 			titulo: 'Estrategia Fiscal: Exención de ISR (Art. 93 LISR)',
 			detalle:
-				'Para exentar hasta 700,000 UDIS (~$5.8M MXN), validar con anticipación que el recibo de CFE o estado de cuenta bancario esté a nombre del vendedor y coincida con el domicilio del inmueble.'
+				'Exención de hasta 700,000 UDIS (~$5.8M MXN). Confirmado: se acredita prioritariamente con la Credencial para Votar (INE) vigente del enajenante cuyo domicilio coincide plenamente con el inmueble enajenado (Art. 93 Frac. XIX Inc. a LISR y Art. 155 RLISR), sin depender del recibo de CFE para la exención notarial.'
 		});
 	}
 

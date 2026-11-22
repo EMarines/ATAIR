@@ -3,8 +3,12 @@
   "folderName": "Espinoza - Muñoz",
   "tipoOperacion": "Compraventa",
   "modalidadCredito": "Infonavit Conyugal",
-  "estadoTramite": "Contrato Listo para Firma / Expediente en Integración",
+  "estadoTramite": "Contrato Firmado / Expediente Vendedora al 85% / Listo para Avalúo Infonavit",
   "fechaApertura": "2026-11-19",
+  "updatedAt": 1732194000000,
+  "contratoUrl": "/tramites/Espinoza%20-%20Mu%C3%B1oz/Contrato%20firmado_20261121_094331.pdf",
+  "contratoNombre": "Contrato firmado_20261121_094331.pdf",
+  "estrategiaFiscalIsr": "Exención 100% de ISR por Casa Habitación (Art. 93 Frac. XIX Inciso a de la LISR y Art. 155 RLISR) acreditada mediante la Credencial para Votar (INE) vigente de la vendedora Flora Elena Muñoz Valenzuela, cuyo domicilio asentado coincide plenamente con el inmueble enajenado (Calle Cedro 1514-1). Desactiva contingencia de recibo CFE.",
   "inmueble": {
     "calle": "Calle Cedro",
     "numeroEscritura": "1512-A",
@@ -53,10 +57,17 @@
       "nombre": "Flora Elena Muñoz Valenzuela",
       "nombreEnEscritura": "Flora Elena Muñoz de Madrigal",
       "estadoCivil": "Divorciada",
+      "rfc": "MUVF510503PY5",
       "curp": "MUVF510503MTSXLL08",
       "claveElector": "MZVLFL51050328M700",
       "vigenciaIne": "2026-2036",
-      "domicilio": "Calle Cedro 1514-1, Col. Las Granjas, C.P. 31100, Chihuahua, Chih."
+      "fechaNacimiento": "1951-05-03",
+      "lugarNacimiento": "Reynosa, Tamaulipas",
+      "domicilio": "Calle Cedro 1514-1, Col. Las Granjas, C.P. 31100, Chihuahua, Chih.",
+      "domicilioFiscal": "Hacienda Carrizal 3200 Int 3, Las Haciendas, C.P. 31236, Chihuahua, Chih.",
+      "regimenFiscal": "Régimen Simplificado de Confianza (RESICO)",
+      "datosDivorcio": "Acta 463, Foja 74, Libro 79 de fecha 08/06/1992, Juzgado Tercero Familiar Dto Morelos (Resolución 20/05/1992, Exp. 476/92)",
+      "datosRectificacionRPP": "Boleta de Inscripción No. 2026-198130, Folio Electrónico 2026-310641 del 28/07/2026 (Insc. 116, Libro 6211, Sec. X) rectificando apellido materno a Valenzuela en Folio Real 1120676"
     },
     "compradorTitular": {
       "nombre": "Jorge Ricardo Espinosa Miranda",
@@ -68,7 +79,7 @@
       "infonavit": {
         "montoCredito": 22312.42,
         "saldoSubcuentaVivienda": 726158.68,
-        "gastosTitulacion": 18746.20,
+        "gastosTitulacion": 18746.2,
         "retencionMensual": 236.51,
         "tasaInteres": 10.45
       }
@@ -106,41 +117,371 @@
     }
   },
   "documentos": [
-    { "nombre": "CONTRATO_COMPRAVENTA_ESPINOZA_MUÑOZ_ACTUALIZADO.docx", "tipo": "Contrato Definitivo", "estatus": "Listo para Firma" },
-    { "nombre": "Recibo Apartado_20261119_132225.pdf", "tipo": "Recibo de Apartado", "estatus": "Firmado" },
-    { "nombre": "Escritura.pdf", "tipo": "Título de Propiedad", "estatus": "Verificado" },
-    { "nombre": "Inscripción RPP.jpg", "tipo": "Boleta Registral RPP", "estatus": "Verificado" },
-    { "nombre": "INE.pdf", "tipo": "INE Vendedora", "estatus": "Verificado" },
-    { "nombre": "INE JORGE_20261119_131606.pdf", "tipo": "INE Comprador Titular", "estatus": "Verificado" },
-    { "nombre": "INE Yamel_20261119_131808.pdf", "tipo": "INE Cónyuge Coacreditada", "estatus": "Verificado" },
-    { "nombre": "Credito Conyugal_20261119_132118.pdf", "tipo": "Precalificación Infonavit", "estatus": "Verificado" },
-    { "nombre": "Tabla Amortizacion 1_20261119_131925.pdf", "tipo": "Tabla Amortización Cónyuge", "estatus": "Verificado" },
-    { "nombre": "Tabla Amortizacion 2_20261119_132022.pdf", "tipo": "Tabla Amortización Titular", "estatus": "Verificado" },
-    { "nombre": "Generales Propiedad.xlsx", "tipo": "Ficha Técnica", "estatus": "Verificado" }
+    {
+      "nombre": "Contrato firmado_20261121_094331.pdf",
+      "tipo": "Contrato Privado de Promesa Compraventa",
+      "estatus": "Firmado por Todas las Partes ✓"
+    },
+    {
+      "nombre": "CONTRATO_COMPRAVENTA_ESPINOZA_MUÑOZ_ACTUALIZADO.docx",
+      "tipo": "Minuta Editable Word",
+      "estatus": "Versión Final"
+    },
+    {
+      "nombre": "Recibo Apartado_20261119_132225.pdf",
+      "tipo": "Recibo de Apartado $100k",
+      "estatus": "Firmado ✓"
+    },
+    {
+      "nombre": "Escritura.pdf",
+      "tipo": "Título de Propiedad (Escritura 5295 Notaría 12)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "Inscripción RPP.jpg",
+      "tipo": "Boleta Registral RPP Antecedente",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "Ratificación Nombre_20261121_104008.pdf",
+      "tipo": "Boleta Registral Rectificación RPP Morelos 2026-198130",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "INE Flore.pdf",
+      "tipo": "INE Vendedora (2026-2036) - Acredita Identidad y Exención ISR Art. 93",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "Acta Nacimiento Flore_20261121_103441.pdf",
+      "tipo": "Acta de Nacimiento Certificada Vendedora",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "Acta Nacimiento Flore_20261121_105019.pdf",
+      "tipo": "Acta de Divorcio Certificada Vendedora (Acta 463 Libro 79)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "CSF Flore_20261121_102907.pdf",
+      "tipo": "Constancia de Situación Fiscal SAT (RFC MUVF510503PY5)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "Predial recibo_20261121_103557.pdf",
+      "tipo": "Certificado de Pago Predial 2026 al Corriente (Clave 191-016-021)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "CFE recibo_20261121_103840.pdf",
+      "tipo": "Recibo CFE Servicio 585831200136 Julio/2026",
+      "estatus": "Verificado para Entrega Fisiológica (No condiciona ISR)"
+    },
+    {
+      "nombre": "JMAS Edo. Cta_20261121_104249.pdf",
+      "tipo": "Constancia de Cambio de Padrón JMAS Contrato 034254",
+      "estatus": "Verificado (Pendiente Carta No Adeudo)"
+    },
+    {
+      "nombre": "INE JORGE_20261119_131606.pdf",
+      "tipo": "INE Comprador Titular (2021-2031)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "INE Yamel_20261119_131808.pdf",
+      "tipo": "INE Cónyuge Coacreditada (2018-2028)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "Credito Conyugal_20261119_132118.pdf",
+      "tipo": "Precalificación Infonavit Conyugal",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "Tabla Amortizacion 1_20261119_131925.pdf",
+      "tipo": "Tabla Amortización Cónyuge",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "Tabla Amortizacion 2_20261119_132022.pdf",
+      "tipo": "Tabla Amortización Titular",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "Generales Propiedad.xlsx",
+      "tipo": "Ficha Técnica Comercial",
+      "estatus": "Verificado ✓"
+    }
   ],
   "checklistComprador": [
-    { "id": "COMP-001", "concepto": "INE Vigente de Jorge Ricardo Espinosa (Titular)", "obligatorioPara": "Identificación Notarial e Infonavit", "completado": true, "estatus": "Cotejado ✓" },
-    { "id": "COMP-002", "concepto": "INE Vigente de Yamel Ivette Ramírez (Cónyuge)", "obligatorioPara": "Identificación Notarial e Infonavit", "completado": true, "estatus": "Cotejado ✓" },
-    { "id": "COMP-003", "concepto": "Precalificación Infonavit Conyugal y Tablas con NSS", "obligatorioPara": "Dictaminación de Crédito", "completado": true, "estatus": "Cotejado ✓" },
-    { "id": "COMP-004", "concepto": "Recibo de Apartado $100,000 M.N.", "obligatorioPara": "Garantía de Compraventa", "completado": true, "estatus": "Cotejado ✓" },
-    { "id": "COMP-005", "concepto": "Acta de Matrimonio Certificada (Jorge y Yamel)", "obligatorioPara": "Formalización Crédito Conyugal Infonavit", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "COMP-006", "concepto": "Actas de Nacimiento Certificadas de Ambos", "obligatorioPara": "Expediente Infonavit y Notaría", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "COMP-007", "concepto": "Constancias de Situación Fiscal (SAT con RFC y homoclave)", "obligatorioPara": "CFDI Notarial y Complemento de Titulación", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "COMP-008", "concepto": "Comprobante de Domicilio Reciente (<3 meses, agua/luz)", "obligatorioPara": "Expediente Bancario/Infonavit", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "COMP-009", "concepto": "Constancia Taller Infonavit 'Saber más para decidir mejor'", "obligatorioPara": "Inscripción Formal en Infonavit", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "COMP-010", "concepto": "Comprobante de Fondos Saldo Recursos Propios ($450,000 M.N.)", "obligatorioPara": "Liquidación en Notaría a la Firma", "completado": false, "estatus": "Para Firma de Escritura" }
+    {
+      "id": "COMP-001",
+      "concepto": "INE Vigente de Jorge Ricardo Espinosa (Titular)",
+      "obligatorioPara": "Identificación Notarial e Infonavit",
+      "completado": true,
+      "estatus": "Cotejado ✓"
+    },
+    {
+      "id": "COMP-002",
+      "concepto": "INE Vigente de Yamel Ivette Ramírez (Cónyuge)",
+      "obligatorioPara": "Identificación Notarial e Infonavit",
+      "completado": true,
+      "estatus": "Cotejado ✓"
+    },
+    {
+      "id": "COMP-003",
+      "concepto": "Precalificación Infonavit Conyugal y Tablas con NSS",
+      "obligatorioPara": "Dictaminación de Crédito",
+      "completado": true,
+      "estatus": "Cotejado ✓"
+    },
+    {
+      "id": "COMP-004",
+      "concepto": "Recibo de Apartado $100,000 M.N. y Contrato de Compraventa Firmado",
+      "obligatorioPara": "Garantía y Formalización de Trato",
+      "completado": true,
+      "estatus": "Firmado por Ambas Partes ✓"
+    },
+    {
+      "id": "COMP-005",
+      "concepto": "Acta de Matrimonio Certificada (Jorge y Yamel)",
+      "obligatorioPara": "Formalización Crédito Conyugal Infonavit y Notaría",
+      "completado": false,
+      "estatus": "Pendiente de Solicitar a Compradores"
+    },
+    {
+      "id": "COMP-006",
+      "concepto": "Actas de Nacimiento Certificadas de Ambos",
+      "obligatorioPara": "Expediente Infonavit y Notaría",
+      "completado": false,
+      "estatus": "Pendiente de Solicitar a Compradores"
+    },
+    {
+      "id": "COMP-007",
+      "concepto": "Constancias de Situación Fiscal (SAT con RFC y homoclave de ambos)",
+      "obligatorioPara": "CFDI Notarial y Complemento de Titulación",
+      "completado": false,
+      "estatus": "Pendiente de Solicitar a Compradores"
+    },
+    {
+      "id": "COMP-008",
+      "concepto": "Comprobante de Domicilio Reciente de Compradores (<3 meses, agua/luz)",
+      "obligatorioPara": "Expediente Bancario/Infonavit",
+      "completado": false,
+      "estatus": "Pendiente de Solicitar a Compradores"
+    },
+    {
+      "id": "COMP-009",
+      "concepto": "Constancia Taller Infonavit 'Saber más para decidir mejor' (ambos)",
+      "obligatorioPara": "Inscripción Formal en Infonavit",
+      "completado": false,
+      "estatus": "Pendiente de Cursar en Mi Cuenta Infonavit"
+    },
+    {
+      "id": "COMP-010",
+      "concepto": "Comprobante de Fondos Saldo Recursos Propios ($450,000 M.N.)",
+      "obligatorioPara": "Liquidación en Notaría a la Firma de Escritura",
+      "completado": false,
+      "estatus": "Programado para Firma de Escritura"
+    },
+    {
+      "id": "COMP-011",
+      "concepto": "Constancias Oficiales de CURP Certificadas por RENAPO (Titular y Cónyuge)",
+      "obligatorioPara": "Expediente Notarial e Infonavit",
+      "completado": false,
+      "estatus": "Pendiente de Descarga RENAPO (Claves listas: EIMJ710902HDFSRR17 y RAFY721001MCHMLM04)"
+    }
   ],
   "checklistVendedor": [
-    { "id": "VEND-001", "concepto": "Título de Propiedad (Escritura 5,295 Notaría 12)", "obligatorioPara": "Acreditación de Propiedad", "completado": true, "estatus": "Cotejado ✓" },
-    { "id": "VEND-002", "concepto": "Boleta de Inscripción en Registro Público (RPPyC Morelos)", "obligatorioPara": "Certeza Registral y Antecedentes", "completado": true, "estatus": "Cotejado ✓" },
-    { "id": "VEND-003", "concepto": "INE Vigente de Flora Elena Muñoz (2026-2036)", "obligatorioPara": "Identificación de Propietaria", "completado": true, "estatus": "Cotejado ✓" },
-    { "id": "VEND-004", "concepto": "Acta de Divorcio Certificada (Flora Elena Muñoz)", "obligatorioPara": "Justificación Registral ante Notaría e Infonavit", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "VEND-005", "concepto": "Acta de Nacimiento Certificada de la Vendedora", "obligatorioPara": "Expediente Notarial", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "VEND-006", "concepto": "Constancia de Situación Fiscal (SAT con RFC timbrable)", "obligatorioPara": "Cálculo y Exención de ISR Notarial", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "VEND-007", "concepto": "Boleta Predial 2026 Pagada al Corriente", "obligatorioPara": "Avalúo Infonavit y Notaría", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "VEND-008", "concepto": "Recibo de Agua JMAS y Constancia de No Adeudo", "obligatorioPara": "Escrituración Notarial y Cierre Administrativo", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "VEND-009", "concepto": "Recibo de Luz CFE al Corriente (Último Bimestre Pagado)", "obligatorioPara": "Avalúo Infonavit y Exención 100% de ISR por Casa Habitación (Art. 93 LISR)", "completado": false, "estatus": "Pendiente de Solicitar" },
-    { "id": "VEND-010", "concepto": "Constancia de Alineamiento y Número Oficial (1512-A vs 1514-1)", "obligatorioPara": "Unidad de Valuación Infonavit y Notaría", "completado": false, "estatus": "En Trámite Municipal" },
-    { "id": "VEND-011", "concepto": "Carátula de Cuenta Bancaria con CLABE a su Nombre", "obligatorioPara": "Dispersión de Fondos de Infonavit al Vendedor", "completado": false, "estatus": "Pendiente de Solicitar" }
-  ]
+    {
+      "id": "VEND-001",
+      "concepto": "Título de Propiedad (Escritura 5,295 Notaría 12 Morelos)",
+      "obligatorioPara": "Acreditación de Propiedad",
+      "completado": true,
+      "estatus": "Cotejado ✓"
+    },
+    {
+      "id": "VEND-002",
+      "concepto": "Boleta de Inscripción en Registro Público (RPPyC Morelos Folio 1120676)",
+      "obligatorioPara": "Certeza Registral y Antecedentes",
+      "completado": true,
+      "estatus": "Cotejado ✓"
+    },
+    {
+      "id": "VEND-003",
+      "concepto": "INE Vigente de Flora Elena Muñoz (2026-2036) — Acredita Identidad y Exención ISR",
+      "obligatorioPara": "Identificación de Propietaria y Exención Fiscal Art. 93 LISR",
+      "completado": true,
+      "estatus": "Cotejado ✓ (Exención ISR Garantizada)"
+    },
+    {
+      "id": "VEND-004",
+      "concepto": "Acta de Divorcio Certificada (Acta 463 Libro 79 Juzgado 3° Familiar)",
+      "obligatorioPara": "Justificación Registral y Tracto Notarial",
+      "completado": true,
+      "estatus": "Cotejado ✓ (Subido 21/11/2026)"
+    },
+    {
+      "id": "VEND-005",
+      "concepto": "Acta de Nacimiento Certificada de la Vendedora (Acta 1254 Reynosa)",
+      "obligatorioPara": "Expediente Notarial y Certificación de Identidad",
+      "completado": true,
+      "estatus": "Cotejado ✓ (Subido 21/11/2026)"
+    },
+    {
+      "id": "VEND-006",
+      "concepto": "Constancia de Situación Fiscal SAT (RFC: MUVF510503PY5, RESICO)",
+      "obligatorioPara": "Cálculo y Exención de ISR Notarial",
+      "completado": true,
+      "estatus": "Cotejado ✓ (Subido 21/11/2026)"
+    },
+    {
+      "id": "VEND-007",
+      "concepto": "Boleta Predial 2026 Pagada al Corriente (Hasta Bimestre 2026/6)",
+      "obligatorioPara": "Avalúo Infonavit y Notaría",
+      "completado": true,
+      "estatus": "Cotejado ✓ (Subido 21/11/2026)"
+    },
+    {
+      "id": "VEND-008",
+      "concepto": "Recibo de Agua JMAS y Constancia de No Adeudo",
+      "obligatorioPara": "Escrituración Notarial y Cierre Administrativo",
+      "completado": true,
+      "estatus": "Cotejado ✓ (Cuenta 034254 en ceros / Cambio de Padrón acreditado)"
+    },
+    {
+      "id": "VEND-009",
+      "concepto": "Recibo de Luz CFE al Corriente (Entrega de Posesión)",
+      "obligatorioPara": "Finiquito de Servicios. No condiciona ISR (acreditado con INE)",
+      "completado": true,
+      "estatus": "Cotejado ✓ (Recibo Pagado Julio/2026 $185)"
+    },
+    {
+      "id": "VEND-010",
+      "concepto": "Constancia de Alineamiento y Número Oficial (1512-A vs 1514-1)",
+      "obligatorioPara": "Unidad de Valuación Infonavit y Notaría",
+      "completado": false,
+      "estatus": "En Trámite Municipal (Respaldado por Rectificación RPP Folio 1120676)"
+    },
+    {
+      "id": "VEND-011",
+      "concepto": "Carátula de Cuenta Bancaria con CLABE a su Nombre",
+      "obligatorioPara": "Dispersión de Fondos de Infonavit a la Vendedora",
+      "completado": false,
+      "estatus": "Pendiente de Solicitar a la Vendedora"
+    },
+    {
+      "id": "VEND-012",
+      "concepto": "Constancia Oficial de CURP Certificada por RENAPO (Flora Elena Muñoz)",
+      "obligatorioPara": "Expediente Notarial",
+      "completado": false,
+      "estatus": "Pendiente de Descarga RENAPO (Clave lista: MUVF510503MTSXLL08)"
+    }
+  ],
+  "controlChecklist": {
+    "DOC_COMP_INE": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR",
+      "actualizadoEn": "2026-11-19",
+      "archivoNombre": "INE JORGE_20261119_131606.pdf"
+    },
+    "DOC_COMP_CONYUGE_DOCS": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR",
+      "actualizadoEn": "2026-11-19",
+      "archivoNombre": "INE Yamel_20261119_131808.pdf"
+    },
+    "DOC_COMP_PRECALIF_INFONAVIT": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR",
+      "actualizadoEn": "2026-11-19",
+      "archivoNombre": "Credito Conyugal_20261119_132118.pdf"
+    },
+    "DOC_COMP_RECIBO_APARTADO": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR",
+      "actualizadoEn": "2026-11-21",
+      "archivoNombre": "Contrato firmado_20261121_094331.pdf"
+    },
+    "DOC_COMP_CURP": {
+      "estado": "pendiente",
+      "observacion": "Pendiente descargar constancia oficial en RENAPO (Claves: Jorge EIMJ710902HDFSRR17, Yamel RAFY721001MCHMLM04)",
+      "actualizadoEn": "2026-11-21"
+    },
+    "DOC_VEND_ESCRITURA": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR",
+      "actualizadoEn": "2026-11-19",
+      "archivoNombre": "Escritura.pdf"
+    },
+    "DOC_VEND_BOLETA_RPP": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR",
+      "actualizadoEn": "2026-11-21",
+      "archivoNombre": "Ratificación Nombre_20261121_104008.pdf"
+    },
+    "DOC_VEND_INE": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR",
+      "actualizadoEn": "2026-11-19",
+      "archivoNombre": "INE Flore.pdf",
+      "observacion": "Acredita identidad y exención del 100% de ISR por casa habitación (Art. 93 Frac. XIX Inc. a LISR)."
+    },
+    "DOC_VEND_CURP": {
+      "estado": "pendiente",
+      "observacion": "Pendiente descargar constancia oficial en RENAPO (Clave: Flora MUVF510503MTSXLL08)",
+      "actualizadoEn": "2026-11-21"
+    },
+    "DOC_VEND_ACTA_NACIMIENTO": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría 21/11/2026",
+      "actualizadoEn": "2026-11-21",
+      "archivoNombre": "Acta Nacimiento Flore_20261121_103441.pdf"
+    },
+    "DOC_VEND_ACTA_DIVORCIO": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría 21/11/2026",
+      "actualizadoEn": "2026-11-21",
+      "archivoNombre": "Acta Nacimiento Flore_20261121_105019.pdf"
+    },
+    "DOC_VEND_CONSTANCIA_SAT": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría 21/11/2026",
+      "actualizadoEn": "2026-11-21",
+      "archivoNombre": "CSF Flore_20261121_102907.pdf"
+    },
+    "DOC_VEND_PREDIAL_2026": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría 21/11/2026",
+      "actualizadoEn": "2026-11-21",
+      "archivoNombre": "Predial recibo_20261121_103557.pdf"
+    },
+    "DOC_VEND_CFE_LUZ": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría 21/11/2026",
+      "actualizadoEn": "2026-11-21",
+      "archivoNombre": "CFE recibo_20261121_103840.pdf",
+      "observacion": "Recibo CFE julio/2026 pagado ($185). Para fines fiscales notariales, la exención de ISR (Art. 93 LISR) queda formalmente sustentada con el INE de la propietaria en dicho domicilio."
+    },
+    "DOC_VEND_JMAS_AGUA": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría 21/11/2026",
+      "actualizadoEn": "2026-11-21",
+      "archivoNombre": "JMAS Edo. Cta_20261121_104249.pdf",
+      "observacion": "Padrón a nombre de Flora Elena (Contrato 034254) y cuenta en ceros sin adeudo."
+    }
+  },
+  "datosCapturados": {
+    "DATO_VEND_NOMBRE": "Flora Elena Muñoz Valenzuela",
+    "DATO_VEND_RFC": "MUVF510503PY5",
+    "DATO_COMP_NOMBRE": "Jorge Ricardo Espinosa Miranda",
+    "DATO_COMP_CURP": "EIMJ710902HDFSRR17",
+    "DATO_COMP_NSS": "32967205074",
+    "DATO_COMP_CONYUGE_NOMBRE": "Yamel Ivette Ramírez Flores",
+    "DATO_COMP_CONYUGE_CURP": "RAFY721001MCHMLM04",
+    "DATO_COMP_CONYUGE_NSS": "35887035802",
+    "DATO_INM_PRECIO_O_RENTA": "2150000",
+    "DATO_INM_CLAVE_CATASTRAL": "191-016-021",
+    "DATO_INM_FOLIO_REAL": "1120676"
+  }
 }
