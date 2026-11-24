@@ -808,13 +808,27 @@
 		return r;
 	}
 
+	function isOwnerContactType(rawType?: string): boolean {
+		const t = (rawType || '').toLowerCase();
+		return (
+			!t.includes('agente') &&
+			!t.includes('constructor') &&
+			(t.includes('vendedor') || t.includes('propietario') || t.includes('arrendador'))
+		);
+	}
+
+	const normalizedInitialType = existingContact ? normalizeTypeContact(existingContact.typeContact) : '';
+
 	let contact: Contact = existingContact
 		? {
 				...existingContact,
 				company: (existingContact as any).company || (existingContact as any).inmobiliaria || '',
 				inmobiliaria: (existingContact as any).inmobiliaria || (existingContact as any).company || '',
 				procedencia: existingContact.procedencia || '',
-				typeContact: normalizeTypeContact(existingContact.typeContact)
+				typeContact: normalizedInitialType,
+				contactStage: isOwnerContactType(normalizedInitialType)
+					? 'OW'
+					: (existingContact.contactStage || 'Etapa 1')
 		  }
 		: {
 				budget: 0, // Valor numérico por defecto
@@ -847,6 +861,8 @@
 
 	// Variable string para el input de presupuesto, inicializada desde el contact.budget actual (que ya considera existingContact)
 	let budgetStringForInput: string = String(contact.budget);
+
+	$: isOwnerType = isOwnerContactType(contact.typeContact);
 
 	$: isAgentType = Boolean(
 		contact.typeContact &&
@@ -1009,7 +1025,7 @@
 				telephon: contact.telephon || '',
 				selecMC: contact.selecMC || 'Lona en Propiedad',
 				comContact: contact.comContact || '',
-				contactStage: contact.contactStage || 'Etapa 1',
+				contactStage: isOwnerType ? 'OW' : (contact.contactStage || 'Etapa 1'),
 				isActive: contact.isActive !== undefined ? contact.isActive : true,
 				budget: parsedBudgetNumber, // Usar el valor parseado
 				selecTP: contact.selecTP || '',
@@ -1341,13 +1357,17 @@
 						if ((t.includes('agente') || t.includes('constructor') || t.includes('inmobiliaria') || t.includes('colaborador') || t.includes('asesor')) && !contact.procedencia) {
 							contact.procedencia = 'S1';
 						}
-						if (t.includes('arrendatario')) {
+						if (isOwnerContactType(e.detail)) {
+							contact.contactStage = 'OW';
+						} else if (t.includes('arrendatario')) {
 							const currentStage = String(contact.contactStage || '').toUpperCase();
 							if (currentStage.includes('4') || currentStage.includes('A2')) {
 								contact.contactStage = 'A2';
 							} else if (!currentStage.startsWith('A')) {
 								contact.contactStage = 'A1';
 							}
+						} else if (String(contact.contactStage || '').trim().toUpperCase() === 'OW') {
+							contact.contactStage = 'Etapa 1';
 						}
 					}}
 				/>
@@ -1489,13 +1509,20 @@
 							on:change={(e) => (contact.modePay = e.detail)}
 						/>
 
-						<InputOptions
-							identificador="contactStage"
-							name="Etapa"
-							choices={(contact.typeContact || '').toLowerCase().includes('arrendatario') ? arrendatarioStages : contStage}
-							value={contact.contactStage ? String(contact.contactStage) : ''}
-							on:change={(e) => (contact.contactStage = e.detail)}
-						/>
+						{#if !isOwnerType}
+							<InputOptions
+								identificador="contactStage"
+								name="Etapa"
+								choices={(contact.typeContact || '').toLowerCase().includes('arrendatario') ? arrendatarioStages : contStage}
+								value={contact.contactStage ? String(contact.contactStage) : ''}
+								on:change={(e) => (contact.contactStage = e.detail)}
+							/>
+						{:else}
+							<div class="owner-stage-badge" title="Los propietarios no pertenecen a una etapa del embudo">
+								<span class="owner-stage-pill">OW</span>
+								<span class="owner-stage-label">Propietario (Sin etapa)</span>
+							</div>
+						{/if}
 					</div>
 					<div class="inp__lat">
 						<InputText identifier="budget" name="Presupuesto" bind:value={budgetStringForInput} />
@@ -1898,6 +1925,38 @@
 	.synergy-pill-text {
 		font-size: 0.8rem;
 		color: var(--text-secondary, #cbd5e1);
+		font-weight: 500;
+	}
+
+	.owner-stage-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.55rem;
+		padding: 0.55rem 0.85rem;
+		border-radius: 8px;
+		background: rgba(15, 118, 110, 0.16);
+		border: 1px solid rgba(20, 184, 166, 0.45);
+		color: #5eead4;
+		font-size: 0.85rem;
+		font-weight: 600;
+		align-self: center;
+	}
+
+	.owner-stage-pill {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.18rem 0.45rem;
+		border-radius: 5px;
+		background: #0f766e;
+		color: #ffffff;
+		font-weight: 700;
+		font-size: 0.78rem;
+		letter-spacing: 0.5px;
+	}
+
+	.owner-stage-label {
+		color: var(--text-secondary, #e2e8f0);
 		font-weight: 500;
 	}
 </style>

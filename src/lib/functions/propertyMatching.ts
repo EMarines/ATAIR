@@ -687,7 +687,13 @@ export function filterContactsByCriteria(
 		}
 
 		if (filterStage !== null) {
-			if (normalizeStage(contact.contactStage) !== filterStage) return false;
+			const tc = normalizeMatchText(contact.typeContact || contact.contactType);
+			const isOwner = tc === 'vendedor' || tc === 'propietario' || tc === 'arrendador';
+			if (isOwner) {
+				if (filterStage !== 'OW') return false;
+			} else if (normalizeStage(contact.contactStage) !== filterStage) {
+				return false;
+			}
 		}
 
 		if (criteria.bathrooms) {

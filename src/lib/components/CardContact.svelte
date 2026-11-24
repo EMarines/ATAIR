@@ -23,18 +23,43 @@
 		}
 	}
 
+	$: isOwner = (() => {
+		if (!cont) return false;
+		const raw = cont as any;
+		const type = (cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
+		const stageUpper = String(cont.contactStage || '').trim().toUpperCase();
+		const isExplicitAgent = (
+			type.includes('agente') ||
+			type.includes('constructor') ||
+			type.includes('inmobiliaria') ||
+			type.includes('colaborador') ||
+			type.includes('asesor')
+		);
+		if (isExplicitAgent) return false;
+		return (
+			type.includes('vendedor') ||
+			type.includes('propietario') ||
+			type.includes('arrendador') ||
+			stageUpper === 'OW' ||
+			stageUpper === 'PROPIETARIO'
+		);
+	})();
+
 	$: isAgent = (() => {
 		if (!cont) return false;
 		const raw = cont as any;
 		const type = (cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
 		const notes = (cont.notes || raw.comContact || raw.notas || '').toLowerCase();
-		const company = (raw.company || raw.inmobiliaria || '').toLowerCase();
-		return (
+		const isExplicitAgent = (
 			type.includes('agente') ||
 			type.includes('constructor') ||
 			type.includes('inmobiliaria') ||
 			type.includes('colaborador') ||
-			type.includes('asesor') ||
+			type.includes('asesor')
+		);
+		if (isExplicitAgent) return true;
+		if (isOwner) return false;
+		return (
 			notes.includes('sinergia') ||
 			notes.includes('agente') ||
 			notes.includes('constructor') ||
@@ -44,7 +69,7 @@
 	})();
 
 	$: isArrendatario = (() => {
-		if (!cont || isAgent) return false;
+		if (!cont || isAgent || isOwner) return false;
 		const raw = cont as any;
 		const type = (cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
 		const notes = (cont.notes || raw.comContact || raw.notas || '').toLowerCase();
@@ -87,7 +112,7 @@
 </script>
 
 {#if isValidContact}
-	<div class="card" class:card--agent={isAgent} class:card--arrendatario={isArrendatario}>
+	<div class="card" class:card--agent={isAgent} class:card--owner={isOwner} class:card--arrendatario={isArrendatario}>
 		<div class="card__infoHead">
 			<span class="date">Alta: {formatDate(cont.createdAt)}</span>
 		</div>
@@ -173,6 +198,10 @@
 
 	.card--agent {
 		border-left: 3.5px solid #8b5cf6;
+	}
+
+	.card--owner {
+		border-left: 3.5px solid #0d9488;
 	}
 
 	.card--arrendatario {

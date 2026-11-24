@@ -2,6 +2,7 @@ import type { Contact } from '$lib/types';
 
 export interface ContactBadgeInfo {
 	isAgent: boolean;
+	isOwner?: boolean;
 	shape: 'circle' | 'square';
 	text: string;
 	color: string;
@@ -12,6 +13,7 @@ export function normalizeStage(stage: any): number | string {
 	if (typeof stage === 'string') {
 		const s = stage.trim().toUpperCase();
 		if (s === 'NA') return 'NA';
+		if (s === 'OW' || s === 'PROPIETARIO') return 'OW';
 		if (s.startsWith('A1')) return 'A1';
 		if (s.startsWith('A2')) return 'A2';
 		if (s === 'CIERRE') return 5;
@@ -42,18 +44,33 @@ export function getContactBadgeInfo(cont: Contact | null | undefined): ContactBa
 	const raw = cont as any;
 	const type = (cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
 	const notes = (cont.notes || raw.comContact || raw.notas || '').toLowerCase();
+	const rawStageUpper = String(cont.contactStage || '').trim().toUpperCase();
 
-	const isAgent = (
+	const isExplicitAgentType = (
 		type.includes('agente') ||
 		type.includes('constructor') ||
 		type.includes('inmobiliaria') ||
 		type.includes('colaborador') ||
-		type.includes('asesor') ||
-		notes.includes('sinergia') ||
-		notes.includes('agente') ||
-		notes.includes('constructor') ||
-		notes.includes('inmobiliaria') ||
-		Boolean(cont.procedencia)
+		type.includes('asesor')
+	);
+
+	// Propietarios (Vendedor, Propietario, Arrendador) no pertenecen a ninguna etapa del embudo
+	const isOwner = !isExplicitAgentType && (
+		type.includes('vendedor') ||
+		type.includes('propietario') ||
+		type.includes('arrendador') ||
+		rawStageUpper === 'OW' ||
+		rawStageUpper === 'PROPIETARIO'
+	);
+
+	const isAgent = isExplicitAgentType || (
+		!isOwner && (
+			notes.includes('sinergia') ||
+			notes.includes('agente') ||
+			notes.includes('constructor') ||
+			notes.includes('inmobiliaria') ||
+			Boolean(cont.procedencia)
+		)
 	);
 
 	if (isAgent) {
@@ -80,6 +97,22 @@ export function getContactBadgeInfo(cont: Contact | null | undefined): ContactBa
 			default:
 				return { isAgent: true, shape: 'square', text: code || 'S1', color: '#10b981', tooltip: roleLabel };
 		}
+	}
+
+	if (isOwner) {
+		const ownerTooltip = type.includes('arrendador')
+			? 'Propietario - Arrendador (OW)'
+			: type.includes('vendedor')
+				? 'Propietario - Vendedor (OW)'
+				: 'Propietario (OW)';
+		return {
+			isAgent: false,
+			isOwner: true,
+			shape: 'square',
+			text: 'OW',
+			color: '#0f766e',
+			tooltip: ownerTooltip
+		};
 	}
 
 	// Arrendatarios / Leads de Renta (A1: Primer Contacto, A2: Búsqueda con Sinergias)
@@ -118,6 +151,9 @@ export function getContactBadgeInfo(cont: Contact | null | undefined): ContactBa
 	}
 
 	const normalizedStage = normalizeStage(cont.contactStage);
+	if (normalizedStage === 'OW') {
+		return { isAgent: false, isOwner: true, shape: 'square', text: 'OW', color: '#0f766e', tooltip: 'Propietario (OW)' };
+	}
 	if (normalizedStage === 'NA') {
 		return { isAgent: false, shape: 'circle', text: 'NA', color: '#808080', tooltip: 'Sin etapa asignada' };
 	}
@@ -149,7 +185,7 @@ function isEligibleLeadBase(cont: Contact | null | undefined): ContactBadgeInfo 
 	if (cleanPhone.length < 10) return null;
 
 	const badge = getContactBadgeInfo(cont);
-	if (badge.isAgent) return null;
+	if (badge.isAgent || badge.isOwner || badge.text === 'OW') return null;
 
 	return badge;
 }

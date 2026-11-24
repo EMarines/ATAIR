@@ -60,14 +60,25 @@
 	$: properties = $propertiesStore;
 	$: binnacles = $binnaclesStore;
 	$: property = $propertyStore;
+	$: isOwnerContact = Boolean(
+		!(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('agente') &&
+		!(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('constructor') &&
+		(
+			(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('vendedor') ||
+			(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('propietario') ||
+			(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('arrendador')
+		)
+	);
 	$: isAgentContact = Boolean(
 		(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('agente') ||
 		(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('constructor') ||
-		(contact?.procedencia && (contact.procedencia.startsWith('S') || contact.procedencia === 'MH')) ||
-		(getContactProcedencia(contact) && getContactProcedencia(contact).startsWith('S'))
+		(!isOwnerContact && (
+			(contact?.procedencia && (contact.procedencia.startsWith('S') || contact.procedencia === 'MH')) ||
+			(getContactProcedencia(contact) && getContactProcedencia(contact).startsWith('S'))
+		))
 	);
 	$: isArrendatarioContact = Boolean(
-		!isAgentContact && (
+		!isAgentContact && !isOwnerContact && (
 			(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('arrendatario') ||
 			(contact?.typeContact || contact?.contactType || '').toLowerCase().includes('inquilino') ||
 			(contact as any)?.tipoOperacion === 'Renta' ||

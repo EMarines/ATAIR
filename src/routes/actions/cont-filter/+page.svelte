@@ -132,7 +132,7 @@
     const contactStage = {
         operation: {
             name: "Etapa",
-            choices: ["Etapa1", "Etapa2", "Etapa3", "Etapa4", "Etapa5"]
+            choices: ["Etapa1", "Etapa2", "Etapa3", "Etapa4", "Etapa5", "OW"]
         }
     };
 

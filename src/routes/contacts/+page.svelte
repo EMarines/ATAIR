@@ -185,7 +185,7 @@
                 }
               }}
             >
-              <!-- Distintivo en la esquina superior derecha: CUADRADO para Agentes (S1/S2/S3/MH) y CÍRCULO para Clientes (E1-E5) -->
+              <!-- Distintivo en la esquina superior derecha: CUADRADO para Agentes (S1/S2/S3/MH) y Propietarios (OW), CÍRCULO para Clientes (E1-E5 / A1-A2) -->
               <div
                 class="stage-indicator"
                 title={badge.tooltip}
