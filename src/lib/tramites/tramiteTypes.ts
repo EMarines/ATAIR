@@ -41,9 +41,123 @@ export type EstadoControlSistema =
 	| 'en_revision'
 	| 'validado_sistema'
 	| 'cotejado_admin'
-	| 'observacion';
+	| 'observacion'
+	| 'no_aplica';
 
 export type TipoRequisito = 'documento' | 'dato';
+
+export type QuienCubreCosto = 'vendedor' | 'comprador' | 'ambos' | 'inmobiliaria' | 'por_definir';
+
+export type CondicionRegla =
+	| 'siempre'
+	| 'comprador_fisica'
+	| 'comprador_casado'
+	| 'comprador_divorciado'
+	| 'comprador_viudo'
+	| 'comprador_moral'
+	| 'comprador_requiere_conyuge'
+	| 'vendedor_fisica'
+	| 'vendedor_casado'
+	| 'vendedor_casado_mancomunado'
+	| 'vendedor_divorciado'
+	| 'vendedor_viudo'
+	| 'vendedor_moral'
+	| 'con_gravamen'
+	| 'sucesion_herencia'
+	| 'discrepancia_domicilio'
+	| 'exentar_isr'
+	| 'clausulas_masc'
+	| 'renta_fiador'
+	| 'renta_poliza'
+	| 'renta_comercial_o_venta';
+
+export interface AmbitoConfig {
+	id: string;
+	nombre: string;
+	tipo: 'modalidad' | 'institucion';
+	activo: boolean;
+}
+
+export interface DocumentoMaestro {
+	id: string;
+	titulo: string;
+	descripcion: string;
+	obligatorioPara: string;
+	dependencia: string;
+	parte: ParteTrato;
+	costoEstimado: number;
+	pagadoPor: QuienCubreCosto;
+	obligatorio: boolean;
+	aplicaA: string[];
+	condicion: CondicionRegla;
+	activo: boolean;
+	creadoEn: number;
+	actualizadoEn?: number;
+}
+
+export interface DatoMaestro {
+	id: string;
+	campoClave: string;
+	titulo: string;
+	obligatorioPara: string;
+	parte: ParteTrato;
+	placeholder?: string;
+	ayudaFormato?: string;
+	aplicaA: string[];
+	condicion: CondicionRegla;
+	activo: boolean;
+	creadoEn: number;
+	actualizadoEn?: number;
+}
+
+export interface PasoMaestro {
+	id: string;
+	orden: number;
+	titulo: string;
+	descripcion: string;
+	responsable: string;
+	parteRelacionada?: ParteTrato | 'tramite_externo' | 'notaria' | 'general';
+	duracionEstimadaDias: number;
+	aplicaA: string[];
+	condicion: CondicionRegla;
+	activo: boolean;
+	creadoEn: number;
+	actualizadoEn?: number;
+}
+
+export interface ConfiguracionMaestraTramites {
+	id: '__config_maestra__';
+	version: number;
+	updatedAt: number;
+	ambitos: AmbitoConfig[];
+	documentos: DocumentoMaestro[];
+	datos: DatoMaestro[];
+	pasos: PasoMaestro[];
+}
+
+export type EstadoPasoTramite = 'pendiente' | 'en_curso' | 'completado' | 'bloqueado';
+
+export interface PasoTramite {
+	id: string;
+	orden: number;
+	titulo: string;
+	descripcion: string;
+	responsable: string;
+	parteRelacionada?: ParteTrato | 'tramite_externo' | 'notaria' | 'general';
+	duracionEstimadaDias: number;
+	estado: EstadoPasoTramite;
+	fechaEstimada?: string;
+	fechaCompletado?: string;
+	notas?: string;
+	esPersonalizado?: boolean;
+}
+
+export interface ConfirmacionRequisito {
+	estado: 'aplica' | 'no_aplica';
+	motivo?: string;
+	confirmadoPor?: string;
+	confirmadoEn: string;
+}
 
 export interface SituacionParte {
 	tipoPersona: TipoPersona;
@@ -121,6 +235,10 @@ export interface TramiteExpediente {
 	configuracion?: ConfiguracionTramite;
 	datosCapturados?: Record<string, string>;
 	controlChecklist?: Record<string, RegistroControlChecklist>;
+	pasos?: PasoTramite[];
+	confirmacionesRequisitos?: Record<string, ConfirmacionRequisito>;
+	requisitosExtraDocs?: DocumentoMaestro[];
+	requisitosExtraDatos?: DatoMaestro[];
 	inmueble: {
 		calle: string;
 		numeroEscritura: string;
@@ -203,6 +321,10 @@ export interface RequisitoEvaluado {
 	parte: ParteTrato;
 	tipo: TipoRequisito;
 	concepto: string;
+	descripcion?: string;
+	dependencia?: string;
+	costoEstimado?: number;
+	pagadoPor?: QuienCubreCosto;
 	obligatorioPara: string;
 	motivoRegla: string;
 	completado: boolean;
@@ -211,6 +333,12 @@ export interface RequisitoEvaluado {
 	validadoPor?: string;
 	actualizadoEn?: string;
 	observacion?: string;
+	// Nuevo requisito desde configuración global (⚠️) o excepción puntual
+	requiereConfirmacionNuevo?: boolean;
+	noAplica?: boolean;
+	motivoNoAplica?: string;
+	esExcepcionExpediente?: boolean;
+	creadoEn?: number;
 	// Exclusivo para requisitos tipo "dato"
 	campoClave?: string;
 	valorActual?: string;
@@ -220,18 +348,46 @@ export interface RequisitoEvaluado {
 	controladoAutomaticamente: boolean;
 }
 
+export interface ResumenCostosTramite {
+	totalEstimado: number;
+	vendedor: number;
+	comprador: number;
+	ambos: number;
+	inmobiliaria: number;
+	porDefinir: number;
+}
+
+export interface ResumenTiemposTramite {
+	diasTranscurridos: number;
+	diasEstimadosTotales: number;
+	diasEstimadosRestantes: number;
+	pasoActualTitulo?: string;
+	pasoActualResponsable?: string;
+}
+
 export interface ResultadoEvaluacionMotor {
 	config: ConfiguracionTramite;
 	requisitos: RequisitoEvaluado[];
 	alertas: AlertaJuridica[];
+	pasos: PasoTramite[];
+	costos: ResumenCostosTramite;
+	tiempos: ResumenTiemposTramite;
 	resumen: {
 		total: number;
 		completados: number;
 		porcentaje: number;
 		totalDocs: number;
 		docsCompletados: number;
+		porcentajeDocs: number;
 		totalDatos: number;
 		datosCompletados: number;
+		porcentajeDatos: number;
+		totalPasos: number;
+		pasosCompletados: number;
+		pasosEnCurso: number;
+		pasosBloqueados: number;
+		porcentajePasos: number;
+		pendientesPorConfirmar: number;
 		pendientesPorParte: {
 			comprador: number;
 			vendedor: number;

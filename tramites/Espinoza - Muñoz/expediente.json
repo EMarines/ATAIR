@@ -5,7 +5,7 @@
   "modalidadCredito": "Infonavit Conyugal",
   "estadoTramite": "Contrato Firmado / Expediente Vendedora al 85% / Listo para Avalúo Infonavit",
   "fechaApertura": "2026-11-19",
-  "updatedAt": 1732194000000,
+  "updatedAt": 1732368000000,
   "contratoUrl": "/tramites/Espinoza%20-%20Mu%C3%B1oz/Contrato%20firmado_20261121_094331.pdf",
   "contratoNombre": "Contrato firmado_20261121_094331.pdf",
   "estrategiaFiscalIsr": "Exención 100% de ISR por Casa Habitación (Art. 93 Frac. XIX Inciso a de la LISR y Art. 155 RLISR) acreditada mediante la Credencial para Votar (INE) vigente de la vendedora Flora Elena Muñoz Valenzuela, cuyo domicilio asentado coincide plenamente con el inmueble enajenado (Calle Cedro 1514-1). Desactiva contingencia de recibo CFE.",
@@ -82,7 +82,10 @@
         "gastosTitulacion": 18746.2,
         "retencionMensual": 236.51,
         "tasaInteres": 10.45
-      }
+      },
+      "rfc": "EIMJ7109024B4",
+      "regimenFiscal": "Sueldos y Salarios / Personas Físicas con Actividades Empresariales y Profesionales",
+      "domicilioFiscal": "Calle Fuente de Diana 6604, Las Fuentes, C.P. 31207, Chihuahua, Chih."
     },
     "compradoraConyuge": {
       "nombre": "Yamel Ivette Ramírez Flores",
@@ -97,7 +100,12 @@
         "gastosTitulacion": 0.0,
         "retencionMensual": 133.49,
         "tasaInteres": 10.45
-      }
+      },
+      "rfc": "RAFY7210017U5",
+      "regimenFiscal": "Régimen de Sueldos y Salarios e Ingresos Asimilados a Salarios",
+      "fechaNacimiento": "1972-10-01",
+      "lugarNacimiento": "Camargo, Chihuahua",
+      "datosNacimiento": "Oficialía 1, Libro 187, Foja 371, Acta 1403 de fecha 29/11/1972"
     }
   },
   "financiero": {
@@ -211,6 +219,41 @@
       "nombre": "Generales Propiedad.xlsx",
       "tipo": "Ficha Técnica Comercial",
       "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "INE JORGE.pdf",
+      "tipo": "INE Comprador Titular al 200%",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "RECIBO CFE.pdf",
+      "tipo": "Comprobante de Domicilio Reciente (<3 meses)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "CSF YAMEL.pdf",
+      "tipo": "Constancia de Situación Fiscal Cónyuge (SAT)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "CSF JUN 2026.pdf",
+      "tipo": "Constancia de Situación Fiscal Titular (SAT)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "ACTA DE MATRIMONIO Jorge Yamel.pdf",
+      "tipo": "Acta de Matrimonio Certificada (Separación de Bienes)",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "ACTA DE NACIMIENTO YAMEL.pdf",
+      "tipo": "Acta de Nacimiento Certificada Cónyuge",
+      "estatus": "Verificado ✓"
+    },
+    {
+      "nombre": "ACTA NACIMIENTO JORGE.pdf",
+      "tipo": "Acta Matrimonio Duplicada (Revisión)",
+      "estatus": "Observación: Contiene Acta de Matrimonio por error"
     }
   ],
   "checklistComprador": [
@@ -219,7 +262,7 @@
       "concepto": "INE Vigente de Jorge Ricardo Espinosa (Titular)",
       "obligatorioPara": "Identificación Notarial e Infonavit",
       "completado": true,
-      "estatus": "Cotejado ✓"
+      "estatus": "Cotejado ✓ (INE al 200% a color verificado)"
     },
     {
       "id": "COMP-002",
@@ -246,29 +289,29 @@
       "id": "COMP-005",
       "concepto": "Acta de Matrimonio Certificada (Jorge y Yamel)",
       "obligatorioPara": "Formalización Crédito Conyugal Infonavit y Notaría",
-      "completado": false,
-      "estatus": "Pendiente de Solicitar a Compradores"
+      "completado": true,
+      "estatus": "Cotejado ✓ (Acta 199 Camargo, Chih. - Régimen: Separación de Bienes)"
     },
     {
       "id": "COMP-006",
       "concepto": "Actas de Nacimiento Certificadas de Ambos",
       "obligatorioPara": "Expediente Infonavit y Notaría",
       "completado": false,
-      "estatus": "Pendiente de Solicitar a Compradores"
+      "estatus": "Parcial: Acta de Yamel cotejada ✓; Falta Acta de Jorge (archivo adjunto trae Acta de Matrimonio)"
     },
     {
       "id": "COMP-007",
       "concepto": "Constancias de Situación Fiscal (SAT con RFC y homoclave de ambos)",
       "obligatorioPara": "CFDI Notarial y Complemento de Titulación",
-      "completado": false,
-      "estatus": "Pendiente de Solicitar a Compradores"
+      "completado": true,
+      "estatus": "Cotejado ✓ (Jorge: RFC EIMJ7109024B4, Yamel: RFC RAFY7210017U5)"
     },
     {
       "id": "COMP-008",
       "concepto": "Comprobante de Domicilio Reciente de Compradores (<3 meses, agua/luz)",
       "obligatorioPara": "Expediente Bancario/Infonavit",
-      "completado": false,
-      "estatus": "Pendiente de Solicitar a Compradores"
+      "completado": true,
+      "estatus": "Cotejado ✓ (Recibo CFE Fuente de la Diana #6604 a nombre de Jorge)"
     },
     {
       "id": "COMP-009",
@@ -380,16 +423,18 @@
   ],
   "controlChecklist": {
     "DOC_COMP_INE": {
-      "estado": "validado_sistema",
-      "validadoPor": "Auditoría ATAIR",
-      "actualizadoEn": "2026-11-19",
-      "archivoNombre": "INE JORGE_20261119_131606.pdf"
+      "estado": "observacion",
+      "validadoPor": "Revisión Formato INE",
+      "actualizadoEn": "2026-11-23",
+      "archivoNombre": "INE JORGE_20261119_131606.pdf",
+      "observacion": "No cumple con el requisito de copia ampliada al 200% y a color por ambos lados."
     },
     "DOC_COMP_CONYUGE_DOCS": {
-      "estado": "validado_sistema",
-      "validadoPor": "Auditoría ATAIR",
-      "actualizadoEn": "2026-11-19",
-      "archivoNombre": "INE Yamel_20261119_131808.pdf"
+      "estado": "observacion",
+      "validadoPor": "Revisión Formato INE",
+      "actualizadoEn": "2026-11-23",
+      "archivoNombre": "INE Yamel_20261119_131808.pdf",
+      "observacion": "La copia del INE del cónyuge no cumple con el requisito de ampliación al 200% y a color por ambos lados."
     },
     "DOC_COMP_PRECALIF_INFONAVIT": {
       "estado": "validado_sistema",
@@ -421,11 +466,11 @@
       "archivoNombre": "Ratificación Nombre_20261121_104008.pdf"
     },
     "DOC_VEND_INE": {
-      "estado": "validado_sistema",
-      "validadoPor": "Auditoría ATAIR",
-      "actualizadoEn": "2026-11-19",
+      "estado": "observacion",
+      "validadoPor": "Revisión Formato INE",
+      "actualizadoEn": "2026-11-23",
       "archivoNombre": "INE Flore.pdf",
-      "observacion": "Acredita identidad y exención del 100% de ISR por casa habitación (Art. 93 Frac. XIX Inc. a LISR)."
+      "observacion": "La copia del INE no cumple con ampliación al 200% y a color (ambos lados). Nota fiscal: domicilio sí coincide para exención ISR (Art. 93 LISR)."
     },
     "DOC_VEND_CURP": {
       "estado": "pendiente",
@@ -469,6 +514,34 @@
       "actualizadoEn": "2026-11-21",
       "archivoNombre": "JMAS Edo. Cta_20261121_104249.pdf",
       "observacion": "Padrón a nombre de Flora Elena (Contrato 034254) y cuenta en ceros sin adeudo."
+    },
+    "DOC_COMP_ACTA_MATRIMONIO": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR 23/11/2026",
+      "actualizadoEn": "2026-11-23",
+      "archivoNombre": "ACTA DE MATRIMONIO Jorge Yamel.pdf",
+      "observacion": "Acta certificada verificada. Régimen asentado: Separación de Bienes."
+    },
+    "DOC_COMP_CONSTANCIA_SAT": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR 23/11/2026",
+      "actualizadoEn": "2026-11-23",
+      "archivoNombre": "CSF JUN 2026.pdf / CSF YAMEL.pdf",
+      "observacion": "Constancias de ambos cotejadas (Jorge: EIMJ7109024B4, Yamel: RAFY7210017U5)."
+    },
+    "DOC_COMP_COMPROBANTE_DOM": {
+      "estado": "validado_sistema",
+      "validadoPor": "Auditoría ATAIR 23/11/2026",
+      "actualizadoEn": "2026-11-23",
+      "archivoNombre": "RECIBO CFE.pdf",
+      "observacion": "Recibo CFE reciente (octubre 2026) a nombre de Jorge en Fuente de la Diana 6604."
+    },
+    "DOC_COMP_ACTA_NACIMIENTO": {
+      "estado": "en_revision",
+      "validadoPor": "Auditoría ATAIR 23/11/2026",
+      "actualizadoEn": "2026-11-23",
+      "archivoNombre": "ACTA DE NACIMIENTO YAMEL.pdf",
+      "observacion": "Acta de Yamel verificada. Falta subir el acta de Jorge (el archivo ACTA NACIMIENTO JORGE.pdf contiene duplicada el Acta de Matrimonio)."
     }
   },
   "datosCapturados": {
@@ -482,6 +555,15 @@
     "DATO_COMP_CONYUGE_NSS": "35887035802",
     "DATO_INM_PRECIO_O_RENTA": "2150000",
     "DATO_INM_CLAVE_CATASTRAL": "191-016-021",
-    "DATO_INM_FOLIO_REAL": "1120676"
+    "DATO_INM_FOLIO_REAL": "1120676",
+    "compradorRfc": "EIMJ7109024B4",
+    "DATO_COMP_RFC": "EIMJ7109024B4",
+    "compradorConyugeRfc": "RAFY7210017U5"
+  },
+  "datosMatrimonio": "Oficialía 1, Libro 151, Foja 36, Acta 199 de fecha 24/10/1998, Camargo, Chih. Régimen: Separación de Bienes",
+  "configuracion": {
+    "comprador": {
+      "regimenConyugal": "separacion_bienes"
+    }
   }
 }

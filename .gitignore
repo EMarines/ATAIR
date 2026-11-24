@@ -48,3 +48,11 @@ firebase-debug.log
 
 # Word temp files
 ~$*
+
+# Archivos de datos locales y volcados temporales
+/*.xls
+scripts/*_raw.json
+scripts/*_summary.json
+scripts/firestore_properties.json
+scripts/tokko_enrichment_dry_run.json
+scripts/tokko_contacts_raw.json

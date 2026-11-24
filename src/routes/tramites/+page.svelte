@@ -4,8 +4,10 @@
 	import '../../styles/main.css';
 	import { userProfile, userStore } from '$lib/firebase/authManager';
 	import ConfiguradorParametrico from '$lib/components/tramites/ConfiguradorParametrico.svelte';
+	import ConfiguracionMaestraModal from '$lib/components/tramites/ConfiguracionMaestraModal.svelte';
 	import ChecklistControlado from '$lib/components/tramites/ChecklistControlado.svelte';
 	import NuevoTramiteModal from '$lib/components/tramites/NuevoTramiteModal.svelte';
+	import { crearCatalogoMaestroInicial } from '$lib/tramites/catalogoBaseTramites';
 	import {
 		CONFIG_DEFAULT_VENTA,
 		evaluarRequisitosTramite,
@@ -16,15 +18,20 @@
 		createNewTramite,
 		deleteTramite,
 		describeModalidad,
+		loadAllLocalExpedientes,
 		loadPilotExpediente,
+		resetConfiguracionMaestraToSeed,
 		saveCapturedDatum,
+		saveConfiguracionMaestra,
 		saveTramiteConfig,
+		subscribeConfiguracionMaestra,
 		subscribeTramites,
 		syncPilotToFirestore,
-		updateChecklistControlState,
-		type CrearTramitePayload
+		updateChecklistControlState
 	} from '$lib/tramites/tramiteService';
+	import type { CrearTramitePayload } from '$lib/tramites/tramiteService';
 	import type {
+		ConfiguracionMaestraTramites,
 		ConfiguracionTramite,
 		EstadoControlSistema,
 		TramiteExpediente
@@ -40,9 +47,14 @@
 	let firestoreWarning = '';
 
 	let modalNuevoOpen = false;
+	let modalConfigMaestraOpen = false;
+	let savingConfigMaestra = false;
 	let creatingTramite = false;
 	let pilotLocalCache: TramiteExpediente | null = null;
+	let localCacheExpedientes: TramiteExpediente[] = [];
+	let configMaestra: ConfiguracionMaestraTramites = crearCatalogoMaestroInicial();
 	let unsubscribeTramites: (() => void) | null = null;
+	let unsubscribeConfigMaestra: (() => void) | null = null;
 
 	const formatCurrency = (val: number | undefined) => {
 		const num = Number(val || 0);
@@ -57,9 +69,30 @@
 		}, 3200);
 	}
 
+	function getMetricasCard(t: TramiteExpediente) {
+		const evalCard = evaluarRequisitosTramite(inferirConfiguracionDesdeExpediente(t), t);
+		const res = evalCard.resumen;
+		const pctTramite = res.porcentaje;
+		const pctDocs = res.totalDocs > 0 ? Math.round((res.docsCompletados / res.totalDocs) * 100) : 0;
+		const pctDatos = res.totalDatos > 0 ? Math.round((res.datosCompletados / res.totalDatos) * 100) : 0;
+		return {
+			evalCard,
+			pctTramite,
+			pctDocs,
+			pctDatos,
+			docsCompletados: res.docsCompletados,
+			totalDocs: res.totalDocs,
+			datosCompletados: res.datosCompletados,
+			totalDatos: res.totalDatos,
+			completados: res.completados,
+			total: res.total
+		};
+	}
+
 	async function inicializarExpedientes() {
 		firestoreStatus = 'cargando';
-		pilotLocalCache = await loadPilotExpediente();
+		localCacheExpedientes = await loadAllLocalExpedientes();
+		pilotLocalCache = localCacheExpedientes[0] || null;
 
 		if (unsubscribeTramites) unsubscribeTramites();
 
@@ -71,7 +104,6 @@
 				firestoreWarning = '';
 
 				const pilotoCloud = cloudList.find((t) => t.id === 'TRAMITE-2026-001');
-				const tienePiloto = Boolean(pilotoCloud);
 				const eqLocal = pilotLocalCache?.inmueble?.equipamientoIncluido || [];
 				const eqCloud = pilotoCloud?.inmueble?.equipamientoIncluido || [];
 
@@ -90,20 +122,18 @@
 				) {
 					pilotSyncAttempted = true;
 					const synced = await syncPilotToFirestore(pilotLocalCache);
-					if (synced) return; // onSnapshot volverá a disparar con el piloto ya actualizado
+					if (synced) return;
 				}
 
-				const combined = tienePiloto
-					? cloudList
-					: pilotLocalCache
-						? [pilotLocalCache, ...cloudList]
-						: cloudList;
+				// Unificar nube y locales para asegurar que Herrera/Caro y Espinoza aparezcan siempre
+				const cloudIds = new Set(cloudList.map((t) => t.id));
+				const faltantes = localCacheExpedientes.filter((loc) => !cloudIds.has(loc.id));
+				const combined = [...cloudList, ...faltantes];
 
 				tramites = combined;
-				if (!selectedId && combined.length > 0) {
-					selectedId = combined[0].id;
-				} else if (selectedId && !combined.some((t) => t.id === selectedId) && combined.length > 0) {
-					selectedId = combined[0].id;
+				// En inicio selectedId se mantiene null para ver solo las tarjetas
+				if (selectedId && !combined.some((t) => t.id === selectedId)) {
+					selectedId = null;
 				}
 			},
 			(err: unknown) => {
@@ -114,14 +144,39 @@
 					firestoreWarning =
 						'Modo Local Temporal: falta permiso de escritura en la colección tramites de Firestore.';
 				}
-				if (pilotLocalCache && !tramites.some((t) => t.id === pilotLocalCache?.id)) {
-					tramites = [pilotLocalCache, ...tramites];
-				}
-				if (!selectedId && tramites.length > 0) {
-					selectedId = tramites[0].id;
+				tramites = localCacheExpedientes;
+				if (selectedId && !tramites.some((t) => t.id === selectedId)) {
+					selectedId = null;
 				}
 			}
 		);
+		if (unsubscribeConfigMaestra) unsubscribeConfigMaestra();
+		unsubscribeConfigMaestra = subscribeConfiguracionMaestra((cfg, seededNow) => {
+			configMaestra = cfg;
+			if (seededNow) {
+				showToast('Catálogo maestro sembrado en Firebase');
+			}
+		});
+	}
+
+	async function handleSaveConfigMaestra(e: CustomEvent<{ config: ConfiguracionMaestraTramites }>) {
+		savingConfigMaestra = true;
+		configMaestra = e.detail.config;
+		const res = await saveConfiguracionMaestra(e.detail.config);
+		savingConfigMaestra = false;
+		if (res.success) {
+			showToast('Configuración maestra guardada en Firebase');
+		} else {
+			showToast('Cambio aplicado localmente (revisar conexión Firebase)');
+		}
+	}
+
+	async function handleResetConfigMaestra() {
+		savingConfigMaestra = true;
+		const res = await resetConfiguracionMaestraToSeed();
+		configMaestra = res.config;
+		savingConfigMaestra = false;
+		showToast('Catálogo base restaurado');
 	}
 
 	onMount(() => {
@@ -130,6 +185,7 @@
 
 	onDestroy(() => {
 		if (unsubscribeTramites) unsubscribeTramites();
+		if (unsubscribeConfigMaestra) unsubscribeConfigMaestra();
 	});
 
 	$: filteredTramites = tramites.filter((t) => {
@@ -377,7 +433,7 @@
 		const idToDelete = selectedTramite.id;
 		await deleteTramite(idToDelete);
 		tramites = tramites.filter((t) => t.id !== idToDelete);
-		selectedId = tramites[0]?.id || null;
+		selectedId = null;
 		showToast('Expediente eliminado');
 	}
 </script>
@@ -416,6 +472,14 @@
 		</div>
 
 		<div class="header-actions">
+			<button
+				type="button"
+				class="btn-settings-gear"
+				title="Configurar documentos, datos, pasos y dependencias"
+				on:click={() => (modalConfigMaestraOpen = true)}
+			>
+				⚙️ Configurar
+			</button>
 			<button class="btn-refresh" on:click={inicializarExpedientes}>
 				🔄 Sincronizar
 			</button>
@@ -453,58 +517,142 @@
 		</div>
 	</div>
 
-	<!-- CONTENIDO DUAL -->
-	<div class="layout-grid">
-		<!-- SIDEBAR -->
-		<aside class="sidebar-tramites">
-			<div class="sidebar-header">
-				<h2>Expedientes Activos</h2>
-				<span class="badge-count">{filteredTramites.length}</span>
+	<!-- CONTENIDO: VISTA DE INICIO (SÓLO TARJETAS) O VISTA DE DETALLE -->
+	{#if selectedId === null}
+		<!-- ============================================================ -->
+		<!-- VISTA DE INICIO: SÓLO LAS TARJETAS DE LOS TRÁMITES -->
+		<!-- ============================================================ -->
+		<section class="inicio-tramites-section" transition:fade={{ duration: 150 }}>
+			<div class="inicio-header-row">
+				<div class="inicio-title-col">
+					<h2>Expedientes de Trámites</h2>
+					<p class="inicio-desc">
+						Selecciona una tarjeta para ver el expediente completo, cotejo documental y checklist notarial.
+					</p>
+				</div>
+				<span class="badge-count-inicio">{filteredTramites.length} {filteredTramites.length === 1 ? 'trámite' : 'trámites'}</span>
 			</div>
 
-			<div class="cards-list">
+			<div class="tramites-cards-grid">
 				{#each filteredTramites as t (t.id)}
-					{@const evalCard = evaluarRequisitosTramite(inferirConfiguracionDesdeExpediente(t), t)}
+					{@const m = getMetricasCard(t)}
 					<button
 						type="button"
 						class="tramite-card"
-						class:active={selectedTramite?.id === t.id}
 						on:click={() => (selectedId = t.id)}
 					>
 						<div class="card-top">
 							<span class="folder-name">📁 {t.folderName}</span>
 							<span class="badge-credit">{t.modalidadCredito}</span>
 						</div>
+
 						<div class="property-line">
-							📍 {t.inmueble?.calle || 'Domicilio por definir'}
-							{#if t.inmueble?.numeroOficial} #{t.inmueble.numeroOficial}{/if},
-							{t.inmueble?.colonia || 'Chihuahua'}
+							📍 {t.inmueble?.calle || 'Domicilio por definir'}{#if t.inmueble?.numeroOficial} #{t.inmueble.numeroOficial}{/if}, {t.inmueble?.colonia || 'Chihuahua'}
 						</div>
+
 						<div class="parties-line">
 							<span>Vend: {(t.partes?.vendedora?.nombre || 'N/A').split(' ').slice(0, 2).join(' ')}</span>
 							<span>•</span>
 							<span>Comp: {(t.partes?.compradorTitular?.nombre || 'N/A').split(' ')[0]}</span>
 						</div>
+
+						<!-- MÉTRICAS DE AVANCE (LOS 3 PORCENTAJES) -->
+						<div class="card-metrics-box">
+							<!-- 1. Porcentaje de avance del trámite -->
+							<div class="metric-main-item">
+								<div class="metric-main-header">
+									<span class="metric-main-title">Avance del Trámite</span>
+									<span class="metric-main-pct">{m.pctTramite}% <small>({m.completados}/{m.total})</small></span>
+								</div>
+								<div class="progress-track main-track">
+									<div class="progress-fill fill-tramite" style="width: {m.pctTramite}%"></div>
+								</div>
+							</div>
+
+							<!-- 2 y 3. Recepción de documentos y Recolección de información -->
+							<div class="metrics-sub-row">
+								<!-- Recepción de documentos -->
+								<div class="sub-metric-pill docs-pill">
+									<div class="sub-metric-header">
+										<span class="sub-metric-tag">📄 Documentos</span>
+										<span class="sub-metric-pct">{m.pctDocs}%</span>
+									</div>
+									<div class="progress-track sm-track">
+										<div class="progress-fill fill-docs" style="width: {m.pctDocs}%"></div>
+									</div>
+									<span class="sub-metric-sub">{m.docsCompletados}/{m.totalDocs} recibidos</span>
+								</div>
+
+								<!-- Recolección de información necesaria -->
+								<div class="sub-metric-pill info-pill">
+									<div class="sub-metric-header">
+										<span class="sub-metric-tag">📋 Información</span>
+										<span class="sub-metric-pct">{m.pctDatos}%</span>
+									</div>
+									<div class="progress-track sm-track">
+										<div class="progress-fill fill-info" style="width: {m.pctDatos}%"></div>
+									</div>
+									<span class="sub-metric-sub">{m.datosCompletados}/{m.totalDatos} datos</span>
+								</div>
+							</div>
+						</div>
+
 						<div class="card-bottom">
 							<div class="price-tag">
 								{formatCurrency(t.financiero?.precioPactado || t.financiero?.rentaMensual)}
 							</div>
-							<span class="status-indicator">
-								{evalCard.resumen.completados}/{evalCard.resumen.total} ({evalCard.resumen.porcentaje}%)
-							</span>
+							<div class="card-action-hint">
+								<span>Ver expediente</span>
+								<span class="arrow">→</span>
+							</div>
 						</div>
 					</button>
 				{:else}
-					<div class="empty-state">No se encontraron expedientes con ese filtro.</div>
+					<div class="empty-state-grid">
+						<div class="empty-icon">📂</div>
+						<h3>No se encontraron trámites</h3>
+						<p>No hay expedientes que coincidan con la búsqueda "{searchQuery}".</p>
+					</div>
 				{/each}
 			</div>
-		</aside>
-
-		<!-- EXPEDIENTE PRINCIPAL -->
+		</section>
+	{:else}
+		<!-- ============================================================ -->
+		<!-- VISTA DE DETALLE: EXPEDIENTE SELECCIONADO A ANCHO COMPLETO -->
+		<!-- ============================================================ -->
 		{#if selectedTramite && evaluacionActual}
-			<main class="main-expediente" transition:fade={{ duration: 150 }}>
-				<!-- BANNER -->
-				<div class="expediente-banner">
+			<div class="detalle-expediente-wrapper" transition:fade={{ duration: 150 }}>
+				<!-- BARRA SUPERIOR DE RETORNO Y CAMBIO RÁPIDO -->
+				<div class="detail-navigation-bar">
+					<button
+						type="button"
+						class="btn-back-to-inicio"
+						on:click={() => (selectedId = null)}
+					>
+						<span class="back-icon">←</span>
+						<span>Volver a trámites</span>
+					</button>
+
+					<div class="detail-quick-switch">
+						<label for="tramite-switcher" class="switch-label">Expediente:</label>
+						<select
+							id="tramite-switcher"
+							class="switch-select"
+							value={selectedTramite.id}
+							on:change={(e) => (selectedId = e.currentTarget.value)}
+						>
+							{#each tramites as tr}
+								<option value={tr.id}>
+									📁 {tr.folderName} ({tr.modalidadCredito})
+								</option>
+							{/each}
+						</select>
+					</div>
+				</div>
+
+				<main class="main-expediente" transition:fade={{ duration: 150 }}>
+					<!-- BANNER -->
+					<div class="expediente-banner">
 					<div class="banner-title-area">
 						<div class="path-bread">📁 /tramites/{selectedTramite.folderName} • ID: {selectedTramite.id}</div>
 						<h2>{selectedTramite.folderName}</h2>
@@ -924,8 +1072,9 @@
 					{/if}
 				</div>
 			</main>
+		</div>
 		{/if}
-	</div>
+	{/if}
 </div>
 
 <NuevoTramiteModal
@@ -933,6 +1082,15 @@
 	saving={creatingTramite}
 	on:close={() => (modalNuevoOpen = false)}
 	on:submit={handleCreateTramite}
+/>
+
+<ConfiguracionMaestraModal
+	open={modalConfigMaestraOpen}
+	{configMaestra}
+	saving={savingConfigMaestra}
+	on:close={() => (modalConfigMaestraOpen = false)}
+	on:save={handleSaveConfigMaestra}
+	on:resetSeed={handleResetConfigMaestra}
 />
 
 <style>
@@ -1059,7 +1217,8 @@
 		background: #4f46e5;
 	}
 
-	.btn-refresh {
+	.btn-refresh,
+	.btn-settings-gear {
 		background: var(--surface-card);
 		color: var(--text-1);
 		border: 1px solid var(--border);
@@ -1068,6 +1227,13 @@
 		font-weight: 500;
 		font-size: 0.86rem;
 		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.btn-settings-gear:hover {
+		border-color: #6366f1;
+		color: #a5b4fc;
+		background: rgba(99, 102, 241, 0.12);
 	}
 
 	.controls-bar {
@@ -1131,74 +1297,85 @@
 		color: var(--text-muted);
 	}
 
-	.layout-grid {
-		display: grid;
-		grid-template-columns: 330px 1fr;
-		gap: 1.35rem;
-		align-items: start;
+	/* ==========================================================================
+	   VISTA DE INICIO (SÓLO LAS TARJETAS DE TRÁMITES)
+	   ========================================================================== */
+
+	.inicio-tramites-section {
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+		width: 100%;
 	}
 
-	@media (max-width: 980px) {
-		.layout-grid {
-			grid-template-columns: 1fr;
-		}
-	}
-
-	.sidebar-tramites {
-		background: var(--surface-1);
-		border: 1px solid var(--border);
-		border-radius: 12px;
-		padding: 1.15rem;
-	}
-
-	.sidebar-header {
+	.inicio-header-row {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 0.9rem;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		padding-bottom: 0.5rem;
+		border-bottom: 1px solid var(--border);
 	}
 
-	.sidebar-header h2 {
-		font-size: 1rem;
+	.inicio-title-col h2 {
+		font-size: 1.15rem;
 		font-weight: 700;
 		color: var(--text-1);
+		margin-bottom: 0.2rem;
 	}
 
-	.badge-count {
-		background: #4f46e5;
-		color: #ffffff;
-		font-size: 0.72rem;
+	.inicio-desc {
+		font-size: 0.82rem;
+		color: var(--text-muted);
+	}
+
+	.badge-count-inicio {
+		background: rgba(99, 102, 241, 0.15);
+		color: #818cf8;
+		border: 1px solid rgba(99, 102, 241, 0.35);
+		font-size: 0.78rem;
 		font-weight: 700;
-		padding: 0.15rem 0.5rem;
+		padding: 0.25rem 0.7rem;
 		border-radius: 20px;
 	}
 
-	.cards-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.7rem;
+	.tramites-cards-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+		gap: 1.25rem;
+		align-items: stretch;
+	}
+
+	@media (max-width: 640px) {
+		.tramites-cards-grid {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	.tramite-card {
 		width: 100%;
 		text-align: left;
-		padding: 0.95rem;
+		padding: 1.15rem;
 		border-radius: 10px;
 		border: 1px solid var(--border);
 		background: var(--surface-card);
 		cursor: pointer;
-		transition: border-color 0.2s, transform 0.2s;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		box-sizing: border-box;
+		transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+					box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+					background 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+					border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	.tramite-card:hover {
 		border-color: #6366f1;
-		transform: translateY(-1px);
-	}
-
-	.tramite-card.active {
-		border-color: #6366f1;
-		box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.22);
-		background: rgba(99, 102, 241, 0.06);
+		transform: translateY(-5px);
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+		background: var(--surface-card-hover, rgb(76, 76, 76));
 	}
 
 	.card-top {
@@ -1206,29 +1383,29 @@
 		justify-content: space-between;
 		align-items: center;
 		flex-wrap: wrap;
-		gap: 0.4rem;
-		margin-bottom: 0.35rem;
+		gap: 0.5rem;
+		margin-bottom: 0.45rem;
 	}
 
 	.folder-name {
 		font-weight: 700;
-		font-size: 0.92rem;
+		font-size: 1rem;
 		color: var(--text-1);
 	}
 
 	.badge-credit {
-		font-size: 0.68rem;
+		font-size: 0.7rem;
 		font-weight: 600;
 		color: #38bdf8;
 		background: rgba(56, 189, 248, 0.14);
-		padding: 0.18rem 0.45rem;
+		padding: 0.2rem 0.5rem;
 		border-radius: 6px;
 		white-space: nowrap;
 	}
 
 	.property-line,
 	.parties-line {
-		font-size: 0.78rem;
+		font-size: 0.8rem;
 		color: var(--text-muted);
 		margin-bottom: 0.3rem;
 		display: flex;
@@ -1236,25 +1413,248 @@
 		flex-wrap: wrap;
 	}
 
+	/* MÉTRICAS: LOS 3 PORCENTAJES */
+	.card-metrics-box {
+		margin: 0.85rem 0;
+		padding: 0.75rem 0.85rem;
+		border-radius: 8px;
+		background: rgba(0, 0, 0, 0.22);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+	}
+
+	.metric-main-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.metric-main-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.metric-main-title {
+		font-size: 0.76rem;
+		font-weight: 600;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.4px;
+	}
+
+	.metric-main-pct {
+		font-size: 0.88rem;
+		font-weight: 700;
+		color: #818cf8;
+	}
+
+	.metric-main-pct small {
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		font-weight: 500;
+	}
+
+	.progress-track {
+		width: 100%;
+		background: rgba(255, 255, 255, 0.08);
+		border-radius: 999px;
+		overflow: hidden;
+	}
+
+	.main-track {
+		height: 6px;
+	}
+
+	.sm-track {
+		height: 4px;
+		margin: 0.25rem 0 0.2rem 0;
+	}
+
+	.progress-fill {
+		height: 100%;
+		border-radius: 999px;
+		transition: width 0.4s ease;
+	}
+
+	.fill-tramite {
+		background: linear-gradient(90deg, #6366f1, #818cf8);
+	}
+
+	.fill-docs {
+		background: linear-gradient(90deg, #0284c7, #38bdf8);
+	}
+
+	.fill-info {
+		background: linear-gradient(90deg, #059669, #10b981);
+	}
+
+	.metrics-sub-row {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.55rem;
+	}
+
+	.sub-metric-pill {
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		border-radius: 6px;
+		padding: 0.45rem 0.55rem;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.sub-metric-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.sub-metric-tag {
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--text-1);
+	}
+
+	.sub-metric-pct {
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+
+	.docs-pill .sub-metric-pct {
+		color: #38bdf8;
+	}
+
+	.info-pill .sub-metric-pct {
+		color: #10b981;
+	}
+
+	.sub-metric-sub {
+		font-size: 0.67rem;
+		color: var(--text-muted);
+	}
+
 	.card-bottom {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		border-top: 1px solid var(--border);
-		padding-top: 0.5rem;
-		margin-top: 0.4rem;
+		padding-top: 0.6rem;
+		margin-top: 0.45rem;
 	}
 
 	.price-tag {
 		font-weight: 700;
-		font-size: 0.88rem;
+		font-size: 0.96rem;
 		color: #10b981;
 	}
 
-	.status-indicator {
-		font-size: 0.72rem;
-		font-weight: 700;
+	.card-action-hint {
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: #6366f1;
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		transition: gap 0.2s, color 0.2s;
+	}
+
+	.tramite-card:hover .card-action-hint {
 		color: #818cf8;
+		gap: 0.45rem;
+	}
+
+	.empty-state-grid {
+		grid-column: 1 / -1;
+		text-align: center;
+		padding: 3.5rem 1.5rem;
+		background: var(--surface-1);
+		border: 1px dashed var(--border);
+		border-radius: 12px;
+	}
+
+	.empty-icon {
+		font-size: 2.5rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.empty-state-grid h3 {
+		font-size: 1.1rem;
+		font-weight: 700;
+		color: var(--text-1);
+		margin-bottom: 0.35rem;
+	}
+
+	.empty-state-grid p {
+		font-size: 0.85rem;
+		color: var(--text-muted);
+	}
+
+	/* ==========================================================================
+	   VISTA DE DETALLE DE EXPEDIENTE (ANCHO COMPLETO)
+	   ========================================================================== */
+
+	.detalle-expediente-wrapper {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		width: 100%;
+	}
+
+	.detail-navigation-bar {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		background: var(--surface-1);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+	}
+
+	.btn-back-to-inicio {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		background: rgba(99, 102, 241, 0.12);
+		border: 1px solid rgba(99, 102, 241, 0.3);
+		color: #818cf8;
+		padding: 0.45rem 0.95rem;
+		border-radius: 8px;
+		font-size: 0.84rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.btn-back-to-inicio:hover {
+		background: #6366f1;
+		color: #ffffff;
+		transform: translateX(-3px);
+	}
+
+	.detail-quick-switch {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.switch-label {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+	}
+
+	.switch-select {
+		background: var(--surface-card);
+		border: 1px solid var(--border);
+		color: var(--text-1);
+		padding: 0.35rem 0.65rem;
+		border-radius: 6px;
+		font-size: 0.82rem;
+		cursor: pointer;
 	}
 
 	.main-expediente {

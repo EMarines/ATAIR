@@ -8,6 +8,7 @@ import {
 	setDoc,
 	updateDoc
 } from 'firebase/firestore';
+import { crearCatalogoMaestroInicial } from './catalogoBaseTramites';
 import {
 	CONFIG_DEFAULT_VENTA,
 	inferirConfiguracionDesdeExpediente,
@@ -16,12 +17,16 @@ import {
 	LABELS_OPERACION
 } from './motorRequisitos';
 import type {
+	ConfiguracionMaestraTramites,
 	ConfiguracionTramite,
+	ConfirmacionRequisito,
+	PasoTramite,
 	RegistroControlChecklist,
 	TramiteExpediente
 } from './tramiteTypes';
 
 const COLLECTION_NAME = 'tramites';
+export const CONFIG_DOC_ID = '__config_maestra__';
 
 function sanitizeForFirestore<T>(data: T): T {
 	if (data === undefined) return null as unknown as T;
@@ -52,6 +57,7 @@ export function subscribeTramites(
 		colRef,
 		(snap) => {
 			const list: TramiteExpediente[] = snap.docs
+				.filter((d) => d.id !== CONFIG_DOC_ID)
 				.map((d) => ({
 					...(d.data() as TramiteExpediente),
 					id: d.id
@@ -66,54 +72,76 @@ export function subscribeTramites(
 }
 
 /**
- * Carga el expediente piloto desde static y lo convierte al formato paramétrico unificado.
+ * Carga todos los expedientes locales/piloto desde static y los convierte al formato paramétrico.
+ */
+export async function loadAllLocalExpedientes(): Promise<TramiteExpediente[]> {
+	if (!browser) return [];
+	const paths = [
+		'/tramites/Espinoza%20-%20Mu%C3%B1oz/expediente.json',
+		'/tramites/Herrera-Caro/expediente.json'
+	];
+	const results: TramiteExpediente[] = [];
+
+	for (const p of paths) {
+		try {
+			const res = await fetch(p);
+			if (!res.ok) continue;
+			const raw = (await res.json()) as TramiteExpediente;
+			const config = inferirConfiguracionDesdeExpediente(raw);
+			const controlChecklist: Record<string, RegistroControlChecklist> = raw.controlChecklist || {};
+
+			if (Object.keys(controlChecklist).length === 0 && raw.id === 'TRAMITE-2026-001') {
+				const preloadValidIds = [
+					'DOC_COMP_INE',
+					'DOC_COMP_CONYUGE_DOCS',
+					'DOC_COMP_PRECALIF_INFONAVIT',
+					'DOC_COMP_RECIBO_APARTADO',
+					'DOC_VEND_ESCRITURA',
+					'DOC_VEND_BOLETA_RPP',
+					'DOC_VEND_INE'
+				];
+				for (const id of preloadValidIds) {
+					controlChecklist[id] = {
+						estado: 'validado_sistema',
+						validadoPor: 'Auditoría Inicial COMPASS',
+						actualizadoEn: raw.fechaApertura || '2026-11-19'
+					};
+				}
+			}
+
+			results.push({
+				...raw,
+				isPilotLocal: true,
+				contratoUrl:
+					raw.contratoUrl ||
+					(raw.id === 'TRAMITE-2026-001'
+						? '/tramites/Espinoza%20-%20Mu%C3%B1oz/Contrato%20firmado_20261121_094331.pdf'
+						: '/tramites/Herrera-Caro/Herrera-Caro.docx'),
+				contratoNombre:
+					raw.contratoNombre ||
+					(raw.id === 'TRAMITE-2026-001'
+						? 'Contrato firmado_20261121_094331.pdf'
+						: 'Herrera-Caro.docx'),
+				configuracion: config,
+				controlChecklist,
+				datosCapturados: raw.datosCapturados || {},
+				updatedAt: raw.updatedAt || Date.now(),
+				createdAt: raw.createdAt || Date.now()
+			});
+		} catch (err) {
+			console.warn('[TramiteService] Error cargando expediente local:', p, err);
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Carga el expediente piloto inicial desde static (compatibilidad).
  */
 export async function loadPilotExpediente(): Promise<TramiteExpediente | null> {
-	if (!browser) return null;
-	try {
-		const res = await fetch('/tramites/Espinoza%20-%20Mu%C3%B1oz/expediente.json');
-		if (!res.ok) return null;
-		const raw = (await res.json()) as TramiteExpediente;
-		const config = inferirConfiguracionDesdeExpediente(raw);
-
-		const controlChecklist: Record<string, RegistroControlChecklist> = raw.controlChecklist || {};
-		if (Object.keys(controlChecklist).length === 0) {
-			// Migrar los cotejados iniciales del caso piloto al esquema controlado por sistema
-			const preloadValidIds = [
-				'DOC_COMP_INE',
-				'DOC_COMP_CONYUGE_DOCS',
-				'DOC_COMP_PRECALIF_INFONAVIT',
-				'DOC_COMP_RECIBO_APARTADO',
-				'DOC_VEND_ESCRITURA',
-				'DOC_VEND_BOLETA_RPP',
-				'DOC_VEND_INE'
-			];
-			for (const id of preloadValidIds) {
-				controlChecklist[id] = {
-					estado: 'validado_sistema',
-					validadoPor: 'Auditoría Inicial COMPASS',
-					actualizadoEn: raw.fechaApertura || '2026-11-19'
-				};
-			}
-		}
-
-		return {
-			...raw,
-			isPilotLocal: true,
-			contratoUrl:
-				raw.contratoUrl ||
-				'/tramites/Espinoza%20-%20Mu%C3%B1oz/Contrato%20firmado_20261121_094331.pdf',
-			contratoNombre: raw.contratoNombre || 'Contrato firmado_20261121_094331.pdf',
-			configuracion: config,
-			controlChecklist,
-			datosCapturados: raw.datosCapturados || {},
-			updatedAt: raw.updatedAt || Date.now(),
-			createdAt: raw.createdAt || new Date('2026-11-19T12:00:00Z').getTime()
-		};
-	} catch (err) {
-		console.warn('[TramiteService] Error cargando piloto local:', err);
-		return null;
-	}
+	const all = await loadAllLocalExpedientes();
+	return all.length > 0 ? all[0] : null;
 }
 
 export async function syncPilotToFirestore(pilot: TramiteExpediente): Promise<boolean> {
@@ -399,6 +427,168 @@ export async function deleteTramite(
 	try {
 		await deleteDoc(doc(db, COLLECTION_NAME, tramiteId));
 		return { success: true };
+	} catch (error) {
+		return { success: false, error };
+	}
+}
+
+// ============================================================================
+// CONFIGURACIÓN MAESTRA GLOBAL (Engrane ⚙️ en Firebase: tramites/__config_maestra__)
+// ============================================================================
+
+export function subscribeConfiguracionMaestra(
+	onData: (config: ConfiguracionMaestraTramites, seededNow?: boolean) => void,
+	onError?: (err: unknown) => void
+): () => void {
+	if (!browser || !db) {
+		onData(crearCatalogoMaestroInicial(), false);
+		return () => {};
+	}
+
+	const ref = doc(db, COLLECTION_NAME, CONFIG_DOC_ID);
+	let seedAttempted = false;
+
+	return onSnapshot(
+		ref,
+		async (snap) => {
+			if (!snap.exists()) {
+				const inicial = crearCatalogoMaestroInicial();
+				onData(inicial, false);
+				if (!seedAttempted && db) {
+					seedAttempted = true;
+					try {
+						await setDoc(ref, sanitizeForFirestore(inicial));
+						onData(inicial, true);
+					} catch (seedErr) {
+						console.warn('[TramiteService] No se pudo sembrar config maestra en Firestore:', seedErr);
+					}
+				}
+				return;
+			}
+
+			const raw = snap.data() as Partial<ConfiguracionMaestraTramites>;
+			const base = crearCatalogoMaestroInicial();
+			let docs = Array.isArray(raw.documentos) ? raw.documentos : base.documentos;
+			const versionActual = raw.version || 1;
+
+			// Migración v1 -> v2: actualizar requisito estricto de INE al 200% y a color
+			if (versionActual < 2) {
+				const baseById = new Map(base.documentos.map((d) => [d.id, d]));
+				const ineIds = new Set([
+					'DOC_COMP_INE',
+					'DOC_COMP_CONYUGE_DOCS',
+					'DOC_RENTA_GARANTIA_FIADOR',
+					'DOC_VEND_INE',
+					'DOC_VEND_CONYUGE_DOCS',
+					'DOC_VEND_MORAL_ACTA_PODER'
+				]);
+				docs = docs.map((d) => {
+					if (ineIds.has(d.id) && baseById.has(d.id)) {
+						const b = baseById.get(d.id)!;
+						return { ...d, titulo: b.titulo, descripcion: b.descripcion, actualizadoEn: Date.now() };
+					}
+					return d;
+				});
+			}
+
+			const merged: ConfiguracionMaestraTramites = {
+				id: CONFIG_DOC_ID,
+				version: Math.max(versionActual, 2),
+				updatedAt: raw.updatedAt || Date.now(),
+				ambitos: Array.isArray(raw.ambitos) && raw.ambitos.length > 0 ? raw.ambitos : base.ambitos,
+				documentos: docs,
+				datos: Array.isArray(raw.datos) ? raw.datos : base.datos,
+				pasos: Array.isArray(raw.pasos) ? raw.pasos : base.pasos
+			};
+			onData(merged, false);
+
+			if (versionActual < 2 && db) {
+				try {
+					await setDoc(ref, sanitizeForFirestore(merged));
+				} catch (migErr) {
+					console.warn('[TramiteService] No se pudo migrar v2 en Firestore:', migErr);
+				}
+			}
+		},
+		(error) => {
+			console.warn('[TramiteService] Fallback local para Config Maestra:', error);
+			onData(crearCatalogoMaestroInicial(), false);
+			if (onError) onError(error);
+		}
+	);
+}
+
+export async function saveConfiguracionMaestra(
+	config: ConfiguracionMaestraTramites
+): Promise<{ success: boolean; error?: unknown }> {
+	if (!db) return { success: false, error: 'Firestore no inicializado' };
+	try {
+		const payload: ConfiguracionMaestraTramites = {
+			...config,
+			id: CONFIG_DOC_ID,
+			updatedAt: Date.now()
+		};
+		await setDoc(doc(db, COLLECTION_NAME, CONFIG_DOC_ID), sanitizeForFirestore(payload));
+		return { success: true };
+	} catch (error) {
+		return { success: false, error };
+	}
+}
+
+export async function resetConfiguracionMaestraToSeed(): Promise<{
+	success: boolean;
+	config: ConfiguracionMaestraTramites;
+	error?: unknown;
+}> {
+	const seed = crearCatalogoMaestroInicial();
+	const res = await saveConfiguracionMaestra(seed);
+	return { ...res, config: seed };
+}
+
+export async function saveTramitePasos(
+	tramiteId: string,
+	pasos: PasoTramite[]
+): Promise<{ success: boolean; error?: unknown }> {
+	if (!db) return { success: false, error: 'Firestore no inicializado' };
+	try {
+		await setDoc(
+			doc(db, COLLECTION_NAME, tramiteId),
+			sanitizeForFirestore({
+				pasos,
+				updatedAt: Date.now()
+			}),
+			{ merge: true }
+		);
+		return { success: true };
+	} catch (error) {
+		return { success: false, error };
+	}
+}
+
+export async function saveConfirmacionRequisito(
+	tramiteId: string,
+	reqId: string,
+	confirmacion: ConfirmacionRequisito
+): Promise<{ success: boolean; error?: unknown }> {
+	if (!db) return { success: false, error: 'Firestore no inicializado' };
+	try {
+		try {
+			await updateDoc(doc(db, COLLECTION_NAME, tramiteId), {
+				[`confirmacionesRequisitos.${reqId}`]: sanitizeForFirestore(confirmacion),
+				updatedAt: Date.now()
+			});
+			return { success: true };
+		} catch {
+			await setDoc(
+				doc(db, COLLECTION_NAME, tramiteId),
+				sanitizeForFirestore({
+					confirmacionesRequisitos: { [reqId]: confirmacion },
+					updatedAt: Date.now()
+				}),
+				{ merge: true }
+			);
+			return { success: true };
+		}
 	} catch (error) {
 		return { success: false, error };
 	}

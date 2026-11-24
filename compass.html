@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COMPASS — ATAIR SGI: WhatsApp Masivo Oficial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            brand: {
+              gold: '#D4AF37',
+              goldLight: '#F3E5AB',
+              goldDark: '#997F24',
+              navy: '#0B1120',
+              card: '#111827',
+              border: 'rgba(212, 175, 55, 0.18)',
+              wa: '#25D366'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b1120 70%, #030712 100%);
+      min-height: 100vh;
+      color: #f1f5f9;
+    }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    .glass-card-active {
+      border: 1px solid rgba(212, 175, 55, 0.4);
+      box-shadow: 0 0 25px rgba(212, 175, 55, 0.15);
+    }
+    .flow-line {
+      position: absolute;
+      left: 2rem;
+      top: 2rem;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, #10b981 0%, #f59e0b 50%, #475569 100%);
+      z-index: 0;
+    }
+    details summary::-webkit-details-marker {
+      display: none;
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8 selection:bg-brand-gold selection:text-black">
+  <div class="max-w-6xl mx-auto">
+    
+    <!-- HEADER COMPASS -->
+    <header class="glass-card rounded-2xl p-6 md:p-8 mb-8 relative overflow-hidden">
+      <div class="absolute -right-12 -top-12 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+        <div>
+          <div class="flex items-center gap-3 mb-2">
+            <span class="text-3xl">🧭</span>
+            <span class="px-3 py-1 text-xs font-mono font-semibold tracking-wider uppercase rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Proyecto Activo en COMPASS
+            </span>
+            <span class="text-xs text-slate-400 font-mono">ID: COMPASS-ATAIR-WA-BROADCAST</span>
+            <span class="px-2.5 py-0.5 text-xs font-mono font-semibold text-emerald-300 bg-emerald-950/80 rounded-lg border border-emerald-700/60 flex items-center gap-1">
+              💬 Meta WABA + Evolution API
+            </span>
+          </div>
+          <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+            ATAIR SGI <span class="text-emerald-400 font-light text-2xl">| WhatsApp Masivo & Radar de Grupos</span>
+          </h1>
+          <p class="text-slate-300 text-sm md:text-base mt-2 max-w-3xl leading-relaxed">
+            Arquitectura Dual-Rail de WhatsApp en ATAIR SGI: Meta Cloud API oficial (WABA v21.0) para envíos masivos y nutrición 1 a 1 sin riesgo de baneo; y Evolution API (v2) en número satélite para escucha pasiva de grupos inmobiliarios y sincronización en bitácora.
+          </p>
+        </div>
+
+        <div class="flex flex-col items-end justify-center min-w-[200px] bg-slate-900/60 p-4 rounded-xl border border-amber-500/40">
+          <div class="text-xs text-amber-400 font-medium uppercase tracking-wider mb-1">⚡ Avance General</div>
+          <div class="text-4xl font-extrabold text-amber-400 font-mono" id="progressText">60%</div>
+          <div class="w-full bg-slate-800 rounded-full h-2 mt-2 overflow-hidden">
+            <div id="progressBar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-2 rounded-full transition-all duration-700" style="width: 60%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEFINITION OF DONE (DOD) BANNER -->
+      <div class="mt-6 p-4 rounded-xl bg-slate-900/80 border border-slate-700/60 flex items-start gap-3">
+        <span class="text-xl mt-0.5">🎯</span>
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-400 font-mono">Definition of Done (Meta Final Innegociable):</span>
+          <p class="text-sm text-slate-200 mt-0.5" id="dodText">
+            Módulo de Campañas Masivas activo en ATAIR SGI que permite seleccionar segmentos de contactos o cartera total, previsualizar plantilla oficial aprobada por Meta, enviar a través de n8n/Meta Cloud API con tasa controlada (rate limiting), y reflejar el estatus de entrega y lectura en la bitácora de cada cliente.
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <!-- SECCIÓN EXPLICATIVA: OBJETIVO, EN QUÉ TRABAJAMOS Y CÓMO LO LOGRAREMOS -->
+    <div class="glass-card rounded-2xl p-6 md:p-7 mb-8 border border-emerald-500/20">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="text-xl">💡</span>
+        <h2 class="text-base font-bold uppercase tracking-wider text-emerald-300 font-mono">
+          Manifiesto Operativo: Alcance, Arquitectura y Hoja de Ruta
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-300 leading-relaxed">
+        <!-- COLUMNA 1: OBJETIVO DEL SISTEMA -->
+        <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">
+            <span>🎯</span> 1. Objetivo de Negocio
+          </div>
+          <p class="text-xs text-slate-300">
+            Dotar a Match Home y ATAIR SGI de una máquina de difusión masiva oficial por WhatsApp. Enviar novedades de inventario y oportunidades de inversión a prospectos y colegas de bolsa inmobiliaria con un solo clic, sin chips quemados ni bloqueos de WhatsApp Web.
+          </p>
+        </div>
+
+        <!-- COLUMNA 2: EN QUÉ ESTAMOS TRABAJANDO -->
+        <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400 font-mono">
+            <span>⚡</span> 2. Foco Actual (Fase 2)
+          </div>
+          <p class="text-xs text-slate-300">
+            Benchmarking del pipeline: orquestación de colas asíncronas mediante n8n conectado a Meta Cloud API v21.0. Esto evita congelar el navegador o rebasar los timeouts de 10s en Vercel cuando se envían lotes a cientos de contactos.
+          </p>
+        </div>
+
+        <!-- COLUMNA 3: CÓMO LO LOGRAREMOS -->
+        <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">
+            <span>🚀</span> 3. Stack & Método
+          </div>
+          <ul class="text-xs space-y-1 text-slate-300 list-disc list-inside">
+            <li><strong class="text-slate-100">Meta WABA Oficial:</strong> API v21.0 con System User Token (1 a 1)</li>
+            <li><strong class="text-slate-100">Evolution API:</strong> Escucha pasiva de grupos (@g.us) con número satélite</li>
+            <li><strong class="text-slate-100">Cola n8n + Gemini:</strong> Rate limiting y parser semántico de necesidades</li>
+            <li><strong class="text-slate-100">Trazabilidad:</strong> Bitácora viva en Firestore</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SQUAD MATRIX -->
+    <div class="glass-card rounded-2xl p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 font-mono flex items-center gap-2">
+          <span>👥</span> Squad Asignado a la Iniciativa
+        </h2>
+        <span class="text-xs text-slate-500 font-mono">9 Especialistas Activos</span>
+      </div>
+      
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-3" id="squadContainer">
+        <!-- Renderizado dinámico -->
+      </div>
+    </div>
+
+    <!-- FILTROS Y CONTROLES DEL TABLERO -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Filtrar Estado:</span>
+        <button onclick="filterStatus('all')" class="status-btn px-3 py-1 text-xs font-mono font-semibold rounded-lg bg-amber-500/20 text-brand-gold border border-amber-500/30">Todos (7)</button>
+        <button onclick="filterStatus('completed')" class="status-btn px-3 py-1 text-xs font-mono font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">Completados (4)</button>
+        <button onclick="filterStatus('in_progress')" class="status-btn px-3 py-1 text-xs font-mono font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">En Curso (1)</button>
+        <button onclick="filterStatus('pending')" class="status-btn px-3 py-1 text-xs font-mono font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">Pendientes (2)</button>
+      </div>
+
+      <div class="text-xs text-slate-400 font-mono">
+        Fuente de verdad: <code class="text-amber-300">ATAIR SGI/compass.json</code>
+      </div>
+    </div>
+
+    <!-- PIPELINE VISUAL DE TAREAS / FLUID WORKFLOW -->
+    <div class="relative pl-2 md:pl-4 mb-12">
+      <div class="flow-line hidden md:block"></div>
+      <div class="space-y-6" id="tasksList">
+        <!-- Renderizado dinámico de tareas con acordeón -->
+      </div>
+    </div>
+
+    <!-- FOOTER COMPASS -->
+    <footer class="text-center text-xs text-slate-500 font-mono py-8 border-t border-slate-800">
+      COMPASS™ Autonomous Project Navigator • Gobernado por Maya & el Squad • Enrique Marines 2026
+    </footer>
+
+  </div>
+
+  <script>
+    const COMPASS_STATE = {
+      "projectId": "COMPASS-ATAIR-WA-BROADCAST",
+      "projectName": "ATAIR SGI: WhatsApp Masivo Oficial (WABA) & Escucha de Grupos (Evolution API)",
+      "vision": "Integrar una arquitectura Dual-Rail de WhatsApp en ATAIR SGI: Rail A oficial (Meta Cloud API / WABA v21.0) para envíos masivos inteligentes y seguimiento 1 a 1 en Etapas 3 y 4 con 0% riesgo de baneo; y Rail B satélite (Evolution API v2) para escucha pasiva de grupos inmobiliarios/AMPI, extracción de oportunidades con IA y sincronización en bitácora.",
+      "strategicSummary": {
+        "systemGoal": "Dotar a ATAIR SGI y a sus asesores de una máquina de difusión masiva oficial por WhatsApp 100% blindada contra bloqueos de Meta, con plantillas aprobadas, y un radar activo de escucha de grupos de colegas vía Evolution API para alimentar la cartera y la bitácora del CRM.",
+        "currentFocus": "Fase 2 Benchmarking & Fase 3 Infraestructura: Definición del pipeline Dual-Rail (Meta Cloud API v21.0 para 1 a 1 y masivos segmentados + Evolution API en Docker con número satélite para escucha de grupos en chats @g.us).",
+        "howWeAchieveIt": [
+          "Kickoff dialógico con Mina para validar cuenta WABA, presupuesto por conversación y disparadores de campaña",
+          "Desglose WBS por Apolo en tareas atómicas (Credenciales WABA, Webhook n8n con Rate Limiting, Módulo UI en ATAIR, Encolamiento Firestore, Bitácora de Envíos y Evolution API)",
+          "Arquitectura Dual-Rail por Argos y Lince: Meta Cloud API oficial para 1 a 1 (Green Tier) + Evolution API en número satélite aislado para monitoreo pasivo de grupos",
+          "Extracción semántica con Gemini en n8n para parsear solicitudes en grupos y convertirlas en leads o matches de inventario",
+          "Diseño por Clara y Nexo de plantillas persuasivas de marketing y ficha interactiva de propuesta",
+          "Filtro comercial por Beto para segmentación efectiva de cartera en Chihuahua"
+        ]
+      },
+      "status": "in_progress",
+      "createdAt": "2026-11-02",
+      "updatedAt": "2026-11-11",
+      "progressPercentage": 60,
+      "definitionOfDone": "Módulo de Campañas Masivas activo en ATAIR SGI que permite seleccionar segmentos de contactos en Etapas 3 y 4, previsualizar plantilla oficial aprobada por Meta, enviar a través de n8n/Meta Cloud API con tasa controlada, reflejar el estatus de entrega y lectura en la bitácora de cada cliente, y radar de escucha de grupos operando con Evolution API en número satélite.",
+      "squad": [
+        {
+          "name": "Mina",
+          "role": "Jefa de Gabinete & Memoria Viva",
+          "avatar": "💼"
+        },
+        {
+          "name": "Maya",
+          "role": "Master Orchestrator & Réferi",
+          "avatar": "🧠"
+        },
+        {
+          "name": "Apolo",
+          "role": "Arquitecto Técnico & WBS",
+          "avatar": "🏛️"
+        },
+        {
+          "name": "Argos",
+          "role": "Radar Tecnológico & I+D",
+          "avatar": "🔭"
+        },
+        {
+          "name": "Lince",
+          "role": "Auditor Técnico & Seguridad",
+          "avatar": "🛡️"
+        },
+        {
+          "name": "Wero",
+          "role": "Arquitecto de Bucles & Loops",
+          "avatar": "⚡"
+        },
+        {
+          "name": "Clara",
+          "role": "Diseño Visual & Maquetación",
+          "avatar": "🎨"
+        },
+        {
+          "name": "Nexo",
+          "role": "Copywriting & Narrativa",
+          "avatar": "✍️"
+        },
+        {
+          "name": "Beto",
+          "role": "Filtro Comercial & Realidad",
+          "avatar": "🤝"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "TASK-001",
+          "phase": "Fase 1: Kickoff Dialógico & Alcance",
+          "title": "Inception y Captura de Alcance WhatsApp Masivo",
+          "description": "Arranque oficial de la iniciativa bajo COMPASS. Determinación del caso de uso principal: difusión masiva de inventario a prospectos y colegas de bolsa inmobiliaria con la app oficial de WhatsApp.",
+          "status": "completed",
+          "owner": "Enrique Marines, Mina & Maya",
+          "squadBadges": [
+            "Mina",
+            "Maya",
+            "Beto"
+          ],
+          "techStack": [
+            {
+              "name": "COMPASS Navigator Engine",
+              "category": "Gobernanza",
+              "reason": "Marco rector de proyecto y fuente de verdad"
+            },
+            {
+              "name": "Doctrina Ecosistema Antigravity",
+              "category": "Metodología",
+              "reason": "Cero dispersión y Definition of Done innegociable"
+            }
+          ],
+          "assemblyLog": "Iniciado el 02 de noviembre de 2026 por Enrique Marines para continuar ATAIR SGI conectando la app oficial de WA para envío de mensajes masivos.",
+          "completedAt": "2026-11-02"
+        },
+        {
+          "id": "TASK-002",
+          "phase": "Fase 2: Benchmarking & Arquitectura Dual-Rail",
+          "title": "Benchmarking Tecnológico y Diseño del Pipeline Dual-Rail (Argos & Lince)",
+          "description": "Evaluación comparativa de soluciones: Meta Cloud API directa vs n8n Queue vs Evolution API para grupos. Aprobación de arquitectura Dual-Rail: Meta Cloud API oficial (Graph API v21.0) para envíos masivos 1 a 1 y seguimiento de clientes; y Evolution API v2 para escucha pasiva de grupos inmobiliarios sin arriesgar la línea comercial.",
+          "status": "completed",
+          "owner": "Argos, Lince & Apolo",
+          "squadBadges": [
+            "Argos",
+            "Lince",
+            "Apolo"
+          ],
+          "techStack": [
+            {
+              "name": "Meta WhatsApp Cloud API (Graph API v21.0)",
+              "category": "API Oficial",
+              "reason": "Cero costo de intermediación por mensaje; conexión directa a la infraestructura de Meta para 1 a 1"
+            },
+            {
+              "name": "Evolution API v2 (Docker)",
+              "category": "Pasarela WA Web",
+              "reason": "Monitoreo y lectura de eventos de grupos de WhatsApp (@g.us) no soportados por la API oficial"
+            },
+            {
+              "name": "n8n Automation Engine (Self-Hosted)",
+              "category": "Orquestador de Colas",
+              "reason": "Control de tasa, reintentos automáticos, webhooks y registros de entrega sin saturar Vercel"
+            }
+          ],
+          "assemblyLog": "Arquitectura híbrida Dual-Rail aprobada el 03 de noviembre de 2026: Frontend en SvelteKit (ATAIR CRM) genera la campaña masiva hacia n8n/Meta Cloud API para Etapas 3 y 4. Evolution API opera en segundo plano con número satélite para capturar mensajes de grupos de colegas, parsearlos con Gemini e inyectarlos en bitácora.",
+          "completedAt": "2026-11-03"
+        },
+        {
+          "id": "TASK-003",
+          "phase": "Fase 3: Infraestructura & Credenciales WABA",
+          "title": "Configuración de Token Permanente, Phone Number ID y Catálogo de Plantillas (Etapas 3 y 4)",
+          "description": "Verificación del Business Manager de Meta, obtención del System User Token perpetuo, registro del Phone Number ID oficial de Match Home/ATAIR y redacción de plantillas pre-aprobadas de Marketing y Utility con variables dinámicas.",
+          "status": "completed",
+          "owner": "Lince, Nexo & Clara",
+          "squadBadges": [
+            "Lince",
+            "Nexo",
+            "Clara"
+          ],
+          "techStack": [
+            {
+              "name": "Meta Business Suite & WhatsApp Manager",
+              "category": "Infraestructura",
+              "reason": "Aprobación de plantillas y administración del número oficial"
+            },
+            {
+              "name": "Copywriting Anti-Spam (Nexo)",
+              "category": "Contenido",
+              "reason": "Diseño de plantillas con alto índice de lectura y bajo reporte de spam"
+            }
+          ],
+          "assemblyLog": "Completado el 03 de noviembre de 2026: Token permanente System User de ATAIR_backend inyectado en .env (HTTP 200 OK). Plantillas oficiales creadas automáticamente por API: 'reactivacion_permiso_matchhome' (ID 4163191577145732) y 'nuevo_inventario_match' (ID 954550714102246).",
+          "completedAt": "2026-11-03"
+        },
+        {
+          "id": "TASK-004",
+          "phase": "Fase 4: Frontend en ATAIR SGI",
+          "title": "Módulo UI de Campañas y Difusión Masiva en ATAIR (Solo Etapa 4 + Alta ≤ 2 años + Switch Manual/API)",
+          "description": "Refactorización de 'Buscar Contactos' en ficha de propiedad (`/property/[id]`): filtrado estricto exclusivo para Etapa 4 con fecha de alta ≤ 2 años (`isStage4ForBroadcast` / `isWithinMaxAgeYears(cont, 2)`), switch reactivado entre Manual (wa.me 1 a 1 por defecto cuando son pocos envíos) y Automático (Meta Cloud API vía `whatsappBroadcastStore` en 2° plano cuando son muchos), monitor flotante global (`WhatsappBroadcastMonitor`) y registro automático en `binnacles` con la plantilla aprobada `nuevo_inventario_match`.",
+          "status": "completed",
+          "owner": "Clara, Wero & Apolo",
+          "squadBadges": [
+            "Clara",
+            "Wero",
+            "Apolo"
+          ],
+          "techStack": [
+            {
+              "name": "SvelteKit + Global Store Queue",
+              "category": "Frontend UI",
+              "reason": "Switch inteligente entre wa.me 1 a 1 (pocos) y cola en segundo plano (muchos) sin bloqueo"
+            },
+            {
+              "name": "Firestore Binnacles Real-Time",
+              "category": "Persistencia",
+              "reason": "Movimiento instantáneo de contactos E4 de Por_Enviar a Ya_Se_Envió mediante onSnapshot"
+            }
+          ],
+          "assemblyLog": "Actualizado el 11 de noviembre de 2026: Regla estricta fijada en Solo Etapa 4 (E4) + antigüedad máxima ≤ 2 años desde alta (`createdAt`) en UI, cola y endpoint WABA, manteniendo switch Manual (defecto, clic por clic wa.me sin consumir API) vs Automático (Meta Cloud API 2° plano).",
+          "completedAt": "2026-11-11"
+        },
+        {
+          "id": "TASK-005",
+          "phase": "Fase 5: Webhooks de Estatus & Cierre de DoD",
+          "title": "Recepción de Estatus (Sent/Delivered/Read) y Trazabilidad en CRM",
+          "description": "Configuración del webhook de retorno para capturar eventos de entrega y lectura de Meta, actualizando en tiempo real la bitácora del contacto (`binnacles`) y el porcentaje de apertura de la campaña.",
+          "status": "pending",
+          "owner": "Squad Completo",
+          "squadBadges": [
+            "Wero",
+            "Lince",
+            "Mina",
+            "Beto"
+          ],
+          "techStack": [
+            {
+              "name": "Meta Webhooks Handler",
+              "category": "Event Driven",
+              "reason": "Notificación inmediata de lectura y respuestas de prospectos"
+            },
+            {
+              "name": "Firestore Contacts Store",
+              "category": "CRM Core",
+              "reason": "Actualización automática de último contacto y scoring de interés"
+            }
+          ],
+          "assemblyLog": "Fase final de cierre para cumplir al 100% el Definition of Done de COMPASS.",
+          "completedAt": null
+        },
+        {
+          "id": "TASK-006",
+          "phase": "Fase 3: Infraestructura & Escucha de Grupos (Evolution API)",
+          "title": "Despliegue de Evolution API & Pipeline de Escucha Pasiva en Grupos",
+          "description": "Despliegue de instancia Evolution API v2 (Docker/Node.js) con número satélite dedicado para unirse a grupos de WhatsApp (bolsas inmobiliarias, AMPI, chats de gremio). Configuración de webhook hacia n8n para eventos `messages.upsert` en grupos (@g.us), parser IA (Gemini) para extracción de solicitudes (zona, presupuesto, tipología) e inyección automática en la bitácora/radar de ATAIR.",
+          "status": "pending",
+          "owner": "Argos, Lince & Apolo",
+          "squadBadges": [
+            "Argos",
+            "Lince",
+            "Apolo",
+            "Beto"
+          ],
+          "techStack": [
+            {
+              "name": "Evolution API v2 (Docker)",
+              "category": "Pasarela WA Web",
+              "reason": "Soporte nativo de webhooks para grupos de WhatsApp y emulación multisesión"
+            },
+            {
+              "name": "Línea Satélite Aislada",
+              "category": "Seguridad Operativa",
+              "reason": "Blindaje total: cero riesgo de baneo para la línea matriz comercial WABA"
+            },
+            {
+              "name": "n8n + Gemini Parser",
+              "category": "Procesamiento IA",
+              "reason": "Extracción semántica estructurada de necesidades inmobiliarias desde texto libre"
+            },
+            {
+              "name": "Firestore Radar Store",
+              "category": "CRM Core",
+              "reason": "Registro automático en la bitácora de oportunidades y matching inverso"
+            }
+          ],
+          "assemblyLog": "Aprobado por Enrique Marines el 03 de noviembre de 2026. Se adopta Evolution API con número satélite exclusivo para escucha pasiva de grupos sin arriesgar la línea matriz oficial WABA.",
+          "completedAt": null
+        },
+        {
+          "id": "TASK-007",
+          "phase": "Fase 4B: Calificación E3 → E4 (Llamadas + Formulario)",
+          "title": "Embudo de Conversión a Etapa 4: Llamadas Directas y Link con Formulario para E3",
+          "description": "Operación diferenciada para contactos fuera de Etapa 4: 1) Prioridad de llamadas telefónicas directas ('llamar y llamar') para perfilar y pasar prospectos no-E4 hacia Etapa 4; 2) Para contactos en Etapa 3 (E3) y lote frío +2 años, envío futuro (con capital WABA) de plantilla con formulario de perfilamiento que al llenarse cambie de E3 -> E4 con fecha reactivada (y quien diga NO o no conteste pase a isActive=false).",
+          "status": "in_progress",
+          "owner": "Enrique Marines, Beto, Wero & Apolo",
+          "squadBadges": [
+            "Beto",
+            "Wero",
+            "Apolo",
+            "Nexo"
+          ],
+          "techStack": [
+            {
+              "name": "Radiografía Solo Lectura (/actions/cont-filter)",
+              "category": "Auditoría DB",
+              "reason": "Escaneo directo de Firestore sin fallback Date.now() para medir lote frío +2 años, sin fecha e intocables"
+            },
+            {
+              "name": "Formulario Web de Perfilamiento",
+              "category": "Conversión E3 → E4",
+              "reason": "Autocalificación del prospecto para promoverlo a Etapa 4 e integrarlo al matching de inventario"
+            },
+            {
+              "name": "Cola de Llamadas ATAIR / Agenda",
+              "category": "Prospección Saliente",
+              "reason": "Seguimiento telefónico activo sobre contactos no-E4 recientes (≤ 2 años) para convertirlos en compradores listos"
+            }
+          ],
+          "assemblyLog": "11 nov 2026: Implementada la Radiografía de Cartera Solo Lectura en /actions/cont-filter (contactAudit.ts + UI interactiva + CSV) como paso previo antes de mover lote +2 años a E3 o archivar.",
+          "completedAt": null
+        }
+      ]
+    };
+
+    let currentStatusFilter = 'all';
+    let currentSquadFilter = 'all';
+
+    function renderSquadBadges() {
+      const container = document.getElementById('squadContainer');
+      container.innerHTML = COMPASS_STATE.squad.map(agent => `
+        <div onclick="filterSquad('${agent.name}')" class="squad-btn cursor-pointer p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-center hover:border-amber-500/50 transition-all group">
+          <div class="text-2xl mb-1 group-hover:scale-110 transition-transform">${agent.avatar}</div>
+          <div class="font-bold text-xs text-white group-hover:text-amber-300 font-mono">${agent.name}</div>
+          <div class="text-[10px] text-slate-400 truncate mt-0.5">${agent.role}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderTasks() {
+      const list = document.getElementById('tasksList');
+      list.innerHTML = '';
+
+      const filtered = COMPASS_STATE.tasks.filter(t => {
+        const matchesStatus = currentStatusFilter === 'all' || t.status === currentStatusFilter;
+        const matchesSquad = currentSquadFilter === 'all' || (t.squadBadges && t.squadBadges.includes(currentSquadFilter));
+        return matchesStatus && matchesSquad;
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<div class="p-8 text-center text-slate-500 font-mono glass-card rounded-xl">No hay tareas que coincidan con los filtros seleccionados.</div>`;
+        return;
+      }
+
+      filtered.forEach((task, idx) => {
+        const isCompleted = task.status === 'completed';
+        const isInProgress = task.status === 'in_progress';
+
+        const statusBadge = isCompleted 
+          ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">✓ COMPLETADO</span>`
+          : (isInProgress 
+            ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">⚡ EN CURSO</span>`
+            : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-800 text-slate-400 border border-slate-700">⏳ PENDIENTE</span>`);
+
+        const markerColor = isCompleted
+          ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+          : (isInProgress
+            ? 'bg-amber-500 text-slate-950 border-amber-300 ring-4 ring-amber-500/30 animate-pulse'
+            : 'bg-slate-800 text-slate-400 border-slate-700');
+
+        const cardBorder = isInProgress ? 'glass-card-active' : (isCompleted ? 'border-emerald-500/30' : 'border-slate-800');
+
+        const squadBadgesHtml = (task.squadBadges || []).map(b => {
+          const agent = COMPASS_STATE.squad.find(a => a.name === b);
+          return `<span title="${agent ? agent.role : b}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-300">${agent ? agent.avatar : '👤'} ${b}</span>`;
+        }).join('');
+
+        const techStackHtml = (task.techStack || []).map(tech => `
+          <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-amber-300 font-mono">${tech.name}</span>
+              <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">${tech.category}</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1">${tech.reason}</p>
+          </div>
+        `).join('');
+
+        const taskHtml = `
+          <div class="relative flex items-start gap-4 md:gap-6 group">
+            <div class="relative z-10 w-9 h-9 rounded-full ${markerColor} border-2 flex items-center justify-center font-bold text-xs shrink-0 mt-1">
+              ${isCompleted ? '✓' : (isInProgress ? '⚡' : idx + 1)}
+            </div>
+
+            <div class="w-full">
+              <details class="glass-card rounded-xl p-5 ${cardBorder} transition-all duration-200 hover:border-amber-500/40 group/card" ${isInProgress || isCompleted ? 'open' : ''}>
+                <summary class="cursor-pointer list-none flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                      <span class="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider">${task.phase}</span>
+                      <span class="text-[11px] font-mono text-slate-500">•</span>
+                      <span class="text-[11px] font-mono text-amber-400/90 font-bold">${task.id}</span>
+                      ${statusBadge}
+                    </div>
+                    <h3 class="text-lg font-bold text-white group-hover/card:text-amber-300 transition-colors">
+                      ${task.title}
+                    </h3>
+                    <p class="text-sm text-slate-300 mt-1">
+                      ${task.description}
+                    </p>
+                  </div>
+
+                  <div class="flex items-center gap-2 shrink-0 self-end md:self-auto">
+                    <div class="flex items-center gap-1">
+                      ${squadBadgesHtml}
+                    </div>
+                    <span class="text-xs text-slate-500 group-open/card:rotate-180 transition-transform duration-200 font-mono ml-2">▼</span>
+                  </div>
+                </summary>
+
+                <div class="mt-5 pt-4 border-t border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 font-mono">
+                      <span>🛠️</span> Stack & Herramientas Empleadas
+                    </div>
+                    <div class="space-y-2">
+                      ${techStackHtml || '<div class="text-xs text-slate-500">Por definir en fase de benchmark.</div>'}
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">
+                      <span>📝</span> Bitácora Técnica de Ensamble
+                    </div>
+                    <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800 text-xs text-slate-300 leading-relaxed font-sans">
+                      <div class="text-[11px] text-slate-400 font-mono mb-1">
+                        Responsable: <span class="text-slate-200 font-bold">${task.owner}</span>
+                        ${task.completedAt ? ` • Concluido: <span class="text-emerald-400">${task.completedAt}</span>` : ''}
+                      </div>
+                      ${task.assemblyLog}
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+        `;
+        list.innerHTML += taskHtml;
+      });
+    }
+
+    function filterStatus(status) {
+      currentStatusFilter = status;
+      document.querySelectorAll('.status-btn').forEach(btn => {
+        btn.classList.remove('bg-amber-500/20', 'text-brand-gold', 'border', 'border-amber-500/30');
+        btn.classList.add('bg-slate-800', 'text-slate-300');
+      });
+      event.target.classList.remove('bg-slate-800', 'text-slate-300');
+      event.target.classList.add('bg-amber-500/20', 'text-brand-gold', 'border', 'border-amber-500/30');
+      renderTasks();
+    }
+
+    function filterSquad(squadName) {
+      currentSquadFilter = squadName;
+      document.querySelectorAll('.squad-btn').forEach(btn => {
+        btn.classList.remove('bg-amber-500/20', 'text-brand-gold', 'border', 'border-amber-500/30');
+        btn.classList.add('bg-slate-800', 'text-slate-300');
+      });
+      event.currentTarget.classList.remove('bg-slate-800', 'text-slate-300');
+      event.currentTarget.classList.add('bg-amber-500/20', 'text-brand-gold', 'border', 'border-amber-500/30');
+      renderTasks();
+    }
+
+    renderSquadBadges();
+    renderTasks();
+  </script>
+</body>
+</html>

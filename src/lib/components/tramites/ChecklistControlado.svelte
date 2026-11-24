@@ -391,6 +391,11 @@
 											</span>
 										{/if}
 									</div>
+									{#if req.observacion}
+										<div class="req-obs-note" class:obs-warn={req.estadoSistema === 'observacion'}>
+											{req.estadoSistema === 'observacion' ? '⚠️' : '📝'} {req.observacion}
+										</div>
+									{/if}
 								</div>
 
 								<div class="req-controls">
@@ -808,6 +813,22 @@
 	.estado-select.observacion {
 		border-color: rgba(239, 68, 68, 0.5);
 		color: #ef4444;
+	}
+
+	.req-obs-note {
+		margin-top: 0.35rem;
+		font-size: 0.74rem;
+		color: var(--text-muted);
+		background: rgba(255, 255, 255, 0.04);
+		padding: 0.3rem 0.55rem;
+		border-radius: 6px;
+		border-left: 3px solid var(--border);
+	}
+
+	.req-obs-note.obs-warn {
+		color: #fcd34d;
+		background: rgba(245, 158, 11, 0.12);
+		border-left-color: #f59e0b;
 	}
 
 	.btn-wa-single {

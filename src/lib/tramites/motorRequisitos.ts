@@ -6,9 +6,12 @@ import type {
 	FormaPagoVenta,
 	OrigenInmueble,
 	ParteTrato,
+	PasoTramite,
 	RegimenConyugal,
 	RequisitoEvaluado,
 	ResultadoEvaluacionMotor,
+	ResumenCostosTramite,
+	ResumenTiemposTramite,
 	SituacionGravamen,
 	SituacionParte,
 	TipoGarantiaRenta,
@@ -398,7 +401,7 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_COMP_INE',
 		parte: 'comprador',
 		tipo: 'documento',
-		concepto: 'Identificación Oficial Vigente (INE / Pasaporte al 200%)',
+		concepto: 'Identificación Oficial Vigente (INE / Pasaporte al 200% y a color)',
 		obligatorioPara: 'Identificación de identidad y firma de contrato',
 		motivoRegla: (c) =>
 			c.comprador.tipoPersona === 'moral'
@@ -456,7 +459,7 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_COMP_CONYUGE_DOCS',
 		parte: 'comprador',
 		tipo: 'documento',
-		concepto: 'INE vigente y CURP del Cónyuge Coacreditado',
+		concepto: 'INE vigente (al 200% y a color) y CURP del Cónyuge Coacreditado',
 		obligatorioPara: 'Identificación oficial del cónyuge coacreditado / copropietario',
 		motivoRegla: (c) =>
 			c.formaPago === 'infonavit_conyugal'
@@ -581,7 +584,7 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_RENTA_GARANTIA_FIADOR',
 		parte: 'comprador',
 		tipo: 'documento',
-		concepto: 'Escritura en Garantía libre de gravamen + Predial pagado + INE del Fiador',
+		concepto: 'Escritura en Garantía libre de gravamen + Predial pagado + INE del Fiador (al 200% y a color)',
 		obligatorioPara: 'Blindaje de contrato de arrendamiento en Chihuahua',
 		motivoRegla: () => 'Garantía: Fiador con Propiedad',
 		aplica: (c) => ES_RENTA(c) && c.garantiaRenta === 'fiador_propiedad'
@@ -676,7 +679,7 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_VEND_INE',
 		parte: 'vendedor',
 		tipo: 'documento',
-		concepto: 'Identificación Oficial Vigente (INE / Pasaporte)',
+		concepto: 'Identificación Oficial Vigente (INE / Pasaporte al 200% y a color)',
 		obligatorioPara: 'Acreditación de identidad del propietario',
 		motivoRegla: () => 'Universal Propietario',
 		aplica: () => true
@@ -749,7 +752,7 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_VEND_CONYUGE_DOCS',
 		parte: 'vendedor',
 		tipo: 'documento',
-		concepto: 'INE + CURP + Constancia SAT del Cónyuge del Vendedor (Debe firmar)',
+		concepto: 'INE (al 200% y a color) + CURP + Constancia SAT del Cónyuge del Vendedor (Debe firmar)',
 		obligatorioPara: 'Consentimiento y firma obligatoria de copropietario conyugal',
 		motivoRegla: () => 'Vendedor Casado Soc. Conyugal (Adquisición onerosa)',
 		aplica: VENDEDOR_CASADO_MANCOMUNADO_ONEROSO
@@ -777,7 +780,7 @@ const REGLAS_REQUISITOS: ReglaRequisitoDef[] = [
 		id: 'DOC_VEND_MORAL_ACTA_PODER',
 		parte: 'vendedor',
 		tipo: 'documento',
-		concepto: 'Acta Constitutiva + Poder para Actos de Dominio + INE Apoderado',
+		concepto: 'Acta Constitutiva + Poder para Actos de Dominio + INE Apoderado (al 200% y a color)',
 		obligatorioPara: 'Facultades legales para vender o rentar como sociedad',
 		motivoRegla: () => 'Vendedor Persona Moral',
 		aplica: (c) => c.vendedor.tipoPersona === 'moral'
@@ -1188,18 +1191,90 @@ export function evaluarRequisitosTramite(
 	const docs = requisitosEvaluados.filter((r) => r.tipo === 'documento');
 	const datos = requisitosEvaluados.filter((r) => r.tipo === 'dato');
 
+	const docsCompletados = docs.filter((r) => r.completado).length;
+	const datosCompletados = datos.filter((r) => r.completado).length;
+	const porcentaje = total > 0 ? Math.round((completados / total) * 100) : 0;
+	const porcentajeDocs = docs.length > 0 ? Math.round((docsCompletados / docs.length) * 100) : 0;
+	const porcentajeDatos = datos.length > 0 ? Math.round((datosCompletados / datos.length) * 100) : 0;
+
+	// Pasos del trámite
+	const pasos: PasoTramite[] = expSeguro.pasos || [];
+	const totalPasos = pasos.length;
+	const pasosCompletados = pasos.filter((p) => p.estado === 'completado').length;
+	const pasosEnCurso = pasos.filter((p) => p.estado === 'en_curso').length;
+	const pasosBloqueados = pasos.filter((p) => p.estado === 'bloqueado').length;
+	const porcentajePasos = totalPasos > 0 ? Math.round((pasosCompletados / totalPasos) * 100) : 0;
+
+	// Costos
+	const costos: ResumenCostosTramite = {
+		totalEstimado: 0,
+		vendedor: 0,
+		comprador: 0,
+		ambos: 0,
+		inmobiliaria: 0,
+		porDefinir: 0
+	};
+	for (const req of requisitosEvaluados) {
+		const c = req.costoEstimado || 0;
+		if (c > 0) {
+			costos.totalEstimado += c;
+			if (req.pagadoPor === 'vendedor') costos.vendedor += c;
+			else if (req.pagadoPor === 'comprador') costos.comprador += c;
+			else if (req.pagadoPor === 'ambos') costos.ambos += c;
+			else if (req.pagadoPor === 'inmobiliaria') costos.inmobiliaria += c;
+			else costos.porDefinir += c;
+		}
+	}
+
+	// Tiempos
+	const pasoActual =
+		pasos.find((p) => p.estado === 'en_curso') || pasos.find((p) => p.estado === 'pendiente');
+	const diasTotales = pasos.reduce((acc, p) => acc + (p.duracionEstimadaDias || 0), 0);
+	const diasRestantes = pasos
+		.filter((p) => p.estado !== 'completado')
+		.reduce((acc, p) => acc + (p.duracionEstimadaDias || 0), 0);
+
+	let diasTranscurridos = 0;
+	if (expSeguro.fechaApertura) {
+		const diff = Date.now() - new Date(expSeguro.fechaApertura).getTime();
+		diasTranscurridos = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+	}
+
+	const tiempos: ResumenTiemposTramite = {
+		diasTranscurridos,
+		diasEstimadosTotales: diasTotales,
+		diasEstimadosRestantes: diasRestantes,
+		pasoActualTitulo: pasoActual?.titulo,
+		pasoActualResponsable: pasoActual?.responsable
+	};
+
+	const pendientesPorConfirmar = requisitosEvaluados.filter(
+		(r) => r.requiereConfirmacionNuevo
+	).length;
+
 	return {
 		config,
 		requisitos: requisitosEvaluados,
 		alertas,
+		pasos,
+		costos,
+		tiempos,
 		resumen: {
 			total,
 			completados,
-			porcentaje: total > 0 ? Math.round((completados / total) * 100) : 0,
+			porcentaje,
 			totalDocs: docs.length,
-			docsCompletados: docs.filter((r) => r.completado).length,
+			docsCompletados,
+			porcentajeDocs,
 			totalDatos: datos.length,
-			datosCompletados: datos.filter((r) => r.completado).length,
+			datosCompletados,
+			porcentajeDatos,
+			totalPasos,
+			pasosCompletados,
+			pasosEnCurso,
+			pasosBloqueados,
+			porcentajePasos,
+			pendientesPorConfirmar,
 			pendientesPorParte: {
 				comprador: requisitosEvaluados.filter((r) => r.parte === 'comprador' && !r.completado)
 					.length,

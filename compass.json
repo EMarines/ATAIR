@@ -1,0 +1,144 @@
+{
+  "projectId": "COMPASS-ATAIR-WA-BROADCAST",
+  "projectName": "ATAIR SGI: WhatsApp Masivo Oficial (WABA) & Escucha de Grupos (Evolution API)",
+  "vision": "Integrar una arquitectura Dual-Rail de WhatsApp en ATAIR SGI: Rail A oficial (Meta Cloud API / WABA v21.0) para envíos masivos inteligentes y seguimiento 1 a 1 en Etapas 3 y 4 con 0% riesgo de baneo; y Rail B satélite (Evolution API v2) para escucha pasiva de grupos inmobiliarios/AMPI, extracción de oportunidades con IA y sincronización en bitácora.",
+  "strategicSummary": {
+    "systemGoal": "Dotar a ATAIR SGI y a sus asesores de una máquina de difusión masiva oficial por WhatsApp 100% blindada contra bloqueos de Meta, con plantillas aprobadas, y un radar activo de escucha de grupos de colegas vía Evolution API para alimentar la cartera y la bitácora del CRM.",
+    "currentFocus": "Fase 2 Benchmarking & Fase 3 Infraestructura: Definición del pipeline Dual-Rail (Meta Cloud API v21.0 para 1 a 1 y masivos segmentados + Evolution API en Docker con número satélite para escucha de grupos en chats @g.us).",
+    "howWeAchieveIt": [
+      "Kickoff dialógico con Mina para validar cuenta WABA, presupuesto por conversación y disparadores de campaña",
+      "Desglose WBS por Apolo en tareas atómicas (Credenciales WABA, Webhook n8n con Rate Limiting, Módulo UI en ATAIR, Encolamiento Firestore, Bitácora de Envíos y Evolution API)",
+      "Arquitectura Dual-Rail por Argos y Lince: Meta Cloud API oficial para 1 a 1 (Green Tier) + Evolution API en número satélite aislado para monitoreo pasivo de grupos",
+      "Extracción semántica con Gemini en n8n para parsear solicitudes en grupos y convertirlas en leads o matches de inventario",
+      "Diseño por Clara y Nexo de plantillas persuasivas de marketing y ficha interactiva de propuesta",
+      "Filtro comercial por Beto para segmentación efectiva de cartera en Chihuahua"
+    ]
+  },
+  "status": "in_progress",
+  "createdAt": "2026-11-02",
+  "updatedAt": "2026-11-11",
+  "progressPercentage": 60,
+  "definitionOfDone": "Módulo de Campañas Masivas activo en ATAIR SGI que permite seleccionar segmentos de contactos en Etapas 3 y 4, previsualizar plantilla oficial aprobada por Meta, enviar a través de n8n/Meta Cloud API con tasa controlada, reflejar el estatus de entrega y lectura en la bitácora de cada cliente, y radar de escucha de grupos operando con Evolution API en número satélite.",
+  "squad": [
+    { "name": "Mina", "role": "Jefa de Gabinete & Memoria Viva", "avatar": "💼" },
+    { "name": "Maya", "role": "Master Orchestrator & Réferi", "avatar": "🧠" },
+    { "name": "Apolo", "role": "Arquitecto Técnico & WBS", "avatar": "🏛️" },
+    { "name": "Argos", "role": "Radar Tecnológico & I+D", "avatar": "🔭" },
+    { "name": "Lince", "role": "Auditor Técnico & Seguridad", "avatar": "🛡️" },
+    { "name": "Wero", "role": "Arquitecto de Bucles & Loops", "avatar": "⚡" },
+    { "name": "Clara", "role": "Diseño Visual & Maquetación", "avatar": "🎨" },
+    { "name": "Nexo", "role": "Copywriting & Narrativa", "avatar": "✍️" },
+    { "name": "Beto", "role": "Filtro Comercial & Realidad", "avatar": "🤝" }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "phase": "Fase 1: Kickoff Dialógico & Alcance",
+      "title": "Inception y Captura de Alcance WhatsApp Masivo",
+      "description": "Arranque oficial de la iniciativa bajo COMPASS. Determinación del caso de uso principal: difusión masiva de inventario a prospectos y colegas de bolsa inmobiliaria con la app oficial de WhatsApp.",
+      "status": "completed",
+      "owner": "Enrique Marines, Mina & Maya",
+      "squadBadges": ["Mina", "Maya", "Beto"],
+      "techStack": [
+        { "name": "COMPASS Navigator Engine", "category": "Gobernanza", "reason": "Marco rector de proyecto y fuente de verdad" },
+        { "name": "Doctrina Ecosistema Antigravity", "category": "Metodología", "reason": "Cero dispersión y Definition of Done innegociable" }
+      ],
+      "assemblyLog": "Iniciado el 02 de noviembre de 2026 por Enrique Marines para continuar ATAIR SGI conectando la app oficial de WA para envío de mensajes masivos.",
+      "completedAt": "2026-11-02"
+    },
+    {
+      "id": "TASK-002",
+      "phase": "Fase 2: Benchmarking & Arquitectura Dual-Rail",
+      "title": "Benchmarking Tecnológico y Diseño del Pipeline Dual-Rail (Argos & Lince)",
+      "description": "Evaluación comparativa de soluciones: Meta Cloud API directa vs n8n Queue vs Evolution API para grupos. Aprobación de arquitectura Dual-Rail: Meta Cloud API oficial (Graph API v21.0) para envíos masivos 1 a 1 y seguimiento de clientes; y Evolution API v2 para escucha pasiva de grupos inmobiliarios sin arriesgar la línea comercial.",
+      "status": "completed",
+      "owner": "Argos, Lince & Apolo",
+      "squadBadges": ["Argos", "Lince", "Apolo"],
+      "techStack": [
+        { "name": "Meta WhatsApp Cloud API (Graph API v21.0)", "category": "API Oficial", "reason": "Cero costo de intermediación por mensaje; conexión directa a la infraestructura de Meta para 1 a 1" },
+        { "name": "Evolution API v2 (Docker)", "category": "Pasarela WA Web", "reason": "Monitoreo y lectura de eventos de grupos de WhatsApp (@g.us) no soportados por la API oficial" },
+        { "name": "n8n Automation Engine (Self-Hosted)", "category": "Orquestador de Colas", "reason": "Control de tasa, reintentos automáticos, webhooks y registros de entrega sin saturar Vercel" }
+      ],
+      "assemblyLog": "Arquitectura híbrida Dual-Rail aprobada el 03 de noviembre de 2026: Frontend en SvelteKit (ATAIR CRM) genera la campaña masiva hacia n8n/Meta Cloud API para Etapas 3 y 4. Evolution API opera en segundo plano con número satélite para capturar mensajes de grupos de colegas, parsearlos con Gemini e inyectarlos en bitácora.",
+      "completedAt": "2026-11-03"
+    },
+    {
+      "id": "TASK-003",
+      "phase": "Fase 3: Infraestructura & Credenciales WABA",
+      "title": "Configuración de Token Permanente, Phone Number ID y Catálogo de Plantillas (Etapas 3 y 4)",
+      "description": "Verificación del Business Manager de Meta, obtención del System User Token perpetuo, registro del Phone Number ID oficial de Match Home/ATAIR y redacción de plantillas pre-aprobadas de Marketing y Utility con variables dinámicas.",
+      "status": "completed",
+      "owner": "Lince, Nexo & Clara",
+      "squadBadges": ["Lince", "Nexo", "Clara"],
+      "techStack": [
+        { "name": "Meta Business Suite & WhatsApp Manager", "category": "Infraestructura", "reason": "Aprobación de plantillas y administración del número oficial" },
+        { "name": "Copywriting Anti-Spam (Nexo)", "category": "Contenido", "reason": "Diseño de plantillas con alto índice de lectura y bajo reporte de spam" }
+      ],
+      "assemblyLog": "Completado el 03 de noviembre de 2026: Token permanente System User de ATAIR_backend inyectado en .env (HTTP 200 OK). Plantillas oficiales creadas automáticamente por API: 'reactivacion_permiso_matchhome' (ID 4163191577145732) y 'nuevo_inventario_match' (ID 954550714102246).",
+      "completedAt": "2026-11-03"
+    },
+    {
+      "id": "TASK-004",
+      "phase": "Fase 4: Frontend en ATAIR SGI",
+      "title": "Módulo UI de Campañas y Difusión Masiva en ATAIR (Solo Etapa 4 + Alta ≤ 2 años + Switch Manual/API)",
+      "description": "Refactorización de 'Buscar Contactos' en ficha de propiedad (`/property/[id]`): filtrado estricto exclusivo para Etapa 4 con fecha de alta ≤ 2 años (`isStage4ForBroadcast` / `isWithinMaxAgeYears(cont, 2)`), switch reactivado entre Manual (wa.me 1 a 1 por defecto cuando son pocos envíos) y Automático (Meta Cloud API vía `whatsappBroadcastStore` en 2° plano cuando son muchos), monitor flotante global (`WhatsappBroadcastMonitor`) y registro automático en `binnacles` con la plantilla aprobada `nuevo_inventario_match`.",
+      "status": "completed",
+      "owner": "Clara, Wero & Apolo",
+      "squadBadges": ["Clara", "Wero", "Apolo"],
+      "techStack": [
+        { "name": "SvelteKit + Global Store Queue", "category": "Frontend UI", "reason": "Switch inteligente entre wa.me 1 a 1 (pocos) y cola en segundo plano (muchos) sin bloqueo" },
+        { "name": "Firestore Binnacles Real-Time", "category": "Persistencia", "reason": "Movimiento instantáneo de contactos E4 de Por_Enviar a Ya_Se_Envió mediante onSnapshot" }
+      ],
+      "assemblyLog": "Actualizado el 11 de noviembre de 2026: Regla estricta fijada en Solo Etapa 4 (E4) + antigüedad máxima ≤ 2 años desde alta (`createdAt`) en UI, cola y endpoint WABA, manteniendo switch Manual (defecto, clic por clic wa.me sin consumir API) vs Automático (Meta Cloud API 2° plano).",
+      "completedAt": "2026-11-11"
+    },
+    {
+      "id": "TASK-005",
+      "phase": "Fase 5: Webhooks de Estatus & Cierre de DoD",
+      "title": "Recepción de Estatus (Sent/Delivered/Read) y Trazabilidad en CRM",
+      "description": "Configuración del webhook de retorno para capturar eventos de entrega y lectura de Meta, actualizando en tiempo real la bitácora del contacto (`binnacles`) y el porcentaje de apertura de la campaña.",
+      "status": "pending",
+      "owner": "Squad Completo",
+      "squadBadges": ["Wero", "Lince", "Mina", "Beto"],
+      "techStack": [
+        { "name": "Meta Webhooks Handler", "category": "Event Driven", "reason": "Notificación inmediata de lectura y respuestas de prospectos" },
+        { "name": "Firestore Contacts Store", "category": "CRM Core", "reason": "Actualización automática de último contacto y scoring de interés" }
+      ],
+      "assemblyLog": "Fase final de cierre para cumplir al 100% el Definition of Done de COMPASS.",
+      "completedAt": null
+    },
+    {
+      "id": "TASK-006",
+      "phase": "Fase 3: Infraestructura & Escucha de Grupos (Evolution API)",
+      "title": "Despliegue de Evolution API & Pipeline de Escucha Pasiva en Grupos",
+      "description": "Despliegue de instancia Evolution API v2 (Docker/Node.js) con número satélite dedicado para unirse a grupos de WhatsApp (bolsas inmobiliarias, AMPI, chats de gremio). Configuración de webhook hacia n8n para eventos `messages.upsert` en grupos (@g.us), parser IA (Gemini) para extracción de solicitudes (zona, presupuesto, tipología) e inyección automática en la bitácora/radar de ATAIR.",
+      "status": "pending",
+      "owner": "Argos, Lince & Apolo",
+      "squadBadges": ["Argos", "Lince", "Apolo", "Beto"],
+      "techStack": [
+        { "name": "Evolution API v2 (Docker)", "category": "Pasarela WA Web", "reason": "Soporte nativo de webhooks para grupos de WhatsApp y emulación multisesión" },
+        { "name": "Línea Satélite Aislada", "category": "Seguridad Operativa", "reason": "Blindaje total: cero riesgo de baneo para la línea matriz comercial WABA" },
+        { "name": "n8n + Gemini Parser", "category": "Procesamiento IA", "reason": "Extracción semántica estructurada de necesidades inmobiliarias desde texto libre" },
+        { "name": "Firestore Radar Store", "category": "CRM Core", "reason": "Registro automático en la bitácora de oportunidades y matching inverso" }
+      ],
+      "assemblyLog": "Aprobado por Enrique Marines el 03 de noviembre de 2026. Se adopta Evolution API con número satélite exclusivo para escucha pasiva de grupos sin arriesgar la línea matriz oficial WABA.",
+      "completedAt": null
+    },
+    {
+      "id": "TASK-007",
+      "phase": "Fase 4B: Calificación E3 → E4 (Llamadas + Formulario)",
+      "title": "Embudo de Conversión a Etapa 4: Llamadas Directas y Link con Formulario para E3",
+      "description": "Operación diferenciada para contactos fuera de Etapa 4: 1) Prioridad de llamadas telefónicas directas ('llamar y llamar') para perfilar y pasar prospectos no-E4 hacia Etapa 4; 2) Para contactos en Etapa 3 (E3) y lote frío +2 años, envío futuro (con capital WABA) de plantilla con formulario de perfilamiento que al llenarse cambie de E3 -> E4 con fecha reactivada (y quien diga NO o no conteste pase a isActive=false).",
+      "status": "in_progress",
+      "owner": "Enrique Marines, Beto, Wero & Apolo",
+      "squadBadges": ["Beto", "Wero", "Apolo", "Nexo"],
+      "techStack": [
+        { "name": "Radiografía Solo Lectura (/actions/cont-filter)", "category": "Auditoría DB", "reason": "Escaneo directo de Firestore sin fallback Date.now() para medir lote frío +2 años, sin fecha e intocables" },
+        { "name": "Formulario Web de Perfilamiento", "category": "Conversión E3 → E4", "reason": "Autocalificación del prospecto para promoverlo a Etapa 4 e integrarlo al matching de inventario" },
+        { "name": "Cola de Llamadas ATAIR / Agenda", "category": "Prospección Saliente", "reason": "Seguimiento telefónico activo sobre contactos no-E4 recientes (≤ 2 años) para convertirlos en compradores listos" }
+      ],
+      "assemblyLog": "11 nov 2026: Implementada la Radiografía de Cartera Solo Lectura en /actions/cont-filter (contactAudit.ts + UI interactiva + CSV) como paso previo antes de mover lote +2 años a E3 o archivar.",
+      "completedAt": null
+    }
+  ]
+}

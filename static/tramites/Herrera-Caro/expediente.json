@@ -1,0 +1,206 @@
+{
+  "id": "TRAMITE-2026-002",
+  "folderName": "Herrera/Caro",
+  "tipoOperacion": "Compraventa",
+  "modalidadCredito": "Crédito Hipotecario Bancario",
+  "estadoTramite": "Sucesión Madura • Apeo y Deslinde en Trámite • Listo para Crédito Bancario",
+  "fechaApertura": "2026-10-01",
+  "updatedAt": 1732356000000,
+  "contratoUrl": "/tramites/Herrera-Caro/Herrera-Caro.docx",
+  "contratoNombre": "Herrera-Caro.docx",
+  "configuracion": {
+    "tipoOperacion": "compraventa",
+    "formaPago": "bancario",
+    "comprador": {
+      "tipoPersona": "fisica",
+      "estadoCivil": "soltero"
+    },
+    "vendedor": {
+      "tipoPersona": "fisica",
+      "estadoCivil": "soltero"
+    },
+    "origenInmueble": "herencia_sucesion",
+    "situacionGravamen": "libre_gravamen",
+    "exentarIsrCasaHab": false,
+    "discrepanciaDomicilio": true,
+    "clausulasMasc": true
+  },
+  "inmueble": {
+    "calle": "Emiliano Zapata",
+    "numeroEscritura": "215",
+    "numeroOficial": "2222",
+    "colonia": "Revolución",
+    "codigoPostal": "31134",
+    "ciudad": "Chihuahua",
+    "estado": "Chihuahua",
+    "claveCatastral": "309-088-007",
+    "folioReal": "1203602",
+    "superficieTerrenoM2": 319.09,
+    "superficieConstruccionM2": 150.47,
+    "antecedentePropiedad": {
+      "tipoActo": "Sucesión / Adjudicación",
+      "numeroEscritura": "2894",
+      "volumen": "Libro 1933",
+      "fecha": "1986-05-02",
+      "notario": "H. Ayuntamiento de Chihuahua",
+      "numeroNotaria": 1,
+      "distrito": "Morelos",
+      "rppInscripcion": "2894",
+      "rppFolio": "1203602",
+      "rppLibro": "1933",
+      "rppSeccion": "Primera",
+      "rppFecha": "1986-05-02"
+    }
+  },
+  "partes": {
+    "vendedora": {
+      "nombre": "Ramiro Caro Molina (Sucesión) / Albacea Ramiro Caro Nájera",
+      "nombreEnEscritura": "Herlinda Nájera Marrufo y Ramiro Caro Molina",
+      "estadoCivil": "Soltero",
+      "rfc": "CANR600101XXX",
+      "curp": "CANR600101HCHXXX00",
+      "telefono": "614-123-4567",
+      "email": "ramiro.caro@gmail.com",
+      "domicilio": "Calle Emiliano Zapata 215, Col. Revolución, Chihuahua"
+    },
+    "compradorTitular": {
+      "nombre": "Yessica Herrera",
+      "estadoCivil": "Soltera",
+      "telefono": "614-987-6543",
+      "email": "yessica.herrera@gmail.com"
+    }
+  },
+  "financiero": {
+    "precioPactado": 1900000.0,
+    "rentaMensual": 0,
+    "apartadoEfectivo": 50000.0,
+    "fechaApartado": "2026-10-01",
+    "saldoRestante": 1850000.0,
+    "montoNetoInfonavit": 0,
+    "gapRecursosPropios": 0,
+    "porcentajeComisionInmobiliaria": 4,
+    "comisionInmobiliariaPactada": 76000.0
+  },
+  "datosCapturados": {
+    "vendedorNombre": "Ramiro Caro",
+    "compradorNombre": "Yessica Herrera",
+    "precioORentaPactado": "1900000"
+  },
+  "controlChecklist": {
+    "DOC_VEND_ESCRITURA": {
+      "estado": "validado_sistema",
+      "validadoPor": "Título Original 1986 Municipio",
+      "actualizadoEn": "2026-10-01"
+    },
+    "DOC_VEND_BOLETA_RPP": {
+      "estado": "validado_sistema",
+      "validadoPor": "Boleta RPP Folio 1203602",
+      "actualizadoEn": "2026-10-01"
+    },
+    "DOC_INM_PLANO_CATASTRAL": {
+      "estado": "validado_sistema",
+      "validadoPor": "Perito Tamez López (AMEZ)",
+      "actualizadoEn": "2026-10-01"
+    },
+    "DOC_INM_NUMERO_OFICIAL": {
+      "estado": "validado_sistema",
+      "validadoPor": "Constancia No. 215 DDUE",
+      "actualizadoEn": "2026-10-01"
+    },
+    "DOC_VEND_ACTA_SUCESION": {
+      "estado": "validado_sistema",
+      "validadoPor": "Acta Notarial 11086 Notaría 21",
+      "actualizadoEn": "2026-10-01"
+    }
+  },
+  "documentos": [
+    {
+      "id": "DOC-HC-001",
+      "nombre": "Titulo de Propiedad Original 1986 (Municipio de Chihuahua).pdf",
+      "tipo": "Escritura / Título",
+      "categoria": "vendedor",
+      "tamano": "1.4 MB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-002",
+      "nombre": "Acta Notarial 11000 - Radicacion Sucesion (Notaria 21).pdf",
+      "tipo": "Acta Sucesoria",
+      "categoria": "vendedor",
+      "tamano": "1.9 MB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-003",
+      "nombre": "Acta Notarial 11086 - Declaratoria de Herederos y Albacea (Notaria 21).pdf",
+      "tipo": "Declaratoria Herederos",
+      "categoria": "vendedor",
+      "tamano": "1.7 MB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-004",
+      "nombre": "Acta Notarial 3322 - Inventario y Avaluo (Notaria 1).pdf",
+      "tipo": "Inventario y Avalúo",
+      "categoria": "vendedor",
+      "tamano": "1.4 MB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-005",
+      "nombre": "Acta Notarial 3330 - Extincion de Patrimonio Familiar (Notaria 1).pdf",
+      "tipo": "Extinción Gravamen",
+      "categoria": "inmueble",
+      "tamano": "833 KB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-006",
+      "nombre": "Boleta RPP - Cancelacion de Patrimonio Familiar (Folio 1203602).pdf",
+      "tipo": "Boleta Registral RPP",
+      "categoria": "inmueble",
+      "tamano": "375 KB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-007",
+      "nombre": "Constancia de Numero Oficial 215 (DDUE Municipio).pdf",
+      "tipo": "Alineamiento y Número Oficial",
+      "categoria": "inmueble",
+      "tamano": "746 KB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-008",
+      "nombre": "Plano Catastral Actualizado 2026 (Perito Tamez Lopez - AMEZ).jpeg",
+      "tipo": "Plano Catastral",
+      "categoria": "inmueble",
+      "tamano": "242 KB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-009",
+      "nombre": "Plano Arquitectonico 2011 (Arq Loya Barffuson).pdf",
+      "tipo": "Plano Arquitectónico",
+      "categoria": "inmueble",
+      "tamano": "557 KB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-010",
+      "nombre": "Recibo Pago Tesoreria - Constancia de Zonificacion.jpeg",
+      "tipo": "Constancia Zonificación",
+      "categoria": "inmueble",
+      "tamano": "257 KB",
+      "fechaSubida": "2026-10-01"
+    },
+    {
+      "id": "DOC-HC-011",
+      "nombre": "Recibo Pago CUM - Carta No Adeudo.jpeg",
+      "tipo": "Carta No Adeudo CUM",
+      "categoria": "inmueble",
+      "tamano": "127 KB",
+      "fechaSubida": "2026-10-01"
+    }
+  ]
+}

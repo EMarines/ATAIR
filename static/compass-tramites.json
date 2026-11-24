@@ -1,0 +1,117 @@
+{
+  "projectId": "COMPASS-ATAIR-TRAMITES-2",
+  "projectName": "ATAIR Trámites 2.0 — Motor Dinámico, Ruta de Pasos y Tiempos",
+  "vision": "Convertir el módulo /tramites de ATAIR SGI en un gestor notarial e hipotecario de clase mundial con reglas 100% configurables desde Firebase (engrane ⚙️), alertas ⚠️ de requisitos nuevos en expedientes abiertos, desglose paso a paso por parte/dependencia con cálculo de tiempo de ejecución en días, y tarjetas iniciales con 3 métricas reales independientes.",
+  "strategicSummary": {
+    "systemGoal": "Permitir a Match Home y a su gestoría gestionar cualquier operación (Infonavit, Bancario, FOVISSSTE, Contado, Arrendamiento) sin depender de código para actualizar requisitos de dependencias, controlando costos por parte, pasos reales y tiempos estimados vs transcurridos.",
+    "currentFocus": "Bloque 1 completado (Engrane ⚙️ + JSON Seed en Firebase). Siguiente: Bloque 2 (TASK-004) — Motor mixto, alertas ⚠️ en trámites abiertos y costos en Financiero.",
+    "howWeAchieveIt": [
+      "Benchmarking Top 1% (Open To Close, Nekst, SkySlope, Qualia): separación estricta en 3 dimensiones (Documentos, Información y Pasos/Action Plan) + scope multi-select aplicaA[]",
+      "Catálogo Maestro JSON sembrado en Firebase (`tramites/__config_maestra__`) con soporte 100% editable desde UI (Documentos, Datos, Plantillas de Pasos y Ámbitos/Dependencias)",
+      "Sistema inteligente de detección ⚠️ en trámites abiertos (`regla.creadoEn > tramite.createdAt`) con botones 'Sí aplica' y 'No aplica' (guardando motivo)",
+      "Costos informativos por requisito + indicador de quién lo cubre (Vendedor / Comprador / Ambos / Por definir) y subtotal estimado en Financiero",
+      "Ruta de Pasos por expediente (1 paso por cada parte involucrada + trámites externos) con duración estimada en días y cálculo automático de tiempos"
+    ]
+  },
+  "status": "in_progress",
+  "priority": "ALTA",
+  "createdAt": "2026-11-23",
+  "updatedAt": "2026-11-23",
+  "progressPercentage": 48,
+  "definitionOfDone": "Engrane ⚙️ operativo editando/agregando/quitando documentos (con costo y pagador), datos, pasos (con días estimados) y ámbitos en Firebase; alerta ⚠️ con confirmación/descarte en trámites abiertos; pestaña de Pasos del Trámite por expediente; y tarjetas de inicio mostrando las 3 métricas reales independientes, paso actual y tiempo de ejecución.",
+  "squad": [
+    { "name": "Mina", "role": "Jefa de Gabinete & Memoria Viva", "avatar": "💼" },
+    { "name": "Maya", "role": "Master Orchestrator & Réferi", "avatar": "🧠" },
+    { "name": "Apolo", "role": "Arquitecto Técnico & WBS", "avatar": "🏛️" },
+    { "name": "Argos", "role": "Radar Tecnológico & Benchmarking", "avatar": "🔭" },
+    { "name": "Lince", "role": "Auditor Técnico & Seguridad", "avatar": "🛡️" },
+    { "name": "Wero", "role": "Circuit Breaker & Reglas", "avatar": "⚡" },
+    { "name": "Beto", "role": "Filtro Comercial Chihuahua", "avatar": "🤝" },
+    { "name": "Clara", "role": "Diseño UI/UX & Tarjetas", "avatar": "🎨" }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "phase": "Fase 1 & 2 — Kickoff COMPASS y Benchmarking MACRO",
+      "title": "Calibración Dialógica (8 Acuerdos), Benchmarking Top 1% y Circuit Breaker",
+      "description": "Levantamiento secuencial de los 8 acuerdos con Enrique Marines, benchmarking activo (Open To Close, Nekst, SkySlope, Qualia, SIANOT), investigación de tiempos y requisitos reales en México/Chihuahua (Infonavit 30-45d, Bancario 30-50d, FOVISSSTE 30-60d) y validación de permisos en firestore.rules.",
+      "status": "completed",
+      "owner": "Mina, Argos, Wero & Beto",
+      "squadBadges": ["Mina", "Argos", "Wero", "Beto"],
+      "techStack": [
+        { "name": "Protocolo COMPASS (95% Certidumbre)", "category": "Gobernanza", "reason": "8 acuerdos cerrados sin ambigüedad antes de codificar" },
+        { "name": "Bitácora #131 & #132", "category": "Trazabilidad", "reason": "Registro blindado en POR_ARREGLAR.md y PENDIENTES_Y_TAREAS.md" }
+      ],
+      "assemblyLog": "Completado el 23-nov-2026 con validación de estructura JSON maestra en `tramites/__config_maestra__` y cálculo de tiempos de ejecución.",
+      "completedAt": "2026-11-23"
+    },
+    {
+      "id": "TASK-002",
+      "phase": "Fase 3 — Base Visual",
+      "title": "Vista de Inicio Exclusiva con Tarjetas y Carga Local de Herrera/Caro (#130)",
+      "description": "Rediseño de /tramites para mostrar únicamente tarjetas en inicio, botón de retorno desde el detalle y carga unificada de Espinoza-Muñoz y Herrera/Caro.",
+      "status": "completed",
+      "owner": "Clara & Apolo",
+      "squadBadges": ["Clara", "Apolo"],
+      "techStack": [
+        { "name": "SvelteKit + atair-brand-identity", "category": "Frontend", "reason": "Tarjetas con elevación hover estándar y contraste corporativo" }
+      ],
+      "assemblyLog": "Implementado en src/routes/tramites/+page.svelte y tramiteService.ts; build de producción verificado con 0 errores.",
+      "completedAt": "2026-11-23"
+    },
+    {
+      "id": "TASK-003",
+      "phase": "Bloque 1 — Configuración Global (Engrane ⚙️)",
+      "title": "Catálogo Maestro JSON en Firebase + Panel Engrane ⚙️ en /tramites",
+      "description": "Creación de tipos maestros, Seed JSON completo (Bancario, Infonavit, FOVISSSTE, Contado, Arrendamiento con costos, dependencias, condiciones y días estimados por paso), persistencia en `tramites/__config_maestra__` y modal/drawer del Engrane ⚙️ para agregar, editar, activar/desactivar o eliminar Documentos, Datos, Pasos y Ámbitos.",
+      "status": "completed",
+      "owner": "Apolo, Lince & Clara",
+      "squadBadges": ["Apolo", "Lince", "Clara"],
+      "techStack": [
+        { "name": "Firestore JSON Master Document", "category": "Persistencia", "reason": "Almacenamiento en tramites/__config_maestra__ compatible 100% con firestore.rules" },
+        { "name": "Seed Automático + Restaurar Base", "category": "Resiliencia", "reason": "Auto-siembra la primera vez sin perder respaldo histórico" }
+      ],
+      "assemblyLog": "Completado el 23-nov-2026: catalogoBaseTramites.ts (26+ docs, 21 datos, 21 pasos con días estimados, 16 ámbitos), CRUD en tramiteService.ts y ConfiguracionMaestraModal.svelte conectado al botón ⚙️ Configurar en /tramites.",
+      "completedAt": "2026-11-23"
+    },
+    {
+      "id": "TASK-004",
+      "phase": "Bloque 2 — Motor Dinámico, Alerta ⚠️ y Costos",
+      "title": "Evaluador Mixto, Alerta ⚠️ ('Sí aplica' / 'No aplica' con motivo) y Subtotal Financiero",
+      "description": "Conexión del motor evaluador al Catálogo Maestro de Firebase, detección automática de requisitos nuevos (`creadoEn > tramite.createdAt`), botones de confirmación/descarte con motivo, alta de excepciones puntuales dentro de cada expediente y resumen de costos por parte en la pestaña Financiero.",
+      "status": "in_progress",
+      "owner": "Wero & Apolo",
+      "squadBadges": ["Wero", "Apolo", "Beto"],
+      "techStack": [
+        { "name": "Evaluador Declarativo JSON", "category": "Lógica", "reason": "Condiciones jurídicas evaluadas dinámicamente desde reglas JSON" }
+      ],
+      "assemblyLog": "Pendiente de ejecutar tras validar Bloque 1."
+    },
+    {
+      "id": "TASK-005",
+      "phase": "Bloque 3 — Ruta de Pasos por Trámite",
+      "title": "Pestaña Interactiva 'Pasos del Trámite' y Tiempos por Expediente",
+      "description": "Componente PasosTramite.svelte con secuencia paso a paso (1 paso por parte involucrada + gestoría externa), estados (Pendiente, En Curso, Completado, Bloqueado), duración estimada en días, adición/reordenamiento personalizado y actualización real de Espinoza-Muñoz y Herrera/Caro.",
+      "status": "pending",
+      "owner": "Clara, Beto & Apolo",
+      "squadBadges": ["Clara", "Beto", "Apolo"],
+      "techStack": [
+        { "name": "Action Plan Engine", "category": "UI/Workflow", "reason": "Inspirado en Nekst y Open To Close adaptado a notaría/Infonavit México" }
+      ],
+      "assemblyLog": "Pendiente de ejecutar tras Bloque 2."
+    },
+    {
+      "id": "TASK-006",
+      "phase": "Bloque 4 — Tarjetas Triples + Tiempo",
+      "title": "Tarjetas de Inicio con 3 Métricas Independientes, Paso Actual y Días de Ejecución",
+      "description": "Actualización final de las tarjetas de inicio para mostrar: 1) Avance del Trámite (Pasos reales) + píldora del Paso Actual, 2) Recabación de Documentos %, 3) Recolección de Información %, y 4) Tiempo de ejecución (días transcurridos / estimados totales y restantes).",
+      "status": "pending",
+      "owner": "Clara & Lince",
+      "squadBadges": ["Clara", "Lince"],
+      "techStack": [
+        { "name": "Dashboard 5-Second Rule", "category": "UI/UX", "reason": "Visibilidad ejecutiva instantánea por tarjeta" }
+      ],
+      "assemblyLog": "Pendiente de cierre final y auditoría."
+    }
+  ]
+}

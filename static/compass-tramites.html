@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COMPASS — ATAIR Trámites 2.0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b1120 70%, #030712 100%);
+      min-height: 100vh;
+      color: #f1f5f9;
+    }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.78);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8 max-w-6xl mx-auto">
+  <div id="app" class="space-y-6">
+    <div class="glass-card rounded-2xl p-6 border-l-4 border-indigo-500">
+      <div class="flex flex-wrap justify-between items-start gap-4">
+        <div>
+          <span class="text-xs font-mono uppercase tracking-widest text-indigo-400">COMPASS Project Navigator • ATAIR SGI</span>
+          <h1 id="project-name" class="text-2xl md:text-3xl font-bold mt-1 text-white">Cargando tablero COMPASS...</h1>
+          <p id="project-vision" class="text-sm text-slate-300 mt-2 max-w-3xl"></p>
+        </div>
+        <div class="text-right">
+          <div id="progress-badge" class="text-3xl font-bold text-emerald-400">0%</div>
+          <div class="text-xs text-slate-400">Avance Global WBS</div>
+        </div>
+      </div>
+      <div class="w-full bg-slate-800 h-2.5 rounded-full mt-4 overflow-hidden">
+        <div id="progress-bar" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full transition-all duration-500" style="width: 0%"></div>
+      </div>
+      <div id="focus-box" class="mt-4 p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs text-indigo-200"></div>
+    </div>
+
+    <div class="glass-card rounded-2xl p-6">
+      <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">🧭 Pipeline de Ejecución (WBS)</h2>
+      <div id="tasks-container" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <script>
+    const statusStyles = {
+      completed: { dot: 'bg-emerald-400', badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', label: '🟢 Completado' },
+      in_progress: { dot: 'bg-amber-400 animate-pulse', badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30', label: '🟡 En Curso' },
+      pending: { dot: 'bg-slate-500', badge: 'bg-slate-700/40 text-slate-300 border-slate-600/40', label: '⚪ Pendiente' }
+    };
+
+    async function render() {
+      const jsonUrl = window.location.pathname.includes('compass-tramites.html')
+        ? '/compass-tramites.json'
+        : './compass.json';
+      const res = await fetch(jsonUrl);
+      const data = await res.json();
+
+      document.getElementById('project-name').textContent = data.projectName;
+      document.getElementById('project-vision').textContent = data.vision;
+      document.getElementById('progress-badge').textContent = data.progressPercentage + '%';
+      document.getElementById('progress-bar').style.width = data.progressPercentage + '%';
+      document.getElementById('focus-box').innerHTML = `<strong>Foco Actual:</strong> ${data.strategicSummary?.currentFocus || ''}`;
+
+      const container = document.getElementById('tasks-container');
+      container.innerHTML = data.tasks.map((t) => {
+        const st = statusStyles[t.status] || statusStyles.pending;
+        const badges = (t.squadBadges || []).map(b => `<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px] border border-slate-700">${b}</span>`).join('');
+        const stack = (t.techStack || []).map(s => `<li class="text-xs text-slate-300"><strong class="text-indigo-300">${s.name}</strong> (${s.category}): ${s.reason}</li>`).join('');
+        return `
+          <div class="rounded-xl p-4 bg-slate-900/70 border border-slate-800 hover:border-indigo-500/40 transition">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full ${st.dot}"></span>
+                <span class="font-mono text-xs text-slate-400">${t.id}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full border ${st.badge}">${st.label}</span>
+              </div>
+              <span class="text-xs text-indigo-300 font-medium">${t.phase}</span>
+            </div>
+            <h3 class="text-base font-semibold text-white mt-2">${t.title}</h3>
+            <p class="text-xs text-slate-400 mt-1">${t.description}</p>
+            <div class="flex flex-wrap items-center gap-2 mt-3">${badges}</div>
+            <details class="mt-3 pt-2 border-t border-slate-800/80 text-xs">
+              <summary class="cursor-pointer text-indigo-400 hover:text-indigo-300 font-medium">Ver Stack Técnico y Bitácora de Ensamble</summary>
+              <div class="mt-2 space-y-2 pl-2">
+                <ul class="list-disc pl-4 space-y-1">${stack}</ul>
+                <div class="p-2 rounded bg-slate-950/60 text-slate-300 border border-slate-800">
+                  <strong>Ensamble:</strong> ${t.assemblyLog || 'Pendiente'}
+                </div>
+              </div>
+            </details>
+          </div>
+        `;
+      }).join('');
+    }
+    render();
+  </script>
+</body>
+</html>
