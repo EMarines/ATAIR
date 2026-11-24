@@ -165,7 +165,9 @@ export function getContactBadgeInfo(cont: Contact | null | undefined): ContactBa
 		case 4:
 			return { isAgent: false, shape: 'circle', text: 'E4', color: '#44cc44', tooltip: 'Etapa 4' };
 		case 5:
-			return { isAgent: false, shape: 'circle', text: 'E5', color: '#8844cc', tooltip: 'Etapa 5' };
+			return { isAgent: false, shape: 'circle', text: 'E5', color: '#8844cc', tooltip: 'Etapa 5 - Cierre' };
+		case 6:
+			return { isAgent: false, shape: 'circle', text: 'E6', color: '#2563eb', tooltip: 'Etapa 6 - Post-Venta' };
 		default:
 			return { isAgent: false, shape: 'circle', text: `E${normalizedStage}`, color: '#ff4444', tooltip: 'Etapa 1' };
 	}
