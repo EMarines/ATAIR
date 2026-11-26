@@ -5,7 +5,7 @@
 	// @ts-ignore
 	import { dbBinnacle, db } from '../../firebase';
     import { formatDate } from '$lib/functions/dateFunctions.js';
-    import { collection, onSnapshot, query, limit } from 'firebase/firestore';
+    import { collection, onSnapshot, query, limit, orderBy } from 'firebase/firestore';
     import { onDestroy } from 'svelte';
     // @ts-ignore
     import { systStatus } from '$lib/stores/store';
@@ -39,7 +39,7 @@
 
 // Renderizar Binaccle
         const unsubs = onSnapshot(
-            query(collection(db, "binnacles"), limit(50)),
+            query(collection(db, "binnacles"), orderBy("date", "desc"), limit(50)),
             (querySnapshot) => {
                 // @ts-ignore
                 toRenBinn = querySnapshot.docs.map(doc => {

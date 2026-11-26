@@ -18,6 +18,9 @@
     "ciudad": "Chihuahua",
     "estado": "Chihuahua",
     "claveCatastral": "191-016-021",
+    "claveCatastralEstandar": "08-001-019-00-0001-191-016-00021-00-0000",
+    "claveCatastral31": "0800101900000119101600021000000",
+    "claveCatastralMunicipalLarga": "001-019-00-0001-191-016-00021-00-0000",
     "folioReal": "1120676",
     "superficieTerrenoM2": 121.0,
     "superficieConstruccionM2": 70.0,
@@ -419,9 +422,21 @@
       "obligatorioPara": "Expediente Notarial",
       "completado": false,
       "estatus": "Pendiente de Descarga RENAPO (Clave lista: MUVF510503MTSXLL08)"
+    },
+    {
+      "id": "VEND-013",
+      "concepto": "Cédula Catastral Oficial (Municipio de Chihuahua)",
+      "obligatorioPara": "Ingreso de Expediente Infonavit y Avalúo (Solicitada por Samuel Caraveo)",
+      "completado": false,
+      "estatus": "En Trámite ante Catastro Municipal (Clave: 191-016-021)"
     }
   ],
   "controlChecklist": {
+    "DOC_INM_CEDULA_CATASTRAL": {
+      "estado": "pendiente",
+      "observacion": "Solicitada por tramitador Infonavit Samuel Caraveo. En gestión ante Catastro Municipal (Clave 191-016-021).",
+      "actualizadoEn": "2026-11-26"
+    },
     "DOC_COMP_INE": {
       "estado": "observacion",
       "validadoPor": "Revisión Formato INE",
@@ -565,5 +580,11 @@
     "comprador": {
       "regimenConyugal": "separacion_bienes"
     }
+  },
+  "tramitadorInfonavit": {
+    "nombre": "Samuel Caraveo",
+    "rol": "Tramitador Registrado Infonavit",
+    "estatus": "Ingresando expediente / Solicitó Cédula Catastral",
+    "actualizadoEn": "2026-11-26"
   }
 }

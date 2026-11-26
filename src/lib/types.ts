@@ -170,6 +170,48 @@ export interface Binnacle {
   action?: string;
   comment?: string;
   to?: string;
+  direction?: 'inbound' | 'outbound';
+  channel?: string;
+  messageType?: string;
+  messageId?: string;
+  fromPhone?: string;
+  waEventId?: string;
+  mediaUrl?: string;
+  mediaPath?: string;
+  mediaType?: string;
+  mediaMimeType?: string;
+  mediaFilename?: string;
+  summary?: string;
+}
+
+export interface WaAttachment {
+  url: string;
+  path: string;
+  mimeType: string;
+  filename: string;
+  sizeBytes?: number;
+  mediaType?: string;
+}
+
+export interface WaEvent {
+  id?: string;
+  contactId: string;
+  direction: 'inbound' | 'outbound';
+  channel: string;
+  messageType: string;
+  messageId?: string;
+  fromPhone?: string;
+  toPhone?: string;
+  recipientPhoneId?: string;
+  recipientDisplayPhone?: string;
+  text: string;
+  summary?: string;
+  timestampMs: number;
+  attachments?: WaAttachment[];
+  hasAttachments: boolean;
+  binnacleId?: string;
+  createdAt: number;
+  updatedAt?: number;
 }
 
 export interface CopilotoTodoMeta {

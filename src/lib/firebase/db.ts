@@ -1,4 +1,4 @@
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '$lib/firebase';
 import { normalizeProperty } from '$lib/functions/normalizeProperty';
 import type { Contact, Binnacle, Todo, Property } from '$types';
@@ -29,7 +29,7 @@ export async function getBinnacles(): Promise<Binnacle[]> {
             console.warn('Firestore no está inicializado en getBinnacles');
             return [];
         }
-        const snapshot = await getDocs(collection(db, 'binnacles'));
+        const snapshot = await getDocs(query(collection(db, 'binnacles'), orderBy('date', 'desc'), limit(800)));
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Binnacle));
     } catch (error) {
         console.error('Error al obtener bitácoras de Firebase:', error);
