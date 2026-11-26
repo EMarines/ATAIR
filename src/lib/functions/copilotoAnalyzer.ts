@@ -1,5 +1,10 @@
 import type { Binnacle } from '$lib/types';
-import type { CopilotoCandidate, CopilotoStage } from './copilotoPlanner';
+import {
+	evaluateColdReactivationState,
+	type CopilotoCandidate,
+	type CopilotoColdStep,
+	type CopilotoStage
+} from './copilotoPlanner';
 import { getContactCreatedAtMs } from './contactBadge';
 
 export type CopilotoExecutionType = 'call' | 'whatsapp' | 'e3_form';
@@ -13,6 +18,10 @@ export interface BinnacleSummary {
 	lastInboundMs: number | null;
 	lastOutboundMs: number | null;
 	hoursSinceLastTouch: number | null;
+	daysSinceLastTouch: number | null;
+	isColdOver180Days: boolean;
+	coldStep?: CopilotoColdStep;
+	repliedToStep1: boolean;
 	shouldSuggestE3Drop: boolean;
 }
 
@@ -37,6 +46,10 @@ export interface CopilotoAnalyzedCard {
 	usedFallback: boolean;
 	isE1Over10Days?: boolean;
 	e1Step?: 'send_options' | 'followup_call';
+	isColdOver180Days?: boolean;
+	coldStep?: CopilotoColdStep;
+	repliedToStep1?: boolean;
+	daysSinceLastTouch?: number | null;
 }
 
 const GEMINI_RESPONSE_SCHEMA = {
@@ -145,6 +158,40 @@ export function summarizeContactBinnacles(
 	const latestTouchMs = Math.max(lastInboundMs ?? 0, lastOutboundMs ?? 0, candidate.createdAtMs ?? 0);
 	const hoursSinceLastTouch =
 		latestTouchMs > 0 ? Math.max(0, Math.round((nowMs - latestTouchMs) / 3600_000)) : null;
+	const daysSinceLastTouch =
+		latestTouchMs > 0 ? Math.max(0, Math.floor((nowMs - latestTouchMs) / 86_400_000)) : null;
+
+	// Evaluar estado de reactivación >180d con el historial completo de bitácoras del contacto
+	const isColdEligibleStage =
+		candidate.stage === 'E1' || candidate.stage === 'E2' || candidate.stage === 'E3';
+	const coldState = isColdEligibleStage
+		? evaluateColdReactivationState(
+				{
+					id: candidate.contactId,
+					createdAtMs: candidate.createdAtMs,
+					lastContactMs: candidate.lastContactMs,
+					lastResponseMs: candidate.lastResponseMs
+				},
+				sorted,
+				[],
+				nowMs
+			)
+		: null;
+
+	let isColdOver180Days = Boolean(coldState?.isColdOver180Days && coldState?.coldStep);
+	let coldStep: CopilotoColdStep | undefined = coldState?.coldStep;
+	let repliedToStep1 = Boolean(coldState?.repliedToStep1);
+
+	// Respaldar si el planner detectó Paso 2 mediante todo completado aunque no estuviera en bitácoras
+	if (isColdEligibleStage && coldState?.lastStep1Ms === null && candidate.coldStep === 'step2_send_link') {
+		isColdOver180Days = true;
+		coldStep = 'step2_send_link';
+		repliedToStep1 = Boolean(candidate.repliedToStep1);
+	}
+
+	const completedColdStep2 =
+		Boolean(coldState?.lastStep2Ms) &&
+		(!lastInboundMs || lastInboundMs <= (coldState?.lastStep2Ms ?? 0));
 
 	const recentTimeline = sorted.slice(0, 15).map((item) => {
 		const raw = item as any;
@@ -157,8 +204,11 @@ export function summarizeContactBinnacles(
 
 	const shouldSuggestE3Drop =
 		(candidate.stage === 'E1' || candidate.stage === 'E2') &&
-		callsWithoutReply >= 2 &&
-		propertySendsWithoutReply >= 2;
+		coldStep !== 'step1_check' &&
+		!repliedToStep1 &&
+		((callsWithoutReply >= 2 && propertySendsWithoutReply >= 2) ||
+			propertySendsWithoutReply >= 5 ||
+			completedColdStep2);
 
 	return {
 		totalEntries: sorted.length,
@@ -168,12 +218,44 @@ export function summarizeContactBinnacles(
 		lastInboundMs,
 		lastOutboundMs,
 		hoursSinceLastTouch,
+		daysSinceLastTouch,
+		isColdOver180Days,
+		coldStep,
+		repliedToStep1,
 		shouldSuggestE3Drop
 	};
 }
 
-function ensureRequiredLinksInDraft(draft: string, candidate: CopilotoCandidate): string {
+function getEffectiveBuscarUrl(candidate: CopilotoCandidate): string {
+	if (candidate.e3FormUrl) return candidate.e3FormUrl;
+	if (!candidate.contactId) return '';
+	return `https://matchhome.vercel.app/buscar?c=${encodeURIComponent(candidate.contactId)}`;
+}
+
+function ensureRequiredLinksInDraft(
+	draft: string,
+	candidate: CopilotoCandidate,
+	summary?: BinnacleSummary
+): string {
 	let text = String(draft || '').trim();
+	const effectiveBuscarUrl = getEffectiveBuscarUrl(candidate);
+
+	// En Paso 1 (>180d) NO debe enviarse link todavía (se reserva para Paso 2 o si contesta "sí")
+	if (summary?.isColdOver180Days && summary?.coldStep === 'step1_check') {
+		if (effectiveBuscarUrl && text.includes(effectiveBuscarUrl)) {
+			text = text.replaceAll(effectiveBuscarUrl, '').replace(/\n{3,}/g, '\n\n').trim();
+		}
+		return text;
+	}
+
+	// En Paso 2 (>180d) SIEMPRE debe incluirse el link literal /buscar?c=...
+	if (summary?.isColdOver180Days && summary?.coldStep === 'step2_send_link' && effectiveBuscarUrl) {
+		if (!text.includes(effectiveBuscarUrl)) {
+			text = `${text}\n\n${effectiveBuscarUrl}`.trim();
+		}
+		return text;
+	}
+
 	if (
 		(candidate.stage === 'E4' || (candidate.stage === 'E1' && candidate.e1Step === 'send_options')) &&
 		candidate.matchedProperties.length > 0
@@ -184,9 +266,9 @@ function ensureRequiredLinksInDraft(draft: string, candidate: CopilotoCandidate)
 		if (missingLinks.length > 0) {
 			text = `${text}\n\n${missingLinks.join('\n')}`.trim();
 		}
-	} else if (candidate.stage === 'E3' && candidate.e3FormUrl) {
-		if (!text.includes(candidate.e3FormUrl)) {
-			text = `${text}\n\n${candidate.e3FormUrl}`.trim();
+	} else if (candidate.stage === 'E3' && effectiveBuscarUrl) {
+		if (!text.includes(effectiveBuscarUrl)) {
+			text = `${text}\n\n${effectiveBuscarUrl}`.trim();
 		}
 	}
 	return text;
@@ -199,8 +281,105 @@ export function buildFallbackCopilotoCard(
 	const firstName = candidate.name?.trim() || 'Hola';
 	const propertyIds = candidate.matchedProperties.map((p) => p.public_id).filter(Boolean);
 	const propertyLinks = candidate.matchedProperties.map((p) => p.proposalUrl).filter(Boolean);
-	const e3FormUrl = candidate.e3FormUrl || '';
+	const e3FormUrl =
+		summary.isColdOver180Days || candidate.stage === 'E3'
+			? getEffectiveBuscarUrl(candidate)
+			: candidate.e3FormUrl || '';
 	const suggestedStageChange: CopilotoSuggestedStage = summary.shouldSuggestE3Drop ? 'E3' : 'NONE';
+
+	// Estrategia unificada >180 días para E1, E2 y E3 (2 pasos: Paso 1 sin link -> espera 2 días -> Paso 2 con link)
+	if (
+		summary.isColdOver180Days &&
+		(candidate.stage === 'E1' || candidate.stage === 'E2' || candidate.stage === 'E3')
+	) {
+		const daysLabel =
+			summary.daysSinceLastTouch !== null
+				? `hace ${summary.daysSinceLastTouch} días`
+				: 'hace más de 180 días';
+
+		if (summary.coldStep === 'step2_send_link') {
+			if (summary.repliedToStep1) {
+				return {
+					contactId: candidate.contactId,
+					fullName: candidate.fullName,
+					telephon: candidate.telephon,
+					stage: candidate.stage,
+					priority: candidate.priority,
+					taskTitle: `🔥 ${candidate.stage} · Respondió Paso 1: Enviar link a ${candidate.fullName}`.slice(0, 75),
+					action: `¡Reaccionar rápido! ${candidate.fullName} respondió al Paso 1; enviarle ahora el link de nuestra herramienta de búsqueda para promoverlo a E4.`,
+					objective:
+						'Aprovechar su interés inmediato para que capture en 30 seg qué busca y suba automáticamente a Etapa 4 (E4).',
+					why: `El prospecto en ${candidate.stage} contestó tras el Paso 1 de reactivación (>180 días). Conviene enviarle el link de inmediato.`,
+					recommendedExecution: 'whatsapp',
+					whatsappDraft: `Hola ${firstName}, ¡qué gusto saludarte! Te envío el link para que nos digas qué características tiene la casa de tus sueños y poder buscártela:\n\n${e3FormUrl}`,
+					suggestedStageChange: 'NONE',
+					propertyIds: [],
+					propertyLinks: [],
+					e3FormUrl,
+					callsWithoutReply: summary.callsWithoutReply,
+					propertySendsWithoutReply: summary.propertySendsWithoutReply,
+					usedFallback: true,
+					isColdOver180Days: true,
+					coldStep: 'step2_send_link',
+					repliedToStep1: true,
+					daysSinceLastTouch: summary.daysSinceLastTouch
+				};
+			}
+
+			return {
+				contactId: candidate.contactId,
+				fullName: candidate.fullName,
+				telephon: candidate.telephon,
+				stage: candidate.stage,
+				priority: candidate.priority,
+				taskTitle: `🔗 ${candidate.stage} (>180d) · Paso 2: Enviar link a ${candidate.fullName}`.slice(0, 75),
+				action: `Enviar segundo toque (Paso 2) a ${candidate.fullName} con el link de la herramienta de búsqueda rápida.`,
+				objective:
+					'Segunda oportunidad tras 2 días sin respuesta: si llena el link sube automático a E4; si tampoco responde, depurar a E3/inactivo.',
+				why: `Lead en ${candidate.stage} (>180d): pasaron 2 o más días sin respuesta al Paso 1. Se envía el Paso 2 con el link directo.`,
+				recommendedExecution: 'whatsapp',
+				whatsappDraft: `Hola ${firstName}, te envío el link para que nos digas qué características tiene la casa de tus sueños y poder buscártela:\n\n${e3FormUrl}`,
+				suggestedStageChange,
+				propertyIds: [],
+				propertyLinks: [],
+				e3FormUrl,
+				callsWithoutReply: summary.callsWithoutReply,
+				propertySendsWithoutReply: summary.propertySendsWithoutReply,
+				usedFallback: true,
+				isColdOver180Days: true,
+				coldStep: 'step2_send_link',
+				repliedToStep1: false,
+				daysSinceLastTouch: summary.daysSinceLastTouch
+			};
+		}
+
+		// Paso 1 (sin link, esperando respuesta "¿Te interesa?")
+		return {
+			contactId: candidate.contactId,
+			fullName: candidate.fullName,
+			telephon: candidate.telephon,
+			stage: candidate.stage,
+			priority: candidate.priority,
+			taskTitle: `❄️ ${candidate.stage} (>180d) · Paso 1: Confirmar si busca casa — ${candidate.fullName}`.slice(0, 75),
+			action: `Preguntar a ${candidate.fullName} si sigue buscando casa y si le interesa nuestra nueva herramienta rápida (Paso 1, sin link).`,
+			objective:
+				'Tener dos oportunidades: abrir conversación sin presión. Si dice "sí", mandarle rápido el link para subirlo a E4; si no contesta, en 2 días se envía el Paso 2 con el link.',
+			why: `Lead en ${candidate.stage} con último contacto ${daysLabel} (${summary.totalEntries} registros en bitácora). Por regla >180 días se aplica reactivación en 2 pasos (Paso 1 sin link; Paso 2 con link a los 2 días).`,
+			recommendedExecution: 'whatsapp',
+			whatsappDraft: `Hola ${firstName}, hace tiempo que no platicamos y quería saber si sigues buscando casa o si ya lograste resolver. Si sigues en búsqueda, estrenamos una herramienta rápida (30 seg) donde nos indicas qué necesitas y te enviamos solo opciones nuevas que sí encajen contigo, sin llenarte de mensajes. ¿Te interesa?`,
+			suggestedStageChange: 'NONE',
+			propertyIds: [],
+			propertyLinks: [],
+			e3FormUrl,
+			callsWithoutReply: summary.callsWithoutReply,
+			propertySendsWithoutReply: summary.propertySendsWithoutReply,
+			usedFallback: true,
+			isColdOver180Days: true,
+			coldStep: 'step1_check',
+			repliedToStep1: false,
+			daysSinceLastTouch: summary.daysSinceLastTouch
+		};
+	}
 
 	if (candidate.stage === 'E1') {
 		const propHint = candidate.propCont ? ` por ${candidate.propCont}` : '';
@@ -380,6 +559,21 @@ export function buildCopilotoPrompt(
 		E3: 'Etapa E3 (Filtro / Reactivación): enviar el link exacto del formulario ligero explicando amablemente que si desea seguir recibiendo propiedades nos llene qué busca.'
 	};
 
+	const effectiveStageRule =
+		summary.isColdOver180Days &&
+		(candidate.stage === 'E1' || candidate.stage === 'E2' || candidate.stage === 'E3')
+			? summary.coldStep === 'step2_send_link'
+				? summary.repliedToStep1
+					? `REGLA PRIORITARIA >180 DÍAS - PASO 2 (EL LEAD RESPONDIÓ AL PASO 1): el prospecto acaba de responder al primer mensaje de reactivación. Hoy debes reaccionar rápido por WhatsApp enviándole el link literal de la herramienta de búsqueda para que indique qué características tiene la casa de sus sueños y poder buscársela (sube automático a E4). Canal: whatsapp.`
+					: `REGLA UNIFICADA >180 DÍAS (E1/E2/E3) - PASO 2 (TRAS 2 DÍAS SIN RESPUESTA): pasaron 2 o más días desde el Paso 1 sin respuesta. Hoy corresponde el segundo mensaje por WhatsApp enviándole el link literal de la herramienta de búsqueda con un tono breve y amable como: "Hola [Nombre], te envío el link para que nos digas qué características tiene la casa de tus sueños y poder buscártela" seguido del link exacto. Canal: whatsapp.`
+				: `REGLA UNIFICADA >180 DÍAS (E1/E2/E3) - PASO 1 (SIN LINK): el último contacto con este lead fue hace más de 180 días. NO asumas que sigue buscando activamente ni le pidas presupuesto/recámaras todavía, y NO incluyas ningún link en el mensaje. Redacta un WhatsApp natural siguiendo fielmente esta estructura: saludar diciendo que hace tiempo no platican, preguntar si sigue buscando casa o si ya logró resolver, comentar que si sigue en búsqueda estrenamos una herramienta rápida (30 seg) donde indica qué necesita y le enviamos solo opciones nuevas que sí encajen con él sin llenarlo de mensajes, y cerrar preguntando "¿Te interesa?". Canal: whatsapp. suggestedStageChange debe ser "NONE".`
+			: stageRules[candidate.stage];
+
+	const effectiveBuscarUrl =
+		summary.isColdOver180Days || candidate.stage === 'E3'
+			? getEffectiveBuscarUrl(candidate)
+			: candidate.e3FormUrl || '';
+
 	const propsText =
 		candidate.matchedProperties.length > 0
 			? candidate.matchedProperties
@@ -394,11 +588,11 @@ export function buildCopilotoPrompt(
 Analiza al siguiente lead y su bitácora para generar la tarjeta de la Agenda de hoy.
 
 REGLA DE LA ETAPA:
-${stageRules[candidate.stage]}
+${effectiveStageRule}
 
 DATOS DEL LEAD:
 - Nombre: ${candidate.fullName}
-- Etapa actual: ${candidate.stage}${candidate.isColdOver2y ? ' (antigüedad > 2 años)' : candidate.isE1Over10Days ? ` (>10 días, paso: ${candidate.e1Step})` : ''}
+- Etapa actual: ${candidate.stage}${summary.isColdOver180Days ? ` (>180 días sin contacto, paso: ${summary.coldStep}${summary.repliedToStep1 ? ', RESPONDIÓ PASO 1' : ''})` : candidate.isColdOver2y ? ' (antigüedad > 2 años)' : candidate.isE1Over10Days ? ` (>10 días, paso: ${candidate.e1Step})` : ''}
 - Propiedad de interés inicial: ${candidate.propCont || 'No especificada'}
 - Tipo buscado: ${candidate.selecTP || 'No especificado'} | Presupuesto: ${candidate.budget > 0 ? `$${candidate.budget.toLocaleString('es-MX')}` : candidate.rangeProp || 'No especificado'}
 - Zonas: ${candidate.locaProperty.join(', ') || 'No especificadas'}
@@ -407,7 +601,7 @@ DATOS DEL LEAD:
 MÉTRICAS DE BITÁCORA DESDE ÚLTIMA RESPUESTA:
 - Llamadas sin respuesta: ${summary.callsWithoutReply}
 - Envíos de propiedades sin respuesta: ${summary.propertySendsWithoutReply}
-- Horas desde último toque: ${summary.hoursSinceLastTouch ?? 'Sin registro'}
+- Días desde último toque: ${summary.daysSinceLastTouch ?? 'Sin registro'} (${summary.hoursSinceLastTouch ?? 'Sin registro'}h)
 - ¿Cumple criterio de caída a E3?: ${summary.shouldSuggestE3Drop ? 'SÍ' : 'NO'}
 
 ÚLTIMOS REGISTROS DE BITÁCORA (más reciente primero):
@@ -416,13 +610,13 @@ ${summary.recentTimeline.length > 0 ? summary.recentTimeline.join('\n') : 'Sin r
 PROPIEDADES COMPATIBLES / RECOMENDADAS (para E4 o E1 >10d):
 ${propsText}
 
-LINK FORMULARIO E3 (si etapa es E3):
-${candidate.e3FormUrl || 'N/A'}
+LINK HERRAMIENTA DE BÚSQUEDA (/buscar):
+${summary.coldStep === 'step1_check' ? 'NO INCLUIR EN PASO 1 (reservar para Paso 2 o respuesta positiva)' : effectiveBuscarUrl || 'N/A'}
 
 INSTRUCCIONES DE SALIDA:
 - Sé concreto, natural y directo (español de México).
-- En whatsappDraft: tono cercano, profesional, sin hashtags; si hay links en PROPIEDADES o LINK FORMULARIO E3, inclúyelos literalmente sin modificarlos.
-- Si etapa es E1 o E2 y "¿Cumple criterio de caída a E3?" es SÍ, pon suggestedStageChange="E3" y explícalo en "why".`;
+- En whatsappDraft: tono cercano, profesional, sin hashtags; si el paso es Paso 1 (>180d) NO incluyas ningún URL ni link; si hay links requeridos (PROPIEDADES o LINK HERRAMIENTA DE BÚSQUEDA en Paso 2 / E3), inclúyelos literalmente sin modificarlos.
+- Si etapa es E1 o E2 y "¿Cumple criterio de caída a E3?" es SÍ (y NO es Paso 1 >180d), pon suggestedStageChange="E3" y explícalo en "why".`;
 }
 
 export async function analyzeCandidateWithGemini(
@@ -499,8 +693,12 @@ export async function analyzeCandidateWithGemini(
 				objective: String(parsed.objective || fallback.objective).trim(),
 				why: String(parsed.why || fallback.why).trim(),
 				recommendedExecution: execType,
-				whatsappDraft: ensureRequiredLinksInDraft(parsed.whatsappDraft || fallback.whatsappDraft, candidate),
-				suggestedStageChange: suggestedStage,
+				whatsappDraft: ensureRequiredLinksInDraft(
+					parsed.whatsappDraft || fallback.whatsappDraft,
+					candidate,
+					summary
+				),
+				suggestedStageChange: summary.coldStep === 'step1_check' ? 'NONE' : suggestedStage,
 				usedFallback: false
 			};
 		} catch {

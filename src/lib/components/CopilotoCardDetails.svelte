@@ -50,7 +50,13 @@
 				}
 			} else {
 				const actionLabel =
-					meta.stage === 'E3' ? 'Formulario E3 enviado por WhatsApp: ' : 'WhatsApp Copiloto enviado: ';
+					meta.coldStep === 'step1_check'
+						? 'Reactivación >180d Paso 1 (Copiloto): '
+						: meta.coldStep === 'step2_send_link'
+							? 'Reactivación >180d Paso 2 - Link /buscar (Copiloto): '
+							: meta.stage === 'E3'
+								? 'Formulario E3 enviado por WhatsApp: '
+								: 'WhatsApp Copiloto enviado: ';
 				await infoToBinnacle({
 					date: Date.now(),
 					to: meta.contactId,
@@ -148,6 +154,19 @@
 			dispatch('complete', todoItem);
 		}
 	}
+
+	async function copyQuickStep2Reply() {
+		if (!meta.e3FormUrl) return;
+		const firstName = String(meta.fullName || '').trim().split(/\s+/)[0] || '';
+		const greeting = firstName ? `Hola ${firstName}, ` : 'Hola, ';
+		const replyMsg = `${greeting}te envío el link para que nos digas qué características tiene la casa de tus sueños y poder buscártela:\n\n${meta.e3FormUrl}`;
+		try {
+			await navigator.clipboard.writeText(replyMsg);
+			feedbackMsg = '📋 Respuesta con link /buscar copiada: lista para pegar si contesta "sí".';
+		} catch {
+			feedbackMsg = `🔗 Link listo: ${meta.e3FormUrl}`;
+		}
+	}
 </script>
 
 <div class="copiloto-drawer" on:click|stopPropagation on:keydown|stopPropagation role="region" aria-label="Detalle Copiloto IA">
@@ -172,6 +191,21 @@
 			<span class="lead-name">{meta.fullName || 'Lead'}</span>
 			{#if meta.telephon}
 				<span class="lead-phone">📞 {meta.telephon}</span>
+			{/if}
+			{#if meta.isColdOver180Days}
+				<span
+					class="cold-pill"
+					class:cold-pill-hot={meta.repliedToStep1}
+					title="Estrategia unificada de reactivación >180 días (2 pasos)"
+				>
+					{#if meta.repliedToStep1}
+						🔥 Respondió Paso 1 · Enviar link
+					{:else if meta.coldStep === 'step2_send_link'}
+						🔗 &gt;180d · Paso 2/2 (Con link)
+					{:else}
+						❄️ &gt;180d · Paso 1/2 (Sin link)
+					{/if}
+				</span>
 			{/if}
 			{#if (meta.callsWithoutReply || 0) > 0 || (meta.propertySendsWithoutReply || 0) > 0}
 				<span class="silence-pill" title="Intentos acumulados sin respuesta">
@@ -244,8 +278,26 @@
 			{:else}
 				<button type="button" class="btn-exec btn-wa-primary" on:click={executeWhatsAppSend} disabled={isBusy || !meta.telephon}>
 					<i class="fa-brands fa-whatsapp"></i>
-					{meta.stage === 'E3' ? 'Enviar Formulario E3 (1 Clic)' : 'Enviar WhatsApp (1 Clic)'}
+					{#if meta.coldStep === 'step1_check'}
+						Enviar Paso 1 por WhatsApp (Sin link)
+					{:else if meta.coldStep === 'step2_send_link'}
+						Enviar Link /buscar · Paso 2 (1 Clic)
+					{:else if meta.stage === 'E3'}
+						Enviar Formulario E3 (1 Clic)
+					{:else}
+						Enviar WhatsApp (1 Clic)
+					{/if}
 				</button>
+				{#if meta.coldStep === 'step1_check' && meta.e3FormUrl}
+					<button
+						type="button"
+						class="btn-exec btn-copy-link"
+						on:click={copyQuickStep2Reply}
+						title="Copia el mensaje con el link personalizado por si el lead responde 'sí' de inmediato"
+					>
+						<i class="fa-solid fa-link"></i> Copiar respuesta con link
+					</button>
+				{/if}
 				<a class="btn-exec btn-call-alt" href={`tel:${cleanPhone(meta.telephon)}`}>
 					<i class="fa-solid fa-phone"></i> Llamar
 				</a>
@@ -363,6 +415,38 @@
 		background: rgba(245, 158, 11, 0.14);
 		color: #d97706;
 		font-weight: 600;
+	}
+
+	.cold-pill {
+		font-size: 0.72rem;
+		padding: 2px 8px;
+		border-radius: 6px;
+		background: rgba(56, 189, 248, 0.16);
+		color: #0284c7;
+		font-weight: 700;
+	}
+
+	:global([data-theme="dark"]) .cold-pill {
+		color: #7dd3fc;
+	}
+
+	.cold-pill-hot {
+		background: rgba(239, 68, 68, 0.16);
+		color: #dc2626;
+	}
+
+	:global([data-theme="dark"]) .cold-pill-hot {
+		color: #fca5a5;
+	}
+
+	.btn-copy-link {
+		background: rgba(99, 102, 241, 0.16);
+		color: #4f46e5;
+		border: 1px solid rgba(99, 102, 241, 0.35);
+	}
+
+	:global([data-theme="dark"]) .btn-copy-link {
+		color: #c7d2fe;
 	}
 
 	:global([data-theme="dark"]) .silence-pill {

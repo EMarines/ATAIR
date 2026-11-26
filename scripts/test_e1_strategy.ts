@@ -472,4 +472,191 @@ assert.ok(
 );
 console.log('✓ Backfill a 20 con E3 validado con éxito: garantiza las 20 tareas diarias aun sin otras etapas.');
 
+// 10. TEST Estrategia Unificada >180 días en 2 Pasos (E1, E2 y E3)
+console.log('\n[Test 10] Validando Estrategia Unificada >180 días en 2 Pasos (E1, E2 y E3)...');
+const fourHundredDaysAgo = nowMs - 400 * 86_400_000;
+const twoHundredDaysAgo = nowMs - 200 * 86_400_000;
+const thirtyHoursAgo = nowMs - 30 * 3600_000;
+const fiftyHoursAgo = nowMs - 50 * 3600_000;
+const fourHoursAgo = nowMs - 4 * 3600_000;
+const twoHoursAgo = nowMs - 2 * 3600_000;
+
+const coldE1: Contact = {
+	id: 'cold-e1',
+	name: 'Carlos',
+	lastname: 'FríoE1',
+	telephon: '6148000001',
+	contactStage: 'E1',
+	createdAt: fourHundredDaysAgo,
+	lastContact: twoHundredDaysAgo
+} as any;
+
+const coldE2Victor: Contact = {
+	id: 'cold-e2-victor',
+	name: 'Víctor',
+	lastname: 'Yañez',
+	telephon: '6142195858',
+	contactStage: 'E2',
+	createdAt: fourHundredDaysAgo,
+	lastContact: fourHundredDaysAgo
+} as any;
+
+const coldE3: Contact = {
+	id: 'cold-e3',
+	name: 'Sofía',
+	lastname: 'FríaE3',
+	telephon: '6148000003',
+	contactStage: 'E3',
+	createdAt: fourHundredDaysAgo,
+	lastContact: twoHundredDaysAgo
+} as any;
+
+const coldStep1Waiting: Contact = {
+	id: 'cold-waiting-2d',
+	name: 'Mario',
+	lastname: 'Espera2d',
+	telephon: '6148000004',
+	contactStage: 'E2',
+	createdAt: fourHundredDaysAgo,
+	lastContact: thirtyHoursAgo
+} as any;
+
+const coldStep2Ready: Contact = {
+	id: 'cold-step2-ready',
+	name: 'Laura',
+	lastname: 'Paso2',
+	telephon: '6148000005',
+	contactStage: 'E2',
+	createdAt: fourHundredDaysAgo,
+	lastContact: fiftyHoursAgo
+} as any;
+
+const coldStep1Replied: Contact = {
+	id: 'cold-replied-fast',
+	name: 'Jorge',
+	lastname: 'RespondióSí',
+	telephon: '6148000006',
+	contactStage: 'E1',
+	createdAt: fourHundredDaysAgo,
+	lastContact: fourHoursAgo,
+	lastResponse: twoHoursAgo
+} as any;
+
+const coldBinnacles: Binnacle[] = [
+	// 8 envíos antiguos a Víctor sin respuesta (>1 año atrás)
+	...Array.from({ length: 8 }, (_, idx) => ({
+		id: `v-old-${idx}`,
+		to: 'cold-e2-victor',
+		action: 'Propiedad enviada: ',
+		comment: `EB-OLD${idx}`,
+		date: fourHundredDaysAgo
+	})) as any,
+	// Mario recibió Paso 1 hace 30h (aún no cumple 48h / 2 días)
+	{
+		id: 'b-wait-1',
+		to: 'cold-waiting-2d',
+		action: 'Reactivación >180d Paso 1 (Copiloto): ',
+		comment: 'Hola Mario...',
+		date: thirtyHoursAgo
+	} as any,
+	// Laura recibió Paso 1 hace 50h sin respuesta (>= 48h -> toca Paso 2)
+	{
+		id: 'b-step2-1',
+		to: 'cold-step2-ready',
+		action: 'Reactivación >180d Paso 1 (Copiloto): ',
+		comment: 'Hola Laura...',
+		date: fiftyHoursAgo
+	} as any,
+	// Jorge recibió Paso 1 hace 4h y contestó hace 2h -> fast-track Paso 2 inmediato
+	{
+		id: 'b-rep-1',
+		to: 'cold-replied-fast',
+		action: 'Reactivación >180d Paso 1 (Copiloto): ',
+		comment: 'Hola Jorge...',
+		date: fourHoursAgo
+	} as any,
+	{
+		id: 'b-rep-in',
+		to: 'cold-replied-fast',
+		action: 'WhatsApp recibido: ',
+		comment: 'Sí, todavía sigo buscando casa!',
+		date: twoHoursAgo
+	} as any
+];
+
+const planCold = planCopilotoCandidates(
+	[coldE1, coldE2Victor, coldE3, coldStep1Waiting, coldStep2Ready, coldStep1Replied],
+	catalogProperties,
+	coldBinnacles,
+	[],
+	{ nowMs, baseUrl: 'https://matchhome.vercel.app' }
+);
+
+// Mario (30h desde Paso 1) DEBE ser omitido hasta cumplir 48h
+assert.strictEqual(
+	planCold.candidates.some((c) => c.contactId === 'cold-waiting-2d'),
+	false,
+	'Lead con Paso 1 hace 30h sin respuesta debe esperar los 2 días (48h)'
+);
+
+// E1, E2 y E3 >180d reciben Paso 1 sin link en borrador pero con e3FormUrl disponible para copiar
+for (const cid of ['cold-e1', 'cold-e2-victor', 'cold-e3']) {
+	const cand = planCold.candidates.find((c) => c.contactId === cid);
+	assert.ok(cand, `${cid} debe ser incluido en el plan`);
+	assert.strictEqual(cand!.isColdOver180Days, true, `${cid} debe marcarse >180d`);
+	assert.strictEqual(cand!.coldStep, 'step1_check', `${cid} debe iniciar en Paso 1`);
+	assert.ok(cand!.e3FormUrl?.includes(`/buscar?c=${cid}`), `${cid} debe traer link /buscar listo para copiar`);
+
+	const summary = summarizeContactBinnacles(
+		coldBinnacles.filter((b) => b.to === cid),
+		cand!,
+		nowMs
+	);
+	const card = buildFallbackCopilotoCard(cand!, summary);
+	assert.strictEqual(card.coldStep, 'step1_check');
+	assert.strictEqual(card.recommendedExecution, 'whatsapp');
+	assert.ok(card.whatsappDraft.includes('¿Te interesa?'), `${cid} Paso 1 debe cerrar con "¿Te interesa?"`);
+	assert.ok(!card.whatsappDraft.includes('/buscar?c='), `${cid} Paso 1 NO debe incluir el link todavía`);
+	assert.strictEqual(card.suggestedStageChange, 'NONE', `${cid} Paso 1 no debe sugerir bajar a E3 todavía`);
+}
+
+// Laura (50h sin respuesta tras Paso 1) recibe Paso 2 con link /buscar
+const candStep2 = planCold.candidates.find((c) => c.contactId === 'cold-step2-ready');
+assert.ok(candStep2, 'Laura debe aparecer tras 48h para Paso 2');
+assert.strictEqual(candStep2!.coldStep, 'step2_send_link');
+assert.strictEqual(candStep2!.repliedToStep1, false);
+const cardStep2 = buildFallbackCopilotoCard(
+	candStep2!,
+	summarizeContactBinnacles(
+		coldBinnacles.filter((b) => b.to === 'cold-step2-ready'),
+		candStep2!,
+		nowMs
+	)
+);
+assert.ok(cardStep2.whatsappDraft.includes('la casa de tus sueños'), 'Paso 2 debe mencionar la casa de tus sueños');
+assert.ok(
+	cardStep2.whatsappDraft.includes('https://matchhome.vercel.app/buscar?c=cold-step2-ready'),
+	'Paso 2 debe incluir el link exacto /buscar'
+);
+
+// Jorge (contestó al Paso 1 hace 2h) salta el periodo de gracia y la espera de 2 días -> Paso 2 urgente con link
+const candReplied = planCold.candidates.find((c) => c.contactId === 'cold-replied-fast');
+assert.ok(candReplied, 'Jorge debe entrar inmediato al responder Paso 1');
+assert.strictEqual(candReplied!.coldStep, 'step2_send_link');
+assert.strictEqual(candReplied!.repliedToStep1, true);
+const cardReplied = buildFallbackCopilotoCard(
+	candReplied!,
+	summarizeContactBinnacles(
+		coldBinnacles.filter((b) => b.to === 'cold-replied-fast'),
+		candReplied!,
+		nowMs
+	)
+);
+assert.strictEqual(cardReplied.repliedToStep1, true);
+assert.ok(
+	cardReplied.whatsappDraft.includes('https://matchhome.vercel.app/buscar?c=cold-replied-fast'),
+	'Respuesta rápida a Paso 1 debe incluir el link exacto /buscar'
+);
+console.log('✓ Estrategia Unificada >180 días (Paso 1 sin link -> 2 días -> Paso 2 con link + fast-track) 100% validada.');
+
 console.log('\n🎉 ALL_COPILOTO_TESTS_PASSED! 100% de pruebas unitarias exitosas.');

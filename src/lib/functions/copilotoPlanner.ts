@@ -9,6 +9,230 @@ import {
 import { getProposalUrl } from './urlUtils';
 
 export type CopilotoStage = 'E1' | 'E2' | 'E3' | 'E4';
+export type CopilotoColdStep = 'step1_check' | 'step2_send_link';
+
+export const COLD_REACTIVATION_DAYS = 180;
+export const COLD_REACTIVATION_MS = COLD_REACTIVATION_DAYS * 86_400_000;
+export const COLD_STEP2_WAIT_HOURS = 48;
+export const COLD_STEP2_WAIT_MS = COLD_STEP2_WAIT_HOURS * 3600_000;
+
+export interface ColdReactivationState {
+	isColdOver180Days: boolean;
+	coldStep?: CopilotoColdStep;
+	repliedToStep1: boolean;
+	waitingForStep2: boolean;
+	daysSinceLastTouch: number | null;
+	lastStep1Ms: number | null;
+	lastStep2Ms: number | null;
+}
+
+function normalizeActionText(raw: unknown): string {
+	return String(raw ?? '')
+		.toLowerCase()
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.trim();
+}
+
+export function isColdStep1Binnacle(entry: Binnacle): boolean {
+	const act = normalizeActionText(entry?.action);
+	return act.includes('reactivacion >180d paso 1') || act.includes('reactivacion paso 1');
+}
+
+export function isColdStep2Binnacle(entry: Binnacle): boolean {
+	const act = normalizeActionText(entry?.action);
+	return (
+		act.includes('reactivacion >180d paso 2') ||
+		act.includes('reactivacion paso 2') ||
+		act.includes('link /buscar (copiloto)')
+	);
+}
+
+function isInboundBinnacleEntry(entry: Binnacle): boolean {
+	const act = normalizeActionText(entry?.action);
+	return act.includes('whatsapp recibido') || act.includes('respuesta') || act.includes('inbound');
+}
+
+/**
+ * Evalúa el estado de reactivación en 2 pasos para leads fríos (>180 días sin contacto) en E1, E2 y E3:
+ * - Paso 1 (sin link): preguntar si sigue buscando casa y si le interesa la nueva herramienta rápida.
+ * - Espera 2 días (48h) sin respuesta; si el lead responde antes, acelera de inmediato el Paso 2.
+ * - Paso 2 (con link /buscar): enviar link personalizado para capturar características de la casa de sus sueños.
+ */
+export function evaluateColdReactivationState(
+	contact: {
+		id?: string;
+		createdAtMs?: number | null;
+		lastContactMs?: number | null;
+		lastResponseMs?: number | null;
+		createdAt?: any;
+		lastContact?: any;
+		lastResponse?: any;
+	},
+	contactBinnacles: Binnacle[],
+	existingTodos: Todo[] = [],
+	nowMs: number = Date.now()
+): ColdReactivationState {
+	const contactId = String(contact?.id || '').trim();
+	const createdAtMs =
+		contact?.createdAtMs !== undefined
+			? contact.createdAtMs
+			: getContactCreatedAtMs(contact?.createdAt);
+	const contactLastContactMs =
+		contact?.lastContactMs !== undefined
+			? contact.lastContactMs
+			: getContactCreatedAtMs(contact?.lastContact);
+	const contactLastResponseMs =
+		contact?.lastResponseMs !== undefined
+			? contact.lastResponseMs
+			: getContactCreatedAtMs(contact?.lastResponse);
+
+	let lastStep1Ms: number | null = null;
+	let lastStep2Ms: number | null = null;
+	let latestInboundMs: number | null = contactLastResponseMs ?? null;
+	let latestOutboundMs: number | null = contactLastContactMs ?? null;
+	let latestBinnacleMs: number | null = null;
+
+	for (const b of contactBinnacles || []) {
+		if (contactId && b?.to && String(b.to).trim() !== contactId) continue;
+		const ms = getContactCreatedAtMs((b as any)?.date ?? (b as any)?.createdAt);
+		if (!ms) continue;
+
+		if (!latestBinnacleMs || ms > latestBinnacleMs) latestBinnacleMs = ms;
+
+		if (isColdStep1Binnacle(b)) {
+			if (!lastStep1Ms || ms > lastStep1Ms) lastStep1Ms = ms;
+		}
+		if (isColdStep2Binnacle(b)) {
+			if (!lastStep2Ms || ms > lastStep2Ms) lastStep2Ms = ms;
+		}
+		if (isInboundBinnacleEntry(b)) {
+			if (!latestInboundMs || ms > latestInboundMs) latestInboundMs = ms;
+		} else {
+			if (!latestOutboundMs || ms > latestOutboundMs) latestOutboundMs = ms;
+		}
+	}
+
+	// Respaldo con todos completados recientes de Copiloto por si las 800 bitácoras globales no alcanzaron el Paso 1
+	if (contactId && Array.isArray(existingTodos)) {
+		for (const todo of existingTodos) {
+			if ((todo as any)?.source !== 'atair_copiloto') continue;
+			const meta = (todo as any)?.copilotoMeta;
+			if (String(meta?.contactId || '').trim() !== contactId) continue;
+			const isDone = Boolean((todo as any)?.isCompleted ?? (todo as any)?.completed);
+			if (!isDone) continue;
+			const doneMs =
+				getContactCreatedAtMs((todo as any)?.completedAt) ??
+				getContactCreatedAtMs(meta?.executedAt) ??
+				getContactCreatedAtMs((todo as any)?.createdAt);
+			if (!doneMs) continue;
+			if (meta?.coldStep === 'step1_check' && (!lastStep1Ms || doneMs > lastStep1Ms)) {
+				lastStep1Ms = doneMs;
+			}
+			if (meta?.coldStep === 'step2_send_link' && (!lastStep2Ms || doneMs > lastStep2Ms)) {
+				lastStep2Ms = doneMs;
+			}
+		}
+	}
+
+	const latestTouchMs = Math.max(
+		latestInboundMs ?? 0,
+		latestOutboundMs ?? 0,
+		latestBinnacleMs ?? 0,
+		createdAtMs ?? 0
+	);
+	const daysSinceLastTouch =
+		latestTouchMs > 0 ? Math.max(0, Math.floor((nowMs - latestTouchMs) / 86_400_000)) : null;
+
+	// ¿Hay un Paso 1 activo pendiente de Paso 2? (enviado dentro de los últimos 30 días y sin Paso 2 posterior)
+	const hasPendingStep1 =
+		lastStep1Ms !== null &&
+		nowMs - lastStep1Ms <= 30 * 86_400_000 &&
+		(lastStep2Ms === null || lastStep2Ms < lastStep1Ms);
+
+	if (hasPendingStep1 && lastStep1Ms !== null) {
+		const repliedAfterStep1 = latestInboundMs !== null && latestInboundMs > lastStep1Ms;
+		const advisorRepliedAfterInbound =
+			repliedAfterStep1 &&
+			latestInboundMs !== null &&
+			latestOutboundMs !== null &&
+			latestOutboundMs > latestInboundMs;
+
+		if (repliedAfterStep1 && !advisorRepliedAfterInbound) {
+			// El prospecto contestó al Paso 1 -> reaccionar rápido para mandarle el link (Paso 2 inmediato)
+			return {
+				isColdOver180Days: true,
+				coldStep: 'step2_send_link',
+				repliedToStep1: true,
+				waitingForStep2: false,
+				daysSinceLastTouch,
+				lastStep1Ms,
+				lastStep2Ms
+			};
+		}
+
+		if (repliedAfterStep1 && advisorRepliedAfterInbound) {
+			// El asesor ya le respondió después de su mensaje: sale del flujo frío
+			return {
+				isColdOver180Days: false,
+				repliedToStep1: true,
+				waitingForStep2: false,
+				daysSinceLastTouch,
+				lastStep1Ms,
+				lastStep2Ms
+			};
+		}
+
+		const elapsedSinceStep1 = nowMs - lastStep1Ms;
+		if (elapsedSinceStep1 < COLD_STEP2_WAIT_MS) {
+			// Todavía dentro de la ventana de espera de 2 días (48h) tras el Paso 1
+			return {
+				isColdOver180Days: true,
+				repliedToStep1: false,
+				waitingForStep2: true,
+				daysSinceLastTouch,
+				lastStep1Ms,
+				lastStep2Ms
+			};
+		}
+
+		// Ya pasaron >= 2 días sin respuesta tras el Paso 1 -> toca Paso 2 con el link
+		return {
+			isColdOver180Days: true,
+			coldStep: 'step2_send_link',
+			repliedToStep1: false,
+			waitingForStep2: false,
+			daysSinceLastTouch,
+			lastStep1Ms,
+			lastStep2Ms
+		};
+	}
+
+	// Si no hay Paso 1 pendiente, verificar si el último contacto tiene >180 días (o sin fecha alguna)
+	const isColdOver180Days =
+		latestTouchMs > 0 ? nowMs - latestTouchMs > COLD_REACTIVATION_MS : true;
+
+	if (isColdOver180Days) {
+		return {
+			isColdOver180Days: true,
+			coldStep: 'step1_check',
+			repliedToStep1: false,
+			waitingForStep2: false,
+			daysSinceLastTouch,
+			lastStep1Ms,
+			lastStep2Ms
+		};
+	}
+
+	return {
+		isColdOver180Days: false,
+		repliedToStep1: false,
+		waitingForStep2: false,
+		daysSinceLastTouch,
+		lastStep1Ms,
+		lastStep2Ms
+	};
+}
 
 export interface CopilotoMatchedPropertySummary {
 	id: string;
@@ -42,6 +266,10 @@ export interface CopilotoCandidate {
 	e3FormUrl?: string;
 	isE1Over10Days?: boolean;
 	e1Step?: 'send_options' | 'followup_call';
+	isColdOver180Days?: boolean;
+	coldStep?: CopilotoColdStep;
+	repliedToStep1?: boolean;
+	daysSinceLastTouch?: number | null;
 }
 
 export interface CopilotoPlanOptions {
@@ -181,11 +409,19 @@ function buildCandidateRecord(
 	isColdOver2y: boolean,
 	matchedProperties: CopilotoMatchedPropertySummary[],
 	baseUrl: string,
-	extra?: { isE1Over10Days?: boolean; e1Step?: 'send_options' | 'followup_call' }
+	extra?: {
+		isE1Over10Days?: boolean;
+		e1Step?: 'send_options' | 'followup_call';
+		isColdOver180Days?: boolean;
+		coldStep?: CopilotoColdStep;
+		repliedToStep1?: boolean;
+		daysSinceLastTouch?: number | null;
+	}
 ): CopilotoCandidate {
 	const fullName = `${contact.name || ''} ${contact.lastname || ''}`.trim() || 'Sin nombre';
 	const contactId = String(contact.id || '').trim();
 	const cleanBase = baseUrl.replace(/\/+$/, '');
+	const includeBuscarLink = stage === 'E3' || Boolean(extra?.isColdOver180Days);
 	return {
 		contactId,
 		name: contact.name || '',
@@ -208,7 +444,11 @@ function buildCandidateRecord(
 		matchedProperties,
 		isE1Over10Days: extra?.isE1Over10Days,
 		e1Step: extra?.e1Step,
-		...(stage === 'E3'
+		isColdOver180Days: extra?.isColdOver180Days,
+		coldStep: extra?.coldStep,
+		repliedToStep1: extra?.repliedToStep1,
+		daysSinceLastTouch: extra?.daysSinceLastTouch,
+		...(includeBuscarLink
 			? { e3FormUrl: `${cleanBase}/buscar?c=${encodeURIComponent(contactId)}` }
 			: {})
 	};
@@ -295,6 +535,16 @@ export function planCopilotoCandidates(
 	let skippedAlreadyOpenOrToday = 0;
 	let skippedGracePeriod = 0;
 
+	// Pre-indexar bitácoras por contacto para acelerar búsquedas de estado frío y periodo de gracia
+	const binnaclesByContact = new Map<string, Binnacle[]>();
+	for (const b of binnacles || []) {
+		const toId = String(b?.to || '').trim();
+		if (!toId) continue;
+		const arr = binnaclesByContact.get(toId);
+		if (arr) arr.push(b);
+		else binnaclesByContact.set(toId, [b]);
+	}
+
 	for (const contact of contacts || []) {
 		if (!contact?.id) continue;
 		if (isProtectedOrNonBuyer(contact)) continue;
@@ -304,22 +554,66 @@ export function planCopilotoCandidates(
 			continue;
 		}
 
-		// Tiempo de Gracia: si el contacto tuvo interacción en las últimas 20h, respetar tiempo de reacción
-		if (isContactInGracePeriod(contact, binnacles, gracePeriodMs, nowMs)) {
+		const contactId = String(contact.id || '').trim();
+		const contactBinnacles = binnaclesByContact.get(contactId) || [];
+		const badge = getContactBadgeInfo(contact);
+		const within2y = isWithinMaxAgeYears(contact, 2, nowMs);
+		const effectiveStage = !within2y ? 'E3' : badge.text;
+
+		// Regla unificada >180 días para E1, E2 y E3 (2 pasos: Paso 1 sin link -> espera 2 días -> Paso 2 con link)
+		const coldState =
+			effectiveStage === 'E1' || effectiveStage === 'E2' || effectiveStage === 'E3'
+				? evaluateColdReactivationState(contact, contactBinnacles, existingTodos, nowMs)
+				: null;
+
+		if (coldState?.waitingForStep2) {
+			// Todavía dentro de la espera de 2 días (48h) sin respuesta tras Paso 1
 			skippedGracePeriod++;
 			continue;
 		}
 
-		const badge = getContactBadgeInfo(contact);
-		const within2y = isWithinMaxAgeYears(contact, 2, nowMs);
+		// Si el lead respondió al Paso 1, NO esperar periodo de gracia: reaccionar rápido para enviar el link
+		const fastTrackStep2Reply = Boolean(
+			coldState?.repliedToStep1 && coldState?.coldStep === 'step2_send_link'
+		);
+
+		// Tiempo de Gracia: si el contacto tuvo interacción en las últimas 20h, respetar tiempo de reacción
+		if (!fastTrackStep2Reply && isContactInGracePeriod(contact, contactBinnacles, gracePeriodMs, nowMs)) {
+			skippedGracePeriod++;
+			continue;
+		}
+
+		const coldExtra =
+			coldState?.isColdOver180Days && coldState?.coldStep
+				? {
+						isColdOver180Days: true,
+						coldStep: coldState.coldStep,
+						repliedToStep1: coldState.repliedToStep1,
+						daysSinceLastTouch: coldState.daysSinceLastTouch
+					}
+				: undefined;
 
 		// Leads con más de 2 años (o sin fecha) se tratan como E3 en cola fría
 		if (!within2y) {
-			e3ColdPool.push(buildCandidateRecord(contact, 'E3', 4, true, [], baseUrl));
+			e3ColdPool.push(buildCandidateRecord(contact, 'E3', 4, true, [], baseUrl, coldExtra));
 			continue;
 		}
 
 		if (badge.text === 'E1') {
+			if (coldExtra) {
+				// Lead E1 con >180 días sin contacto (o en seguimiento de Paso 2): aplica flujo unificado de reactivación
+				const rec = buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
+					isE1Over10Days: false,
+					...coldExtra
+				});
+				if (coldExtra.repliedToStep1) {
+					e1YesterdayList.push(rec);
+				} else {
+					e1OlderList.push(rec);
+				}
+				continue;
+			}
+
 			const createdAtMs = getContactCreatedAtMs((contact as any).createdAt);
 			const isFromYesterday = isContactFromYesterdayOrNewer(createdAtMs, nowMs);
 
@@ -333,10 +627,9 @@ export function planCopilotoCandidates(
 			} else {
 				// E1 más antiguo (acumulado): aplicar estrategia de 2 pasos si tiene >10 días
 				const isE1Over10Days = createdAtMs !== null && nowMs - createdAtMs > 10 * 86_400_000;
-				const contactId = String(contact.id || '').trim();
 
 				if (isE1Over10Days) {
-					const lastSendMs = getMostRecentPropertySendMs(contactId, binnacles);
+					const lastSendMs = getMostRecentPropertySendMs(contactId, contactBinnacles);
 
 					if (lastSendMs !== null) {
 						const sendAgeMs = nowMs - lastSendMs;
@@ -358,7 +651,7 @@ export function planCopilotoCandidates(
 						const matchedProps = findPropertiesInPriceRangeForContact(contact, properties, {
 							tolerance: 0.25,
 							excludeAlreadySent: true,
-							binnacles,
+							binnacles: contactBinnacles,
 							maxResults: 3
 						});
 
@@ -402,12 +695,12 @@ export function planCopilotoCandidates(
 				}
 			}
 		} else if (badge.text === 'E2') {
-			e2List.push(buildCandidateRecord(contact, 'E2', 2, false, [], baseUrl));
+			e2List.push(buildCandidateRecord(contact, 'E2', 2, false, [], baseUrl, coldExtra));
 		} else if (badge.text === 'E4') {
 			const matches = matchPropertiesForContact(contact, properties, {
 				synergyOnly: true,
 				excludeAlreadySent: true,
-				binnacles,
+				binnacles: contactBinnacles,
 				maxResults: 3
 			});
 			if (matches.length === 0) continue;
@@ -425,12 +718,16 @@ export function planCopilotoCandidates(
 
 			e4List.push(buildCandidateRecord(contact, 'E4', 3, false, summaries, baseUrl));
 		} else if (badge.text === 'E3') {
-			e3RecentPool.push(buildCandidateRecord(contact, 'E3', 4, false, [], baseUrl));
+			e3RecentPool.push(buildCandidateRecord(contact, 'E3', 4, false, [], baseUrl, coldExtra));
 		}
 	}
 
-	const byMostRecent = (a: CopilotoCandidate, b: CopilotoCandidate) =>
-		(b.createdAtMs ?? 0) - (a.createdAtMs ?? 0);
+	const byMostRecent = (a: CopilotoCandidate, b: CopilotoCandidate) => {
+		const aReply = a.repliedToStep1 ? 1 : 0;
+		const bReply = b.repliedToStep1 ? 1 : 0;
+		if (aReply !== bReply) return bReply - aReply;
+		return (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0);
+	};
 
 	e1YesterdayList.sort(byMostRecent);
 	e1OlderList.sort(byMostRecent); // "empezando con los mas recientes"

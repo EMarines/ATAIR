@@ -192,6 +192,10 @@ export interface CopilotoTodoMeta {
   propertySendsWithoutReply?: number;
   isE1Over10Days?: boolean;
   e1Step?: 'send_options' | 'followup_call' | string;
+  isColdOver180Days?: boolean;
+  coldStep?: 'step1_check' | 'step2_send_link' | string;
+  repliedToStep1?: boolean;
+  daysSinceLastTouch?: number | null;
   proposedClose?: boolean;
   proposedCloseReason?: string;
   proposedCloseAt?: number;

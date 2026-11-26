@@ -22,9 +22,17 @@ export {
 	parseRangeBounds,
 	wasPropertySentToContact
 } from './propertyMatching';
-export { getChihuahuaDateKey, planCopilotoCandidates } from './copilotoPlanner';
+export {
+	COLD_REACTIVATION_DAYS,
+	COLD_STEP2_WAIT_HOURS,
+	evaluateColdReactivationState,
+	getChihuahuaDateKey,
+	planCopilotoCandidates
+} from './copilotoPlanner';
 export type {
+	ColdReactivationState,
 	CopilotoCandidate,
+	CopilotoColdStep,
 	CopilotoMatchedPropertySummary,
 	CopilotoPlanOptions,
 	CopilotoPlanResult,
