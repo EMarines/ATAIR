@@ -203,8 +203,8 @@
                   color: white;
                   font-weight: 700;
                   font-family: 'Segoe UI', Arial, sans-serif;
-                  font-size: 0.82rem;
-                  letter-spacing: 0.5px;
+                  font-size: {badge.text.length >= 3 ? '0.66rem' : '0.82rem'};
+                  letter-spacing: {badge.text.length >= 3 ? '0px' : '0.5px'};
                   z-index: 9999;
                   box-shadow: 0 3px 6px rgba(0,0,0,0.35);
                   border: 2px solid white;

@@ -50,6 +50,8 @@ export interface CopilotoAnalyzedCard {
 	coldStep?: CopilotoColdStep;
 	repliedToStep1?: boolean;
 	daysSinceLastTouch?: number | null;
+	isPausedCheckIn?: boolean;
+	pausedReactivateAt?: number | null;
 }
 
 const GEMINI_RESPONSE_SCHEMA = {
@@ -286,6 +288,36 @@ export function buildFallbackCopilotoCard(
 			? getEffectiveBuscarUrl(candidate)
 			: candidate.e3FormUrl || '';
 	const suggestedStageChange: CopilotoSuggestedStage = summary.shouldSuggestE3Drop ? 'E3' : 'NONE';
+
+	// Chequeo trimestral de contactos PAUSADOS (PAU):
+	// Se envía mensaje amable para saber si reinició búsqueda, PERO sigue pausado (isActive=false)
+	// a menos que confirme que sí retomó la búsqueda.
+	if (candidate.stage === 'PAU' || candidate.isPausedCheckIn) {
+		return {
+			contactId: candidate.contactId,
+			fullName: candidate.fullName,
+			telephon: candidate.telephon,
+			stage: 'PAU',
+			priority: candidate.priority,
+			taskTitle: `⏸️ PAU · Confirmar si retomó búsqueda — ${candidate.fullName}`.slice(0, 75),
+			action: `Preguntar a ${candidate.fullName} (pausado hace 3 meses) si ya reinició su búsqueda de casa.`,
+			objective:
+				'Confirmar si volvió a buscar. Permanece pausado (isActive=false) hasta que confirme que sí reinició; si dice que sí, reactivarlo en 1 clic.',
+			why: `Contacto en PAUSA ("de momento no") con fecha de chequeo trimestral cumplida. Si no contesta o sigue igual, se reprograma otros 3 meses en pausa sin molestarlo.`,
+			recommendedExecution: 'whatsapp',
+			whatsappDraft: `Hola ${firstName}, hace unos meses me comentaste que de momento habías pausado tu búsqueda de casa. Solo quería saludarte y saber si ya retomaste el plan o si seguimos en pausa. ¡Sin ningún compromiso!`,
+			suggestedStageChange: 'NONE',
+			propertyIds: [],
+			propertyLinks: [],
+			e3FormUrl: getEffectiveBuscarUrl(candidate),
+			callsWithoutReply: summary.callsWithoutReply,
+			propertySendsWithoutReply: summary.propertySendsWithoutReply,
+			usedFallback: true,
+			isPausedCheckIn: true,
+			pausedReactivateAt: candidate.pausedReactivateAt ?? null,
+			daysSinceLastTouch: summary.daysSinceLastTouch
+		};
+	}
 
 	// Estrategia unificada >180 días para E1, E2 y E3 (2 pasos: Paso 1 sin link -> espera 2 días -> Paso 2 con link)
 	if (
@@ -556,7 +588,8 @@ export function buildCopilotoPrompt(
 			: 'Etapa E1 (Primer Contacto reciente <10 días, prioridad máxima): el objetivo es concretar llamada rápida y sacar más info de lo que busca sin presionar (la cita no es obligatoria; si le gustó la propiedad original buscar venta/cita, si no, empatía y perfilar).',
 		E2: 'Etapa E2 (Seguimiento Diario): el objetivo es completar los datos requeridos de búsqueda para promoverlo a E4. Si acumula >=2 llamadas y >=2-3 envíos sin respuesta, sugiere pasar a E3.',
 		E4: 'Etapa E4 (Búsqueda Activa Calificada): enviar las propiedades de sinergia nuevas compatibles proporcionadas (máx 3) con sus links exactos y provocar cita.',
-		E3: 'Etapa E3 (Filtro / Reactivación): enviar el link exacto del formulario ligero explicando amablemente que si desea seguir recibiendo propiedades nos llene qué busca.'
+		E3: 'Etapa E3 (Filtro / Reactivación): enviar el link exacto del formulario ligero explicando amablemente que si desea seguir recibiendo propiedades nos llene qué busca.',
+		PAU: 'Etapa PAU (Chequeo Trimestral de Contacto Pausado): hace 3 meses el cliente dijo que de momento no buscaba. Redacta un WhatsApp breve, respetuoso y sin presión preguntando si ya retomó su búsqueda de casa o si seguimos en pausa. NO incluyas links ni presiones; el contacto permanece en pausa a menos que confirme que sí reinició. Canal: whatsapp. suggestedStageChange="NONE".'
 	};
 
 	const effectiveStageRule =

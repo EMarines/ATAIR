@@ -5,6 +5,14 @@ import {
 } from '../src/lib/functions/propertyMatching.js';
 import { planCopilotoCandidates } from '../src/lib/functions/copilotoPlanner.js';
 import { buildFallbackCopilotoCard, summarizeContactBinnacles } from '../src/lib/functions/copilotoAnalyzer.js';
+import {
+	CANONICAL_STAGE_LABELS,
+	getContactBadgeInfo,
+	isStage3Or4ForBroadcast,
+	isStage4ForBroadcast,
+	normalizeStage,
+	toCanonicalStageLabel
+} from '../src/lib/functions/contactBadge.js';
 import type { Binnacle, Contact, Property, Todo } from '../src/lib/types.js';
 
 console.log('--- TEST SUITE: ATAIR COPILOTO E1 STRATEGY (>10 DÍAS) ---');
@@ -658,5 +666,101 @@ assert.ok(
 	'Respuesta rápida a Paso 1 debe incluir el link exacto /buscar'
 );
 console.log('✓ Estrategia Unificada >180 días (Paso 1 sin link -> 2 días -> Paso 2 con link + fast-track) 100% validada.');
+
+// 11. TEST Contactos Pausados (PAU · chequeo a 3 meses sin reactivar) e Inactivos (IN)
+console.log('\n[Test 11] Validando Contactos Pausados (PAU 3 meses) e Inactivos Definitivos (IN)...');
+const pausedNotDue: Contact = {
+	id: 'pau-not-due',
+	name: 'Javier',
+	lastname: 'Sada',
+	telephon: '8711444444',
+	contactStage: 'Etapa 2',
+	createdAt: nowMs - 200 * 86_400_000,
+	isActive: false,
+	inactiveReason: 'pausado',
+	pausedAt: nowMs - 10 * 86_400_000,
+	reactivateAt: nowMs + 80 * 86_400_000 // Faltan 80 días
+} as any;
+
+const pausedDue: Contact = {
+	id: 'pau-due-now',
+	name: 'Patricia',
+	lastname: 'Pausada3m',
+	telephon: '6147000011',
+	contactStage: 'Etapa 2',
+	createdAt: nowMs - 200 * 86_400_000,
+	isActive: false,
+	inactiveReason: 'pausado',
+	pausedAt: nowMs - 95 * 86_400_000,
+	reactivateAt: nowMs - 5 * 86_400_000 // Ya cumplió 3 meses
+} as any;
+
+const inactiveDefinitive: Contact = {
+	id: 'in-definitive',
+	name: 'Roberto',
+	lastname: 'Inactivo',
+	telephon: '6147000022',
+	contactStage: 'Etapa 4',
+	createdAt: nowMs - 30 * 86_400_000,
+	isActive: false,
+	inactiveReason: 'no_interesa',
+	reactivateAt: null
+} as any;
+
+assert.strictEqual(getContactBadgeInfo(pausedNotDue).text, 'PAU', 'Badge de pausado debe ser PAU');
+assert.strictEqual(getContactBadgeInfo(inactiveDefinitive).text, 'IN', 'Badge de inactivo definitivo debe ser IN');
+assert.strictEqual(isStage4ForBroadcast(pausedDue), false, 'Pausado NUNCA debe entrar a difusión E4');
+assert.strictEqual(isStage3Or4ForBroadcast(inactiveDefinitive), false, 'Inactivo NUNCA debe entrar a difusión');
+
+const planPau = planCopilotoCandidates(
+	[pausedNotDue, pausedDue, inactiveDefinitive],
+	catalogProperties,
+	[],
+	[],
+	{ nowMs, baseUrl: 'https://matchhome.vercel.app' }
+);
+
+assert.strictEqual(planPau.candidates.length, 1, 'Solo debe entrar el pausado con fecha de 3 meses cumplida');
+assert.strictEqual(planPau.candidates[0].contactId, 'pau-due-now');
+assert.strictEqual(planPau.candidates[0].stage, 'PAU');
+assert.strictEqual(planPau.candidates[0].isPausedCheckIn, true);
+
+const cardPau = buildFallbackCopilotoCard(
+	planPau.candidates[0],
+	summarizeContactBinnacles([], planPau.candidates[0], nowMs)
+);
+assert.strictEqual(cardPau.stage, 'PAU');
+assert.strictEqual(cardPau.isPausedCheckIn, true);
+assert.strictEqual(cardPau.recommendedExecution, 'whatsapp');
+assert.ok(cardPau.whatsappDraft.includes('pausado tu búsqueda'), 'Borrador PAU debe preguntar si retomó búsqueda');
+
+// Validar nomenclatura bautizada de etapas 1..8 y compatibilidad retroactiva
+assert.strictEqual(toCanonicalStageLabel('Etapa 1'), CANONICAL_STAGE_LABELS[1]);
+assert.strictEqual(toCanonicalStageLabel('Etapa 2'), CANONICAL_STAGE_LABELS[2]);
+assert.strictEqual(toCanonicalStageLabel('Etapa 3'), CANONICAL_STAGE_LABELS[3]);
+assert.strictEqual(toCanonicalStageLabel('Etapa 4'), CANONICAL_STAGE_LABELS[4]);
+assert.strictEqual(toCanonicalStageLabel('Cierre'), CANONICAL_STAGE_LABELS[5]);
+assert.strictEqual(toCanonicalStageLabel('Post-Venta'), CANONICAL_STAGE_LABELS[6]);
+assert.strictEqual(toCanonicalStageLabel(pausedNotDue), CANONICAL_STAGE_LABELS.PAU);
+assert.strictEqual(toCanonicalStageLabel(inactiveDefinitive), CANONICAL_STAGE_LABELS.IN);
+
+assert.strictEqual(normalizeStage('Etapa 1 · Primer Contacto'), 1);
+assert.strictEqual(normalizeStage('Etapa 2 · Perfilamiento'), 2);
+assert.strictEqual(normalizeStage('Etapa 3 · Filtro / Reactivación'), 3);
+assert.strictEqual(normalizeStage('Etapa 4 · Búsqueda Activa'), 4);
+assert.strictEqual(normalizeStage('Etapa 5 · Cierre'), 5);
+assert.strictEqual(normalizeStage('Etapa 6 · Post-Venta'), 6);
+assert.strictEqual(normalizeStage('Etapa 7 · En Pausa'), 'PAU');
+assert.strictEqual(normalizeStage('Etapa 8 · Inactivo'), 'IN');
+
+assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 1 · Primer Contacto' } as any).text, 'E1');
+assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 2 · Perfilamiento' } as any).text, 'E2');
+assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 3 · Filtro / Reactivación' } as any).text, 'E3');
+assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 4 · Búsqueda Activa' } as any).text, 'E4');
+assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 5 · Cierre' } as any).text, 'E5');
+assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 6 · Post-Venta' } as any).text, 'E6');
+assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 7 · En Pausa' } as any).text, 'PAU');
+assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 8 · Inactivo' } as any).text, 'IN');
+console.log('✓ Contactos Pausados (PAU 3 meses), Inactivos (IN) y Etapas Bautizadas (E1-E6, PAU, IN) validados al 100%.');
 
 console.log('\n🎉 ALL_COPILOTO_TESTS_PASSED! 100% de pruebas unitarias exitosas.');

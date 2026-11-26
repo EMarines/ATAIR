@@ -133,12 +133,14 @@ export const oneToFour = ["1", "2", "3", "4"];
 export const oneToThree = ["1", "2", "3"];
 
 export const contStage = [
-    "Etapa 1",
-    "Etapa 2",
-    "Etapa 3",
-    "Etapa 4",
-    "Cierre",
-    "Post-Venta"
+    "Etapa 1 · Primer Contacto",
+    "Etapa 2 · Perfilamiento",
+    "Etapa 3 · Filtro / Reactivación",
+    "Etapa 4 · Búsqueda Activa",
+    "Etapa 5 · Cierre",
+    "Etapa 6 · Post-Venta",
+    "Etapa 7 · En Pausa",
+    "Etapa 8 · Inactivo"
 ];
 
 export const arrendatarioStages = [

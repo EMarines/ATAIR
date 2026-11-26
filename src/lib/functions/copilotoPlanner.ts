@@ -8,13 +8,15 @@ import {
 } from './propertyMatching';
 import { getProposalUrl } from './urlUtils';
 
-export type CopilotoStage = 'E1' | 'E2' | 'E3' | 'E4';
+export type CopilotoStage = 'E1' | 'E2' | 'E3' | 'E4' | 'PAU';
 export type CopilotoColdStep = 'step1_check' | 'step2_send_link';
 
 export const COLD_REACTIVATION_DAYS = 180;
 export const COLD_REACTIVATION_MS = COLD_REACTIVATION_DAYS * 86_400_000;
 export const COLD_STEP2_WAIT_HOURS = 48;
 export const COLD_STEP2_WAIT_MS = COLD_STEP2_WAIT_HOURS * 3600_000;
+export const PAUSE_CHECKIN_DAYS = 90;
+export const PAUSE_CHECKIN_MS = PAUSE_CHECKIN_DAYS * 86_400_000;
 
 export interface ColdReactivationState {
 	isColdOver180Days: boolean;
@@ -270,6 +272,8 @@ export interface CopilotoCandidate {
 	coldStep?: CopilotoColdStep;
 	repliedToStep1?: boolean;
 	daysSinceLastTouch?: number | null;
+	isPausedCheckIn?: boolean;
+	pausedReactivateAt?: number | null;
 }
 
 export interface CopilotoPlanOptions {
@@ -277,6 +281,7 @@ export interface CopilotoPlanOptions {
 	e2Quota?: number;
 	e4Quota?: number;
 	e3Quota?: number;
+	pauQuota?: number;
 	maxTotalCandidates?: number;
 	gracePeriodHours?: number;
 	isRefill?: boolean;
@@ -298,6 +303,7 @@ export interface CopilotoPlanResult {
 		e4: number;
 		e3Recent: number;
 		e3Cold: number;
+		pausedCheckIn?: number;
 		skippedAlreadyOpenOrToday: number;
 		skippedGracePeriod: number;
 		totalCandidates: number;
@@ -306,6 +312,7 @@ export interface CopilotoPlanResult {
 			e2: number;
 			e4: number;
 			e3: number;
+			pau?: number;
 		};
 	};
 	candidates: CopilotoCandidate[];
@@ -378,8 +385,8 @@ export function isContactInGracePeriod(
 	return false;
 }
 
-function isProtectedOrNonBuyer(contact: Contact): boolean {
-	if (!contact || contact.isActive === false) return true;
+function isNonBuyerRoleOrInvalidPhone(contact: Contact): boolean {
+	if (!contact) return true;
 	const raw = contact as any;
 	const typeLower = String(contact.typeContact || contact.contactType || raw.tipo || '').toLowerCase();
 	if (
@@ -387,19 +394,43 @@ function isProtectedOrNonBuyer(contact: Contact): boolean {
 		typeLower.includes('propietario') ||
 		typeLower.includes('arrendador') ||
 		typeLower.includes('arrendatario') ||
-		typeLower.includes('inquilino')
+		typeLower.includes('inquilino') ||
+		typeLower.includes('agente') ||
+		typeLower.includes('constructor') ||
+		typeLower.includes('inmobiliaria') ||
+		typeLower.includes('colaborador') ||
+		typeLower.includes('asesor')
 	) {
 		return true;
 	}
 
-	const badge = getContactBadgeInfo(contact);
-	if (badge.isAgent || badge.text.startsWith('A')) return true;
-
 	const stage = normalizeStage(contact.contactStage);
-	if (stage === 5 || stage === 6) return true;
+	if (stage === 5 || stage === 6 || stage === 'OW' || stage === 'A1' || stage === 'A2') return true;
 
 	const cleanPhone = String(contact.telephon || '').replace(/\D/g, '');
 	return cleanPhone.length < 10;
+}
+
+function isPausedDueForCheckIn(contact: Contact, nowMs: number): { due: boolean; reactivateAtMs: number | null } {
+	if (!contact || contact.isActive !== false) return { due: false, reactivateAtMs: null };
+	const reason = String((contact as any).inactiveReason || '').toLowerCase().trim();
+	if (reason !== 'pausado') return { due: false, reactivateAtMs: null };
+	const reactivateAtMs = getContactCreatedAtMs((contact as any).reactivateAt);
+	if (reactivateAtMs === null) return { due: false, reactivateAtMs: null };
+	return { due: nowMs >= reactivateAtMs, reactivateAtMs };
+}
+
+function isProtectedOrNonBuyer(contact: Contact): boolean {
+	if (!contact || contact.isActive === false) return true;
+	if (isNonBuyerRoleOrInvalidPhone(contact)) return true;
+
+	const stage = normalizeStage(contact.contactStage);
+	if (stage === 'PAU' || stage === 'IN') return true;
+
+	const badge = getContactBadgeInfo(contact);
+	if (badge.isAgent || badge.text.startsWith('A') || badge.text === 'PAU' || badge.text === 'IN') return true;
+
+	return false;
 }
 
 function buildCandidateRecord(
@@ -416,12 +447,15 @@ function buildCandidateRecord(
 		coldStep?: CopilotoColdStep;
 		repliedToStep1?: boolean;
 		daysSinceLastTouch?: number | null;
+		isPausedCheckIn?: boolean;
+		pausedReactivateAt?: number | null;
 	}
 ): CopilotoCandidate {
 	const fullName = `${contact.name || ''} ${contact.lastname || ''}`.trim() || 'Sin nombre';
 	const contactId = String(contact.id || '').trim();
 	const cleanBase = baseUrl.replace(/\/+$/, '');
-	const includeBuscarLink = stage === 'E3' || Boolean(extra?.isColdOver180Days);
+	const includeBuscarLink =
+		stage === 'E3' || Boolean(extra?.isColdOver180Days) || Boolean(extra?.isPausedCheckIn);
 	return {
 		contactId,
 		name: contact.name || '',
@@ -448,6 +482,8 @@ function buildCandidateRecord(
 		coldStep: extra?.coldStep,
 		repliedToStep1: extra?.repliedToStep1,
 		daysSinceLastTouch: extra?.daysSinceLastTouch,
+		isPausedCheckIn: extra?.isPausedCheckIn,
+		pausedReactivateAt: extra?.pausedReactivateAt,
 		...(includeBuscarLink
 			? { e3FormUrl: `${cleanBase}/buscar?c=${encodeURIComponent(contactId)}` }
 			: {})
@@ -495,12 +531,14 @@ export function planCopilotoCandidates(
 	const baseE2 = Math.max(0, Number(options.e2Quota ?? 4));
 	const baseE4 = Math.max(0, Number(options.e4Quota ?? 7));
 	const baseE3 = Math.max(0, Number(options.e3Quota ?? 2));
+	const basePau = Math.max(0, Number(options.pauQuota ?? 3));
 	const baseMaxTotal = Math.max(1, Number(options.maxTotalCandidates ?? 27));
 
 	const e1Quota = isRefill ? Math.max(1, Math.round(baseE1 * effectiveScale)) : baseE1;
 	const e2Quota = isRefill ? Math.max(1, Math.round(baseE2 * effectiveScale)) : baseE2;
 	const e4Quota = isRefill ? Math.max(1, Math.round(baseE4 * effectiveScale)) : baseE4;
 	const e3Quota = isRefill ? Math.max(1, Math.round(baseE3 * effectiveScale)) : baseE3;
+	const pauQuota = isRefill ? Math.max(1, Math.round(basePau * effectiveScale)) : basePau;
 	const maxTotalCandidates = isRefill
 		? Math.max(1, Math.round(baseMaxTotal * effectiveScale))
 		: baseMaxTotal;
@@ -532,6 +570,7 @@ export function planCopilotoCandidates(
 	const e4List: CopilotoCandidate[] = [];
 	const e3RecentPool: CopilotoCandidate[] = [];
 	const e3ColdPool: CopilotoCandidate[] = [];
+	const pausedDuePool: CopilotoCandidate[] = [];
 	let skippedAlreadyOpenOrToday = 0;
 	let skippedGracePeriod = 0;
 
@@ -547,6 +586,31 @@ export function planCopilotoCandidates(
 
 	for (const contact of contacts || []) {
 		if (!contact?.id) continue;
+
+		// Chequeo trimestral de contactos PAUSADOS (isActive=false, inactiveReason='pausado', reactivateAt <= hoy):
+		// Se les envía un mensaje preguntando si retomaron búsqueda, manteniéndolos pausados hasta confirmación.
+		const pausedCheck = isPausedDueForCheckIn(contact, nowMs);
+		if (pausedCheck.due) {
+			if (isNonBuyerRoleOrInvalidPhone(contact)) continue;
+			if (blockedContactIds.has(contact.id)) {
+				skippedAlreadyOpenOrToday++;
+				continue;
+			}
+			const contactId = String(contact.id || '').trim();
+			const contactBinnacles = binnaclesByContact.get(contactId) || [];
+			if (isContactInGracePeriod(contact, contactBinnacles, gracePeriodMs, nowMs)) {
+				skippedGracePeriod++;
+				continue;
+			}
+			pausedDuePool.push(
+				buildCandidateRecord(contact, 'PAU', 3, false, [], baseUrl, {
+					isPausedCheckIn: true,
+					pausedReactivateAt: pausedCheck.reactivateAtMs
+				})
+			);
+			continue;
+		}
+
 		if (isProtectedOrNonBuyer(contact)) continue;
 
 		if (blockedContactIds.has(contact.id)) {
@@ -756,13 +820,16 @@ export function planCopilotoCandidates(
 	const selectedE2 = e2List.slice(0, e2Quota);
 	const e3Pool = [...e3RecentPool, ...e3ColdPool];
 	const selectedE3 = e3Pool.slice(0, e3Quota);
+	pausedDuePool.sort((a, b) => (a.pausedReactivateAt ?? 0) - (b.pausedReactivateAt ?? 0));
+	const selectedPau = pausedDuePool.slice(0, pauQuota);
 
-	// Intercalación balanceada (Round-Robin): E4 -> E2 -> E1 -> E3
+	// Intercalación balanceada (Round-Robin): E4 -> E2 -> E1 -> PAU -> E3
 	const candidates: CopilotoCandidate[] = [];
 	const pools = [
 		{ stage: 'E4', items: [...selectedE4] },
 		{ stage: 'E2', items: [...selectedE2] },
 		{ stage: 'E1', items: [...selectedE1] },
+		{ stage: 'PAU', items: [...selectedPau] },
 		{ stage: 'E3', items: [...selectedE3] }
 	];
 
@@ -791,6 +858,7 @@ export function planCopilotoCandidates(
 
 	const e3RecentCount = candidates.filter((c) => c.stage === 'E3' && !c.isColdOver2y).length;
 	const e3ColdCount = candidates.filter((c) => c.stage === 'E3' && c.isColdOver2y).length;
+	const pausedCheckInCount = candidates.filter((c) => c.stage === 'PAU').length;
 
 	return {
 		runDate,
@@ -804,6 +872,7 @@ export function planCopilotoCandidates(
 			e4: candidates.filter((c) => c.stage === 'E4').length,
 			e3Recent: e3RecentCount,
 			e3Cold: e3ColdCount,
+			pausedCheckIn: pausedCheckInCount,
 			skippedAlreadyOpenOrToday,
 			skippedGracePeriod,
 			totalCandidates: candidates.length,
@@ -811,7 +880,8 @@ export function planCopilotoCandidates(
 				e1: e1YesterdayList.length + e1OlderList.length,
 				e2: e2List.length,
 				e4: e4List.length,
-				e3: e3Pool.length
+				e3: e3Pool.length,
+				pau: pausedDuePool.length
 			}
 		},
 		candidates

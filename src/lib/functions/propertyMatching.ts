@@ -689,9 +689,21 @@ export function filterContactsByCriteria(
 		if (filterStage !== null) {
 			const tc = normalizeMatchText(contact.typeContact || contact.contactType);
 			const isOwner = tc === 'vendedor' || tc === 'propietario' || tc === 'arrendador';
-			if (isOwner) {
+			if (filterStage === 'PAU') {
+				const reason = String((contact as any).inactiveReason || '').toLowerCase().trim();
+				const isPaused =
+					(contact.isActive === false && reason === 'pausado') ||
+					normalizeStage(contact.contactStage) === 'PAU';
+				if (!isPaused) return false;
+			} else if (filterStage === 'IN') {
+				const reason = String((contact as any).inactiveReason || '').toLowerCase().trim();
+				const isInactiveDef =
+					(contact.isActive === false && reason !== 'pausado') ||
+					normalizeStage(contact.contactStage) === 'IN';
+				if (!isInactiveDef) return false;
+			} else if (isOwner) {
 				if (filterStage !== 'OW') return false;
-			} else if (normalizeStage(contact.contactStage) !== filterStage) {
+			} else if (contact.isActive === false || normalizeStage(contact.contactStage) !== filterStage) {
 				return false;
 			}
 		}

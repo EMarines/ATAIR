@@ -49,8 +49,10 @@
 					});
 				}
 			} else {
-				const actionLabel =
-					meta.coldStep === 'step1_check'
+				const isPausedCard = meta.stage === 'PAU' || Boolean(meta.isPausedCheckIn);
+				const actionLabel = isPausedCard
+					? 'Chequeo trimestral Pausado (Copiloto): '
+					: meta.coldStep === 'step1_check'
 						? 'Reactivación >180d Paso 1 (Copiloto): '
 						: meta.coldStep === 'step2_send_link'
 							? 'Reactivación >180d Paso 2 - Link /buscar (Copiloto): '
@@ -65,11 +67,23 @@
 				});
 			}
 
-			await updateDoc(doc(db, 'contacts', meta.contactId), {
-				lastContact: Date.now()
-			}).catch(() => {});
+			const isPausedCard = meta.stage === 'PAU' || Boolean(meta.isPausedCheckIn);
+			const nowMs = Date.now();
+			const contactPatch: Record<string, any> = {
+				lastContact: nowMs
+			};
+			// En chequeo PAU: NO reactivar al cliente; permanece en pausa y se reprograma 3 meses más
+			if (isPausedCard) {
+				contactPatch.isActive = false;
+				contactPatch.inactiveReason = 'pausado';
+				contactPatch.reactivateAt = nowMs + 90 * 86_400_000;
+			}
 
-			feedbackMsg = '✅ WhatsApp abierto y registrado en bitácora.';
+			await updateDoc(doc(db, 'contacts', meta.contactId), contactPatch).catch(() => {});
+
+			feedbackMsg = isPausedCard
+				? '✅ Chequeo enviado. El contacto sigue en PAUSA (próximo chequeo en 3 meses salvo que confirme reinicio).'
+				: '✅ WhatsApp abierto y registrado en bitácora.';
 			if (!todoItem.isCompleted) {
 				dispatch('complete', todoItem);
 			} else {
@@ -123,7 +137,12 @@
 		isBusy = true;
 		feedbackMsg = '';
 		try {
-			const stageLabel = target === 'E3' ? 'Etapa 3' : target === 'E2' ? 'Etapa 2' : 'Etapa 4';
+			const stageLabel =
+				target === 'E3'
+					? 'Etapa 3 · Filtro / Reactivación'
+					: target === 'E2'
+						? 'Etapa 2 · Perfilamiento'
+						: 'Etapa 4 · Búsqueda Activa';
 			await updateDoc(doc(db, 'contacts', meta.contactId), {
 				contactStage: stageLabel,
 				stage: target
@@ -165,6 +184,105 @@
 			feedbackMsg = '📋 Respuesta con link /buscar copiada: lista para pegar si contesta "sí".';
 		} catch {
 			feedbackMsg = `🔗 Link listo: ${meta.e3FormUrl}`;
+		}
+	}
+
+	async function pauseContact3Months() {
+		if (!meta.contactId || isBusy) return;
+		isBusy = true;
+		feedbackMsg = '';
+		try {
+			const nowMs = Date.now();
+			const reactivateAt = nowMs + 90 * 86_400_000;
+			const nextDate = new Date(reactivateAt).toLocaleDateString('es-MX', {
+				day: '2-digit',
+				month: '2-digit',
+				year: 'numeric'
+			});
+			await updateDoc(doc(db, 'contacts', meta.contactId), {
+				isActive: false,
+				inactiveReason: 'pausado',
+				pausedAt: nowMs,
+				reactivateAt
+			});
+			await infoToBinnacle({
+				date: nowMs,
+				to: meta.contactId,
+				action: 'Contacto pausado 3 meses (Copiloto): ',
+				comment: `Pausado ("de momento no"). Chequeo programado para ${nextDate}; permanecerá en pausa hasta que confirme reinicio.`
+			});
+			feedbackMsg = `⏸️ Contacto pausado. Próximo chequeo en 3 meses (${nextDate}).`;
+			if (!todoItem.isCompleted) {
+				dispatch('complete', todoItem);
+			} else {
+				dispatch('updated');
+			}
+		} catch (err: any) {
+			feedbackMsg = '⚠️ Error al pausar contacto: ' + (err?.message || err);
+		} finally {
+			isBusy = false;
+		}
+	}
+
+	async function markContactInactiveDefinitive() {
+		if (!meta.contactId || isBusy) return;
+		isBusy = true;
+		feedbackMsg = '';
+		try {
+			const nowMs = Date.now();
+			await updateDoc(doc(db, 'contacts', meta.contactId), {
+				isActive: false,
+				inactiveReason: 'no_interesa',
+				reactivateAt: null
+			});
+			await infoToBinnacle({
+				date: nowMs,
+				to: meta.contactId,
+				action: 'Contacto inactivo definitivo (Copiloto): ',
+				comment: 'Marcado como inactivo definitivo (ya compró / no le interesa). Sin futuros envíos.'
+			});
+			feedbackMsg = '🚫 Contacto marcado como inactivo definitivo.';
+			if (!todoItem.isCompleted) {
+				dispatch('complete', todoItem);
+			} else {
+				dispatch('updated');
+			}
+		} catch (err: any) {
+			feedbackMsg = '⚠️ Error al inactivar contacto: ' + (err?.message || err);
+		} finally {
+			isBusy = false;
+		}
+	}
+
+	async function reactivatePausedContact() {
+		if (!meta.contactId || isBusy) return;
+		isBusy = true;
+		feedbackMsg = '';
+		try {
+			const nowMs = Date.now();
+			await updateDoc(doc(db, 'contacts', meta.contactId), {
+				isActive: true,
+				inactiveReason: '',
+				pausedAt: null,
+				reactivateAt: null,
+				lastResponse: nowMs
+			});
+			await infoToBinnacle({
+				date: nowMs,
+				to: meta.contactId,
+				action: 'Contacto reactivado (Copiloto): ',
+				comment: 'El cliente confirmó que reinició su búsqueda de inmueble. Reactivado en el embudo.'
+			});
+			feedbackMsg = '✅ Contacto reactivado: volvió al embudo activo.';
+			if (!todoItem.isCompleted) {
+				dispatch('complete', todoItem);
+			} else {
+				dispatch('updated');
+			}
+		} catch (err: any) {
+			feedbackMsg = '⚠️ Error al reactivar contacto: ' + (err?.message || err);
+		} finally {
+			isBusy = false;
 		}
 	}
 </script>
@@ -278,7 +396,9 @@
 			{:else}
 				<button type="button" class="btn-exec btn-wa-primary" on:click={executeWhatsAppSend} disabled={isBusy || !meta.telephon}>
 					<i class="fa-brands fa-whatsapp"></i>
-					{#if meta.coldStep === 'step1_check'}
+					{#if meta.stage === 'PAU' || meta.isPausedCheckIn}
+						Enviar chequeo 3m (Mantiene pausa)
+					{:else if meta.coldStep === 'step1_check'}
 						Enviar Paso 1 por WhatsApp (Sin link)
 					{:else if meta.coldStep === 'step2_send_link'}
 						Enviar Link /buscar · Paso 2 (1 Clic)
@@ -298,9 +418,39 @@
 						<i class="fa-solid fa-link"></i> Copiar respuesta con link
 					</button>
 				{/if}
-				<a class="btn-exec btn-call-alt" href={`tel:${cleanPhone(meta.telephon)}`}>
-					<i class="fa-solid fa-phone"></i> Llamar
-				</a>
+				{#if meta.stage === 'PAU' || meta.isPausedCheckIn}
+					<button
+						type="button"
+						class="btn-exec btn-reactivate"
+						on:click={reactivatePausedContact}
+						disabled={isBusy}
+						title="Solo usar si el cliente confirmó que SÍ reinició su búsqueda"
+					>
+						✅ Reinició búsqueda
+					</button>
+					<button
+						type="button"
+						class="btn-exec btn-inactive"
+						on:click={markContactInactiveDefinitive}
+						disabled={isBusy}
+						title="Marcar inactivo definitivo (sin futuros mensajes)"
+					>
+						🚫 Inactivo
+					</button>
+				{:else}
+					<button
+						type="button"
+						class="btn-exec btn-pause"
+						on:click={pauseContact3Months}
+						disabled={isBusy}
+						title="El cliente dijo 'de momento no': pausar y preguntar de nuevo en 3 meses"
+					>
+						⏸️ Pausar 3m
+					</button>
+					<a class="btn-exec btn-call-alt" href={`tel:${cleanPhone(meta.telephon)}`}>
+						<i class="fa-solid fa-phone"></i> Llamar
+					</a>
+				{/if}
 			{/if}
 		</div>
 
@@ -397,6 +547,7 @@
 	.stage-e2 { background: #f97316; }
 	.stage-e3 { background: #eab308; color: #111827; }
 	.stage-e4 { background: #10b981; }
+	.stage-pau { background: #64748b; }
 
 	.lead-name {
 		font-weight: 700;
@@ -447,6 +598,31 @@
 
 	:global([data-theme="dark"]) .btn-copy-link {
 		color: #c7d2fe;
+	}
+
+	.btn-pause {
+		background: rgba(100, 116, 139, 0.18);
+		color: #475569;
+		border: 1px solid rgba(100, 116, 139, 0.35);
+	}
+
+	:global([data-theme="dark"]) .btn-pause {
+		color: #cbd5e1;
+	}
+
+	.btn-reactivate {
+		background: #10b981;
+		color: #ffffff;
+	}
+
+	.btn-inactive {
+		background: rgba(239, 68, 68, 0.15);
+		color: #dc2626;
+		border: 1px solid rgba(239, 68, 68, 0.35);
+	}
+
+	:global([data-theme="dark"]) .btn-inactive {
+		color: #fca5a5;
 	}
 
 	:global([data-theme="dark"]) .silence-pill {

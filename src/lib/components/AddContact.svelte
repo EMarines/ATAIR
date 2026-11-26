@@ -34,6 +34,7 @@
 	import { ranPrice } from '$lib/functions/rangeValue';
 	import { convertOperationEbFb } from '$lib/functions/converterEb-Fb';
 	import { getProposalUrl, ensureContactInProposalUrl } from '$lib/functions/urlUtils';
+	import { normalizeStage, toCanonicalStageLabel, CANONICAL_STAGE_LABELS } from '$lib/functions/contactBadge';
 	import { onMount, onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
 	import { db } from '$lib/firebase_toggle';
@@ -828,7 +829,7 @@
 				typeContact: normalizedInitialType,
 				contactStage: isOwnerContactType(normalizedInitialType)
 					? 'OW'
-					: (existingContact.contactStage || 'Etapa 1')
+					: toCanonicalStageLabel(existingContact)
 		  }
 		: {
 				budget: 0, // Valor numérico por defecto
@@ -836,7 +837,7 @@
 				inmobiliaria: '',
 				procedencia: '',
 				comContact: '',
-				contactStage: 'Etapa 1',
+				contactStage: CANONICAL_STAGE_LABELS[1],
 				createdAt: Date.now(),
 				email: '',
 				halfBathroom: 0,
@@ -1015,18 +1016,33 @@
 				parsedBudgetNumber
 			);
 
+			const nowMs = Date.now();
+			const resolvedStage = isOwnerType
+				? 'OW'
+				: toCanonicalStageLabel(contact.contactStage || CANONICAL_STAGE_LABELS[1]);
+			const normalizedResolvedStage = normalizeStage(resolvedStage);
+			const isPausedStage = normalizedResolvedStage === 'PAU';
+			const isInactiveStage = normalizedResolvedStage === 'IN';
+
 			// Crear una copia limpia del contacto con valores por defecto para campos vacíos
 			const cleanContactData: Contact = {
 				id: contact.id || '',
-				createdAt: contact.createdAt || Date.now(),
+				createdAt: contact.createdAt || nowMs,
 				name: contact.name || '',
 				lastname: contact.lastname || '',
 				email: contact.email || '',
 				telephon: contact.telephon || '',
 				selecMC: contact.selecMC || 'Lona en Propiedad',
 				comContact: contact.comContact || '',
-				contactStage: isOwnerType ? 'OW' : (contact.contactStage || 'Etapa 1'),
-				isActive: contact.isActive !== undefined ? contact.isActive : true,
+				contactStage: resolvedStage,
+				isActive: isPausedStage || isInactiveStage ? false : true,
+				inactiveReason: isPausedStage
+					? 'pausado'
+					: isInactiveStage
+						? ((contact.inactiveReason === 'ya_compro' ? 'ya_compro' : 'no_interesa'))
+						: '',
+				pausedAt: isPausedStage ? (contact.pausedAt || nowMs) : null,
+				reactivateAt: isPausedStage ? (contact.reactivateAt || nowMs + 90 * 86_400_000) : null,
 				budget: parsedBudgetNumber, // Usar el valor parseado
 				selecTP: contact.selecTP || '',
 				rangeProp: contact.rangeProp || '',
@@ -1367,7 +1383,7 @@
 								contact.contactStage = 'A1';
 							}
 						} else if (String(contact.contactStage || '').trim().toUpperCase() === 'OW') {
-							contact.contactStage = 'Etapa 1';
+							contact.contactStage = CANONICAL_STAGE_LABELS[1];
 						}
 					}}
 				/>

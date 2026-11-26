@@ -982,6 +982,8 @@
                           coldStep: card.coldStep,
                           repliedToStep1: card.repliedToStep1,
                           daysSinceLastTouch: card.daysSinceLastTouch ?? null,
+                          isPausedCheckIn: card.isPausedCheckIn,
+                          pausedReactivateAt: card.pausedReactivateAt ?? null,
                           runDate: planData.runDate,
                           action: card.action,
                           objective: card.objective,
@@ -1005,7 +1007,8 @@
           }
 
           const refillLabel = planData?.isRefill ? ' 🔄 (recarga adicional 50%)' : '';
-          copilotoBannerMsg = `⚡ Copiloto listo: ${createdCount} ${createdCount === 1 ? 'tarjeta generada' : 'tarjetas generadas'}${refillLabel} (E1: ${planData.counts?.e1 || 0}, E2: ${planData.counts?.e2 || 0}, E4: ${planData.counts?.e4 || 0}, E3: ${(planData.counts?.e3Recent || 0) + (planData.counts?.e3Cold || 0)}).`;
+          const pauLabel = planData.counts?.pausedCheckIn ? `, PAU: ${planData.counts.pausedCheckIn}` : '';
+          copilotoBannerMsg = `⚡ Copiloto listo: ${createdCount} ${createdCount === 1 ? 'tarjeta generada' : 'tarjetas generadas'}${refillLabel} (E1: ${planData.counts?.e1 || 0}, E2: ${planData.counts?.e2 || 0}, E4: ${planData.counts?.e4 || 0}, E3: ${(planData.counts?.e3Recent || 0) + (planData.counts?.e3Cold || 0)}${pauLabel}).`;
       } catch (err: any) {
           console.error('[Agenda Copiloto] Error:', err);
           copilotoBannerMsg = '⚠️ ' + (err?.message || 'Error ejecutando ATAIR Copiloto.');

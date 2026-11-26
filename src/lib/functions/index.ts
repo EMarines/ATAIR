@@ -66,8 +66,10 @@ export { resetContact } from './contactErase';
 export { ranPrice } from './rangeValue';
 export { getProposalUrl, ensureContactInProposalUrl } from './urlUtils';
 export {
+	CANONICAL_STAGE_LABELS,
 	getContactBadgeInfo,
 	normalizeStage,
+	toCanonicalStageLabel,
 	isStage4Base,
 	isStage4ForBroadcast,
 	isStage3Or4ForBroadcast,

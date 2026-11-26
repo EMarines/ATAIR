@@ -9,38 +9,127 @@ export interface ContactBadgeInfo {
 	tooltip: string;
 }
 
+export const CANONICAL_STAGE_LABELS = {
+	1: 'Etapa 1 · Primer Contacto',
+	2: 'Etapa 2 · Perfilamiento',
+	3: 'Etapa 3 · Filtro / Reactivación',
+	4: 'Etapa 4 · Búsqueda Activa',
+	5: 'Etapa 5 · Cierre',
+	6: 'Etapa 6 · Post-Venta',
+	PAU: 'Etapa 7 · En Pausa',
+	IN: 'Etapa 8 · Inactivo'
+} as const;
+
 export function normalizeStage(stage: any): number | string {
 	if (typeof stage === 'string') {
 		const s = stage.trim().toUpperCase();
+		if (!s) return 1;
 		if (s === 'NA') return 'NA';
 		if (s === 'OW' || s === 'PROPIETARIO') return 'OW';
+		if (s === 'PAU' || s.includes('EN PAUSA') || s.includes('PAUSAD')) return 'PAU';
+		if (s === 'IN' || s.includes('INACTIVO')) return 'IN';
 		if (s.startsWith('A1')) return 'A1';
 		if (s.startsWith('A2')) return 'A2';
-		if (s === 'CIERRE') return 5;
-		if (s.startsWith('POST')) return 6;
+		if (s === 'CIERRE' || s.includes('CIERRE')) return 5;
+		if (s.startsWith('POST') || s.includes('POST-VENTA') || s.includes('POST VENTA')) return 6;
 		if (s.startsWith('ETAPA')) {
 			const num = parseInt(s.replace('ETAPA', '').trim(), 10) || 1;
+			if (num === 7) return 'PAU';
+			if (num === 8) return 'IN';
 			return num <= 0 ? 1 : num;
 		}
 		if (s.startsWith('E')) {
 			const num = parseInt(s.replace('E', '').trim(), 10) || 1;
+			if (num === 7) return 'PAU';
+			if (num === 8) return 'IN';
 			return num <= 0 ? 1 : num;
 		}
 		const num = parseInt(s, 10) || 1;
+		if (num === 7) return 'PAU';
+		if (num === 8) return 'IN';
 		return num <= 0 ? 1 : num;
 	}
 
 	if (stage === undefined || stage === null || stage === 0) return 1;
 
 	if (typeof stage === 'number') {
+		if (stage === 7) return 'PAU';
+		if (stage === 8) return 'IN';
 		return stage <= 0 ? 1 : stage;
 	}
 
 	return 1;
 }
 
+/**
+ * Convierte cualquier valor de etapa legado ("Etapa 2", "Cierre", "Post-Venta") o estado pausado/inactivo
+ * a su etiqueta canónica para mostrar seleccionada en los selectores de ATAIR.
+ */
+export function toCanonicalStageLabel(
+	contactOrStage: Contact | string | number | null | undefined
+): string {
+	if (contactOrStage && typeof contactOrStage === 'object') {
+		const c = contactOrStage as Contact;
+		if (c.isActive === false) {
+			const reason = String((c as any).inactiveReason || '').toLowerCase().trim();
+			return reason === 'pausado' ? CANONICAL_STAGE_LABELS.PAU : CANONICAL_STAGE_LABELS.IN;
+		}
+		const norm = normalizeStage(c.contactStage);
+		if (norm === 'OW' || norm === 'A1' || norm === 'A2') return String(norm);
+		if (norm === 'PAU') return CANONICAL_STAGE_LABELS.PAU;
+		if (norm === 'IN') return CANONICAL_STAGE_LABELS.IN;
+		if (norm === 1 || norm === 2 || norm === 3 || norm === 4 || norm === 5 || norm === 6) {
+			return CANONICAL_STAGE_LABELS[norm];
+		}
+		return CANONICAL_STAGE_LABELS[1];
+	}
+
+	const norm = normalizeStage(contactOrStage);
+	if (norm === 'OW' || norm === 'A1' || norm === 'A2') return String(norm);
+	if (norm === 'PAU') return CANONICAL_STAGE_LABELS.PAU;
+	if (norm === 'IN') return CANONICAL_STAGE_LABELS.IN;
+	if (norm === 1 || norm === 2 || norm === 3 || norm === 4 || norm === 5 || norm === 6) {
+		return CANONICAL_STAGE_LABELS[norm];
+	}
+	return CANONICAL_STAGE_LABELS[1];
+}
+
 export function getContactBadgeInfo(cont: Contact | null | undefined): ContactBadgeInfo {
 	if (!cont) return { isAgent: false, shape: 'circle', text: 'E1', color: '#ff4444', tooltip: 'Etapa 1' };
+	if (cont.isActive === false) {
+		const reason = String((cont as any).inactiveReason || '').toLowerCase().trim();
+		if (reason === 'pausado') {
+			const reactivateMs = getContactCreatedAtMs((cont as any).reactivateAt);
+			const nextDate = reactivateMs
+				? new Date(reactivateMs).toLocaleDateString('es-MX', {
+						day: '2-digit',
+						month: 'short',
+						year: 'numeric'
+					})
+				: '3 meses';
+			return {
+				isAgent: false,
+				shape: 'circle',
+				text: 'PAU',
+				color: '#64748b',
+				tooltip: `Pausado (De momento no busca) · Próximo chequeo: ${nextDate}`
+			};
+		}
+		const reasonLabel =
+			reason === 'ya_compro'
+				? 'Inactivo (Ya compró / resolvió)'
+				: reason === 'no_interesa'
+					? 'Inactivo (No le interesa)'
+					: 'Inactivo definitivo';
+		return {
+			isAgent: false,
+			shape: 'circle',
+			text: 'IN',
+			color: '#334155',
+			tooltip: reasonLabel
+		};
+	}
+
 	const raw = cont as any;
 	const type = (cont.typeContact || cont.contactType || raw.tipo || '').toLowerCase();
 	const notes = (cont.notes || raw.comContact || raw.notas || '').toLowerCase();
@@ -154,22 +243,28 @@ export function getContactBadgeInfo(cont: Contact | null | undefined): ContactBa
 	if (normalizedStage === 'OW') {
 		return { isAgent: false, isOwner: true, shape: 'square', text: 'OW', color: '#0f766e', tooltip: 'Propietario (OW)' };
 	}
+	if (normalizedStage === 'PAU') {
+		return { isAgent: false, shape: 'circle', text: 'PAU', color: '#64748b', tooltip: 'Etapa 7 · En Pausa' };
+	}
+	if (normalizedStage === 'IN') {
+		return { isAgent: false, shape: 'circle', text: 'IN', color: '#334155', tooltip: 'Etapa 8 · Inactivo' };
+	}
 	if (normalizedStage === 'NA') {
 		return { isAgent: false, shape: 'circle', text: 'NA', color: '#808080', tooltip: 'Sin etapa asignada' };
 	}
 	switch (normalizedStage) {
 		case 2:
-			return { isAgent: false, shape: 'circle', text: 'E2', color: '#ff8844', tooltip: 'Etapa 2' };
+			return { isAgent: false, shape: 'circle', text: 'E2', color: '#ff8844', tooltip: CANONICAL_STAGE_LABELS[2] };
 		case 3:
-			return { isAgent: false, shape: 'circle', text: 'E3', color: '#ffcc44', tooltip: 'Etapa 3' };
+			return { isAgent: false, shape: 'circle', text: 'E3', color: '#ffcc44', tooltip: CANONICAL_STAGE_LABELS[3] };
 		case 4:
-			return { isAgent: false, shape: 'circle', text: 'E4', color: '#44cc44', tooltip: 'Etapa 4' };
+			return { isAgent: false, shape: 'circle', text: 'E4', color: '#44cc44', tooltip: CANONICAL_STAGE_LABELS[4] };
 		case 5:
-			return { isAgent: false, shape: 'circle', text: 'E5', color: '#8844cc', tooltip: 'Etapa 5 - Cierre' };
+			return { isAgent: false, shape: 'circle', text: 'E5', color: '#8844cc', tooltip: CANONICAL_STAGE_LABELS[5] };
 		case 6:
-			return { isAgent: false, shape: 'circle', text: 'E6', color: '#2563eb', tooltip: 'Etapa 6 - Post-Venta' };
+			return { isAgent: false, shape: 'circle', text: 'E6', color: '#2563eb', tooltip: CANONICAL_STAGE_LABELS[6] };
 		default:
-			return { isAgent: false, shape: 'circle', text: `E${normalizedStage}`, color: '#ff4444', tooltip: 'Etapa 1' };
+			return { isAgent: false, shape: 'circle', text: 'E1', color: '#ff4444', tooltip: CANONICAL_STAGE_LABELS[1] };
 	}
 }
 

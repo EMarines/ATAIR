@@ -10,6 +10,9 @@ export interface Contact {
   halfBathroom: string | number;
   id?: string;
   isActive?: boolean;
+  inactiveReason?: 'pausado' | 'ya_compro' | 'no_interesa' | '' | null;
+  pausedAt?: number | null;
+  reactivateAt?: number | null;
   lastContact?: number;
   lastname: string;
   lastResponse?: number;
@@ -218,7 +221,7 @@ export interface CopilotoTodoMeta {
   contactId: string;
   fullName: string;
   telephon: string;
-  stage: 'E1' | 'E2' | 'E3' | 'E4' | string;
+  stage: 'E1' | 'E2' | 'E3' | 'E4' | 'PAU' | string;
   priority?: number;
   runDate: string;
   action: string;
@@ -238,6 +241,8 @@ export interface CopilotoTodoMeta {
   coldStep?: 'step1_check' | 'step2_send_link' | string;
   repliedToStep1?: boolean;
   daysSinceLastTouch?: number | null;
+  isPausedCheckIn?: boolean;
+  pausedReactivateAt?: number | null;
   proposedClose?: boolean;
   proposedCloseReason?: string;
   proposedCloseAt?: number;

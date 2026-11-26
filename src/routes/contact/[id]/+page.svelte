@@ -4,6 +4,7 @@
 	import {
 		doc,
 		deleteDoc,
+		updateDoc,
 		collection,
 		query,
 		where,
@@ -62,6 +63,84 @@
 	let liveContactIdBinnacles: Binnacle[] = [];
 	let hasLiveServerTo = false;
 	let hasLiveServerContactId = false;
+	let isUpdatingStatus = false;
+
+	function formatShortDate(ms: number | null | undefined): string {
+		if (!ms || !Number.isFinite(Number(ms))) return '3 meses';
+		return new Date(Number(ms)).toLocaleDateString('es-MX', {
+			day: '2-digit',
+			month: 'short',
+			year: 'numeric'
+		});
+	}
+
+	async function setContactPauseOrInactive(mode: 'pause_3m' | 'inactive' | 'reactivate') {
+		if (!contact?.id || isUpdatingStatus) return;
+		isUpdatingStatus = true;
+		try {
+			const nowMs = Date.now();
+			let patch: Record<string, any> = {};
+			let binnAction = '';
+			let binnComment = '';
+
+			if (mode === 'pause_3m') {
+				const reactivateAt = nowMs + 90 * 86_400_000;
+				patch = {
+					isActive: false,
+					inactiveReason: 'pausado',
+					pausedAt: nowMs,
+					reactivateAt
+				};
+				binnAction = 'Contacto pausado 3 meses: ';
+				binnComment = `Marcado en PAUSA ("de momento no"). Chequeo programado para ${formatShortDate(reactivateAt)}; permanecerá pausado salvo confirmación de reinicio.`;
+			} else if (mode === 'inactive') {
+				patch = {
+					isActive: false,
+					inactiveReason: 'no_interesa',
+					reactivateAt: null
+				};
+				binnAction = 'Contacto inactivo definitivo: ';
+				binnComment = 'Marcado como inactivo definitivo (ya compró / no le interesa). Sin futuros envíos.';
+			} else {
+				const currentNorm = String(contact.contactStage || '').toUpperCase();
+				const needsStageReset =
+					currentNorm.includes('PAUSA') ||
+					currentNorm.includes('PAU') ||
+					currentNorm.includes('INACTIVO') ||
+					currentNorm.startsWith('ETAPA 7') ||
+					currentNorm.startsWith('ETAPA 8');
+				patch = {
+					isActive: true,
+					inactiveReason: '',
+					pausedAt: null,
+					reactivateAt: null,
+					lastResponse: nowMs,
+					...(needsStageReset ? { contactStage: 'Etapa 2 · Perfilamiento' } : {})
+				};
+				binnAction = 'Contacto reactivado: ';
+				binnComment = 'Confirmó que reinició búsqueda de inmueble. Reactivado en el embudo.';
+			}
+
+			await updateDoc(doc(db, 'contacts', contact.id), patch);
+			await infoToBinnacle({
+				date: nowMs,
+				to: contact.id,
+				action: binnAction,
+				comment: binnComment
+			});
+
+			contact = { ...contact, ...patch };
+			contactsStore.update((list) =>
+				list.map((c) => (c.id === contact.id ? { ...c, ...patch } : c))
+			);
+		} catch (err) {
+			console.error('Error actualizando estado del contacto:', err);
+			alert('No se pudo actualizar el estado del contacto.');
+		} finally {
+			isUpdatingStatus = false;
+		}
+	}
+
 	let deletedBinnacleIds = new Set<string>();
 	let unsubscribeContactBinnacles: (() => void)[] = [];
 	let activeBinnacleContactId = '';
@@ -896,8 +975,8 @@
 									color: white;
 									font-weight: 700;
 									font-family: 'Segoe UI', Arial, sans-serif;
-									font-size: 0.82rem;
-									letter-spacing: 0.5px;
+									font-size: {contactBadge.text.length >= 3 ? '0.66rem' : '0.82rem'};
+									letter-spacing: {contactBadge.text.length >= 3 ? '0px' : '0.5px'};
 									box-shadow: 0 2px 6px rgba(0,0,0,0.35);
 									border: 2px solid white;
 									flex-shrink: 0;
@@ -908,6 +987,40 @@
 						</span>
 					</div>
 				</div>
+
+				{#if contact.isActive === false}
+					<div class="status-banner" class:status-banner--paused={contact.inactiveReason === 'pausado'}>
+						<div class="status-banner__text">
+							{#if contact.inactiveReason === 'pausado'}
+								<strong>⏸️ Contacto en PAUSA ("de momento no")</strong>
+								<span>Próximo chequeo: {formatShortDate(contact.reactivateAt)} (seguirá pausado salvo que confirme reinicio).</span>
+							{:else}
+								<strong>🚫 Contacto INACTIVO definitivo</strong>
+								<span>Excluido de Copiloto, sinergias y difusiones.</span>
+							{/if}
+						</div>
+						<div class="status-banner__actions">
+							<button
+								type="button"
+								class="status-btn status-btn--reactivate"
+								disabled={isUpdatingStatus}
+								on:click={() => setContactPauseOrInactive('reactivate')}
+							>
+								✅ Reinició búsqueda
+							</button>
+							{#if contact.inactiveReason === 'pausado'}
+								<button
+									type="button"
+									class="status-btn status-btn--inactive"
+									disabled={isUpdatingStatus}
+									on:click={() => setContactPauseOrInactive('inactive')}
+								>
+									🚫 Inactivo definitivo
+								</button>
+							{/if}
+						</div>
+					</div>
+				{/if}
 
 				{#if getCleanContactNotes(contact) || (isAgentContact && (contact.company || contact.inmobiliaria))}
 					<div class="notes">
@@ -1010,6 +1123,26 @@
 					</div>
 
 					<div class="icon__title">
+						{#if contact.isActive !== false && !isAgentContact}
+							<button
+								type="button"
+								class="status-btn status-btn--pause"
+								disabled={isUpdatingStatus}
+								on:click={() => setContactPauseOrInactive('pause_3m')}
+								title="Pausar búsqueda 3 meses (manda chequeo trimestral sin reactivar hasta confirmación)"
+							>
+								⏸️ Pausar 3m
+							</button>
+							<button
+								type="button"
+								class="status-btn status-btn--inactive"
+								disabled={isUpdatingStatus}
+								on:click={() => setContactPauseOrInactive('inactive')}
+								title="Marcar inactivo definitivo"
+							>
+								🚫 Inactivo
+							</button>
+						{/if}
 						<i
 							on:click={() => {
 								editContact();
@@ -1301,6 +1434,74 @@
 		align-items: center;
 		gap: 6px;
 		font-weight: 500;
+	}
+
+	.status-banner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 0.65rem;
+		padding: 0.65rem 0.9rem;
+		margin: 0.5rem 0 0.75rem;
+		border-radius: 10px;
+		background: rgba(51, 65, 85, 0.16);
+		border: 1px solid rgba(100, 116, 139, 0.4);
+	}
+
+	.status-banner--paused {
+		background: rgba(100, 116, 139, 0.15);
+		border-color: rgba(148, 163, 184, 0.55);
+	}
+
+	.status-banner__text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		font-size: 0.84rem;
+	}
+
+	.status-banner__text span {
+		font-size: 0.78rem;
+		opacity: 0.85;
+	}
+
+	.status-banner__actions {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		flex-wrap: wrap;
+	}
+
+	.status-btn {
+		border: none;
+		border-radius: 7px;
+		padding: 0.35rem 0.7rem;
+		font-size: 0.78rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.status-btn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.status-btn--pause {
+		background: rgba(100, 116, 139, 0.2);
+		color: inherit;
+		border: 1px solid rgba(100, 116, 139, 0.4);
+	}
+
+	.status-btn--inactive {
+		background: rgba(239, 68, 68, 0.16);
+		color: #dc2626;
+		border: 1px solid rgba(239, 68, 68, 0.38);
+	}
+
+	.status-btn--reactivate {
+		background: #10b981;
+		color: #ffffff;
 	}
 
 	.agent-role-badge {
