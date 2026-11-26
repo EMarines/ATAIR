@@ -1,6 +1,18 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { db, auth } from '$lib/firebase_toggle'; // Import the default export
-	import { doc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+	import {
+		doc,
+		deleteDoc,
+		collection,
+		query,
+		where,
+		getDocs,
+		getDocsFromServer,
+		writeBatch,
+		onSnapshot,
+		limit
+	} from 'firebase/firestore';
 	import { goto } from '$app/navigation';
 	import type { Contact, Binnacle, Property } from '$types';
 	import {
@@ -43,6 +55,18 @@
 	let commInpuyBinnacle = '';
 	let propToRender: Property[] = [];
 	let sortedBinn: Binnacle[] = [];
+	let serverBinnacles: Binnacle[] = Array.isArray(data?.initialBinnacles)
+		? (data.initialBinnacles as Binnacle[])
+		: [];
+	let liveToBinnacles: Binnacle[] = [];
+	let liveContactIdBinnacles: Binnacle[] = [];
+	let hasLiveServerTo = false;
+	let hasLiveServerContactId = false;
+	let deletedBinnacleIds = new Set<string>();
+	let unsubscribeContactBinnacles: (() => void)[] = [];
+	let activeBinnacleContactId = '';
+	let isLoadingBinnacles = serverBinnacles.length === 0;
+	let binnacleError = '';
 	let toRenBinn: Binnacle[] = [];
 	let listToRender: Property[] = [];
 	let contacto = {};
@@ -113,6 +137,22 @@
 	} else {
 		// Solo asignar el contacto si tiene un ID válido
 		contact = contactData;
+	}
+
+	// Verificación reactiva para sincronizar contacto al navegar entre fichas
+	$: if (data?.contact?.id && data.contact.id !== contact?.id) {
+		contact = data.contact as Contact;
+		serverBinnacles = Array.isArray(data?.initialBinnacles)
+			? (data.initialBinnacles as Binnacle[])
+			: [];
+		liveToBinnacles = [];
+		liveContactIdBinnacles = [];
+		hasLiveServerTo = false;
+		hasLiveServerContactId = false;
+		deletedBinnacleIds = new Set<string>();
+		isLoadingBinnacles = serverBinnacles.length === 0;
+		binnacleError = '';
+		contBinn();
 	}
 
 	// Verificación reactiva para asegurar que el contacto tenga un ID válido
@@ -511,11 +551,193 @@
 		}
 	}
 
-	// Busca la bitácora del contacto
+	function cleanupContactBinnaclesListeners() {
+		for (const unsub of unsubscribeContactBinnacles) {
+			try {
+				unsub();
+			} catch {}
+		}
+		unsubscribeContactBinnacles = [];
+	}
+
+	function normalizeBinnacleEntry(id: string, raw: Record<string, any>): Binnacle {
+		return {
+			...raw,
+			id,
+			comment: String(raw?.comment ?? raw?.commBinnacle ?? raw?.content ?? '')
+		} as Binnacle;
+	}
+
+	async function fetchContactBinnaclesFromServer(targetContactId: string) {
+		if (!browser || !db || !targetContactId) return;
+		const binnRef = collection(db, 'binnacles');
+		const qTo = query(binnRef, where('to', '==', targetContactId), limit(300));
+		const qContactId = query(binnRef, where('contactId', '==', targetContactId), limit(300));
+
+		const fetchQuery = async (q: ReturnType<typeof query>) => {
+			try {
+				return await getDocsFromServer(q);
+			} catch {
+				return await getDocs(q);
+			}
+		};
+
+		try {
+			const [snapTo, snapContactId] = await Promise.all([
+				fetchQuery(qTo),
+				fetchQuery(qContactId)
+			]);
+
+			if (activeBinnacleContactId !== targetContactId) return;
+
+			const merged = new Map<string, Binnacle>();
+			for (const snap of [snapTo, snapContactId]) {
+				for (const docSnap of snap.docs) {
+					merged.set(docSnap.id, normalizeBinnacleEntry(docSnap.id, docSnap.data() as Record<string, any>));
+				}
+			}
+
+			serverBinnacles = Array.from(merged.values());
+			binnacleError = '';
+			isLoadingBinnacles = false;
+			contBinn();
+		} catch (err) {
+			if (activeBinnacleContactId !== targetContactId) return;
+			console.warn('[Contact Binnacle Fetch] Error consultando bitácora desde servidor:', err);
+			isLoadingBinnacles = false;
+			if (sortedBinn.length === 0) {
+				binnacleError = 'No se pudo cargar la bitácora.';
+			}
+		}
+	}
+
+	function startContactBinnaclesListener(targetContactId: string, forceReload = false) {
+		if (!browser || !db || !targetContactId) return;
+		if (!forceReload && targetContactId === activeBinnacleContactId) return;
+
+		cleanupContactBinnaclesListeners();
+		activeBinnacleContactId = targetContactId;
+		liveToBinnacles = [];
+		liveContactIdBinnacles = [];
+		hasLiveServerTo = false;
+		hasLiveServerContactId = false;
+		binnacleError = '';
+		if (serverBinnacles.length === 0) {
+			isLoadingBinnacles = true;
+		}
+		contBinn();
+
+		// 1. Lectura directa al servidor (evita bloqueos de caché IndexedDB multi-pestaña en pestañas secundarias)
+		fetchContactBinnaclesFromServer(targetContactId);
+
+		// 2. Suscripciones en tiempo real (campo 'to' y campo alternativo 'contactId')
+		const binnRef = collection(db, 'binnacles');
+		const unsubTo = onSnapshot(
+			query(binnRef, where('to', '==', targetContactId), limit(300)),
+			(snapshot) => {
+				if (activeBinnacleContactId !== targetContactId) return;
+				const fromServer = !snapshot.metadata.fromCache;
+				if (fromServer) {
+					hasLiveServerTo = true;
+					isLoadingBinnacles = false;
+				}
+				// No sobrescribir ni vaciar resultados ya obtenidos del servidor con una caché local vacía
+				if (snapshot.empty && snapshot.metadata.fromCache && serverBinnacles.length > 0) {
+					return;
+				}
+				liveToBinnacles = snapshot.docs.map((docSnap) =>
+					normalizeBinnacleEntry(docSnap.id, docSnap.data() as Record<string, any>)
+				);
+				if (liveToBinnacles.length > 0) {
+					isLoadingBinnacles = false;
+				}
+				contBinn();
+			},
+			(err) => {
+				console.warn('[Contact Binnacle Listener:to] Error consultando bitácora:', err);
+			}
+		);
+
+		const unsubContactId = onSnapshot(
+			query(binnRef, where('contactId', '==', targetContactId), limit(300)),
+			(snapshot) => {
+				if (activeBinnacleContactId !== targetContactId) return;
+				const fromServer = !snapshot.metadata.fromCache;
+				if (fromServer) {
+					hasLiveServerContactId = true;
+					isLoadingBinnacles = false;
+				}
+				if (snapshot.empty && snapshot.metadata.fromCache && serverBinnacles.length > 0) {
+					return;
+				}
+				liveContactIdBinnacles = snapshot.docs.map((docSnap) =>
+					normalizeBinnacleEntry(docSnap.id, docSnap.data() as Record<string, any>)
+				);
+				if (liveContactIdBinnacles.length > 0) {
+					isLoadingBinnacles = false;
+				}
+				contBinn();
+			},
+			(err) => {
+				console.warn('[Contact Binnacle Listener:contactId] Error consultando bitácora:', err);
+			}
+		);
+
+		unsubscribeContactBinnacles = [unsubTo, unsubContactId];
+	}
+
+	function handleBinnacleDeleted(event: CustomEvent<{ id: string }>) {
+		const deletedId = event?.detail?.id;
+		if (!deletedId) return;
+		deletedBinnacleIds.add(deletedId);
+		serverBinnacles = serverBinnacles.filter((item) => item.id !== deletedId);
+		liveToBinnacles = liveToBinnacles.filter((item) => item.id !== deletedId);
+		liveContactIdBinnacles = liveContactIdBinnacles.filter((item) => item.id !== deletedId);
+		contBinn();
+	}
+
+	// Busca la bitácora del contacto combinando servidor + listeners dedicados + store global sin duplicados
 	function contBinn() {
-		if (!$binnaclesStore) return [];
-		let bitacora = $binnaclesStore.filter((item) => item.to === contact.id);
+		if (!contact?.id) return [];
+		const mergedMap = new Map<string, Binnacle>();
+
+		const storeItems = Array.isArray($binnaclesStore)
+			? $binnaclesStore
+					.filter((item) => item.to === contact.id || item.contactId === contact.id)
+					.map((item) =>
+						item.id ? normalizeBinnacleEntry(item.id, item as Record<string, any>) : item
+					)
+			: [];
+
+		// Una vez que ambos listeners en vivo confirmaron con servidor, sus datos son la fuente autoritativa
+		const includeServerFallback = !(hasLiveServerTo && hasLiveServerContactId);
+		const pool: Binnacle[] = [
+			...liveToBinnacles,
+			...liveContactIdBinnacles,
+			...(includeServerFallback ? serverBinnacles : []),
+			...storeItems
+		];
+
+		for (const item of pool) {
+			if (item.id && deletedBinnacleIds.has(item.id)) continue;
+			const key =
+				item.id || `${item.date || 0}_${item.action || ''}_${(item.comment || '').slice(0, 60)}`;
+			if (!mergedMap.has(key)) {
+				mergedMap.set(key, item);
+			}
+		}
+
+		const bitacora = Array.from(mergedMap.values());
 		return (sortedBinn = sortBinnacle(bitacora));
+	}
+
+	// Render inmediato en SSR o hidratación con los datos precargados
+	if (contact?.id) {
+		contBinn();
+	}
+
+	$: if (browser && contact?.id) {
+		startContactBinnaclesListener(contact.id);
 	}
 
 	// Mover la llamada dentro de un $: para que se ejecute cuando binnaclesStore esté listo
@@ -534,17 +756,20 @@
 	}
 
 	//  Save notes
-	function saveNote() {
+	async function saveNote() {
+		if (!commInpuyBinnacle || !commInpuyBinnacle.trim()) return;
 		$systStatus = 'binnAdding';
+		const noteText = commInpuyBinnacle.trim();
+		commInpuyBinnacle = '';
 		let binnacle: Binnacle = {
 			date: Date.now(),
-			comment: commInpuyBinnacle,
+			comment: noteText,
 			to: contact.id,
 			action: 'Nota agregada: '
 		};
-		infoToBinnacle(binnacle);
+		await infoToBinnacle(binnacle);
+		await fetchContactBinnaclesFromServer(contact.id);
 		contBinn();
-		commInpuyBinnacle = '';
 	}
 
 	onMount(() => {
@@ -595,6 +820,7 @@
 	});
 
 	onDestroy(() => {
+		cleanupContactBinnaclesListeners();
 		propertyStore.set(null);
 		$systStatus = '';
 	});
@@ -815,11 +1041,26 @@
 					<h1 class="title">Bitácora</h1>
 					<div>
 						<div class="schedule">
-							<!-- <div class="binnacleHome"> -->
-							{#each sortedBinn as binn}
-								<CardBinnacle {binn} />
-							{/each}
-							<!-- </div>               -->
+							{#if isLoadingBinnacles && sortedBinn.length === 0}
+								<div class="binnacle-state">Cargando bitácora...</div>
+							{:else if binnacleError && sortedBinn.length === 0}
+								<div class="binnacle-state binnacle-state--error">
+									<span>{binnacleError}</span>
+									<button
+										type="button"
+										class="binnacle-retry-btn"
+										on:click={() => startContactBinnaclesListener(contact.id, true)}
+									>
+										Reintentar
+									</button>
+								</div>
+							{:else if sortedBinn.length === 0}
+								<div class="binnacle-state">Sin registros en bitácora aún.</div>
+							{:else}
+								{#each sortedBinn as binn, i (binn.id || `${binn.date || 0}_${binn.action || ''}_${(binn.comment || '').slice(0, 60)}_${i}`)}
+									<CardBinnacle {binn} on:deleted={handleBinnacleDeleted} />
+								{/each}
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -954,7 +1195,37 @@
 		display: flex;
 		flex-direction: column;
 		flex: 1; /* Ocupar todo el espacio disponible */
-		overflow: hidden; /* Evitar desbordamiento */
+		overflow: visible;
+	}
+
+	.binnacle-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		padding: 24px 12px;
+		color: #94a3b8;
+		font-size: 0.9rem;
+		text-align: center;
+	}
+
+	.binnacle-state--error {
+		color: #fca5a5;
+	}
+
+	.binnacle-retry-btn {
+		background: rgba(168, 85, 247, 0.2);
+		color: #e9d5ff;
+		border: 1px solid rgba(168, 85, 247, 0.45);
+		border-radius: 8px;
+		padding: 4px 12px;
+		font-size: 0.82rem;
+		cursor: pointer;
+	}
+
+	.binnacle-retry-btn:hover {
+		background: rgba(168, 85, 247, 0.35);
 	}
 
 	.title {

@@ -25,14 +25,26 @@ export function sortTodos(toRender: Todo[]): Todo[] {
     });
 }
 
+function parseBinnacleDateMs(raw: any): number {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return 0;
+    if (/^\d+$/.test(trimmed)) return Number(trimmed);
+    const parsed = Date.parse(trimmed);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  if (raw && typeof raw === 'object') {
+    if (typeof raw.toMillis === 'function') return raw.toMillis();
+    if (typeof raw.seconds === 'number') return raw.seconds * 1000;
+  }
+  return 0;
+}
+
 export function sortBinnacle(toRender: Binnacle[]): Binnacle[] {
-  return toRender.sort((a: Binnacle, b: Binnacle) => {
-      if(new Date(a.date) < new Date(b.date)){
-         return 1;
-      } else if (new Date(a.date) > new Date(b.date)){
-         return -1;
-      } else {
-         return 0;
-      }
-   })
+  return [...toRender].sort((a: Binnacle, b: Binnacle) => {
+      const dateA = parseBinnacleDateMs(a?.date ?? a?.createdAt);
+      const dateB = parseBinnacleDateMs(b?.date ?? b?.createdAt);
+      return dateB - dateA;
+   });
 }

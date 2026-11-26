@@ -1,14 +1,29 @@
 <script lang="ts">
 	// @ts-nocheck
+	import { createEventDispatcher } from 'svelte';
 	import { formatDate } from '$lib/functions/dateFunctions';
 	import { db } from '$lib/firebase_toggle';
 	import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 	export let binn: any = {};
 
+	const dispatch = createEventDispatcher();
+
 	let isEditing = false;
 	let editedComment = '';
 	let isSaving = false;
+
+	$: displayComment = String(binn?.comment ?? binn?.commBinnacle ?? binn?.content ?? '');
+	$: displayDateMs = (() => {
+		const raw = binn?.date ?? binn?.createdAt;
+		if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+		if (typeof raw === 'string' && /^\d+$/.test(raw.trim())) return Number(raw.trim());
+		if (raw && typeof raw === 'object') {
+			if (typeof raw.toMillis === 'function') return raw.toMillis();
+			if (typeof raw.seconds === 'number') return raw.seconds * 1000;
+		}
+		return raw;
+	})();
 
 	function getActionMeta(b: any) {
 		const act = String(b?.action || '').trim().toLowerCase();
@@ -80,7 +95,7 @@
 
 	function startEdit() {
 		if (binn.action === 'WhatsApp enviado: ' || String(binn.action || '').toLowerCase().includes('whatsapp')) return;
-		editedComment = binn.comment || '';
+		editedComment = displayComment;
 		isEditing = true;
 	}
 
@@ -126,6 +141,7 @@
 			try {
 				const binnRef = doc(db, 'binnacles', binn.id);
 				await deleteDoc(binnRef);
+				dispatch('deleted', { id: binn.id });
 			} catch (error) {
 				console.error('Error al eliminar registro de bitácora:', error);
 				alert('Error al eliminar: ' + error);
@@ -143,7 +159,7 @@
 	</div>
 
 	<div class="cell__date">
-		<div>{formatDate(binn.date)}</div>
+		<div>{formatDate(displayDateMs)}</div>
 	</div>
 
 	{#if isEditing}
@@ -181,8 +197,21 @@
 			</div>
 		</div>
 	{:else}
-		<div class="cell__comment" title={binn.comment}>
-			{binn.comment}
+		<div class="cell__comment" title={displayComment}>
+			<span>{displayComment}</span>
+			{#if binn.mediaUrl}
+				<a
+					class="wa-media-pill"
+					href={binn.mediaUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					on:click|stopPropagation
+					title={binn.mediaFilename || 'Abrir adjunto guardado en Firebase Storage'}
+				>
+					<i class="fa-solid fa-paperclip"></i>
+					{binn.mediaFilename || 'Ver adjunto'}
+				</a>
+			{/if}
 		</div>
 
 		<div class="cell__actions">
@@ -348,6 +377,27 @@
 		font-size: 0.85rem;
 		padding-top: 2px;
 		color: #f1f5f9;
+	}
+
+	.wa-media-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		margin-left: 6px;
+		padding: 1px 7px;
+		border-radius: 999px;
+		background: rgba(56, 189, 248, 0.14);
+		border: 1px solid rgba(56, 189, 248, 0.35);
+		color: #7dd3fc;
+		font-size: 0.75rem;
+		font-weight: 500;
+		text-decoration: none;
+		vertical-align: middle;
+	}
+
+	.wa-media-pill:hover {
+		background: rgba(56, 189, 248, 0.25);
+		color: #e0f2fe;
 	}
 
 	.cell__actions {
