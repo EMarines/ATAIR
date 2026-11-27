@@ -3,7 +3,7 @@ import {
 	findPropertiesInPriceRangeForContact,
 	hasRecentPropertySend
 } from '../src/lib/functions/propertyMatching.js';
-import { planCopilotoCandidates } from '../src/lib/functions/copilotoPlanner.js';
+import { buildSingleCopilotoCandidate, planCopilotoCandidates } from '../src/lib/functions/copilotoPlanner.js';
 import { buildFallbackCopilotoCard, summarizeContactBinnacles } from '../src/lib/functions/copilotoAnalyzer.js';
 import {
 	CANONICAL_STAGE_LABELS,
@@ -762,5 +762,75 @@ assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 6 · Post-Venta' }
 assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 7 · En Pausa' } as any).text, 'PAU');
 assert.strictEqual(getContactBadgeInfo({ contactStage: 'Etapa 8 · Inactivo' } as any).text, 'IN');
 console.log('✓ Contactos Pausados (PAU 3 meses), Inactivos (IN) y Etapas Bautizadas (E1-E6, PAU, IN) validados al 100%.');
+
+// 12. TEST Alta de Contacto -> Estrategia Copiloto IA automática (buildSingleCopilotoCandidate)
+console.log('\n[Test 12] Validando generación automática de estrategia Copiloto IA al dar de alta...');
+const newBuyerE1: Contact = {
+	id: 'new-buyer-e1',
+	name: 'Andrea',
+	lastname: 'Núñez',
+	telephon: '6149001122',
+	typeContact: 'Comprador',
+	contactStage: 'Etapa 1 · Primer Contacto',
+	propCont: 'EB-WD1256',
+	notes: 'Preguntó por casa en Las Granjas',
+	createdAt: nowMs,
+	isActive: true
+} as any;
+
+const candNewE1 = buildSingleCopilotoCandidate(newBuyerE1, catalogProperties, {
+	baseUrl: 'https://matchhome.vercel.app'
+});
+assert.ok(candNewE1, 'Nuevo comprador E1 debe generar CopilotoCandidate');
+assert.strictEqual(candNewE1!.stage, 'E1');
+assert.strictEqual(candNewE1!.isE1Over10Days, false);
+const cardNewE1 = buildFallbackCopilotoCard(candNewE1!, summarizeContactBinnacles([], candNewE1!, nowMs));
+assert.ok(cardNewE1.action.includes('Andrea Núñez'), 'Debe generar acción personalizada');
+assert.ok(cardNewE1.whatsappDraft.includes('Andrea'), 'Debe redactar borrador WA');
+
+const newBuyerE4: Contact = {
+	id: 'new-buyer-e4',
+	name: 'Lucía',
+	lastname: 'Vargas',
+	telephon: '6149002233',
+	typeContact: 'Comprador',
+	contactStage: 'Etapa 4 · Búsqueda Activa',
+	selecTP: 'Casa',
+	budget: 2_350_000,
+	locaProperty: ['Jacales'],
+	createdAt: nowMs,
+	isActive: true
+} as any;
+
+const candNewE4 = buildSingleCopilotoCandidate(newBuyerE4, catalogProperties, {
+	baseUrl: 'https://matchhome.vercel.app'
+});
+assert.ok(candNewE4, 'Nuevo comprador E4 debe generar CopilotoCandidate');
+assert.strictEqual(candNewE4!.stage, 'E4');
+assert.ok(candNewE4!.matchedProperties.length > 0, 'Nuevo comprador E4 debe adjuntar propiedades compatibles');
+const cardNewE4 = buildFallbackCopilotoCard(candNewE4!, summarizeContactBinnacles([], candNewE4!, nowMs));
+assert.ok(cardNewE4.propertyLinks.length > 0, 'Tarjeta E4 debe incluir links de propiedades');
+assert.ok(cardNewE4.whatsappDraft.includes('S1-MT7970'), 'Borrador E4 debe incluir la propiedad de sinergia compatible S1-MT7970');
+assert.ok(
+	candNewE4!.matchedProperties.every((p) => cardNewE4.whatsappDraft.includes(p.proposalUrl)),
+	'Borrador E4 debe incluir todos los links de propuesta generados'
+);
+
+const newOwner: Contact = {
+	id: 'new-owner-1',
+	name: 'Pedro',
+	lastname: 'Propietario',
+	telephon: '6149003344',
+	typeContact: 'Vendedor',
+	contactStage: 'OW',
+	createdAt: nowMs,
+	isActive: true
+} as any;
+assert.strictEqual(
+	buildSingleCopilotoCandidate(newOwner, catalogProperties),
+	null,
+	'Propietario NO debe generar tarjeta de comprador Copiloto'
+);
+console.log('✓ Alta de contacto con estrategia Copiloto IA validada al 100%.');
 
 console.log('\n🎉 ALL_COPILOTO_TESTS_PASSED! 100% de pruebas unitarias exitosas.');

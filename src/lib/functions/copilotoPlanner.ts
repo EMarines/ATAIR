@@ -887,3 +887,67 @@ export function planCopilotoCandidates(
 		candidates
 	};
 }
+
+/**
+ * Construye un CopilotoCandidate individual para un contacto recién dado de alta,
+ * reutilizando las mismas reglas de etapa y emparejamiento de sinergias del planificador diario.
+ * Retorna `null` si el contacto no es un comprador elegible (p. ej. propietario, agente, inactivo o sin teléfono).
+ */
+export function buildSingleCopilotoCandidate(
+	contact: Contact,
+	properties: Property[] = [],
+	options: { baseUrl?: string; propHint?: string } = {}
+): CopilotoCandidate | null {
+	if (!contact?.id) return null;
+	if (isProtectedOrNonBuyer(contact)) return null;
+
+	const baseUrl = options.baseUrl || 'https://matchhome.vercel.app';
+	const badge = getContactBadgeInfo(contact);
+	const stageText = badge.text;
+
+	if (stageText !== 'E1' && stageText !== 'E2' && stageText !== 'E3' && stageText !== 'E4') {
+		return null;
+	}
+
+	const enrichedContact: Contact =
+		options.propHint && !contact.propCont
+			? { ...contact, propCont: options.propHint }
+			: contact;
+
+	let matchedProperties: CopilotoMatchedPropertySummary[] = [];
+	if (stageText === 'E4' && Array.isArray(properties) && properties.length > 0) {
+		const matches = matchPropertiesForContact(enrichedContact, properties, {
+			synergyOnly: true,
+			excludeAlreadySent: false,
+			binnacles: [],
+			maxResults: 3
+		});
+		matchedProperties = matches.map((p) => ({
+			id: String(p.id || p.docId || p.public_id || ''),
+			public_id: String(p.public_id || ''),
+			title: String(p.title || `${p.property_type || 'Propiedad'} en ${p.location || 'Chihuahua'}`),
+			price: Number(p.price || 0),
+			zona: String((p as any).zona || p.location || ''),
+			proposalUrl: p.public_id
+				? getProposalUrl(p.public_id, enrichedContact)
+				: String((p as any).public_url || (p as any).urlProp || '')
+		}));
+	}
+
+	const priorityMap: Record<'E1' | 'E2' | 'E3' | 'E4', number> = {
+		E1: 1,
+		E2: 2,
+		E4: 3,
+		E3: 4
+	};
+
+	return buildCandidateRecord(
+		enrichedContact,
+		stageText,
+		priorityMap[stageText],
+		false,
+		matchedProperties,
+		baseUrl,
+		stageText === 'E1' ? { isE1Over10Days: false } : undefined
+	);
+}

@@ -25,6 +25,7 @@ export {
 export {
 	COLD_REACTIVATION_DAYS,
 	COLD_STEP2_WAIT_HOURS,
+	buildSingleCopilotoCandidate,
 	evaluateColdReactivationState,
 	getChihuahuaDateKey,
 	planCopilotoCandidates

@@ -35,6 +35,12 @@
 	import { convertOperationEbFb } from '$lib/functions/converterEb-Fb';
 	import { getProposalUrl, ensureContactInProposalUrl } from '$lib/functions/urlUtils';
 	import { normalizeStage, toCanonicalStageLabel, CANONICAL_STAGE_LABELS } from '$lib/functions/contactBadge';
+	import { buildSingleCopilotoCandidate, getChihuahuaDateKey } from '$lib/functions/copilotoPlanner';
+	import {
+		buildFallbackCopilotoCard,
+		summarizeContactBinnacles,
+		type CopilotoAnalyzedCard
+	} from '$lib/functions/copilotoAnalyzer';
 	import { onMount, onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
 	import { db } from '$lib/firebase_toggle';
@@ -630,7 +636,7 @@
 		return dueDate.getTime();
 	}
 
-	// 📅 CREAR TAREA AUTOMÁTICA DE SEGUIMIENTO (ETAPA 1) EN FIRESTORE Y AGENDA ATAIR
+	// 📅 CREAR TAREA AUTOMÁTICA CON ESTRATEGIA COPILOTO IA PARA EL DÍA SIGUIENTE HÁBIL
 	async function createFollowUpTask(contactData: Contact, propData: Property | null, googleTaskId?: string) {
 		try {
 			const nextBusinessDay = getNextBusinessDayTimestamp(contactData.createdAt);
@@ -639,17 +645,108 @@
 				? `${propData.clavePropiedad || propData.claveEB || propData.public_id || ''} ${propData.colonia ? '- ' + propData.colonia : ''}`.trim()
 				: (contactData.propCont || '');
 
+			const taskId = generateUUID();
+
+			// Construir candidato Copiloto IA para compradores elegibles (E1, E2, E3, E4)
+			const allProperties = get(propertiesStore) || [];
+			const candidate = buildSingleCopilotoCandidate(contactData, allProperties, {
+				baseUrl: 'https://matchhome.vercel.app',
+				propHint: propInfo
+			});
+
+			if (candidate) {
+				let card: CopilotoAnalyzedCard | null = null;
+				try {
+					const controller = new AbortController();
+					const timeoutId = setTimeout(() => controller.abort(), 8000);
+					const res = await fetch('/api/copiloto/analyze-batch', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ candidates: [candidate] }),
+						signal: controller.signal
+					});
+					clearTimeout(timeoutId);
+					if (res.ok) {
+						const data = await res.json();
+						if (data?.success && Array.isArray(data.results) && data.results[0]) {
+							card = data.results[0] as CopilotoAnalyzedCard;
+						}
+					}
+				} catch (aiErr) {
+					console.warn('⚠️ [Alta Copiloto] Fallback determinístico por timeout/red:', aiErr);
+				}
+
+				if (!card) {
+					const summary = summarizeContactBinnacles([], candidate);
+					card = buildFallbackCopilotoCard(candidate, summary);
+				}
+
+				const scheduledRunDate = getChihuahuaDateKey(nextBusinessDay);
+				const copilotoTodoData: Record<string, any> = {
+					id: taskId,
+					task: card.taskTitle,
+					endTask: nextBusinessDay,
+					timeTask: '10:00',
+					timeString: '10:00',
+					notes: card.objective,
+					isCompleted: false,
+					createdAt: Date.now(),
+					contactId: contactData.id,
+					type: 'ATAIR Copiloto',
+					source: 'atair_copiloto',
+					user: '',
+					recurrence: 'NONE',
+					completedAt: null,
+					...(googleTaskId ? { googleTaskId } : {}),
+					copilotoMeta: {
+						contactId: card.contactId,
+						fullName: card.fullName,
+						telephon: card.telephon,
+						stage: card.stage,
+						priority: card.priority,
+						isE1Over10Days: card.isE1Over10Days ?? false,
+						...(card.e1Step ? { e1Step: card.e1Step } : {}),
+						isColdOver180Days: card.isColdOver180Days ?? false,
+						...(card.coldStep ? { coldStep: card.coldStep } : {}),
+						repliedToStep1: card.repliedToStep1 ?? false,
+						daysSinceLastTouch: card.daysSinceLastTouch ?? 0,
+						runDate: scheduledRunDate,
+						action: card.action,
+						objective: card.objective,
+						why: card.why,
+						recommendedExecution: card.recommendedExecution,
+						whatsappDraft: card.whatsappDraft,
+						suggestedStageChange: card.suggestedStageChange,
+						propertyIds: card.propertyIds || [],
+						propertyLinks: card.propertyLinks || [],
+						e3FormUrl: card.e3FormUrl || '',
+						callsWithoutReply: card.callsWithoutReply || 0,
+						propertySendsWithoutReply: card.propertySendsWithoutReply || 0,
+						proposedClose: false
+					}
+				};
+
+				console.log('⚡ Creando tarjeta estratégica Copiloto IA al alta en Firestore:', copilotoTodoData);
+				const taskResult = await firebase.addWithId('todos', taskId, copilotoTodoData);
+				if (taskResult.success) {
+					console.log('✅ Tarjeta Copiloto IA creada al alta (ID:', taskId, ')');
+				} else {
+					console.error('❌ Error guardando tarjeta Copiloto IA en Firestore:', taskResult.error);
+				}
+				return;
+			}
+
+			// Fallback para contactos no-compradores (Agentes, Propietarios, Arrendatarios o sin teléfono válido)
 			const notesLines = [
-				`Llamada de seguimiento inicial (Etapa 1) para perfilar búsqueda.`,
+				`Seguimiento inicial del contacto.`,
 				`Teléfono: ${contactData.telephon || 'Sin teléfono'}`,
 				propInfo ? `Propiedad de interés: ${propInfo}` : '',
 				contactData.notes ? `Notas: ${contactData.notes}` : ''
 			].filter(Boolean).join('\n');
 
-			const taskId = generateUUID();
 			const todoData: any = {
 				id: taskId,
-				task: `Seguimiento: ${fullName} (Etapa 1)`,
+				task: `Seguimiento: ${fullName}`,
 				endTask: nextBusinessDay,
 				timeTask: '10:00',
 				notes: notesLines,
@@ -661,10 +758,10 @@
 				...(googleTaskId ? { googleTaskId } : {})
 			};
 
-			console.log('📅 Creando tarea automática de Seguimiento Etapa 1 en ATAIR/Firestore:', todoData);
+			console.log('📅 Creando tarea automática de Seguimiento en ATAIR/Firestore:', todoData);
 			const taskResult = await firebase.addWithId('todos', taskId, todoData);
 			if (taskResult.success) {
-				console.log('✅ Tarea de Etapa 2 creada exitosamente en Firestore (ID:', taskId, ')');
+				console.log('✅ Tarea de seguimiento creada exitosamente en Firestore (ID:', taskId, ')');
 			} else {
 				console.error('❌ Error guardando tarea en Firestore:', taskResult.error);
 			}
