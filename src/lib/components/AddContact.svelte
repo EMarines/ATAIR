@@ -1309,7 +1309,7 @@
 		{/if}
 
 		<div class="features">
-			<div class="inp__lat">
+			<div class="fields-grid-2">
 				<div class="input-group">
 					<InputText
 						identifier="name"
@@ -1335,7 +1335,7 @@
 				</div>
 			</div>
 
-			<div class="inp__lat">
+			<div class="fields-grid-2">
 				<div class="input-group">
 					<InputText
 						identifier="telephon"
@@ -1361,7 +1361,7 @@
 				</div>
 			</div>
 
-			<div class="inp__lat">
+			<div class="fields-grid-2">
 				<InputOptions
 					identificador="typeContact"
 					name="Tipo de Contacto"
@@ -1508,7 +1508,7 @@
 
 			{#if showAdditionalFields}
 				<div class="additional-fields">
-					<div class="inp__lat">
+					<div class="fields-grid-3">
 						<InputOptions
 							identificador="selecTP"
 							name="Tipo de Propiedad"
@@ -1540,7 +1540,7 @@
 							</div>
 						{/if}
 					</div>
-					<div class="inp__lat">
+					<div class="fields-grid-2">
 						<InputText identifier="budget" name="Presupuesto" bind:value={budgetStringForInput} />
 						<InputOptions
 							identificador="rangeProp"
@@ -1551,7 +1551,7 @@
 						/>
 					</div>
 
-					<div class="inp__lat">
+					<div class="fields-grid-2">
 						<InputOptions
 							identificador="numBeds"
 							name="Recámaras"
@@ -1568,7 +1568,7 @@
 						/>
 					</div>
 
-					<div class="inp__lat">
+					<div class="fields-grid-2">
 						<InputOptions
 							identificador="halfBathroom"
 							name="Medios Baños"
@@ -1585,7 +1585,7 @@
 						/>
 					</div>
 
-					<div class="inp__lat">
+					<div class="widgets-grid-2">
 						<Tags bind:propTags={contact.tagsProperty} />
 						<Ubication bind:ubication={contact.locaProperty} />
 					</div>
@@ -1688,11 +1688,80 @@
 		min-width: 150px;
 	}
 
+	.fields-grid-2 {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 18px;
+		width: 100%;
+		align-items: start;
+	}
+
+	.fields-grid-3 {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr);
+		gap: 16px;
+		width: 100%;
+		align-items: stretch;
+	}
+
+	.widgets-grid-2 {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 16px;
+		width: 100%;
+		align-items: stretch;
+	}
+
+	.widgets-grid-2 :global(.mainContainer) {
+		width: 100%;
+		height: 100%;
+		margin: 0;
+		box-sizing: border-box;
+	}
+
+	.form-container :global(.cont) {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.form-container :global(.label__title) {
+		display: block;
+		width: 100%;
+		box-sizing: border-box;
+		padding: 6px;
+	}
+
+	.form-container :global(.in__sel) {
+		display: block;
+		width: 100%;
+		min-width: 0;
+		height: 36px;
+		padding: 4px 10px;
+		box-sizing: border-box;
+		font-size: 0.85rem;
+	}
+
+	.form-container :global(.above) {
+		min-width: auto;
+		width: max-content;
+		max-width: calc(100% - 20px);
+		left: 12px;
+		padding: 1px 8px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		z-index: 2;
+	}
+
+	.form-container :global(.center) {
+		min-width: auto;
+	}
+
 	.additional-fields {
 		display: flex;
 		flex-direction: column;
-		gap: 20px;
-		padding: 20px;
+		gap: 22px;
+		padding: 24px 20px 20px;
 		border: 2px solid #6b21a8;
 		border-radius: 10px;
 		background-color: rgba(107, 33, 168, 0.05);
@@ -1789,6 +1858,16 @@
 		font-size: 0.85rem;
 	}
 
+	@media (max-width: 720px) {
+		.fields-grid-3 {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.fields-grid-3 > :global(:nth-child(3)) {
+			grid-column: 1 / -1;
+		}
+	}
+
 	@media (max-width: 600px) {
 		/* .property-table, .property-table tbody, .property-table tr {
             display: block;
@@ -1804,6 +1883,17 @@
 		.inp__lat {
 			flex-direction: column;
 			gap: 15px;
+		}
+
+		.fields-grid-2,
+		.fields-grid-3,
+		.widgets-grid-2 {
+			grid-template-columns: 1fr;
+			gap: 18px;
+		}
+
+		.fields-grid-3 > :global(:nth-child(3)) {
+			grid-column: auto;
 		}
 
 		/* Ajuste para pantallas angostas */
@@ -1947,6 +2037,10 @@
 	.owner-stage-badge {
 		display: inline-flex;
 		align-items: center;
+		justify-content: center;
+		width: 100%;
+		min-height: 48px;
+		box-sizing: border-box;
 		gap: 0.55rem;
 		padding: 0.55rem 0.85rem;
 		border-radius: 8px;
