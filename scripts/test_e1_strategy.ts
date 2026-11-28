@@ -810,7 +810,12 @@ assert.strictEqual(candNewE4!.stage, 'E4');
 assert.ok(candNewE4!.matchedProperties.length > 0, 'Nuevo comprador E4 debe adjuntar propiedades compatibles');
 const cardNewE4 = buildFallbackCopilotoCard(candNewE4!, summarizeContactBinnacles([], candNewE4!, nowMs));
 assert.ok(cardNewE4.propertyLinks.length > 0, 'Tarjeta E4 debe incluir links de propiedades');
-assert.ok(cardNewE4.whatsappDraft.includes('S1-MT7970'), 'Borrador E4 debe incluir la propiedad de sinergia compatible S1-MT7970');
+assert.strictEqual(
+	candNewE4!.matchedProperties[0].public_id,
+	'EB-SS1832',
+	'E4 debe priorizar EasyBroker (EB-SS1832) sobre Sinergias cuando no hay propias MH'
+);
+assert.ok(cardNewE4.whatsappDraft.includes('EB-SS1832'), 'Borrador E4 debe incluir EB-SS1832');
 assert.ok(
 	candNewE4!.matchedProperties.every((p) => cardNewE4.whatsappDraft.includes(p.proposalUrl)),
 	'Borrador E4 debe incluir todos los links de propuesta generados'
@@ -832,5 +837,222 @@ assert.strictEqual(
 	'Propietario NO debe generar tarjeta de comprador Copiloto'
 );
 console.log('✓ Alta de contacto con estrategia Copiloto IA validada al 100%.');
+
+// 13. TEST Rotación Justa (Anti-repetición), Regla 48h entre llamadas E1/E2 y caída >30d/2 llam. -> E3 + 7d -> IN
+console.log('\n[Test 13] Validando Rotación Justa, 48h entre llamadas, caída >30d/2 llam. -> E3 y post-Paso 2 -> IN...');
+const e1NeverTouched: Contact = {
+	id: 'rot-never',
+	name: 'Nadia',
+	lastname: 'SinToque',
+	telephon: '6141010101',
+	contactStage: 'Etapa 1 · Primer Contacto',
+	createdAt: nowMs - 4 * 86_400_000
+} as any;
+const e1TouchedOld: Contact = {
+	id: 'rot-old-touch',
+	name: 'Bruno',
+	lastname: 'TocadoHace5d',
+	telephon: '6141010102',
+	contactStage: 'Etapa 1 · Primer Contacto',
+	createdAt: nowMs - 6 * 86_400_000,
+	lastContact: nowMs - 5 * 86_400_000
+} as any;
+const e1TouchedRecent: Contact = {
+	id: 'rot-recent-touch',
+	name: 'Diana',
+	lastname: 'TocadoAyer',
+	telephon: '6141010103',
+	contactStage: 'Etapa 1 · Primer Contacto',
+	createdAt: nowMs - 3 * 86_400_000,
+	lastContact: nowMs - 25 * 3600_000
+} as any;
+const e1RetryTooSoon: Contact = {
+	id: 'e1-retry-wait',
+	name: 'Mateo',
+	lastname: 'LlamadoHace24h',
+	telephon: '6141010104',
+	contactStage: 'Etapa 1 · Primer Contacto',
+	createdAt: nowMs - 4 * 86_400_000,
+	lastContact: nowMs - 24 * 3600_000
+} as any;
+const e1TwoCallsDrop: Contact = {
+	id: 'e1-two-calls',
+	name: 'Renata',
+	lastname: 'DosLlamadas',
+	telephon: '6141010105',
+	contactStage: 'Etapa 1 · Primer Contacto',
+	createdAt: nowMs - 7 * 86_400_000,
+	lastContact: nowMs - 72 * 3600_000
+} as any;
+const e2Over30d: Contact = {
+	id: 'e2-over-30d',
+	name: 'Héctor',
+	lastname: 'E2Mayor30d',
+	telephon: '6141010106',
+	contactStage: 'Etapa 2 · Perfilamiento',
+	createdAt: nowMs - 35 * 86_400_000,
+	lastContact: nowMs - 10 * 86_400_000
+} as any;
+const e3PostStep2Old: Contact = {
+	id: 'e3-post-step2-in',
+	name: 'Silvia',
+	lastname: 'PostPaso2',
+	telephon: '6141010107',
+	contactStage: 'Etapa 3 · Filtro / Reactivación',
+	createdAt: nowMs - 60 * 86_400_000,
+	lastContact: nowMs - 8 * 86_400_000
+} as any;
+
+const test13Binnacles: Binnacle[] = [
+	{
+		id: 'b-retry-1',
+		to: 'e1-retry-wait',
+		action: 'Llamada sin respuesta (Copiloto): ',
+		comment: 'No contestó llamada 1',
+		date: nowMs - 24 * 3600_000 // hace 24h (<48h -> esperar 1 día más)
+	} as any,
+	{
+		id: 'b-2calls-1',
+		to: 'e1-two-calls',
+		action: 'Llamada sin respuesta (Copiloto): ',
+		comment: 'Llamada 1',
+		date: nowMs - 6 * 86_400_000
+	} as any,
+	{
+		id: 'b-2calls-2',
+		to: 'e1-two-calls',
+		action: 'Llamada sin respuesta (Copiloto): ',
+		comment: 'Llamada 2',
+		date: nowMs - 72 * 3600_000
+	} as any,
+	{
+		id: 'b-post2-1',
+		to: 'e3-post-step2-in',
+		action: 'Reactivación E3 Paso 1 (Copiloto): ',
+		date: nowMs - 11 * 86_400_000
+	} as any,
+	{
+		id: 'b-post2-2',
+		to: 'e3-post-step2-in',
+		action: 'Reactivación E3 Paso 2 - Link /buscar (Copiloto): ',
+		date: nowMs - 8 * 86_400_000 // >= 7 días sin respuesta -> IN
+	} as any
+];
+
+const planTest13 = planCopilotoCandidates(
+	[e1TouchedRecent, e1TouchedOld, e1NeverTouched, e1RetryTooSoon, e1TwoCallsDrop, e2Over30d, e3PostStep2Old],
+	catalogProperties,
+	test13Binnacles,
+	[],
+	{ nowMs, e1Quota: 10, e2Quota: 5, e3Quota: 5, maxTotalCandidates: 15 }
+);
+
+const e1RotOrder = planTest13.candidates.filter((c) => c.stage === 'E1' && c.contactId.startsWith('rot-')).map((c) => c.contactId);
+assert.deepStrictEqual(
+	e1RotOrder,
+	['rot-never', 'rot-old-touch', 'rot-recent-touch'],
+	'Rotación justa: sin toque primero -> toque más antiguo -> toque más reciente'
+);
+assert.strictEqual(
+	planTest13.candidates.some((c) => c.contactId === 'e1-retry-wait'),
+	false,
+	'Llamada 1 hace 24h (<48h) debe esperar 1 día completo de diferencia antes de llamada 2'
+);
+
+const candTwoCalls = planTest13.candidates.find((c) => c.contactId === 'e1-two-calls')!;
+assert.strictEqual(candTwoCalls.coldStep, 'step1_check', 'E1 con 2 llamadas sin respuesta debe entrar a flujo E3 Paso 1');
+
+const candE2Over30 = planTest13.candidates.find((c) => c.contactId === 'e2-over-30d')!;
+assert.strictEqual(candE2Over30.coldStep, 'step1_check', 'E2 >30 días debe entrar a flujo E3 Paso 1');
+
+const candPost2 = planTest13.candidates.find((c) => c.contactId === 'e3-post-step2-in')!;
+assert.strictEqual(candPost2.coldStep, 'post_step2_inactive', 'E3 con >=7d tras Paso 2 debe pasar a post_step2_inactive');
+const cardPost2 = buildFallbackCopilotoCard(
+	candPost2,
+	summarizeContactBinnacles(test13Binnacles.filter((b) => b.to === 'e3-post-step2-in'), candPost2, nowMs)
+);
+assert.strictEqual(cardPost2.suggestedStageChange, 'IN', 'Post-Paso 2 (+7d sin respuesta) debe sugerir depurar a IN');
+console.log('✓ Rotación justa, espera 48h, caída >30d/2 llam. -> E3 y depuración 7d -> IN validados al 100%.');
+
+// 14. TEST E4 prioridad inventario (MH -> EB -> Sinergia), sin enfriamiento entre días, posdata captación + E2 guía opcional
+console.log('\n[Test 14] Validando E4 prioridad MH->EB->Sinergia, posdata única "¿vendes?" y guía opcional E2...');
+const propMH: Property = {
+	id: 'prop-mh-1',
+	public_id: 'MH-9001',
+	title: 'Casa Propia Match Home en Jacales',
+	price: 2_320_000,
+	property_type: 'Casa',
+	property_status: 'available',
+	operation_type: 'sale',
+	location: 'Jacales, Chihuahua',
+	source: 'direct',
+	procedencia: 'MH',
+	isOwn: true
+} as any;
+
+const buyerE4Full: Contact = {
+	id: 'e4-priority-buyer',
+	name: 'Gabriel',
+	lastname: 'Ponce',
+	telephon: '6145559900',
+	typeContact: 'Comprador',
+	contactStage: 'Etapa 4 · Búsqueda Activa',
+	selecTP: 'Casa',
+	budget: 2_350_000,
+	locaProperty: ['Jacales'],
+	lastContact: nowMs - 2 * 3600_000, // Hace 2 horas, pero hay propiedades nuevas sin enviar -> E4 sí sale
+	createdAt: nowMs - 5 * 86_400_000
+} as any;
+
+const buyerE2Missing: Contact = {
+	id: 'e2-guide-buyer',
+	name: 'Mónica',
+	lastname: 'Salas',
+	telephon: '6145559911',
+	typeContact: 'Comprador',
+	contactStage: 'Etapa 2 · Perfilamiento',
+	selecTP: 'Casa',
+	budget: 2_350_000,
+	createdAt: nowMs - 4 * 86_400_000
+} as any;
+
+const planE4Priority = planCopilotoCandidates(
+	[buyerE4Full, buyerE2Missing],
+	[...catalogProperties, propMH],
+	[],
+	[],
+	{ nowMs }
+);
+const candE4Full = planE4Priority.candidates.find((c) => c.contactId === 'e4-priority-buyer')!;
+assert.ok(candE4Full, 'E4 con propiedades nuevas no enviadas debe salir sin enfriamiento artificial');
+assert.strictEqual(candE4Full.matchedProperties[0].public_id, 'MH-9001', '1a propiedad E4 debe ser Propia MH');
+assert.strictEqual(candE4Full.matchedProperties[1].public_id, 'EB-SS1832', '2a propiedad E4 debe ser EasyBroker');
+
+const cardE4Ask = buildFallbackCopilotoCard(candE4Full, summarizeContactBinnacles([], candE4Full, nowMs));
+assert.strictEqual(cardE4Ask.askIfSellingProperty, true);
+assert.ok(cardE4Ask.whatsappDraft.includes('vender alguna propiedad'), '1a vez E4 debe preguntar si vende propiedad');
+
+const binnAlreadyAskedSell: Binnacle[] = [
+	{
+		id: 'b-asked-sell',
+		to: 'e4-priority-buyer',
+		action: 'WhatsApp enviado: ',
+		comment: 'Por cierto, ¿necesitas vender alguna propiedad actual?',
+		date: nowMs - 48 * 3600_000
+	} as any
+];
+const cardE4NoRepeat = buildFallbackCopilotoCard(
+	candE4Full,
+	summarizeContactBinnacles(binnAlreadyAskedSell, candE4Full, nowMs)
+);
+assert.strictEqual(cardE4NoRepeat.askIfSellingProperty, false, 'Si ya se preguntó en bitácora no debe repetir la posdata');
+assert.ok(!cardE4NoRepeat.whatsappDraft.includes('vender alguna propiedad'));
+
+const candE2Guide = planE4Priority.candidates.find((c) => c.contactId === 'e2-guide-buyer')!;
+assert.ok(candE2Guide, 'E2 debe generar candidato');
+const cardE2Guide = buildFallbackCopilotoCard(candE2Guide, summarizeContactBinnacles([], candE2Guide, nowMs));
+assert.ok(cardE2Guide.missingProfileFields?.includes('zona'), 'E2 debe detectar zona faltante en guía opcional');
+assert.ok(cardE2Guide.missingProfileFields?.includes('forma de pago'), 'E2 debe detectar forma de pago faltante');
+console.log('✓ E4 prioridad MH->EB->Sinergia, posdata única "¿vendes?" y guía opcional E2 validados al 100%.');
 
 console.log('\n🎉 ALL_COPILOTO_TESTS_PASSED! 100% de pruebas unitarias exitosas.');

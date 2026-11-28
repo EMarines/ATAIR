@@ -9,23 +9,40 @@ import {
 import { getProposalUrl } from './urlUtils';
 
 export type CopilotoStage = 'E1' | 'E2' | 'E3' | 'E4' | 'PAU';
-export type CopilotoColdStep = 'step1_check' | 'step2_send_link';
+export type CopilotoColdStep = 'step1_check' | 'step2_send_link' | 'post_step2_inactive';
 
 export const COLD_REACTIVATION_DAYS = 180;
 export const COLD_REACTIVATION_MS = COLD_REACTIVATION_DAYS * 86_400_000;
 export const COLD_STEP2_WAIT_HOURS = 48;
 export const COLD_STEP2_WAIT_MS = COLD_STEP2_WAIT_HOURS * 3600_000;
+export const E1_E2_MAX_DAYS = 30;
+export const E1_E2_MAX_MS = E1_E2_MAX_DAYS * 86_400_000;
+export const CALL_RETRY_WAIT_HOURS = 48;
+export const CALL_RETRY_WAIT_MS = CALL_RETRY_WAIT_HOURS * 3600_000;
+export const POST_STEP2_INACTIVE_DAYS = 7;
+export const POST_STEP2_INACTIVE_MS = POST_STEP2_INACTIVE_DAYS * 86_400_000;
 export const PAUSE_CHECKIN_DAYS = 90;
 export const PAUSE_CHECKIN_MS = PAUSE_CHECKIN_DAYS * 86_400_000;
 
 export interface ColdReactivationState {
+	isUnifiedE3Flow: boolean;
 	isColdOver180Days: boolean;
 	coldStep?: CopilotoColdStep;
 	repliedToStep1: boolean;
 	waitingForStep2: boolean;
+	waitingAfterStep2: boolean;
 	daysSinceLastTouch: number | null;
 	lastStep1Ms: number | null;
 	lastStep2Ms: number | null;
+}
+
+export interface ContactActivitySnapshot {
+	lastTouchMs: number;
+	lastOutboundMs: number;
+	lastInboundMs: number;
+	hasUnansweredInbound: boolean;
+	callsWithoutReply: number;
+	lastCallMs: number | null;
 }
 
 function normalizeActionText(raw: unknown): string {
@@ -38,13 +55,18 @@ function normalizeActionText(raw: unknown): string {
 
 export function isColdStep1Binnacle(entry: Binnacle): boolean {
 	const act = normalizeActionText(entry?.action);
-	return act.includes('reactivacion >180d paso 1') || act.includes('reactivacion paso 1');
+	return (
+		act.includes('reactivacion >180d paso 1') ||
+		act.includes('reactivacion e3 paso 1') ||
+		act.includes('reactivacion paso 1')
+	);
 }
 
 export function isColdStep2Binnacle(entry: Binnacle): boolean {
 	const act = normalizeActionText(entry?.action);
 	return (
 		act.includes('reactivacion >180d paso 2') ||
+		act.includes('reactivacion e3 paso 2') ||
 		act.includes('reactivacion paso 2') ||
 		act.includes('link /buscar (copiloto)')
 	);
@@ -52,14 +74,108 @@ export function isColdStep2Binnacle(entry: Binnacle): boolean {
 
 function isInboundBinnacleEntry(entry: Binnacle): boolean {
 	const act = normalizeActionText(entry?.action);
+	if (act.includes('sin respuesta') || act.includes('no contesto')) return false;
 	return act.includes('whatsapp recibido') || act.includes('respuesta') || act.includes('inbound');
 }
 
+function isCallBinnacleEntry(entry: Binnacle): boolean {
+	const raw = entry as any;
+	const act = normalizeActionText(entry?.action);
+	const com = normalizeActionText(entry?.comment || raw?.content || '');
+	return act.includes('llamada') || act.includes('call') || com.includes('llamada');
+}
+
 /**
- * Evalúa el estado de reactivación en 2 pasos para leads fríos (>180 días sin contacto) en E1, E2 y E3:
- * - Paso 1 (sin link): preguntar si sigue buscando casa y si le interesa la nueva herramienta rápida.
+ * Calcula el historial real de último contacto y conteo de llamadas sin respuesta
+ * cruzando el contacto, sus bitácoras y tarjetas completadas de Copiloto.
+ */
+export function getContactActivitySnapshot(
+	contact: {
+		id?: string;
+		lastContactMs?: number | null;
+		lastResponseMs?: number | null;
+		lastContact?: any;
+		lastResponse?: any;
+	},
+	contactBinnacles: Binnacle[] = [],
+	existingTodos: Todo[] = []
+): ContactActivitySnapshot {
+	const contactId = String(contact?.id || '').trim();
+	const baseOutbound =
+		(contact?.lastContactMs !== undefined
+			? contact.lastContactMs
+			: getContactCreatedAtMs(contact?.lastContact)) ?? 0;
+	const baseInbound =
+		(contact?.lastResponseMs !== undefined
+			? contact.lastResponseMs
+			: getContactCreatedAtMs(contact?.lastResponse)) ?? 0;
+
+	let lastOutboundMs = baseOutbound;
+	let lastInboundMs = baseInbound;
+	let lastBinnacleMs = 0;
+
+	for (const b of contactBinnacles || []) {
+		if (contactId && b?.to && String(b.to).trim() !== contactId) continue;
+		const ms = getContactCreatedAtMs((b as any)?.date ?? (b as any)?.createdAt) ?? 0;
+		if (!ms) continue;
+		if (ms > lastBinnacleMs) lastBinnacleMs = ms;
+		if (isInboundBinnacleEntry(b)) {
+			if (ms > lastInboundMs) lastInboundMs = ms;
+		} else {
+			if (ms > lastOutboundMs) lastOutboundMs = ms;
+		}
+	}
+
+	if (contactId && Array.isArray(existingTodos)) {
+		for (const todo of existingTodos) {
+			if ((todo as any)?.source !== 'atair_copiloto') continue;
+			const meta = (todo as any)?.copilotoMeta;
+			if (String(meta?.contactId || (todo as any)?.contactId || '').trim() !== contactId) continue;
+			const isDone = Boolean((todo as any)?.isCompleted ?? (todo as any)?.completed);
+			if (!isDone) continue;
+			const doneMs =
+				getContactCreatedAtMs((todo as any)?.completedAt) ??
+				getContactCreatedAtMs(meta?.executedAt) ??
+				getContactCreatedAtMs((todo as any)?.createdAt) ??
+				0;
+			if (doneMs > lastOutboundMs) lastOutboundMs = doneMs;
+		}
+	}
+
+	let callsWithoutReply = 0;
+	let lastCallMs: number | null = null;
+	for (const b of contactBinnacles || []) {
+		if (contactId && b?.to && String(b.to).trim() !== contactId) continue;
+		const ms = getContactCreatedAtMs((b as any)?.date ?? (b as any)?.createdAt) ?? 0;
+		if (lastInboundMs > 0 && ms > 0 && ms <= lastInboundMs) continue;
+		if (isInboundBinnacleEntry(b)) continue;
+		if (isCallBinnacleEntry(b)) {
+			callsWithoutReply++;
+			if (ms > 0 && (lastCallMs === null || ms > lastCallMs)) {
+				lastCallMs = ms;
+			}
+		}
+	}
+
+	const lastTouchMs = Math.max(lastOutboundMs, lastInboundMs, lastBinnacleMs);
+	const hasUnansweredInbound = lastInboundMs > 0 && lastInboundMs > lastOutboundMs;
+
+	return {
+		lastTouchMs,
+		lastOutboundMs,
+		lastInboundMs,
+		hasUnansweredInbound,
+		callsWithoutReply,
+		lastCallMs
+	};
+}
+
+/**
+ * Evalúa el estado de reactivación unificada E3 en 2 pasos (aplica a todo E3, E1/E2 >30d o >=2 llam., y >180d):
+ * - Paso 1 (sin link): preguntar si sigue buscando casa y si le interesa nuestra nueva herramienta rápida.
  * - Espera 2 días (48h) sin respuesta; si el lead responde antes, acelera de inmediato el Paso 2.
  * - Paso 2 (con link /buscar): enviar link personalizado para capturar características de la casa de sus sueños.
+ * - Post-Paso 2 (>=7 días sin respuesta ni registro): proponer depuración a Etapa 8 · Inactivo (IN).
  */
 export function evaluateColdReactivationState(
 	contact: {
@@ -73,34 +189,23 @@ export function evaluateColdReactivationState(
 	},
 	contactBinnacles: Binnacle[],
 	existingTodos: Todo[] = [],
-	nowMs: number = Date.now()
+	nowMs: number = Date.now(),
+	options: { forceE3Flow?: boolean } = {}
 ): ColdReactivationState {
 	const contactId = String(contact?.id || '').trim();
 	const createdAtMs =
 		contact?.createdAtMs !== undefined
 			? contact.createdAtMs
 			: getContactCreatedAtMs(contact?.createdAt);
-	const contactLastContactMs =
-		contact?.lastContactMs !== undefined
-			? contact.lastContactMs
-			: getContactCreatedAtMs(contact?.lastContact);
-	const contactLastResponseMs =
-		contact?.lastResponseMs !== undefined
-			? contact.lastResponseMs
-			: getContactCreatedAtMs(contact?.lastResponse);
+	const activity = getContactActivitySnapshot(contact, contactBinnacles, existingTodos);
 
 	let lastStep1Ms: number | null = null;
 	let lastStep2Ms: number | null = null;
-	let latestInboundMs: number | null = contactLastResponseMs ?? null;
-	let latestOutboundMs: number | null = contactLastContactMs ?? null;
-	let latestBinnacleMs: number | null = null;
 
 	for (const b of contactBinnacles || []) {
 		if (contactId && b?.to && String(b.to).trim() !== contactId) continue;
 		const ms = getContactCreatedAtMs((b as any)?.date ?? (b as any)?.createdAt);
 		if (!ms) continue;
-
-		if (!latestBinnacleMs || ms > latestBinnacleMs) latestBinnacleMs = ms;
 
 		if (isColdStep1Binnacle(b)) {
 			if (!lastStep1Ms || ms > lastStep1Ms) lastStep1Ms = ms;
@@ -108,14 +213,9 @@ export function evaluateColdReactivationState(
 		if (isColdStep2Binnacle(b)) {
 			if (!lastStep2Ms || ms > lastStep2Ms) lastStep2Ms = ms;
 		}
-		if (isInboundBinnacleEntry(b)) {
-			if (!latestInboundMs || ms > latestInboundMs) latestInboundMs = ms;
-		} else {
-			if (!latestOutboundMs || ms > latestOutboundMs) latestOutboundMs = ms;
-		}
 	}
 
-	// Respaldo con todos completados recientes de Copiloto por si las 800 bitácoras globales no alcanzaron el Paso 1
+	// Respaldo con todos completados recientes de Copiloto por si las 800 bitácoras globales no alcanzaron el Paso 1/2
 	if (contactId && Array.isArray(existingTodos)) {
 		for (const todo of existingTodos) {
 			if ((todo as any)?.source !== 'atair_copiloto') continue;
@@ -137,36 +237,36 @@ export function evaluateColdReactivationState(
 		}
 	}
 
-	const latestTouchMs = Math.max(
-		latestInboundMs ?? 0,
-		latestOutboundMs ?? 0,
-		latestBinnacleMs ?? 0,
-		createdAtMs ?? 0
-	);
+	const latestTouchWithCreatedMs = Math.max(activity.lastTouchMs, createdAtMs ?? 0);
 	const daysSinceLastTouch =
-		latestTouchMs > 0 ? Math.max(0, Math.floor((nowMs - latestTouchMs) / 86_400_000)) : null;
+		latestTouchWithCreatedMs > 0
+			? Math.max(0, Math.floor((nowMs - latestTouchWithCreatedMs) / 86_400_000))
+			: null;
 
-	// ¿Hay un Paso 1 activo pendiente de Paso 2? (enviado dentro de los últimos 30 días y sin Paso 2 posterior)
+	const isOver180Days =
+		latestTouchWithCreatedMs > 0
+			? nowMs - latestTouchWithCreatedMs > COLD_REACTIVATION_MS
+			: true;
+
+	// 1. ¿Hay un Paso 1 activo pendiente de Paso 2? (dentro de los últimos 30 días y sin Paso 2 posterior)
 	const hasPendingStep1 =
 		lastStep1Ms !== null &&
 		nowMs - lastStep1Ms <= 30 * 86_400_000 &&
 		(lastStep2Ms === null || lastStep2Ms < lastStep1Ms);
 
 	if (hasPendingStep1 && lastStep1Ms !== null) {
-		const repliedAfterStep1 = latestInboundMs !== null && latestInboundMs > lastStep1Ms;
+		const repliedAfterStep1 = activity.lastInboundMs > lastStep1Ms;
 		const advisorRepliedAfterInbound =
-			repliedAfterStep1 &&
-			latestInboundMs !== null &&
-			latestOutboundMs !== null &&
-			latestOutboundMs > latestInboundMs;
+			repliedAfterStep1 && activity.lastOutboundMs > activity.lastInboundMs;
 
 		if (repliedAfterStep1 && !advisorRepliedAfterInbound) {
-			// El prospecto contestó al Paso 1 -> reaccionar rápido para mandarle el link (Paso 2 inmediato)
 			return {
-				isColdOver180Days: true,
+				isUnifiedE3Flow: true,
+				isColdOver180Days: isOver180Days,
 				coldStep: 'step2_send_link',
 				repliedToStep1: true,
 				waitingForStep2: false,
+				waitingAfterStep2: false,
 				daysSinceLastTouch,
 				lastStep1Ms,
 				lastStep2Ms
@@ -174,11 +274,12 @@ export function evaluateColdReactivationState(
 		}
 
 		if (repliedAfterStep1 && advisorRepliedAfterInbound) {
-			// El asesor ya le respondió después de su mensaje: sale del flujo frío
 			return {
+				isUnifiedE3Flow: false,
 				isColdOver180Days: false,
 				repliedToStep1: true,
 				waitingForStep2: false,
+				waitingAfterStep2: false,
 				daysSinceLastTouch,
 				lastStep1Ms,
 				lastStep2Ms
@@ -187,39 +288,71 @@ export function evaluateColdReactivationState(
 
 		const elapsedSinceStep1 = nowMs - lastStep1Ms;
 		if (elapsedSinceStep1 < COLD_STEP2_WAIT_MS) {
-			// Todavía dentro de la ventana de espera de 2 días (48h) tras el Paso 1
 			return {
-				isColdOver180Days: true,
+				isUnifiedE3Flow: true,
+				isColdOver180Days: isOver180Days,
 				repliedToStep1: false,
 				waitingForStep2: true,
+				waitingAfterStep2: false,
 				daysSinceLastTouch,
 				lastStep1Ms,
 				lastStep2Ms
 			};
 		}
 
-		// Ya pasaron >= 2 días sin respuesta tras el Paso 1 -> toca Paso 2 con el link
 		return {
-			isColdOver180Days: true,
+			isUnifiedE3Flow: true,
+			isColdOver180Days: isOver180Days,
 			coldStep: 'step2_send_link',
 			repliedToStep1: false,
 			waitingForStep2: false,
+			waitingAfterStep2: false,
 			daysSinceLastTouch,
 			lastStep1Ms,
 			lastStep2Ms
 		};
 	}
 
-	// Si no hay Paso 1 pendiente, verificar si el último contacto tiene >180 días (o sin fecha alguna)
-	const isColdOver180Days =
-		latestTouchMs > 0 ? nowMs - latestTouchMs > COLD_REACTIVATION_MS : true;
+	// 2. ¿Ya se envió Paso 2 recientemente (últimos 45 días) sin respuesta posterior? -> esperar 7d y luego proponer IN
+	if (lastStep2Ms !== null && nowMs - lastStep2Ms <= 45 * 86_400_000) {
+		const repliedAfterStep2 = activity.lastInboundMs > lastStep2Ms;
+		if (!repliedAfterStep2) {
+			if (nowMs - lastStep2Ms < POST_STEP2_INACTIVE_MS) {
+				return {
+					isUnifiedE3Flow: true,
+					isColdOver180Days: isOver180Days,
+					repliedToStep1: false,
+					waitingForStep2: false,
+					waitingAfterStep2: true,
+					daysSinceLastTouch,
+					lastStep1Ms,
+					lastStep2Ms
+				};
+			}
 
-	if (isColdOver180Days) {
+			return {
+				isUnifiedE3Flow: true,
+				isColdOver180Days: isOver180Days,
+				coldStep: 'post_step2_inactive',
+				repliedToStep1: false,
+				waitingForStep2: false,
+				waitingAfterStep2: false,
+				daysSinceLastTouch,
+				lastStep1Ms,
+				lastStep2Ms
+			};
+		}
+	}
+
+	// 3. Si aplica flujo E3 (forzado por etapa E3, >30d/2 llam., o >180d) -> Paso 1 sin link
+	if (options.forceE3Flow || isOver180Days) {
 		return {
-			isColdOver180Days: true,
+			isUnifiedE3Flow: true,
+			isColdOver180Days: isOver180Days,
 			coldStep: 'step1_check',
 			repliedToStep1: false,
 			waitingForStep2: false,
+			waitingAfterStep2: false,
 			daysSinceLastTouch,
 			lastStep1Ms,
 			lastStep2Ms
@@ -227,9 +360,11 @@ export function evaluateColdReactivationState(
 	}
 
 	return {
+		isUnifiedE3Flow: false,
 		isColdOver180Days: false,
 		repliedToStep1: false,
 		waitingForStep2: false,
+		waitingAfterStep2: false,
 		daysSinceLastTouch,
 		lastStep1Ms,
 		lastStep2Ms
@@ -259,8 +394,11 @@ export interface CopilotoCandidate {
 	isColdOver2y: boolean;
 	propCont: string;
 	selecTP: string;
+	selecTO?: string;
 	budget: number;
 	rangeProp: string;
+	numBeds?: number;
+	modePay?: string;
 	locaProperty: string[];
 	tagsProperty: string[];
 	notes: string;
@@ -268,10 +406,13 @@ export interface CopilotoCandidate {
 	e3FormUrl?: string;
 	isE1Over10Days?: boolean;
 	e1Step?: 'send_options' | 'followup_call';
+	e2Step?: 'send_options' | 'followup_call';
 	isColdOver180Days?: boolean;
 	coldStep?: CopilotoColdStep;
 	repliedToStep1?: boolean;
+	hasUnansweredInbound?: boolean;
 	daysSinceLastTouch?: number | null;
+	lastTouchMs?: number;
 	isPausedCheckIn?: boolean;
 	pausedReactivateAt?: number | null;
 }
@@ -443,10 +584,13 @@ function buildCandidateRecord(
 	extra?: {
 		isE1Over10Days?: boolean;
 		e1Step?: 'send_options' | 'followup_call';
+		e2Step?: 'send_options' | 'followup_call';
 		isColdOver180Days?: boolean;
 		coldStep?: CopilotoColdStep;
 		repliedToStep1?: boolean;
+		hasUnansweredInbound?: boolean;
 		daysSinceLastTouch?: number | null;
+		lastTouchMs?: number;
 		isPausedCheckIn?: boolean;
 		pausedReactivateAt?: number | null;
 	}
@@ -455,7 +599,10 @@ function buildCandidateRecord(
 	const contactId = String(contact.id || '').trim();
 	const cleanBase = baseUrl.replace(/\/+$/, '');
 	const includeBuscarLink =
-		stage === 'E3' || Boolean(extra?.isColdOver180Days) || Boolean(extra?.isPausedCheckIn);
+		stage === 'E3' ||
+		Boolean(extra?.coldStep) ||
+		Boolean(extra?.isColdOver180Days) ||
+		Boolean(extra?.isPausedCheckIn);
 	return {
 		contactId,
 		name: contact.name || '',
@@ -470,18 +617,24 @@ function buildCandidateRecord(
 		isColdOver2y,
 		propCont: String(contact.propCont || '').trim(),
 		selecTP: String(contact.selecTP || '').trim(),
+		selecTO: String(contact.selecTO || contact.typeOperation || '').trim(),
 		budget: Number(contact.budget || 0),
 		rangeProp: String(contact.rangeProp || '').trim(),
+		numBeds: Number(contact.numBeds || 0),
+		modePay: String(contact.modePay || '').trim(),
 		locaProperty: Array.isArray(contact.locaProperty) ? contact.locaProperty : [],
 		tagsProperty: Array.isArray(contact.tagsProperty) ? contact.tagsProperty : [],
 		notes: String(contact.notes || contact.comContact || '').trim(),
 		matchedProperties,
 		isE1Over10Days: extra?.isE1Over10Days,
 		e1Step: extra?.e1Step,
+		e2Step: extra?.e2Step,
 		isColdOver180Days: extra?.isColdOver180Days,
 		coldStep: extra?.coldStep,
 		repliedToStep1: extra?.repliedToStep1,
+		hasUnansweredInbound: extra?.hasUnansweredInbound,
 		daysSinceLastTouch: extra?.daysSinceLastTouch,
+		lastTouchMs: extra?.lastTouchMs ?? 0,
 		isPausedCheckIn: extra?.isPausedCheckIn,
 		pausedReactivateAt: extra?.pausedReactivateAt,
 		...(includeBuscarLink
@@ -622,38 +775,83 @@ export function planCopilotoCandidates(
 		const contactBinnacles = binnaclesByContact.get(contactId) || [];
 		const badge = getContactBadgeInfo(contact);
 		const within2y = isWithinMaxAgeYears(contact, 2, nowMs);
+		const activity = getContactActivitySnapshot(contact, contactBinnacles, existingTodos);
+		const createdAtMs = getContactCreatedAtMs((contact as any).createdAt);
+
+		// E4 (Búsqueda Activa): todo el inventario compatible no enviado, con prioridad MH -> EB -> Sinergias,
+		// sin enfriamiento artificial entre días (solo idempotencia diaria vía blockedContactIds).
+		if (within2y && badge.text === 'E4') {
+			const matches = matchPropertiesForContact(contact, properties, {
+				synergyOnly: false,
+				prioritizeInventory: true,
+				excludeAlreadySent: true,
+				binnacles: contactBinnacles,
+				maxResults: 3
+			});
+			if (matches.length === 0) continue;
+
+			const summaries: CopilotoMatchedPropertySummary[] = matches.map((p) => ({
+				id: String(p.id || p.docId || p.public_id || ''),
+				public_id: String(p.public_id || ''),
+				title: String(p.title || `${p.property_type || 'Propiedad'} en ${p.location || 'Chihuahua'}`),
+				price: Number(p.price || 0),
+				zona: String((p as any).zona || p.location || ''),
+				proposalUrl: p.public_id
+					? getProposalUrl(p.public_id, contact)
+					: String((p as any).public_url || (p as any).urlProp || '')
+			}));
+
+			e4List.push(
+				buildCandidateRecord(contact, 'E4', 3, false, summaries, baseUrl, {
+					hasUnansweredInbound: activity.hasUnansweredInbound,
+					lastTouchMs: activity.lastTouchMs
+				})
+			);
+			continue;
+		}
+
+		const isOver30Days = createdAtMs !== null ? nowMs - createdAtMs > E1_E2_MAX_MS : false;
+		const isE1OrE2ToE3 =
+			(badge.text === 'E1' || badge.text === 'E2') &&
+			(isOver30Days || (activity.callsWithoutReply >= 2 && !activity.hasUnansweredInbound));
+		const forceE3Flow = !within2y || badge.text === 'E3' || isE1OrE2ToE3;
 		const effectiveStage = !within2y ? 'E3' : badge.text;
 
-		// Regla unificada >180 días para E1, E2 y E3 (2 pasos: Paso 1 sin link -> espera 2 días -> Paso 2 con link)
+		// Regla unificada E3 (aplica a todo E3, E1/E2 >30d o >=2 llam. sin respuesta, y >180d)
 		const coldState =
 			effectiveStage === 'E1' || effectiveStage === 'E2' || effectiveStage === 'E3'
-				? evaluateColdReactivationState(contact, contactBinnacles, existingTodos, nowMs)
+				? evaluateColdReactivationState(contact, contactBinnacles, existingTodos, nowMs, {
+						forceE3Flow
+					})
 				: null;
 
-		if (coldState?.waitingForStep2) {
-			// Todavía dentro de la espera de 2 días (48h) sin respuesta tras Paso 1
+		if (coldState?.waitingForStep2 || coldState?.waitingAfterStep2) {
+			// Dentro de ventana de espera (48h tras Paso 1 o 7d tras Paso 2)
 			skippedGracePeriod++;
 			continue;
 		}
 
-		// Si el lead respondió al Paso 1, NO esperar periodo de gracia: reaccionar rápido para enviar el link
-		const fastTrackStep2Reply = Boolean(
-			coldState?.repliedToStep1 && coldState?.coldStep === 'step2_send_link'
+		// Si el lead respondió (al Paso 1 o en general sin respuesta nuestra posterior), no esperar gracia
+		const fastTrackReply = Boolean(
+			(coldState?.repliedToStep1 && coldState?.coldStep === 'step2_send_link') ||
+				activity.hasUnansweredInbound
 		);
 
 		// Tiempo de Gracia: si el contacto tuvo interacción en las últimas 20h, respetar tiempo de reacción
-		if (!fastTrackStep2Reply && isContactInGracePeriod(contact, contactBinnacles, gracePeriodMs, nowMs)) {
+		if (!fastTrackReply && isContactInGracePeriod(contact, contactBinnacles, gracePeriodMs, nowMs)) {
 			skippedGracePeriod++;
 			continue;
 		}
 
 		const coldExtra =
-			coldState?.isColdOver180Days && coldState?.coldStep
+			coldState?.isUnifiedE3Flow && coldState?.coldStep
 				? {
-						isColdOver180Days: true,
+						isColdOver180Days: coldState.isColdOver180Days,
 						coldStep: coldState.coldStep,
 						repliedToStep1: coldState.repliedToStep1,
-						daysSinceLastTouch: coldState.daysSinceLastTouch
+						hasUnansweredInbound: activity.hasUnansweredInbound,
+						daysSinceLastTouch: coldState.daysSinceLastTouch,
+						lastTouchMs: activity.lastTouchMs
 					}
 				: undefined;
 
@@ -665,12 +863,12 @@ export function planCopilotoCandidates(
 
 		if (badge.text === 'E1') {
 			if (coldExtra) {
-				// Lead E1 con >180 días sin contacto (o en seguimiento de Paso 2): aplica flujo unificado de reactivación
+				// Lead E1 >30d, >=2 llamadas sin respuesta o >180d -> flujo unificado E3
 				const rec = buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
 					isE1Over10Days: false,
 					...coldExtra
 				});
-				if (coldExtra.repliedToStep1) {
+				if (coldExtra.repliedToStep1 || activity.hasUnansweredInbound) {
 					e1YesterdayList.push(rec);
 				} else {
 					e1OlderList.push(rec);
@@ -678,36 +876,48 @@ export function planCopilotoCandidates(
 				continue;
 			}
 
-			const createdAtMs = getContactCreatedAtMs((contact as any).createdAt);
+			// Si tuvo 1 llamada sin respuesta en E1, respetar 1 día completo de diferencia (48h) antes de la 2a llamada
+			if (
+				activity.callsWithoutReply === 1 &&
+				activity.lastCallMs !== null &&
+				nowMs - activity.lastCallMs < CALL_RETRY_WAIT_MS &&
+				!activity.hasUnansweredInbound
+			) {
+				skippedGracePeriod++;
+				continue;
+			}
+
 			const isFromYesterday = isContactFromYesterdayOrNewer(createdAtMs, nowMs);
 
 			if (isFromYesterday) {
 				// E1 del día anterior (nuevo): llamada de prospección inicial inmediata
 				e1YesterdayList.push(
 					buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
-						isE1Over10Days: false
+						isE1Over10Days: false,
+						hasUnansweredInbound: activity.hasUnansweredInbound,
+						lastTouchMs: activity.lastTouchMs
 					})
 				);
 			} else {
-				// E1 más antiguo (acumulado): aplicar estrategia de 2 pasos si tiene >10 días
+				// E1 entre 2 y 30 días: aplicar estrategia de 2 pasos si tiene >10 días
 				const isE1Over10Days = createdAtMs !== null && nowMs - createdAtMs > 10 * 86_400_000;
 
 				if (isE1Over10Days) {
 					const lastSendMs = getMostRecentPropertySendMs(contactId, contactBinnacles);
 
-					if (lastSendMs !== null) {
+					if (lastSendMs !== null && lastSendMs >= activity.lastInboundMs) {
 						const sendAgeMs = nowMs - lastSendMs;
-						// Si el envío de opciones fue hace menos de 20h (hoy), está en tiempo de gracia para revisar
-						if (sendAgeMs < gracePeriodMs) {
+						if (sendAgeMs < gracePeriodMs && !activity.hasUnansweredInbound) {
 							skippedGracePeriod++;
 							continue;
 						}
 
-						// Si fue hace entre 20h y 72h (ayer o antier): Paso 2: Llamada telefónica de seguimiento
 						e1OlderList.push(
 							buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
 								isE1Over10Days: true,
-								e1Step: 'followup_call'
+								e1Step: 'followup_call',
+								hasUnansweredInbound: activity.hasUnansweredInbound,
+								lastTouchMs: activity.lastTouchMs
 							})
 						);
 					} else {
@@ -736,15 +946,18 @@ export function planCopilotoCandidates(
 							e1OlderList.push(
 								buildCandidateRecord(contact, 'E1', 1, false, summaries, baseUrl, {
 									isE1Over10Days: true,
-									e1Step: 'send_options'
+									e1Step: 'send_options',
+									hasUnansweredInbound: activity.hasUnansweredInbound,
+									lastTouchMs: activity.lastTouchMs
 								})
 							);
 						} else {
-							// Si no hay propiedades en ese rango, fallback a llamada de seguimiento
 							e1OlderList.push(
 								buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
 									isE1Over10Days: true,
-									e1Step: 'followup_call'
+									e1Step: 'followup_call',
+									hasUnansweredInbound: activity.hasUnansweredInbound,
+									lastTouchMs: activity.lastTouchMs
 								})
 							);
 						}
@@ -753,52 +966,120 @@ export function planCopilotoCandidates(
 					// E1 entre 2 y 10 días: llamada inmediata de prospección
 					e1OlderList.push(
 						buildCandidateRecord(contact, 'E1', 1, false, [], baseUrl, {
-							isE1Over10Days: false
+							isE1Over10Days: false,
+							hasUnansweredInbound: activity.hasUnansweredInbound,
+							lastTouchMs: activity.lastTouchMs
 						})
 					);
 				}
 			}
 		} else if (badge.text === 'E2') {
-			e2List.push(buildCandidateRecord(contact, 'E2', 2, false, [], baseUrl, coldExtra));
-		} else if (badge.text === 'E4') {
-			const matches = matchPropertiesForContact(contact, properties, {
-				synergyOnly: true,
-				excludeAlreadySent: true,
-				binnacles: contactBinnacles,
-				maxResults: 3
-			});
-			if (matches.length === 0) continue;
+			if (coldExtra) {
+				e2List.push(buildCandidateRecord(contact, 'E2', 2, false, [], baseUrl, coldExtra));
+				continue;
+			}
 
-			const summaries: CopilotoMatchedPropertySummary[] = matches.map((p) => ({
-				id: String(p.id || p.docId || p.public_id || ''),
-				public_id: String(p.public_id || ''),
-				title: String(p.title || `${p.property_type || 'Propiedad'} en ${p.location || 'Chihuahua'}`),
-				price: Number(p.price || 0),
-				zona: String((p as any).zona || p.location || ''),
-				proposalUrl: p.public_id
-					? getProposalUrl(p.public_id, contact)
-					: String((p as any).public_url || (p as any).urlProp || '')
-			}));
+			// Si tuvo 1 llamada sin respuesta en E2, respetar 1 día completo de diferencia (48h)
+			if (
+				activity.callsWithoutReply === 1 &&
+				activity.lastCallMs !== null &&
+				nowMs - activity.lastCallMs < CALL_RETRY_WAIT_MS &&
+				!activity.hasUnansweredInbound
+			) {
+				skippedGracePeriod++;
+				continue;
+			}
 
-			e4List.push(buildCandidateRecord(contact, 'E4', 3, false, summaries, baseUrl));
+			const lastSendMs = getMostRecentPropertySendMs(contactId, contactBinnacles);
+			if (lastSendMs !== null && lastSendMs >= activity.lastInboundMs) {
+				const sendAgeMs = nowMs - lastSendMs;
+				if (sendAgeMs < gracePeriodMs && !activity.hasUnansweredInbound) {
+					skippedGracePeriod++;
+					continue;
+				}
+				e2List.push(
+					buildCandidateRecord(contact, 'E2', 2, false, [], baseUrl, {
+						e2Step: 'followup_call',
+						hasUnansweredInbound: activity.hasUnansweredInbound,
+						lastTouchMs: activity.lastTouchMs
+					})
+				);
+			} else {
+				const hasSearchCriteria = Boolean(
+					contact.selecTP ||
+						Number(contact.budget || 0) > 0 ||
+						contact.rangeProp ||
+						(Array.isArray(contact.locaProperty) && contact.locaProperty.length > 0) ||
+						(Array.isArray(contact.tagsProperty) && contact.tagsProperty.length > 0)
+				);
+				const matches = hasSearchCriteria
+					? matchPropertiesForContact(contact, properties, {
+							synergyOnly: false,
+							prioritizeInventory: true,
+							excludeAlreadySent: true,
+							binnacles: contactBinnacles,
+							maxResults: 3
+						})
+					: [];
+
+				if (matches.length > 0) {
+					const summaries: CopilotoMatchedPropertySummary[] = matches.map((p) => ({
+						id: String(p.id || p.docId || p.public_id || ''),
+						public_id: String(p.public_id || ''),
+						title: String(p.title || `${p.property_type || 'Propiedad'} en ${p.location || 'Chihuahua'}`),
+						price: Number(p.price || 0),
+						zona: String((p as any).zona || p.location || ''),
+						proposalUrl: p.public_id
+							? getProposalUrl(p.public_id, contact)
+							: String((p as any).public_url || (p as any).urlProp || '')
+					}));
+					e2List.push(
+						buildCandidateRecord(contact, 'E2', 2, false, summaries, baseUrl, {
+							e2Step: 'send_options',
+							hasUnansweredInbound: activity.hasUnansweredInbound,
+							lastTouchMs: activity.lastTouchMs
+						})
+					);
+				} else {
+					e2List.push(
+						buildCandidateRecord(contact, 'E2', 2, false, [], baseUrl, {
+							e2Step: 'followup_call',
+							hasUnansweredInbound: activity.hasUnansweredInbound,
+							lastTouchMs: activity.lastTouchMs
+						})
+					);
+				}
+			}
 		} else if (badge.text === 'E3') {
 			e3RecentPool.push(buildCandidateRecord(contact, 'E3', 4, false, [], baseUrl, coldExtra));
 		}
 	}
 
-	const byMostRecent = (a: CopilotoCandidate, b: CopilotoCandidate) => {
-		const aReply = a.repliedToStep1 ? 1 : 0;
-		const bReply = b.repliedToStep1 ? 1 : 0;
+	// Rotación justa (Anti-repetición):
+	// 1) Respuestas entrantes sin atender o respuestas al Paso 1
+	// 2) Contactos sin toque previo (lastTouchMs === 0) primero, o con más tiempo sin contacto (lastTouchMs ASC)
+	// 3) Desempate por fecha de alta más reciente
+	const byFairRotation = (a: CopilotoCandidate, b: CopilotoCandidate) => {
+		const aReply = a.repliedToStep1 || a.hasUnansweredInbound ? 1 : 0;
+		const bReply = b.repliedToStep1 || b.hasUnansweredInbound ? 1 : 0;
 		if (aReply !== bReply) return bReply - aReply;
+
+		const aTouch = a.lastTouchMs ?? 0;
+		const bTouch = b.lastTouchMs ?? 0;
+		if (aTouch !== bTouch) {
+			if (aTouch === 0) return -1;
+			if (bTouch === 0) return 1;
+			return aTouch - bTouch;
+		}
 		return (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0);
 	};
 
-	e1YesterdayList.sort(byMostRecent);
-	e1OlderList.sort(byMostRecent); // "empezando con los mas recientes"
-	e2List.sort(byMostRecent);
-	e4List.sort(byMostRecent);
-	e3RecentPool.sort(byMostRecent);
-	e3ColdPool.sort(byMostRecent);
+	e1YesterdayList.sort(byFairRotation);
+	e1OlderList.sort(byFairRotation);
+	e2List.sort(byFairRotation);
+	e4List.sort(byFairRotation);
+	e3RecentPool.sort(byFairRotation);
+	e3ColdPool.sort(byFairRotation);
 
 	// Selección de E1 bajo regla canónica:
 	// "todos los del dia anterior y si son menos de 7, completar 14 con los mas viejos, empezando con los mas recientes."
@@ -917,7 +1198,8 @@ export function buildSingleCopilotoCandidate(
 	let matchedProperties: CopilotoMatchedPropertySummary[] = [];
 	if (stageText === 'E4' && Array.isArray(properties) && properties.length > 0) {
 		const matches = matchPropertiesForContact(enrichedContact, properties, {
-			synergyOnly: true,
+			synergyOnly: false,
+			prioritizeInventory: true,
 			excludeAlreadySent: false,
 			binnacles: [],
 			maxResults: 3
@@ -948,6 +1230,10 @@ export function buildSingleCopilotoCandidate(
 		false,
 		matchedProperties,
 		baseUrl,
-		stageText === 'E1' ? { isE1Over10Days: false } : undefined
+		stageText === 'E1'
+			? { isE1Over10Days: false }
+			: stageText === 'E2'
+				? { e2Step: 'followup_call' }
+				: undefined
 	);
 }

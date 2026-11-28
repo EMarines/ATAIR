@@ -4,6 +4,7 @@ import { tagToFeatures, tagToUbicacion } from './tagConverters';
 
 export interface PropertyMatchOptions {
 	synergyOnly?: boolean;
+	prioritizeInventory?: boolean;
 	excludeAlreadySent?: boolean;
 	binnacles?: Binnacle[];
 	maxResults?: number;
@@ -257,6 +258,31 @@ export function isSynergyProperty(prop: Partial<Property> | any): boolean {
 	}
 
 	return prop.isOwn === false && source !== 'direct';
+}
+
+/**
+ * Prioridad comercial de inventario para recomendaciones:
+ * 1 = Propias Match Home (MH / direct / isOwn)
+ * 2 = EasyBroker (EB / source easybroker)
+ * 3 = Sinergias (S1 / S2 / S3)
+ */
+export function getPropertyInventoryPriority(prop: Partial<Property> | any): number {
+	if (!prop) return 3;
+	if (isSynergyProperty(prop)) return 3;
+
+	const source = normalizeMatchText(prop.source);
+	const proc = String(prop.procedencia || '').trim().toUpperCase();
+	const ids = extractPropertyIdentifiers(prop).map((id) => id.toUpperCase());
+
+	if (
+		source === 'easybroker' ||
+		proc === 'EB' ||
+		ids.some((id) => id.startsWith('EB-'))
+	) {
+		return 2;
+	}
+
+	return 1;
 }
 
 export function isAvailableProperty(prop: Partial<Property> | any): boolean {
@@ -571,11 +597,18 @@ export function matchPropertiesForContact(
 ): Property[] {
 	if (!contact || !Array.isArray(properties)) return [];
 
-	const sentSet = options.excludeAlreadySent
-		? getSentPropertyIdsForContact(contact, options.binnacles || [])
-		: null;
+	const sentSet =
+		options.excludeAlreadySent
+			? getSentPropertyIdsForContact(contact, options.binnacles || [])
+			: null;
 
-	const scored: Array<{ property: Property; score: number; createdAtMs: number }> = [];
+	const prioritizeInventory = options.prioritizeInventory ?? !options.synergyOnly;
+	const scored: Array<{
+		property: Property;
+		inventoryPriority: number;
+		score: number;
+		createdAtMs: number;
+	}> = [];
 
 	for (const property of properties) {
 		if (sentSet && sentSet.size > 0) {
@@ -594,12 +627,16 @@ export function matchPropertiesForContact(
 
 		scored.push({
 			property,
+			inventoryPriority: getPropertyInventoryPriority(property),
 			score: evalRes.score,
 			createdAtMs: getContactCreatedAtMs(property.created_at) ?? 0
 		});
 	}
 
 	scored.sort((a, b) => {
+		if (prioritizeInventory && a.inventoryPriority !== b.inventoryPriority) {
+			return a.inventoryPriority - b.inventoryPriority;
+		}
 		if (b.score !== a.score) return b.score - a.score;
 		return b.createdAtMs - a.createdAtMs;
 	});
@@ -805,6 +842,7 @@ export function findPropertiesInPriceRangeForContact(
 
 	const scored: Array<{
 		property: Property;
+		inventoryPriority: number;
 		score: number;
 		priceDiff: number;
 		createdAtMs: number;
@@ -857,7 +895,9 @@ export function findPropertiesInPriceRangeForContact(
 		}
 
 		let bonus = 0;
-		if (isSynergyProperty(prop)) bonus += 10;
+		const invPriority = getPropertyInventoryPriority(prop);
+		if (invPriority === 1) bonus += 15;
+		else if (invPriority === 2) bonus += 10;
 		if (prop.public_id) bonus += 5;
 
 		const propCreatedMs = getContactCreatedAtMs(prop.created_at);
@@ -868,6 +908,7 @@ export function findPropertiesInPriceRangeForContact(
 		const totalScore = priceScore + typeScore + zoneScore + bonus;
 		scored.push({
 			property: prop,
+			inventoryPriority: invPriority,
 			score: totalScore,
 			priceDiff: Math.abs(propPrice - targetPrice),
 			createdAtMs: propCreatedMs ?? 0
@@ -876,6 +917,7 @@ export function findPropertiesInPriceRangeForContact(
 
 	scored.sort((a, b) => {
 		if (b.score !== a.score) return b.score - a.score;
+		if (a.inventoryPriority !== b.inventoryPriority) return a.inventoryPriority - b.inventoryPriority;
 		if (a.priceDiff !== b.priceDiff) return a.priceDiff - b.priceDiff;
 		return b.createdAtMs - a.createdAtMs;
 	});

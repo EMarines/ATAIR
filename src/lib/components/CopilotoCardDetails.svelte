@@ -36,7 +36,9 @@
 			sendWhatsApp(meta.telephon, draftText);
 
 			if (
-				(meta.stage === 'E4' || meta.stage === 'E1') &&
+				(meta.stage === 'E4' ||
+					meta.stage === 'E1' ||
+					(meta.stage === 'E2' && meta.e2Step === 'send_options')) &&
 				Array.isArray(meta.propertyIds) &&
 				meta.propertyIds.length > 0
 			) {
@@ -53,9 +55,9 @@
 				const actionLabel = isPausedCard
 					? 'Chequeo trimestral Pausado (Copiloto): '
 					: meta.coldStep === 'step1_check'
-						? 'Reactivación >180d Paso 1 (Copiloto): '
+						? 'Reactivación E3 Paso 1 (Copiloto): '
 						: meta.coldStep === 'step2_send_link'
-							? 'Reactivación >180d Paso 2 - Link /buscar (Copiloto): '
+							? 'Reactivación E3 Paso 2 - Link /buscar (Copiloto): '
 							: meta.stage === 'E3'
 								? 'Formulario E3 enviado por WhatsApp: '
 								: 'WhatsApp Copiloto enviado: ';
@@ -96,19 +98,30 @@
 		}
 	}
 
-	async function logCallOutcome(answered: boolean) {
+	async function logCallOutcome(answered: boolean, alsoSendWhatsApp: boolean = false) {
 		if (isBusy) return;
 		isBusy = true;
 		feedbackMsg = '';
 		try {
+			const nowMs = Date.now();
 			await infoToBinnacle({
-				date: Date.now(),
+				date: nowMs,
 				to: meta.contactId,
 				action: answered ? 'Llamada concretada (Copiloto): ' : 'Llamada sin respuesta (Copiloto): ',
 				comment: answered
 					? `Contacto telefónico realizado. Objetivo: ${meta.objective}`
 					: 'Se intentó llamada telefónica y no contestó.'
 			});
+
+			if (!answered && alsoSendWhatsApp && meta.telephon && draftText.trim()) {
+				sendWhatsApp(meta.telephon, draftText);
+				await infoToBinnacle({
+					date: Date.now(),
+					to: meta.contactId,
+					action: 'WhatsApp tras llamada sin respuesta (Copiloto): ',
+					comment: draftText.slice(0, 220)
+				});
+			}
 
 			await updateDoc(doc(db, 'contacts', meta.contactId), {
 				lastContact: Date.now(),
@@ -117,7 +130,9 @@
 
 			feedbackMsg = answered
 				? '✅ Llamada registrada. Puedes actualizar la ficha o marcar completada.'
-				: '📝 Llamada sin respuesta registrada en bitácora.';
+				: alsoSendWhatsApp
+					? '✅ Llamada sin respuesta registrada y WhatsApp abierto para enviar colgando.'
+					: '📝 Llamada sin respuesta registrada en bitácora.';
 
 			if (!todoItem.isCompleted) {
 				dispatch('complete', todoItem);
@@ -138,15 +153,23 @@
 		feedbackMsg = '';
 		try {
 			const stageLabel =
-				target === 'E3'
-					? 'Etapa 3 · Filtro / Reactivación'
-					: target === 'E2'
-						? 'Etapa 2 · Perfilamiento'
-						: 'Etapa 4 · Búsqueda Activa';
-			await updateDoc(doc(db, 'contacts', meta.contactId), {
+				target === 'IN'
+					? 'Etapa 8 · Inactivo'
+					: target === 'E3'
+						? 'Etapa 3 · Filtro / Reactivación'
+						: target === 'E2'
+							? 'Etapa 2 · Perfilamiento'
+							: 'Etapa 4 · Búsqueda Activa';
+			const patch: Record<string, any> = {
 				contactStage: stageLabel,
 				stage: target
-			});
+			};
+			if (target === 'IN') {
+				patch.isActive = false;
+				patch.inactiveReason = 'no_interesa';
+				patch.reactivateAt = null;
+			}
+			await updateDoc(doc(db, 'contacts', meta.contactId), patch);
 
 			await infoToBinnacle({
 				date: Date.now(),
@@ -310,18 +333,22 @@
 			{#if meta.telephon}
 				<span class="lead-phone">📞 {meta.telephon}</span>
 			{/if}
-			{#if meta.isColdOver180Days}
+			{#if meta.isColdOver180Days || meta.coldStep}
 				<span
 					class="cold-pill"
 					class:cold-pill-hot={meta.repliedToStep1}
-					title="Estrategia unificada de reactivación >180 días (2 pasos)"
+					title="Estrategia unificada E3 en 2 pasos"
 				>
 					{#if meta.repliedToStep1}
 						🔥 Respondió Paso 1 · Enviar link
+					{:else if meta.coldStep === 'post_step2_inactive'}
+						🚫 Post-Paso 2 (+7d) · Depurar a IN
 					{:else if meta.coldStep === 'step2_send_link'}
-						🔗 &gt;180d · Paso 2/2 (Con link)
-					{:else}
+						🔗 {meta.isColdOver180Days ? '>180d' : 'E3'} · Paso 2/2 (Con link)
+					{:else if meta.isColdOver180Days}
 						❄️ &gt;180d · Paso 1/2 (Sin link)
+					{:else}
+						🔄 E3 · Paso 1/2 (Sin link)
 					{/if}
 				</span>
 			{/if}
@@ -387,11 +414,20 @@
 				<button type="button" class="btn-exec btn-answered" on:click={() => logCallOutcome(true)} disabled={isBusy}>
 					✓ Contestó
 				</button>
-				<button type="button" class="btn-exec btn-no-answer" on:click={() => logCallOutcome(false)} disabled={isBusy}>
-					✗ No contestó
+				<button
+					type="button"
+					class="btn-exec btn-no-answer"
+					on:click={() => logCallOutcome(false, true)}
+					disabled={isBusy || !meta.telephon}
+					title="Registra llamada sin respuesta y abre WhatsApp colgando en 1 clic"
+				>
+					✗ No contestó + WA
+				</button>
+				<button type="button" class="btn-exec btn-wa-alt" on:click={() => logCallOutcome(false, false)} disabled={isBusy} title="Solo registrar llamada sin respuesta">
+					✗ Solo no contestó
 				</button>
 				<button type="button" class="btn-exec btn-wa-alt" on:click={executeWhatsAppSend} disabled={isBusy || !meta.telephon}>
-					<i class="fa-brands fa-whatsapp"></i> Enviar WA
+					<i class="fa-brands fa-whatsapp"></i> Solo WA
 				</button>
 			{:else}
 				<button type="button" class="btn-exec btn-wa-primary" on:click={executeWhatsAppSend} disabled={isBusy || !meta.telephon}>

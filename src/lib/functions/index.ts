@@ -7,6 +7,7 @@ export {
 	evaluatePropertyContactMatch,
 	filterContactsByCriteria,
 	findPropertiesInPriceRangeForContact,
+	getPropertyInventoryPriority,
 	getSentContactIdsForProperty,
 	getSentPropertyIdsForContact,
 	hasRecentPropertySend,
@@ -23,15 +24,20 @@ export {
 	wasPropertySentToContact
 } from './propertyMatching';
 export {
+	CALL_RETRY_WAIT_HOURS,
 	COLD_REACTIVATION_DAYS,
 	COLD_STEP2_WAIT_HOURS,
+	E1_E2_MAX_DAYS,
+	POST_STEP2_INACTIVE_DAYS,
 	buildSingleCopilotoCandidate,
 	evaluateColdReactivationState,
 	getChihuahuaDateKey,
+	getContactActivitySnapshot,
 	planCopilotoCandidates
 } from './copilotoPlanner';
 export type {
 	ColdReactivationState,
+	ContactActivitySnapshot,
 	CopilotoCandidate,
 	CopilotoColdStep,
 	CopilotoMatchedPropertySummary,
@@ -43,6 +49,8 @@ export {
 	analyzeCandidateWithGemini,
 	buildCopilotoPrompt,
 	buildFallbackCopilotoCard,
+	getMissingIdealProfileFields,
+	hasAlreadyAskedIfSelling,
 	summarizeContactBinnacles
 } from './copilotoAnalyzer';
 export type {

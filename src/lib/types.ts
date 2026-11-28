@@ -229,7 +229,7 @@ export interface CopilotoTodoMeta {
   why: string;
   recommendedExecution: 'call' | 'whatsapp' | 'e3_form' | string;
   whatsappDraft: string;
-  suggestedStageChange?: 'NONE' | 'E2' | 'E3' | 'E4' | string;
+  suggestedStageChange?: 'NONE' | 'E2' | 'E3' | 'E4' | 'IN' | string;
   propertyIds?: string[];
   propertyLinks?: string[];
   e3FormUrl?: string;
@@ -237,10 +237,14 @@ export interface CopilotoTodoMeta {
   propertySendsWithoutReply?: number;
   isE1Over10Days?: boolean;
   e1Step?: 'send_options' | 'followup_call' | string;
+  e2Step?: 'send_options' | 'followup_call' | string;
+  missingProfileFields?: string[];
+  askIfSellingProperty?: boolean;
   isColdOver180Days?: boolean;
-  coldStep?: 'step1_check' | 'step2_send_link' | string;
+  coldStep?: 'step1_check' | 'step2_send_link' | 'post_step2_inactive' | string;
   repliedToStep1?: boolean;
   daysSinceLastTouch?: number | null;
+  lastTouchMs?: number | null;
   isPausedCheckIn?: boolean;
   pausedReactivateAt?: number | null;
   proposedClose?: boolean;
